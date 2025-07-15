@@ -96,6 +96,11 @@
 
     <footer class="character-footer">
       <a href="/" class="btn btn-back">← Назад к списку кампаний</a>
+      <a th:href="@{'/api/campaigns/' + ${campaign.id} + '/download'}"
+         class="btn btn-download"
+         download>
+        ⬇ Скачать кампанию в JSON
+      </a>
     </footer>
   </div>
 </div>
@@ -155,6 +160,22 @@
   .item-card {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .btn-download {
+  margin-left: 20px;
+  padding: 9px 20px;
+  background: #667eea;
+  color: #fff;
+  border-radius: 5px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: background 0.2s;
+  }
+
+  .btn-download:hover {
+  background: #5a67d8;
+  color: #fff;
   }
 </style>
 </body>
