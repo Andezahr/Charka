@@ -1,0 +1,452 @@
+/* Глобальные стили */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #2d3748;
+    line-height: 1.6;
+    min-height: 100vh;
+}
+
+.page-wrapper {
+    width: 100%;
+    padding: 14px;
+    min-height: 100vh;
+}
+
+.container {
+    width: 100%;
+    max-width: 1120px;
+    margin: 0 auto;
+    background: #ffffff;
+    border-radius: 11px;
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+/* Заголовок */
+.character-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 28px;
+    text-align: center;
+}
+
+.character-header h1 {
+    margin: 0;
+    font-size: 1.96em;
+    font-weight: 700;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* Основной контент - ДВУХКОЛОНОЧНАЯ РАСКЛАДКА */
+.character-content {
+    display: flex;
+    gap: 42px;
+    align-items: flex-start;
+    padding: 35px;
+    min-height: 70vh;
+}
+
+.left-column {
+    flex: 2;
+    min-width: 0;
+}
+
+.right-column {
+    flex: 1;
+    min-width: 245px;
+    max-width: 315px;
+}
+
+/* Информация о персонаже */
+.character-info {
+    background: #f8fafc;
+    border-radius: 8px;
+    padding: 17px;
+    margin-bottom: 28px;
+    border-left: 3px solid #667eea;
+}
+
+.info-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    font-size: 0.8em;
+}
+
+.info-item:last-child {
+    margin-bottom: 0;
+}
+
+.info-item strong {
+    color: #4a5568;
+    margin-right: 10px;
+    min-width: 84px;
+    font-weight: 600;
+}
+
+/* Секции */
+.section {
+    margin-bottom: 35px;
+}
+
+.section-title {
+    font-size: 1.33em;
+    font-weight: 700;
+    color: #2d3748;
+    margin-bottom: 18px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+/* Суммарная информация о деньгах */
+.money-summary {
+    background: #f0fff4;
+    border: 1px solid #38a169;
+    border-radius: 7px;
+    padding: 14px;
+    margin-bottom: 18px;
+    text-align: center;
+}
+
+.money-total {
+    font-size: 1.05em;
+    color: #2f855a;
+    font-weight: 600;
+}
+
+/* Списки элементов */
+.items-list {
+    margin-bottom: 24px;
+}
+
+.item-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 13px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
+}
+
+.item-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+    border-color: #cbd5e0;
+}
+
+.item-info {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.item-name {
+    font-weight: 600;
+    color: #2d3748;
+    font-size: 0.8em;
+}
+
+.item-detail {
+    color: #718096;
+    font-size: 0.66em;
+}
+
+.item-date {
+    color: #a0aec0;
+    font-size: 0.63em;
+}
+
+.money-amount {
+    font-weight: 700;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.77em;
+    background: #e6fffa;
+    color: #2c7a7b;
+}
+
+/* Инвентарь */
+.inventory-card {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.inventory-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 13px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.inventory-actions {
+    display: flex;
+    gap: 7px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.inventory-content {
+    width: 100%;
+}
+
+.items-sublist {
+    margin-bottom: 15px;
+}
+
+.subitem-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 7px;
+    padding: 13px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.subitem-actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+/* Формы */
+.add-form {
+    background: #f8fafc;
+    border: 1px dashed #cbd5e0;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+}
+
+.add-subitem-form {
+    background: #f1f5f9;
+    border: 1px dashed #cbd5e0;
+    border-radius: 7px;
+    padding: 14px;
+}
+
+.form-group {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 13px;
+    flex-wrap: wrap;
+}
+
+.form-group input {
+    flex: 1;
+    min-width: 154px;
+}
+
+.inline-form {
+    display: inline-flex;
+    gap: 7px;
+    align-items: center;
+    margin: 0;
+}
+
+.inline-input {
+    padding: 6px 10px;
+    border: 1px solid #cbd5e0;
+    border-radius: 6px;
+    font-size: 0.66em;
+    min-width: 98px;
+}
+
+/* Поля ввода */
+input[type="text"], input[type="number"] {
+    padding: 10px 13px;
+    border: 1px solid #e2e8f0;
+    border-radius: 7px;
+    font-size: 0.73em;
+    transition: border-color 0.3s ease;
+    background: white;
+}
+
+input[type="text"]:focus, input[type="number"]:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Кнопки */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    border: none;
+    border-radius: 7px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    font-family: inherit;
+    white-space: nowrap;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 11px 20px;
+    font-size: 0.8em;
+    box-shadow: 0 4px 10px rgba(102, 126, 234, 0.3);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 7px 18px rgba(102, 126, 234, 0.4);
+}
+
+.btn-small {
+    padding: 7px 13px;
+    font-size: 0.66em;
+}
+
+.btn-tiny {
+    padding: 6px 10px;
+    font-size: 0.59em;
+}
+
+.btn-secondary {
+    background: #718096;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #4a5568;
+    transform: translateY(-1px);
+}
+
+.btn-danger {
+    background: #e53e3e;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #c53030;
+    transform: translateY(-1px);
+}
+
+.btn-back {
+    background: #4a5568;
+    color: white;
+    padding: 10px 20px;
+    font-size: 0.8em;
+    border-radius: 21px;
+}
+
+.btn-back:hover {
+    background: #2d3748;
+    transform: translateY(-2px);
+}
+
+/* Пустые состояния */
+.empty-state {
+    text-align: center;
+    padding: 28px;
+    color: #a0aec0;
+    font-style: italic;
+    font-size: 0.77em;
+}
+
+/* Футер */
+.character-footer {
+    background: #f8fafc;
+    padding: 21px 35px;
+    text-align: center;
+    border-top: 1px solid #e2e8f0;
+}
+
+/* Адаптивность */
+@media (max-width: 840px) {
+    .character-content {
+        gap: 28px;
+        padding: 28px;
+    }
+
+    .right-column {
+        min-width: 210px;
+        max-width: 266px;
+    }
+}
+
+@media (max-width: 665px) {
+    .character-content {
+        flex-direction: column;
+        gap: 21px;
+    }
+
+    .right-column, .left-column {
+        max-width: 100%;
+        min-width: 0;
+        width: 100%;
+    }
+}
+
+@media (max-width: 538px) {
+    .page-wrapper {
+        padding: 7px;
+    }
+
+    .character-header {
+        padding: 21px 18px;
+    }
+
+    .character-header h1 {
+        font-size: 1.54em;
+    }
+
+    .character-content {
+        padding: 18px;
+    }
+
+    .form-group {
+        flex-direction: column;
+    }
+
+    .form-group input {
+        min-width: auto;
+    }
+
+    .item-card {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 13px;
+    }
+
+    .inventory-header {
+        flex-direction: column;
+        gap: 13px;
+        align-items: stretch;
+    }
+
+    .inventory-actions {
+        justify-content: center;
+    }
+
+    .subitem-card {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .inline-form {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+}

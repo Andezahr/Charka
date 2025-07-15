@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Домашняя страница</title>
+    <link rel="stylesheet" th:href="@{/css/styles.css}">
+</head>
+<body>
+<div class="page-wrapper">
+    <div class="character-header">
+        <h1>Домашняя страница</h1>
+    </div>
+    <div class="container">
+        <h2>Список имён персонажей</h2>
+        <ul>
+            <li th:each="character : ${characters}">
+                <a th:href="@{'/character/' + ${character.id}}"
+                   th:text="${character.name}"></a>
+            </li>
+            <li th:if="${#lists.isEmpty(characters)}" class="empty-state">Пока нет ни одного персонажа</li>
+        </ul>
+
+        <h2>Список кампаний</h2>
+        <ul>
+            <li th:each="campaign : ${campaigns}">
+                <a th:href="@{'/campaign/' + ${campaign.id}}"
+                   th:text="${campaign.name}"></a>
+            </li>
+            <li th:if="${#lists.isEmpty(campaigns)}" class="empty-state">Пока нет ни одной кампании</li>
+        </ul>
+    </div>
+</div>
+</body>
+</html>
