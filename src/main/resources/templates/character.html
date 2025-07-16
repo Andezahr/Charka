@@ -14,21 +14,9 @@
 
     <main class="character-content">
       <div class="left-column">
-        <section class="character-info">
-          <div class="info-item">
-            <strong>Имя:</strong>
-            <span th:text="${character.name}">Имя</span>
-          </div>
-          <div class="info-item">
-            <strong>Кампания:</strong>
-            <span th:text="${character.campaign != null ? character.campaign.name : 'Нет'}">Кампания</span>
-          </div>
-        </section>
-
         <!-- РАНЫ -->
         <section class="section">
           <h2 class="section-title">Раны</h2>
-          <!-- Кнопка "добавить" перенесена выше списка -->
           <form th:action="@{'/character/' + ${character.id} + '/wounds'}" method="post" class="add-form">
             <div class="form-group">
               <input type="text" name="name" placeholder="Описание раны" required autocomplete="off">
@@ -57,7 +45,6 @@
         <!-- ИНВЕНТАРИ -->
         <section class="section">
           <h2 class="section-title">Инвентари</h2>
-          <!-- Кнопка "добавить" перенесена выше списка -->
           <form th:action="@{'/character/' + ${character.id} + '/inventories'}" method="post" class="add-form">
             <div class="form-group">
               <input type="text" name="name" placeholder="Название инвентаря" required autocomplete="off">
@@ -79,10 +66,12 @@
                 </div>
               </div>
               <div class="inventory-content">
-                <!-- Кнопка "добавить предмет" перенесена выше списка -->
                 <form th:action="@{'/character/' + ${character.id} + '/inventories/' + ${inv.id} + '/items'}" method="post" class="add-subitem-form">
                   <div class="form-group">
                     <input type="text" name="itemName" placeholder="Название предмета" required autocomplete="off">
+                    <input type="number" name="quantity" placeholder="Количество" required min="1">
+                    <input type="number" name="cost" placeholder="Стоимость" required min="0">
+                    <input type="text" name="description" placeholder="Описание" autocomplete="off">
                     <button type="submit" class="btn btn-small btn-primary">Добавить предмет</button>
                   </div>
                 </form>
@@ -90,10 +79,16 @@
                   <div th:each="item : ${inv.content}" class="subitem-card">
                     <div class="item-info">
                       <span class="item-name" th:text="${item.name}">Предмет</span>
+                      <span class="item-quantity">×<span th:text="${item.quantity}">1</span></span>
+                      <span class="item-cost">₽<span th:text="${item.cost}">0</span></span>
+                      <p class="item-description" th:text="${item.description}">Описание предмета</p>
                     </div>
                     <div class="subitem-actions">
                       <form th:action="@{'/character/' + ${character.id} + '/inventories/' + ${inv.id} + '/items/' + ${item.id} + '/edit'}" method="post" class="inline-form">
                         <input type="text" name="itemName" th:placeholder="${item.name}" required autocomplete="off" class="inline-input">
+                        <input type="number" name="quantity" th:placeholder="${item.quantity}" required min="1" class="inline-input">
+                        <input type="number" name="cost" th:placeholder="${item.cost}" required min="0" class="inline-input">
+                        <input type="text" name="description" th:placeholder="${item.description}" autocomplete="off" class="inline-input">
                         <button type="submit" class="btn btn-tiny btn-secondary">Переименовать</button>
                       </form>
                       <form th:action="@{'/character/' + ${character.id} + '/inventories/' + ${inv.id} + '/items/' + ${item.id} + '/delete'}" method="post" class="inline-form">
@@ -113,12 +108,12 @@
           </div>
         </section>
       </div>
-
       <div class="right-column">
-        <!-- ДЕНЬГИ -->
         <section class="section">
           <h2 class="section-title">Деньги</h2>
-          <!-- Кнопка "добавить" перенесена выше списка -->
+          <div class="money-summary">
+            <span class="money-total">Сумма: <strong th:text="${moneySum}">0</strong></span>
+          </div>
           <form th:action="@{'/character/' + ${character.id} + '/money'}" method="post" class="add-form">
             <div class="form-group">
               <input type="text" name="name" placeholder="Описание операции" required autocomplete="off">
@@ -126,9 +121,7 @@
             </div>
             <button type="submit" class="btn btn-primary">Добавить операцию</button>
           </form>
-          <div class="money-summary">
-            <span class="money-total">Сумма: <strong th:text="${moneySum}">0</strong></span>
-          </div>
+
           <div class="items-list">
             <div th:each="money : ${moneyList}" class="item-card money-item">
               <div class="item-info">

@@ -5,6 +5,8 @@ import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import java.time.LocalDate;
+
 @Data
 @Entity
 public class Wound {
@@ -19,6 +21,8 @@ public class Wound {
     private String name;
 
     private Long severity;
+
+    private LocalDate date;
 
 
 }

@@ -14,28 +14,13 @@
 
     <main class="character-content">
       <div class="left-column">
-        <!-- Информация о кампании -->
-        <section class="character-info">
-          <div class="info-item">
-            <strong>Название кампании:</strong>
-            <span th:text="${campaign.name}">Название</span>
-          </div>
-          <div class="info-item">
-            <strong>Текущая дата:</strong>
-            <span th:text="${currentDate}">Дата</span>
-          </div>
-        </section>
+
 
         <!-- Персонажи и их раны -->
         <section class="section">
           <h2 class="section-title">Персонажи кампании</h2>
           <!-- Форма добавления персонажа -->
-          <form th:action="@{'/campaign/' + ${campaign.id} + '/characters'}" method="post" class="add-form">
-            <div class="form-group">
-              <input type="text" name="name" placeholder="Имя персонажа" required autocomplete="off">
-            </div>
-            <button type="submit" class="btn btn-primary">Добавить персонажа</button>
-          </form>
+
           <div class="items-list">
             <div th:each="character : ${campaign.characters}" class="item-card">
               <div class="item-info">
@@ -49,7 +34,7 @@
                   <li th:each="wound : ${character.wounds}" class="wound-item">
                     <span th:text="${wound.name}">Рана</span>
                     <span th:if="${wound.severity != null}" class="wound-severity">
-                      (тяжесть: <span th:text="${wound.severity}"></span>)
+                      (тяжесть: <span th:text="${wound.severity}">0</span>)
                     </span>
                   </li>
                   <li th:if="${#lists.isEmpty(character.wounds)}" class="empty-state-small">Нет ран</li>
@@ -60,6 +45,12 @@
               <span>Нет персонажей</span>
             </div>
           </div>
+          <form th:action="@{'/campaign/' + ${campaign.id} + '/characters'}" method="post" class="add-form">
+            <div class="form-group">
+              <input type="text" name="name" placeholder="Имя персонажа" required autocomplete="off">
+            </div>
+            <button type="submit" class="btn btn-primary">Добавить персонажа</button>
+          </form>
         </section>
       </div>
 
@@ -67,12 +58,15 @@
         <!-- Хрониклы -->
         <section class="section">
           <h2 class="section-title">Хрониклы</h2>
+          <div class="info-item">
+            <strong>Текущая дата:</strong>
+            <span th:text="${currentDate}">Дата</span>
+          </div>
           <!-- Форма добавления хроникла -->
           <form th:action="@{'/campaign/' + ${campaign.id} + '/chronicles'}" method="post" class="add-form">
             <div class="form-group">
               <input type="text" name="name" placeholder="Название хроникла" required autocomplete="off">
-              <input type="date" name="startDate" placeholder="Дата начала" required>
-              <input type="date" name="endDate" placeholder="Дата окончания" required>
+              <input type="number" name="duration" placeholder="Длительность (дней)" required min="1">
             </div>
             <button type="submit" class="btn btn-primary">Добавить хроникл</button>
           </form>
@@ -81,7 +75,8 @@
               <div class="item-info">
                 <span class="item-name" th:text="${chronicle.name}">Название хроникла</span>
                 <span class="item-detail">
-                  <span th:text="${chronicle.startDate}">Дата начала</span> &mdash;
+                  <span th:text="${chronicle.startDate}">Дата начала</span>
+                  &mdash;
                   <span th:text="${chronicle.endDate}">Дата окончания</span>
                 </span>
               </div>
@@ -163,19 +158,19 @@
   }
 
   .btn-download {
-  margin-left: 20px;
-  padding: 9px 20px;
-  background: #667eea;
-  color: #fff;
-  border-radius: 5px;
-  text-decoration: none;
-  font-weight: 600;
-  transition: background 0.2s;
+    margin-left: 20px;
+    padding: 9px 20px;
+    background: #667eea;
+    color: #fff;
+    border-radius: 5px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: background 0.2s;
   }
 
   .btn-download:hover {
-  background: #5a67d8;
-  color: #fff;
+    background: #5a67d8;
+    color: #fff;
   }
 </style>
 </body>

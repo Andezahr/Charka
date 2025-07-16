@@ -16,6 +16,8 @@ public class Campaign {
     private String name;
 
     private LocalDate startDate;
+    @Column(name = "current_date_value")
+    private LocalDate currentDate;
 
     @OneToMany(mappedBy = "campaign", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Chronicle> chronicles;
