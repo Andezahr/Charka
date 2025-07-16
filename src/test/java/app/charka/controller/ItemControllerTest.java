@@ -24,7 +24,7 @@ class ItemControllerTest {
     void setUp() {
         inventoryRepository = mock(InventoryRepository.class);
         itemRepository = mock(ItemRepository.class);
-        itemController = new ItemController();
+        itemController = new ItemController(inventoryRepository, itemRepository);
     }
 
     @Test

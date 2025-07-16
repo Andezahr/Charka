@@ -5,7 +5,6 @@ import app.charka.model.Character;
 import app.charka.model.Inventory;
 import app.charka.repository.CharacterRepository;
 import app.charka.repository.InventoryRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -13,10 +12,14 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 @Controller
 public class InventoryController {
-    @Autowired
-    private CharacterRepository characterRepository;
-    @Autowired
-    private InventoryRepository inventoryRepository;
+
+    private final CharacterRepository characterRepository;
+    private final InventoryRepository inventoryRepository;
+
+    public InventoryController(CharacterRepository characterRepository, InventoryRepository inventoryRepository) {
+        this.characterRepository = characterRepository;
+        this.inventoryRepository = inventoryRepository;
+    }
 
     @PostMapping(Routes.INVENTORY_ADD)
     public String addInventory(@PathVariable Long characterId, @RequestParam String name) {

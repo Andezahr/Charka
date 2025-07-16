@@ -4,7 +4,6 @@ import app.charka.model.*;
 import app.charka.model.Character;
 import app.charka.repository.CampaignRepository;
 import app.charka.repository.InventoryRepository;
-import app.charka.repository.ItemRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
@@ -65,6 +64,7 @@ public class DataInitializer implements CommandLineRunner {
 
         oleja.setWounds(Collections.emptyList());
         oleja.setInventories(List.of(olejaInventory));
+
 
         inventoryRepository.save(kolyasickInventory);
     }

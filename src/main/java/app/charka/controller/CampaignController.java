@@ -13,6 +13,7 @@ import java.time.LocalDate;
 @Controller
 @RequestMapping("/campaign")
 public class CampaignController {
+
     private final CampaignRepository campaignRepository;
 
     public CampaignController(CampaignRepository campaignRepository) {

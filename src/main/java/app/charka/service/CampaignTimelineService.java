@@ -3,23 +3,17 @@ package app.charka.service;
 import app.charka.model.Campaign;
 import app.charka.model.Chronicle;
 import app.charka.repository.*;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 
 @Service
 public class CampaignTimelineService {
-    private CampaignRepository campaignRepository;
-    private ChronicleRepository chronicleRepository;
-    private CharacterRepository characterRepository;
-    private MoneyRepository moneyRepository;
-    private WoundRepository woundRepository;
+    private final CampaignRepository campaignRepository;
+    private final ChronicleRepository chronicleRepository;
 
-    public CampaignTimelineService(ChronicleRepository chronicleRepository, MoneyRepository moneyRepository, CampaignRepository campaignRepository) {
+    public CampaignTimelineService(ChronicleRepository chronicleRepository, CampaignRepository campaignRepository) {
         this.chronicleRepository = chronicleRepository;
-        this.moneyRepository = moneyRepository;
         this.campaignRepository = campaignRepository;
 
     }

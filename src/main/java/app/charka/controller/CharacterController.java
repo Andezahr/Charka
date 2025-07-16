@@ -5,7 +5,6 @@ import app.charka.model.Character;
 import app.charka.model.Money;
 import app.charka.repository.CharacterRepository;
 import app.charka.repository.MoneyRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,10 +15,13 @@ import java.util.List;
 @Controller
 public class CharacterController {
 
-    @Autowired
-    private CharacterRepository characterRepository;
-    @Autowired
-    private MoneyRepository moneyRepository;
+    private final CharacterRepository characterRepository;
+    private final MoneyRepository moneyRepository;
+
+    public CharacterController(CharacterRepository characterRepository, MoneyRepository moneyRepository) {
+        this.characterRepository = characterRepository;
+        this.moneyRepository = moneyRepository;
+    }
 
     @GetMapping(Routes.CHARACTER)
     public String characterPage(@PathVariable Long id, Model model) {
