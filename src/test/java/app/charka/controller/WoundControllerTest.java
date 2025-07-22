@@ -3,55 +3,58 @@ package app.charka.controller;
 import app.charka.Routes;
 import app.charka.model.Character;
 import app.charka.model.Wound;
-import app.charka.repository.CharacterRepository;
-import app.charka.repository.WoundRepository;
+import app.charka.service.WoundService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
-
 
 class WoundControllerTest {
 
-    private CharacterRepository characterRepository;
-    private WoundRepository woundRepository;
+    private WoundService woundService;
     private WoundController woundController;
 
     @BeforeEach
     void setUp() {
-        characterRepository = mock(CharacterRepository.class);
-        woundRepository = mock(WoundRepository.class);
-        woundController = new WoundController(characterRepository, woundRepository);
+        woundService = mock(WoundService.class);
+        woundController = new WoundController(woundService);
     }
 
     @Test
     void addWound_success() {
-        Character character = new Character();
-        character.setId(1L);
-        when(characterRepository.findById(1L)).thenReturn(Optional.of(character));
-
         String result = woundController.addWound(1L, "Порез", 2L);
 
-        assertEquals(Routes.CHARACTER_REDIRECT+1, result);
+        assertEquals(Routes.CHARACTER_REDIRECT + 1, result);
 
         ArgumentCaptor<Wound> woundCaptor = ArgumentCaptor.forClass(Wound.class);
-        verify(woundRepository).save(woundCaptor.capture());
-        Wound savedWound = woundCaptor.getValue();
-        assertEquals("Порез", savedWound.getName());
-        assertEquals(2L, savedWound.getSeverity());
-        assertEquals(character, savedWound.getCharacter());
+        verify(woundService).create(eq(1L), woundCaptor.capture());
+        Wound capturedWound = woundCaptor.getValue();
+        assertEquals("Порез", capturedWound.getName());
+        assertEquals(2L, capturedWound.getSeverity());
     }
 
     @Test
-    void addWound_characterNotFound() {
-        when(characterRepository.findById(99L)).thenReturn(Optional.empty());
+    void addWound_withoutSeverity() {
+        String result = woundController.addWound(1L, "Царапина", null);
 
-        assertThrows(Exception.class, () -> woundController.addWound(99L, "Порез", null));
+        assertEquals(Routes.CHARACTER_REDIRECT + 1, result);
+
+        ArgumentCaptor<Wound> woundCaptor = ArgumentCaptor.forClass(Wound.class);
+        verify(woundService).create(eq(1L), woundCaptor.capture());
+        Wound capturedWound = woundCaptor.getValue();
+        assertEquals("Царапина", capturedWound.getName());
+        assertNull(capturedWound.getSeverity());
+    }
+
+    @Test
+    void addWound_serviceThrowsException() {
+        doThrow(new RuntimeException("Character not found")).when(woundService).create(eq(99L), any());
+
+        assertThrows(RuntimeException.class, () -> woundController.addWound(99L, "Порез", null));
     }
 
     @Test
@@ -62,12 +65,12 @@ class WoundControllerTest {
         wound.setId(5L);
         wound.setCharacter(character);
 
-        when(woundRepository.findById(5L)).thenReturn(Optional.of(wound));
+        when(woundService.getById(5L)).thenReturn(Optional.of(wound));
 
         String result = woundController.deleteWound(1L, 5L);
 
-        assertEquals(Routes.CHARACTER_REDIRECT+1, result);
-        verify(woundRepository).delete(wound);
+        assertEquals(Routes.CHARACTER_REDIRECT + 1, result);
+        verify(woundService).delete(5L);
     }
 
     @Test
@@ -78,11 +81,18 @@ class WoundControllerTest {
         wound.setId(6L);
         wound.setCharacter(character);
 
-        when(woundRepository.findById(6L)).thenReturn(Optional.of(wound));
+        when(woundService.getById(6L)).thenReturn(Optional.of(wound));
 
         String result = woundController.deleteWound(1L, 6L);
 
-        assertEquals(Routes.CHARACTER_REDIRECT+1, result);
-        verify(woundRepository, never()).delete(any());
+        assertEquals(Routes.CHARACTER_REDIRECT + 1, result);
+        verify(woundService, never()).delete(any());
+    }
+
+    @Test
+    void deleteWound_woundNotFound() {
+        when(woundService.getById(99L)).thenReturn(Optional.empty());
+
+        assertThrows(Exception.class, () -> woundController.deleteWound(1L, 99L));
     }
 }

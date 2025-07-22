@@ -1,5 +1,6 @@
 package app.charka.model;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -19,9 +20,11 @@ public class Campaign {
     @Column(name = "current_date_value")
     private LocalDate currentDate;
 
+    @JsonManagedReference
     @OneToMany(mappedBy = "campaign", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Chronicle> chronicles;
 
+    @JsonManagedReference
     @OneToMany(mappedBy = "campaign", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Character> characters;
 

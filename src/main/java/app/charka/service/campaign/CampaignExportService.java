@@ -1,4 +1,4 @@
-package app.charka.service;
+package app.charka.service.campaign;
 
 import app.charka.model.Campaign;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 @Service
-public class CampaignExportService {
+public class    CampaignExportService {
 
     private final ObjectMapper objectMapper;
 

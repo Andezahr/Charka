@@ -1,80 +1,71 @@
 package app.charka.controller;
 
 import app.charka.Routes;
-import app.charka.model.Character;
 import app.charka.model.Inventory;
-import app.charka.repository.CharacterRepository;
-import app.charka.repository.InventoryRepository;
+import app.charka.service.InventoryService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.argThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 class InventoryControllerTest {
 
-    private CharacterRepository characterRepository;
-    private InventoryRepository inventoryRepository;
+    private InventoryService inventoryService;
     private InventoryController inventoryController;
 
     @BeforeEach
     void setUp() {
-        characterRepository = mock(CharacterRepository.class);
-        inventoryRepository = mock(InventoryRepository.class);
-        inventoryController = new InventoryController(characterRepository, inventoryRepository);
+        inventoryService = mock(InventoryService.class);
+        inventoryController = new InventoryController(inventoryService);
     }
 
     @Test
     void addInventory_success() {
-        Character character = new Character();
-        character.setId(1L);
-        when(characterRepository.findById(1L)).thenReturn(Optional.of(character));
-
         String result = inventoryController.addInventory(1L, "Сумка");
-
         assertEquals(Routes.CHARACTER_REDIRECT + 1, result);
-        verify(inventoryRepository).save(argThat(inv ->
-                "Сумка".equals(inv.getName()) &&
-                        inv.getCharacter() == character
-        ));
+
+        ArgumentCaptor<Inventory> captor = ArgumentCaptor.forClass(Inventory.class);
+        verify(inventoryService).create(eq(1L), captor.capture());
+        Inventory created = captor.getValue();
+        assertEquals("Сумка", created.getName());
     }
 
     @Test
     void addInventory_characterNotFound() {
-        when(characterRepository.findById(99L)).thenReturn(Optional.empty());
+        doThrow(new IllegalArgumentException("Character not found"))
+                .when(inventoryService).create(eq(99L), any(Inventory.class));
 
-        assertThrows(Exception.class, () -> inventoryController.addInventory(99L, "Рюкзак"));
+        assertThrows(IllegalArgumentException.class,
+                () -> inventoryController.addInventory(99L, "Рюкзак"));
     }
 
     @Test
     void editInventory_success() {
-        Inventory inventory = new Inventory();
-        inventory.setId(5L);
-        inventory.setName("Старое имя");
-        when(inventoryRepository.findById(5L)).thenReturn(Optional.of(inventory));
-
         String result = inventoryController.editInventory(1L, 5L, "Новое имя");
-
         assertEquals(Routes.CHARACTER_REDIRECT + 1, result);
-        assertEquals("Новое имя", inventory.getName());
-        verify(inventoryRepository).save(inventory);
+
+        ArgumentCaptor<Inventory> captor = ArgumentCaptor.forClass(Inventory.class);
+        verify(inventoryService).update(eq(5L), captor.capture());
+        Inventory updated = captor.getValue();
+        assertEquals("Новое имя", updated.getName());
     }
 
     @Test
     void editInventory_notFound() {
-        when(inventoryRepository.findById(77L)).thenReturn(Optional.empty());
+        doThrow(new IllegalArgumentException("Inventory not found"))
+                .when(inventoryService).update(eq(77L), any(Inventory.class));
 
-        assertThrows(Exception.class, () -> inventoryController.editInventory(1L, 77L, "Что-то"));
+        assertThrows(IllegalArgumentException.class,
+                () -> inventoryController.editInventory(1L, 77L, "Что-то"));
     }
 
     @Test
     void deleteInventory_success() {
         String result = inventoryController.deleteInventory(1L, 10L);
-
         assertEquals(Routes.CHARACTER_REDIRECT + 1, result);
-        verify(inventoryRepository).deleteById(10L);
+        verify(inventoryService).delete(10L);
     }
 }

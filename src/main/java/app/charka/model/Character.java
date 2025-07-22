@@ -1,10 +1,11 @@
 package app.charka.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -18,8 +19,10 @@ public class Character {
 
     private String name;
 
+    private LocalDate birthDate;
+
     @ManyToOne
-    @JsonIgnore
+    @JsonBackReference
     private Campaign campaign;
 
     @JsonManagedReference
@@ -33,4 +36,8 @@ public class Character {
     @JsonManagedReference
     @OneToMany(mappedBy = "character", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Money> moneyList = new ArrayList<>();
+
+    @JsonManagedReference
+    @OneToMany(mappedBy = "character", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Note> notes = new ArrayList<>();
 }

@@ -2,7 +2,7 @@ package app.charka.api;
 
 import app.charka.model.Campaign;
 import app.charka.repository.CampaignRepository;
-import app.charka.service.CampaignExportService;
+import app.charka.service.campaign.CampaignExportService;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -61,8 +61,11 @@ public class CampaignExportController {
                     .body(resource);
 
         } catch (Exception e) {
-            logger.error("Ошибка при экспорте кампании id={}", id, e);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Ошибка генерации JSON: " + e.getMessage());
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Ошибка генерации JSON для кампании id=" + id + ": " + e.getMessage(),
+                    e
+            );
         }
     }
 }

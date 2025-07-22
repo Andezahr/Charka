@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Заметки персонажа</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa; color: #333; line-height: 1.6; min-height: 100vh;
+        }
+        h1 {
+            margin: 20px 0; font-size: 2rem; text-align: center; color: #2c3e50;
+        }
+        .container {
+            width: 100%; padding: 0 20px; display: flex; flex-direction: column; gap: 20px;
+        }
+        .content { display: flex; gap: 20px; }
+        .sidebar {
+            flex: 1; background-color: #fff; padding: 20px; border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1); max-height: calc(100vh - 180px); overflow-y: auto;
+        }
+        .sidebar h2 { margin-bottom: 15px; font-size: 1.25rem; color: #34495e; }
+        .sidebar ul { list-style: none; }
+        .sidebar li { margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .sidebar a {
+            text-decoration: none; color: #2980b9; padding: 4px 8px; border-radius: 4px;
+        }
+        .sidebar a.active {
+            background-color: #2980b9; color: #fff;
+        }
+        .sidebar form button {
+            background: none; border: none; color: #e74c3c; cursor: pointer; font-size: 1rem;
+        }
+        .category-add {
+            display: flex; gap: 10px; margin-top: 10px;
+        }
+        .category-add input {
+            flex: 1; padding: 8px; border: 1px solid #bdc3c7; border-radius: 4px;
+        }
+        .category-add button {
+            padding: 8px 12px; background-color: #2980b9; color: #fff; border: none; border-radius: 4px; cursor: pointer;
+        }
+        .category-add button:hover { background-color: #1f6391; }
+        .main {
+            flex: 3; display: flex; flex-direction: column; gap: 20px;
+        }
+        .note-list {
+            background-color: #fff; border-radius: 8px; padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow-x: auto;
+        }
+        .note-list table { width: 100%; border-collapse: collapse; }
+        .note-list th, .note-list td {
+            padding: 12px; text-align: left; border-bottom: 1px solid #ecf0f1;
+        }
+        .note-list th { background-color: #ecf0f1; color: #2c3e50; }
+        .note-list tr:hover { background-color: #f0f4f8; }
+        .note-list th.title, .note-list td.title { width: 20%; }
+        .note-list th.text, .note-list td.text { width: 65%; }
+        .note-list th.actions, .note-list td.actions { width: 15%; }
+        .actions button {
+            margin-right: 4px; padding: 4px 8px; font-size: 0.8rem;
+            border: none; border-radius: 4px; cursor: pointer;
+        }
+        .actions .edit { background-color: #3498db; color: #fff; }
+        .actions .delete { background-color: #e74c3c; color: #fff; }
+        .note-form {
+            background-color: #fff; padding: 20px; border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .note-form .form-group {
+            margin-bottom: 15px; display: flex; flex-direction: column;
+        }
+        .note-form label { margin-bottom: 5px; font-weight: 600; color: #34495e; }
+        .note-form input[type="text"], .note-form textarea {
+            padding: 10px; border: 1px solid #bdc3c7; border-radius: 4px; font-size: 1rem; width: 100%;
+        }
+        .note-form textarea { resize: vertical; min-height: 200px; }
+        .note-form .checkbox-group { display: flex; flex-wrap: wrap; gap: 10px; }
+        .note-form .checkbox-group label {
+            display: flex; align-items: center; gap: 5px; font-weight: normal;
+        }
+        .note-form button {
+            margin-top: 10px; padding: 10px 20px; background-color: #27ae60;
+            color: #fff; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer;
+        }
+        .note-form button:hover { background-color: #229954; }
+        .character-counter {
+            font-size: 0.875rem; color: #666; margin-top: 5px; text-align: right;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1 th:text="'Заметки для ' + ${character.name}">Заметки</h1>
+        <a th:href="@{|/character/${character.id}|}">
+            <button type="button">← Назад</button>
+        </a>
+    </div>
+    <div class="content">
+        <aside class="sidebar">
+            <h2>Категории</h2>
+            <ul>
+                <li>
+                    <a th:href="@{|/character/${character.id}/notes|}"
+                       th:classappend="${categoryId == null} ? 'active'">Все</a>
+                </li>
+                <li th:each="cat : ${categories}">
+                    <div>
+                        <a th:href="@{|/character/${character.id}/notes?categoryId=${cat.id}|}"
+                           th:classappend="${cat.id == categoryId} ? 'active'"
+                           th:text="${cat.name}">Категория</a>
+                        <form th:action="@{|/character/${character.id}/categories/${cat.id}/delete|}"
+                              method="post" style="display:inline;">
+                            <button title="Удалить">&times;</button>
+                        </form>
+                    </div>
+                </li>
+            </ul>
+            <form th:action="@{|/character/${character.id}/categories|}"
+                  th:object="${categoryForm}"
+                  method="post" class="category-add">
+                <input type="text" th:field="*{name}" placeholder="Новая категория"/>
+                <button type="submit">Добавить</button>
+            </form>
+        </aside>
+        <div class="main">
+            <section class="note-list">
+                <table>
+                    <thead>
+                    <tr>
+                        <th class="title">Заголовок</th>
+                        <th class="text">Текст</th>
+                        <th>Категории</th>
+                        <th class="actions">Действия</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="note : ${notes}">
+                        <td class="title" th:text="${note.name}">Заголовок</td>
+                        <td class="text" th:text="${note.text}">Текст</td>
+                        <td>
+                            <span th:each="c : ${note.categories}" th:text="${c.name} + ' '">Категория</span>
+                        </td>
+                        <td class="actions">
+                            <a th:href="@{|/character/${character.id}/notes/${note.id}/edit|}">
+                                <button class="edit">✎</button>
+                            </a>
+                            <form th:action="@{|/character/${character.id}/notes/${note.id}/delete|}"
+                                  method="post" style="display:inline;">
+                                <button class="delete">🗑</button>
+                            </form>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(notes)}">
+                        <td colspan="4" style="text-align: center; padding: 20px;">
+                            Заметок не найдено
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </section>
+            <section class="note-form">
+                <form th:action="@{${noteForm.id} != null ?
+                               |/character/${character.id}/notes/${noteForm.id}/edit|
+                               : |/character/${character.id}/notes|}"
+                      th:object="${noteForm}"
+                      method="post">
+                    <input type="hidden" th:field="*{id}" th:if="${noteForm.id != null}"/>
+
+                    <div class="form-group">
+                        <label for="note-name">Заголовок</label>
+                        <input th:field="*{name}" id="note-name" type="text"
+                               placeholder="Введите заголовок"
+                               maxlength="255"
+                               oninput="updateCounter('note-name', 255)"/>
+                        <small id="note-name-counter" class="character-counter">0/255 символов</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="note-text">Текст</label>
+                        <textarea id="note-text" th:field="*{text}"
+                                  placeholder="Введите текст заметки"
+                                  maxlength="1000"
+                                  oninput="updateCounter('note-text', 1000)"></textarea>
+                        <small id="note-text-counter" class="character-counter">0/1000 символов</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Категории</label>
+                        <div class="checkbox-group">
+                            <label th:each="cat : ${categories}">
+                                <input type="checkbox" name="categoryIds"
+                                       th:value="${cat.id}"
+                                       th:checked="${noteForm.categories != null and noteForm.categories.contains(cat)}"/>
+                                <span th:text="${cat.name}">Категория</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <button type="submit"
+                            th:text="${noteForm.id != null} ? 'Обновить' : 'Сохранить'">
+                        Сохранить
+                    </button>
+                </form>
+            </section>
+        </div>
+    </div>
+</div>
+
+<script>
+    function updateCounter(fieldId, maxLength) {
+        const field = document.getElementById(fieldId);
+        const counter = document.getElementById(fieldId + '-counter');
+        if (!field || !counter) return;
+        const len = field.value.length;
+        counter.textContent = `${len}/${maxLength} символов`;
+        if (len > maxLength) {
+            counter.style.color = 'red';
+        } else if (len > maxLength * 0.9) {
+            counter.style.color = 'orange';
+        } else {
+            counter.style.color = '#666';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        updateCounter('note-name', 255);
+        updateCounter('note-text', 1000);
+    });
+</script>
+</body>
+</html>

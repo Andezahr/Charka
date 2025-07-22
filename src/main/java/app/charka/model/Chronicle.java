@@ -1,6 +1,6 @@
 package app.charka.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -20,6 +20,6 @@ public class Chronicle {
     private String name;
 
     @ManyToOne
-    @JsonIgnore
+    @JsonBackReference
     private Campaign campaign;
 }

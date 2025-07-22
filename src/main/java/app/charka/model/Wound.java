@@ -23,6 +23,4 @@ public class Wound {
     private Long severity;
 
     private LocalDate date;
-
-
 }

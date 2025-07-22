@@ -3,8 +3,9 @@ package app.charka.controller;
 import app.charka.Routes;
 import app.charka.model.Character;
 import app.charka.model.Money;
-import app.charka.repository.CharacterRepository;
-import app.charka.repository.MoneyRepository;
+import app.charka.service.CharacterService;
+import app.charka.service.MoneyService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,24 +14,20 @@ import org.springframework.web.bind.annotation.PathVariable;
 import java.util.List;
 
 @Controller
+@RequiredArgsConstructor
 public class CharacterController {
 
-    private final CharacterRepository characterRepository;
-    private final MoneyRepository moneyRepository;
-
-    public CharacterController(CharacterRepository characterRepository, MoneyRepository moneyRepository) {
-        this.characterRepository = characterRepository;
-        this.moneyRepository = moneyRepository;
-    }
+    private final CharacterService characterService;
+    private final MoneyService moneyService;
 
     @GetMapping(Routes.CHARACTER)
     public String characterPage(@PathVariable Long id, Model model) {
-        Character character = characterRepository
-                .findById(id)
+        Character character = characterService
+                .getById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid character Id:" + id));
 
         // Получаем список операций с деньгами для персонажа
-        List<Money> moneyList = moneyRepository.findByCharacterId(id);
+        List<Money> moneyList = moneyService.getByCharacter(id);
 
         // Считаем сумму всех операций
         long moneySum = moneyList.stream()

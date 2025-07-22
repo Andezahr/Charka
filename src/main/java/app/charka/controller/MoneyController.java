@@ -1,10 +1,8 @@
 package app.charka.controller;
 
 import app.charka.Routes;
-import app.charka.model.Character;
 import app.charka.model.Money;
-import app.charka.repository.CharacterRepository;
-import app.charka.repository.MoneyRepository;
+import app.charka.service.MoneyService;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -15,12 +13,10 @@ import java.time.LocalDate;
 @Controller
 public class MoneyController {
 
-    private final MoneyRepository moneyRepository;
-    private final CharacterRepository characterRepository;
+    private final MoneyService moneyService;
 
-    public MoneyController(MoneyRepository moneyRepository, CharacterRepository characterRepository) {
-        this.moneyRepository = moneyRepository;
-        this.characterRepository = characterRepository;
+    public MoneyController(MoneyService moneyService) {
+        this.moneyService = moneyService;
     }
 
     @PostMapping(Routes.MONEY_ADD)
@@ -29,13 +25,11 @@ public class MoneyController {
             @RequestParam String name,
             @RequestParam Long amount
     ) {
-        Character character = characterRepository.findById(characterId).orElseThrow();
         Money money = new Money();
-        money.setCharacter(character);
         money.setName(name);
         money.setAmount(amount);
         money.setOperationDate(LocalDate.now());
-        moneyRepository.save(money);
+        moneyService.create(characterId, money);
         return Routes.CHARACTER_REDIRECT + characterId;
     }
 
@@ -44,7 +38,7 @@ public class MoneyController {
             @PathVariable Long characterId,
             @PathVariable Long moneyId
     ) {
-        moneyRepository.deleteById(moneyId);
+        moneyService.delete(moneyId);
         return Routes.CHARACTER_REDIRECT + characterId;
     }
 }

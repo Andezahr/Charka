@@ -1,9 +1,7 @@
 package app.charka.controller;
 
 import app.charka.Routes;
-import app.charka.model.Campaign;
-import app.charka.repository.CampaignRepository;
-import app.charka.service.CampaignTimelineService;
+import app.charka.service.campaign.CampaignTimelineService;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -12,11 +10,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 @Controller
 public class ChronicleController {
-    private final CampaignRepository campaignRepository;
     private final CampaignTimelineService campaignTimelineService;
 
-    public ChronicleController(CampaignRepository campaignRepository, CampaignTimelineService campaignTimelineService) {
-        this.campaignRepository = campaignRepository;
+    public ChronicleController(CampaignTimelineService campaignTimelineService) {
         this.campaignTimelineService = campaignTimelineService;
     }
 
@@ -26,11 +22,7 @@ public class ChronicleController {
             @RequestParam String name,
             @RequestParam Integer duration
     ) {
-        Campaign campaign = campaignRepository.findById(campaignId)
-                .orElseThrow(() -> new IllegalArgumentException("Кампания не найдена: " + campaignId));
-
-        campaignTimelineService.proceedDate(campaign, duration, name);
-
+        campaignTimelineService.proceedDate(campaignId, duration, name);
         return Routes.CAMPAIGN_REDIRECT + campaignId;
     }
 }

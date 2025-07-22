@@ -2,9 +2,9 @@ package app.charka.controller;
 
 import app.charka.model.Campaign;
 
+import app.charka.service.campaign.CampaignService;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
-import app.charka.repository.CampaignRepository;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,15 +14,15 @@ import java.time.LocalDate;
 @RequestMapping("/campaign")
 public class CampaignController {
 
-    private final CampaignRepository campaignRepository;
+    private final CampaignService campaignService;
 
-    public CampaignController(CampaignRepository campaignRepository) {
-        this.campaignRepository = campaignRepository;
+    public CampaignController(CampaignService campaignService) {
+        this.campaignService = campaignService;
     }
 
     @GetMapping("/{campaignId}")
     public String campaignPage(@PathVariable Long campaignId, Model model) {
-        Campaign campaign = campaignRepository.findById(campaignId)
+        Campaign campaign = campaignService.getById(campaignId)
                 .orElseThrow(() -> new IllegalArgumentException("Кампания не найдена: " + campaignId));
 
         LocalDate currentDate = campaign.getCurrentDate();

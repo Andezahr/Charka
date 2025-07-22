@@ -1,63 +1,59 @@
 package app.charka.controller;
 
-
 import app.charka.Routes;
-import app.charka.model.Character;
-import app.charka.repository.CharacterRepository;
-import app.charka.repository.MoneyRepository;
+import app.charka.model.Money;
+import app.charka.service.MoneyService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.time.LocalDate;
-import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 class MoneyControllerTest {
 
-    private MoneyRepository moneyRepository;
-    private CharacterRepository characterRepository;
+    private MoneyService moneyService;
     private MoneyController moneyController;
 
     @BeforeEach
     void setUp() {
-        moneyRepository = mock(MoneyRepository.class);
-        characterRepository = mock(CharacterRepository.class);
-        moneyController = new MoneyController(moneyRepository, characterRepository);
+        moneyService = mock(MoneyService.class);
+        moneyController = new MoneyController(moneyService);
     }
 
     @Test
     void addMoney_success() {
-        Character character = new Character();
-        character.setId(1L);
-        when(characterRepository.findById(1L)).thenReturn(Optional.of(character));
-
         String result = moneyController.addMoney(1L, "Доход", 100L);
 
-        assertEquals(Routes.CHARACTER_REDIRECT+1, result);
+        assertEquals(Routes.CHARACTER_REDIRECT + 1, result);
 
-        // Проверяем, что сохранён объект Money с нужными полями
-        verify(moneyRepository).save(argThat(money ->
-                "Доход".equals(money.getName()) &&
-                        money.getAmount().equals(100L) &&
-                        money.getCharacter() == character &&
-                        money.getOperationDate().equals(LocalDate.now())
-        ));
+        ArgumentCaptor<Money> captor = ArgumentCaptor.forClass(Money.class);
+        verify(moneyService).create(eq(1L), captor.capture());
+
+        Money saved = captor.getValue();
+        assertEquals("Доход", saved.getName());
+        assertEquals(100L, saved.getAmount());
+        // operationDate is set to today
+        assertEquals(LocalDate.now(), saved.getOperationDate());
     }
 
     @Test
     void addMoney_characterNotFound() {
-        when(characterRepository.findById(99L)).thenReturn(Optional.empty());
+        doThrow(new IllegalArgumentException("Character not found")).when(moneyService)
+                .create(eq(99L), any(Money.class));
 
-        assertThrows(Exception.class, () -> moneyController.addMoney(99L, "Расход", -50L));
+        assertThrows(IllegalArgumentException.class,
+                () -> moneyController.addMoney(99L, "Расход", -50L));
     }
 
     @Test
     void deleteMoney_success() {
         String result = moneyController.deleteMoney(1L, 10L);
 
-        assertEquals(Routes.CHARACTER_REDIRECT+1, result);
-        verify(moneyRepository).deleteById(10L);
+        assertEquals(Routes.CHARACTER_REDIRECT + 1, result);
+        verify(moneyService).delete(10L);
     }
 }
