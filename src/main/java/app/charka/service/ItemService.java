@@ -52,7 +52,6 @@ public class ItemService {
         Inventory inventory = inventoryRepository.findById(inventoryId)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Inventory not found for id=" + inventoryId));
-        // Привязываем предмет к найденному инвентарю
         item.setInventory(inventory);
         return itemRepository.save(item);
     }
@@ -70,12 +69,22 @@ public class ItemService {
         Item existing = itemRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException(
                         String.format(ITEM_NOT_FOUND, id)));
-        // Обновляем только изменяемые поля
         existing.setName(updatedItem.getName());
         existing.setQuantity(updatedItem.getQuantity());
         existing.setCost(updatedItem.getCost());
         existing.setDescription(updatedItem.getDescription());
-        // Inventory не меняем здесь; для перемещения предмета используйте отдельный метод
+        return itemRepository.save(existing);
+    }
+
+    @Transactional
+    public Item update(Long id, String name, Integer quantity, Integer cost, String description) {
+        Item existing = itemRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        String.format(ITEM_NOT_FOUND, id)));
+        existing.setName(name);
+        existing.setQuantity(quantity);
+        existing.setCost(cost);
+        existing.setDescription(description);
         return itemRepository.save(existing);
     }
 

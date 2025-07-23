@@ -1,5 +1,6 @@
 package app.charka.model;
 
+import app.charka.model.notes.Note;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;

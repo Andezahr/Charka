@@ -1,7 +1,7 @@
 package app.charka.service.notes;
 
-import app.charka.model.Note;
-import app.charka.model.NoteCategory;
+import app.charka.model.notes.Note;
+import app.charka.model.notes.NoteCategory;
 import app.charka.repository.NoteCategoryRepository;
 import app.charka.repository.NoteRepository;
 import org.springframework.stereotype.Service;

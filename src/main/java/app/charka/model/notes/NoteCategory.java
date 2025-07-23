@@ -1,7 +1,7 @@
-package app.charka.model;
+package app.charka.model.notes;
 
 
-import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -19,7 +19,7 @@ public class NoteCategory {
     private String name;
 
     @ManyToMany(mappedBy = "categories")
-    @JsonManagedReference
+    @JsonBackReference
     private Set<Note> notes = new HashSet<>();
 
     @Override
@@ -32,5 +32,12 @@ public class NoteCategory {
     @Override
     public int hashCode() {
         return Objects.hash(id);
+    }
+
+    @PreRemove
+    private void preRemove() {
+        for (Note n : new HashSet<>(notes)) {
+            n.getCategories().remove(this);
+        }
     }
 }

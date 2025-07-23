@@ -1,12 +1,12 @@
 package app.charka.controller;
 
 import app.charka.Routes;
-import app.charka.model.Note;
+import app.charka.model.notes.Note;
 import app.charka.service.CharacterService;
 import app.charka.service.notes.NoteCategoryService;
 import app.charka.service.notes.NoteService;
 import app.charka.model.Character;
-import app.charka.model.NoteCategory;
+import app.charka.model.notes.NoteCategory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;

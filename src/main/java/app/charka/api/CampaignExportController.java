@@ -1,8 +1,8 @@
 package app.charka.api;
 
 import app.charka.model.Campaign;
-import app.charka.repository.CampaignRepository;
 import app.charka.service.campaign.CampaignExportService;
+import app.charka.service.campaign.CampaignService;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -13,26 +13,32 @@ import org.springframework.web.server.ResponseStatusException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.charset.StandardCharsets;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
+
+/**
+ * Контроллер экспорта всей информации о кампании в JSON-файл
+ */
 @RestController
 @RequestMapping("/api/campaigns")
 public class CampaignExportController {
     private static final Logger logger = LoggerFactory.getLogger(CampaignExportController.class);
-    private final CampaignRepository campaignRepository;
+
+    private final CampaignService campaignService;
     private final CampaignExportService exportService;
 
-    public CampaignExportController(CampaignRepository campaignRepository,
+    public CampaignExportController(CampaignService campaignService,
                                     CampaignExportService exportService) {
-        this.campaignRepository = campaignRepository;
+        this.campaignService = campaignService;
         this.exportService = exportService;
     }
 
     @GetMapping("/{id}/download")
     public ResponseEntity<ByteArrayResource> downloadCampaign(@PathVariable Long id) {
         logger.info("Получен запрос на экспорт кампании id={}", id);
-        Campaign campaign = campaignRepository.findById(id)
+
+        Campaign campaign = campaignService.getById(id)
                 .orElseThrow(() -> {
                     logger.warn("Кампания с id={} не найдена", id);
                     return new ResponseStatusException(HttpStatus.NOT_FOUND, "Кампания не найдена");
@@ -47,7 +53,6 @@ public class CampaignExportController {
                     jsonContent.length() > 500 ? jsonContent.substring(0, 500) : jsonContent);
 
             byte[] jsonBytes = jsonContent.getBytes(StandardCharsets.UTF_8);
-
             String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8);
             logger.debug("Размер экспортируемого файла: {} байт", jsonBytes.length);
 

@@ -30,7 +30,7 @@ class ItemControllerTest {
         verify(itemService).create(eq(2L), captor.capture());
         Item saved = captor.getValue();
         assertEquals("Меч", saved.getName());
-        // quantity, cost, description are optional and null
+
         assertNull(saved.getQuantity());
         assertNull(saved.getCost());
         assertNull(saved.getDescription());

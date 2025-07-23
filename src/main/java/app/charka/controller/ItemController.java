@@ -45,12 +45,7 @@ public class ItemController {
             @RequestParam(required = false) Integer cost,
             @RequestParam(required = false) String description
     ) {
-        Item updated = new Item();
-        updated.setName(itemName);
-        updated.setQuantity(quantity);
-        updated.setCost(cost);
-        updated.setDescription(description);
-        itemService.update(itemId, updated);
+        itemService.update(itemId, itemName, quantity, cost, description);
         return Routes.CHARACTER_REDIRECT + characterId;
     }
 

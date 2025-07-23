@@ -1,7 +1,7 @@
 package app.charka.controller;
 
 import app.charka.Routes;
-import app.charka.model.NoteCategory;
+import app.charka.model.notes.NoteCategory;
 import app.charka.service.notes.NoteCategoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;

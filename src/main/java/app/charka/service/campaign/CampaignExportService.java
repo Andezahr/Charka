@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 @Service
-public class    CampaignExportService {
+public class CampaignExportService {
 
     private final ObjectMapper objectMapper;
 

@@ -1,6 +1,6 @@
 package app.charka.service.notes;
 
-import app.charka.model.NoteCategory;
+import app.charka.model.notes.NoteCategory;
 import app.charka.repository.NoteCategoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

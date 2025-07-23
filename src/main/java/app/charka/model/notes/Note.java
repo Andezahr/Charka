@@ -1,6 +1,8 @@
-package app.charka.model;
+package app.charka.model.notes;
 
+import app.charka.model.Character;
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -27,7 +29,7 @@ public class Note {
             joinColumns = @JoinColumn(name = "note_id"),
             inverseJoinColumns = @JoinColumn(name = "category_id")
     )
-    @JsonBackReference
+    @JsonManagedReference
     private Set<NoteCategory> categories = new HashSet<>();
 
     @CreationTimestamp
