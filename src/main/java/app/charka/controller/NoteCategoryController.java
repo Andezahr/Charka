@@ -1,6 +1,5 @@
 package app.charka.controller;
 
-import app.charka.Routes;
 import app.charka.model.notes.NoteCategory;
 import app.charka.service.notes.NoteCategoryService;
 import lombok.RequiredArgsConstructor;
@@ -10,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 
 @Controller
-@RequestMapping(Routes.NOTE_CATEGORY_ADD)
+@RequestMapping("/character/{characterId}/categories")
 @RequiredArgsConstructor
 public class NoteCategoryController {
 
@@ -23,10 +22,10 @@ public class NoteCategoryController {
             Model model
     ) {
         categoryService.createCategory(categoryForm);
-        return String.format(Routes.NOTE_REDIRECT, characterId);
+        return "redirect:/character/" + characterId + "/notes";
     }
 
-    @PostMapping(Routes.NOTE_CATEGORY_EDIT)
+    @PostMapping("/{categoryId}/edit")
     public String updateCategory(
             @PathVariable Long characterId,
             @PathVariable Long categoryId,
@@ -34,15 +33,15 @@ public class NoteCategoryController {
             Model model
     ) {
         categoryService.updateCategory(categoryId, categoryForm);
-        return String.format(Routes.NOTE_REDIRECT, characterId);
+        return "redirect:/character/" + characterId + "/notes";
     }
 
-    @PostMapping(Routes.NOTE_CATEGORY_DELETE)
+    @PostMapping("/{categoryId}/delete")
     public String deleteCategory(
             @PathVariable Long characterId,
             @PathVariable Long categoryId
     ) {
         categoryService.deleteCategory(categoryId);
-        return String.format(Routes.NOTE_REDIRECT, characterId);
+        return "redirect:/character/" + characterId + "/notes";
     }
 }

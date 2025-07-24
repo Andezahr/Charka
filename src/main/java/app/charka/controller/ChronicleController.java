@@ -1,6 +1,5 @@
 package app.charka.controller;
 
-import app.charka.Routes;
 import app.charka.service.campaign.CampaignTimelineService;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -16,13 +15,13 @@ public class ChronicleController {
         this.campaignTimelineService = campaignTimelineService;
     }
 
-    @PostMapping(Routes.CHRONICLE_ADD)
+    @PostMapping("/campaign/{campaignId}/chronicles")
     public String addChronicle(
             @PathVariable Long campaignId,
             @RequestParam String name,
             @RequestParam Integer duration
     ) {
         campaignTimelineService.proceedDate(campaignId, duration, name);
-        return Routes.CAMPAIGN_REDIRECT + campaignId;
+        return "redirect:/campaign/" + campaignId;
     }
 }

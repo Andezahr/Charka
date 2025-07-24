@@ -13,7 +13,6 @@ import java.util.List;
 @Data
 @Entity
 public class Character {
-fffsdf
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

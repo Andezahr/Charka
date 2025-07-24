@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 
 @Service
@@ -34,7 +35,7 @@ public class WoundService {
 
     @Transactional(readOnly = true)
     public Optional<Wound> getById(Long id) {
-        return woundRepository.findById(id);
+        return Optional.ofNullable(woundRepository.findById(id).orElseThrow(() -> new NoSuchElementException("Wound not found")));
     }
 
     /**

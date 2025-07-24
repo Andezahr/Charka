@@ -1,14 +1,15 @@
 package app.charka.controller;
 
-import app.charka.Routes;
 import app.charka.model.Inventory;
 import app.charka.service.InventoryService;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 @Controller
+@RequestMapping("/character/{characterId}/inventories")
 public class InventoryController {
 
     private final InventoryService inventoryService;
@@ -17,7 +18,7 @@ public class InventoryController {
         this.inventoryService = inventoryService;
     }
 
-    @PostMapping(Routes.INVENTORY_ADD)
+    @PostMapping
     public String addInventory(
             @PathVariable Long characterId,
             @RequestParam String name
@@ -25,10 +26,10 @@ public class InventoryController {
         Inventory inventory = new Inventory();
         inventory.setName(name);
         inventoryService.create(characterId, inventory);
-        return Routes.CHARACTER_REDIRECT + characterId;
+        return "redirect:/character/" + characterId;
     }
 
-    @PostMapping(Routes.INVENTORY_EDIT)
+    @PostMapping("/{inventoryId}/edit")
     public String editInventory(
             @PathVariable Long characterId,
             @PathVariable Long inventoryId,
@@ -37,15 +38,15 @@ public class InventoryController {
         Inventory updated = new Inventory();
         updated.setName(name);
         inventoryService.update(inventoryId, updated);
-        return Routes.CHARACTER_REDIRECT + characterId;
+        return "redirect:/character/" + characterId;
     }
 
-    @PostMapping(Routes.INVENTORY_DELETE)
+    @PostMapping("/{inventoryId}/delete")
     public String deleteInventory(
             @PathVariable Long characterId,
             @PathVariable Long inventoryId
     ) {
         inventoryService.delete(inventoryId);
-        return Routes.CHARACTER_REDIRECT + characterId;
+        return "redirect:/character/" + characterId;
     }
 }

@@ -1,14 +1,15 @@
 package app.charka.controller;
 
-import app.charka.Routes;
 import app.charka.model.Item;
 import app.charka.service.ItemService;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 @Controller
+@RequestMapping("/character/{characterId}/inventories/{inventoryId}/items")
 public class ItemController {
 
     private final ItemService itemService;
@@ -17,7 +18,7 @@ public class ItemController {
         this.itemService = itemService;
     }
 
-    @PostMapping(Routes.ITEM_ADD)
+    @PostMapping
     public String addItem(
             @PathVariable Long characterId,
             @PathVariable Long inventoryId,
@@ -32,10 +33,10 @@ public class ItemController {
         item.setCost(cost);
         item.setDescription(description);
         itemService.create(inventoryId, item);
-        return Routes.CHARACTER_REDIRECT + characterId;
+        return "redirect:/character/" + characterId;
     }
 
-    @PostMapping(Routes.ITEM_EDIT)
+    @PostMapping("/{itemId}/edit")
     public String editItem(
             @PathVariable Long characterId,
             @PathVariable Long inventoryId,
@@ -46,20 +47,20 @@ public class ItemController {
             @RequestParam(required = false) String description
     ) {
         itemService.update(itemId, itemName, quantity, cost, description);
-        return Routes.CHARACTER_REDIRECT + characterId;
+        return "redirect:/character/" + characterId;
     }
 
-    @PostMapping(Routes.ITEM_DELETE)
+    @PostMapping("/{itemId}/delete")
     public String deleteItem(
             @PathVariable Long characterId,
             @PathVariable Long inventoryId,
             @PathVariable Long itemId
     ) {
         itemService.delete(itemId);
-        return Routes.CHARACTER_REDIRECT + characterId;
+        return "redirect:/character/" + characterId;
     }
 
-    @PostMapping(Routes.ITEM_MOVE)
+    @PostMapping("/{itemId}/move")
     public String moveItem(
             @PathVariable Long characterId,
             @PathVariable Long inventoryId,
@@ -67,6 +68,6 @@ public class ItemController {
             @RequestParam Long targetInventoryId
     ) {
         itemService.moveToInventory(itemId, targetInventoryId);
-        return Routes.CHARACTER_REDIRECT + characterId;
+        return "redirect:/character/" + characterId;
     }
 }

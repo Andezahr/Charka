@@ -1,0 +1,328 @@
+/* styles.css */
+
+/* ===========================
+   Global Reset & Base Styles
+   =========================== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+ : 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  line-height: 1.6;
+  color: #333;
+  background-color: #f5f7fa;
+}
+
+/* ===========================
+   Utility Classes
+   =========================== */
+.container {
+  width: 90%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 0;
+}
+
+.page-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.btn {
+  display: inline-block;
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+  border-radius: 4px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.btn-primary {
+  background-color: #2e86de;
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background-color: #1e6fb8;
+}
+
+.btn-secondary {
+  background-color: #8395a7;
+  color: #fff;
+}
+
+.btn-secondary:hover {
+  background-color: #657080;
+}
+
+.btn-danger {
+  background-color: #ee5253;
+  color: #fff;
+}
+
+.btn-danger:hover {
+  background-color: #c0392b;
+}
+
+.btn-small {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+.btn-tiny {
+  padding: 0.25rem 0.4rem;
+  font-size: 0.7rem;
+}
+
+/* ===========================
+   Header & Footer
+   =========================== */
+.character-header {
+  padding: 1.5rem 0;
+  text-align: center;
+  background: #fff;
+  border-bottom: 1px solid #e1e5ea;
+}
+
+.character-header h1 {
+  font-size: 2rem;
+  color: #2e86de;
+}
+
+.character-footer {
+  margin-top: auto;
+  padding: 1rem 0;
+  text-align: center;
+  background: #fff;
+  border-top: 1px solid #e1e5ea;
+}
+
+.btn-back {
+  color: #8395a7;
+}
+
+.btn-back:hover {
+  color: #657080;
+}
+
+/* ===========================
+   Layout Columns
+   =========================== */
+.character-content {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  grid-gap: 2rem;
+  margin-top: 2rem;
+}
+
+.left-column,
+.right-column {
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  padding: 1.5rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 900px) {
+  .character-content {
+    grid-template-columns: 1fr;
+  }
+  .right-column {
+    margin-top: 2rem;
+  }
+}
+
+/* ===========================
+   Sections & Titles
+   =========================== */
+.section {
+  margin-bottom: 2rem;
+}
+
+.section-title {
+  display: block;
+  margin-bottom: 1rem;
+  font-size: 1.25rem;
+  color: #34495e;
+  border-bottom: 2px solid #2e86de;
+  padding-bottom: 0.5rem;
+}
+
+/* ===========================
+   Forms
+   =========================== */
+.add-form,
+.add-subitem-form,
+.inline-form {
+  margin-bottom: 1rem;
+}
+
+.form-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.form-group input[type="text"],
+.form-group input[type="number"],
+.inline-input {
+  flex: 1;
+  padding: 0.5rem;
+  font-size: 0.9rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.form-group input:focus,
+.inline-input:focus {
+  border-color: #2e86de;
+}
+
+/* ===========================
+   Items List & Cards
+   =========================== */
+.items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.item-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fafbfc;
+  padding: 0.8rem 1rem;
+  border: 1px solid #e1e5ea;
+  border-radius: 4px;
+}
+
+.item-info {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.item-name {
+  font-weight: 600;
+  color: #2e86de;
+}
+
+.item-detail {
+  color: #636e72;
+  font-size: 0.9rem;
+}
+
+.empty-state {
+  text-align: center;
+  color: #b2bec3;
+  font-style: italic;
+  padding: 1rem 0;
+}
+
+/* ===========================
+   Inventory Specific Styles
+   =========================== */
+.inventory-card {
+  padding: 1rem;
+  flex-direction: column;
+}
+
+.inventory-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.inventory-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.inventory-content {
+  background: #fff;
+  border-top: 1px solid #e1e5ea;
+  padding-top: 1rem;
+}
+
+.items-sublist {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.subitem-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  background: #fdfdfe;
+  padding: 0.7rem 1rem;
+  border: 1px solid #e1e5ea;
+  border-radius: 4px;
+}
+
+.item-quantity,
+.item-cost {
+  margin-left: 0.5rem;
+  font-weight: 500;
+  color: #2d3436;
+}
+
+.item-description {
+  margin-top: 0.3rem;
+  font-size: 0.85rem;
+  color: #636e72;
+  flex: 1 1 100%;
+}
+
+.subitem-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+/* ===========================
+   Money Section
+   =========================== */
+.money-summary {
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  color: #2d3436;
+}
+
+.money-total strong {
+  color: #2e86de;
+}
+
+.money-item .item-info {
+  align-items: center;
+}
+
+.money-amount {
+  margin-left: 1rem;
+  font-weight: 600;
+  color: #10ac84;
+}
+
+.item-date {
+  margin-left: 1rem;
+  font-size: 0.85rem;
+  color: #636e72;
+}

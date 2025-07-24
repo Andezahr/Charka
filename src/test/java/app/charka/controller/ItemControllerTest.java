@@ -1,93 +1,230 @@
 package app.charka.controller;
 
-import app.charka.Routes;
+import app.charka.GlobalExceptionHandler;
 import app.charka.model.Item;
 import app.charka.service.ItemService;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.*;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+
+@ExtendWith(MockitoExtension.class)
+@DisplayName("ItemController – unit-тесты через Standalone MockMvc")
 class ItemControllerTest {
 
-    private ItemService itemService;
-    private ItemController itemController;
+    // ======== DEPENDENCIES ========
+    @Mock private ItemService itemService;
+    @InjectMocks private ItemController itemController;
+
+    // ======== INFRASTRUCTURE ========
+    private MockMvc mockMvc;
+
+    // ======== CONSTANTS ========
+    private static final long CHAR_ID        = 1L;
+    private static final long INV_ID         = 2L;
+    private static final long MISSING_INV_ID = 99L;
+    private static final long ITEM_ID        = 5L;
+    private static final long DELETE_ITEM_ID = 10L;
+    private static final long MOVE_ITEM_ID   = 5L;
+    private static final long TARGET_INV_ID  = 7L;
+
+    private static final String NAME_SWORD       = "Меч";
+    private static final String NAME_SHIELD      = "Щит";
+    private static final String NAME_NEW         = "Новое имя";
+    private static final String DESCRIPTION      = "Описание";
+    private static final String ERR_INV_NOT_FOUND = "Inventory not found";
+    private static final String ERR_ITEM_NOT_FOUND = "Item not found";
+    private static final String ERR_DELETE       = "Delete error";
+    private static final String REDIRECT_URL     = "/character/" + CHAR_ID;
 
     @BeforeEach
     void setUp() {
-        itemService = mock(ItemService.class);
-        itemController = new ItemController(itemService);
+        mockMvc = MockMvcBuilders
+                .standaloneSetup(itemController)
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .build();
     }
 
-    @Test
-    void addItem_success() {
-        String result = itemController.addItem(1L, 2L, "Меч", null, null, null);
-        assertEquals(Routes.CHARACTER_REDIRECT + 1, result);
+    // ======================================================================
+    //                           ADD ITEM BLOCK
+    // ======================================================================
+    @Nested
+    @DisplayName("Добавление предмета")
+    class AddItemTests {
 
-        ArgumentCaptor<Item> captor = ArgumentCaptor.forClass(Item.class);
-        verify(itemService).create(eq(2L), captor.capture());
-        Item saved = captor.getValue();
-        assertEquals("Меч", saved.getName());
+        @Test
+        @DisplayName("302 – успешное добавление предмета")
+        void addItem_success() throws Exception {
+            mockMvc.perform(post("/character/{characterId}/inventories/{inventoryId}/items",
+                            CHAR_ID, INV_ID)
+                            .param("itemName", NAME_SWORD)
+                            .contentType(MediaType.APPLICATION_FORM_URLENCODED))
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(redirectedUrl(REDIRECT_URL));
 
-        assertNull(saved.getQuantity());
-        assertNull(saved.getCost());
-        assertNull(saved.getDescription());
+            ArgumentCaptor<Item> captor = ArgumentCaptor.forClass(Item.class);
+            verify(itemService).create(eq(INV_ID), captor.capture());
+            Item saved = captor.getValue();
+
+            assertAll("Поля Item при добавлении",
+                    () -> assertEquals(NAME_SWORD, saved.getName()),
+                    () -> assertNull(saved.getQuantity()),
+                    () -> assertNull(saved.getCost()),
+                    () -> assertNull(saved.getDescription())
+            );
+            verifyNoMoreInteractions(itemService);
+        }
+
+        @Test
+        @DisplayName("500 – инвентарь не найден")
+        void addItem_inventoryNotFound() throws Exception {
+            doThrow(new IllegalArgumentException(ERR_INV_NOT_FOUND))
+                    .when(itemService).create(eq(MISSING_INV_ID), any());
+
+            mockMvc.perform(post("/character/{characterId}/inventories/{inventoryId}/items",
+                            CHAR_ID, MISSING_INV_ID)
+                            .param("itemName", NAME_SHIELD)
+                            .contentType(MediaType.APPLICATION_FORM_URLENCODED))
+                    .andExpect(status().isInternalServerError())
+                    .andExpect(content().string(ERR_INV_NOT_FOUND));
+
+            verify(itemService).create(eq(MISSING_INV_ID), any());
+            verifyNoMoreInteractions(itemService);
+        }
     }
 
-    @Test
-    void addItem_inventoryNotFound() {
-        doThrow(new IllegalArgumentException("Inventory not found"))
-                .when(itemService).create(eq(99L), any(Item.class));
+    // ======================================================================
+    //                          EDIT ITEM BLOCK
+    // ======================================================================
+    @Nested
+    @DisplayName("Редактирование предмета")
+    class EditItemTests {
 
-        assertThrows(IllegalArgumentException.class,
-                () -> itemController.addItem(1L, 99L, "Щит", null, null, null));
+        @Test
+        @DisplayName("302 – успешное редактирование предмета")
+        void editItem_success() throws Exception {
+            mockMvc.perform(post("/character/{characterId}/inventories/{inventoryId}/items/{itemId}/edit",
+                            CHAR_ID, INV_ID, ITEM_ID)
+                            .param("itemName", NAME_NEW)
+                            .param("quantity", "3")
+                            .param("cost", "50")
+                            .param("description", DESCRIPTION)
+                            .contentType(MediaType.APPLICATION_FORM_URLENCODED))
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(redirectedUrl(REDIRECT_URL));
+
+            verify(itemService).update(
+                    ITEM_ID,
+                    NAME_NEW,
+                    3,
+                    50,
+                    DESCRIPTION
+            );
+            verifyNoMoreInteractions(itemService);
+        }
+
+        @Test
+        @DisplayName("500 – предмет не найден")
+        void editItem_notFound() throws Exception {
+            doThrow(new IllegalArgumentException(ERR_ITEM_NOT_FOUND))
+                    .when(itemService).update(eq(ITEM_ID), any(), any(), any(), any());
+
+            mockMvc.perform(post("/character/{characterId}/inventories/{inventoryId}/items/{itemId}/edit",
+                            CHAR_ID, INV_ID, ITEM_ID)
+                            .param("itemName", NAME_NEW)
+                            .contentType(MediaType.APPLICATION_FORM_URLENCODED))
+                    .andExpect(status().isInternalServerError())
+                    .andExpect(content().string(ERR_ITEM_NOT_FOUND));
+
+            verify(itemService).update(eq(ITEM_ID), any(), any(), any(), any());
+            verifyNoMoreInteractions(itemService);
+        }
     }
 
-    @Test
-    void editItem_success() {
-        String result = itemController.editItem(1L, 2L, 5L, "Новое имя", 3, 50, "Описание");
-        assertEquals(Routes.CHARACTER_REDIRECT + 1, result);
+    // ======================================================================
+    //                         DELETE ITEM BLOCK
+    // ======================================================================
+    @Nested
+    @DisplayName("Удаление предмета")
+    class DeleteItemTests {
 
-        ArgumentCaptor<Item> captor = ArgumentCaptor.forClass(Item.class);
-        verify(itemService).update(eq(5L), captor.capture());
-        Item updated = captor.getValue();
-        assertEquals("Новое имя", updated.getName());
-        assertEquals(Integer.valueOf(3), updated.getQuantity());
-        assertEquals(Integer.valueOf(50), updated.getCost());
-        assertEquals("Описание", updated.getDescription());
+        @Test
+        @DisplayName("302 – успешное удаление предмета")
+        void deleteItem_success() throws Exception {
+            mockMvc.perform(post("/character/{characterId}/inventories/{inventoryId}/items/{itemId}/delete",
+                            CHAR_ID, INV_ID, DELETE_ITEM_ID))
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(redirectedUrl(REDIRECT_URL));
+
+            verify(itemService).delete(DELETE_ITEM_ID);
+            verifyNoMoreInteractions(itemService);
+        }
+
+        @Test
+        @DisplayName("500 – ошибка при удалении")
+        void deleteItem_error() throws Exception {
+            doThrow(new RuntimeException(ERR_DELETE))
+                    .when(itemService).delete(DELETE_ITEM_ID);
+
+            mockMvc.perform(post("/character/{characterId}/inventories/{inventoryId}/items/{itemId}/delete",
+                            CHAR_ID, INV_ID, DELETE_ITEM_ID))
+                    .andExpect(status().isInternalServerError())
+                    .andExpect(content().string(ERR_DELETE));
+
+            verify(itemService).delete(DELETE_ITEM_ID);
+            verifyNoMoreInteractions(itemService);
+        }
     }
 
-    @Test
-    void editItem_notFound() {
-        doThrow(new IllegalArgumentException("Item not found"))
-                .when(itemService).update(eq(77L), any(Item.class));
+    // ======================================================================
+    //                          MOVE ITEM BLOCK
+    // ======================================================================
+    @Nested
+    @DisplayName("Перемещение предмета")
+    class MoveItemTests {
 
-        assertThrows(IllegalArgumentException.class,
-                () -> itemController.editItem(1L, 2L, 77L, "Что-то", null, null, null));
-    }
+        @Test
+        @DisplayName("302 – успешное перемещение предмета")
+        void moveItem_success() throws Exception {
+            mockMvc.perform(post("/character/{characterId}/inventories/{inventoryId}/items/{itemId}/move",
+                            CHAR_ID, INV_ID, MOVE_ITEM_ID)
+                            .param("targetInventoryId", String.valueOf(TARGET_INV_ID))
+                            .contentType(MediaType.APPLICATION_FORM_URLENCODED))
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(redirectedUrl(REDIRECT_URL));
 
-    @Test
-    void deleteItem_success() {
-        String result = itemController.deleteItem(1L, 2L, 10L);
-        assertEquals(Routes.CHARACTER_REDIRECT + 1, result);
-        verify(itemService).delete(10L);
-    }
+            verify(itemService).moveToInventory(MOVE_ITEM_ID, TARGET_INV_ID);
+            verifyNoMoreInteractions(itemService);
+        }
 
-    @Test
-    void moveItem_success() {
-        String result = itemController.moveItem(1L, 2L, 5L, 7L);
-        assertEquals(Routes.CHARACTER_REDIRECT + 1, result);
-        verify(itemService).moveToInventory(5L, 7L);
-    }
+        @Test
+        @DisplayName("500 – предмет не найден для перемещения")
+        void moveItem_notFound() throws Exception {
+            doThrow(new IllegalArgumentException(ERR_ITEM_NOT_FOUND))
+                    .when(itemService).moveToInventory(MOVE_ITEM_ID, TARGET_INV_ID);
 
-    @Test
-    void moveItem_notFound() {
-        doThrow(new IllegalArgumentException("Item not found"))
-                .when(itemService).moveToInventory(999L, 7L);
+            mockMvc.perform(post("/character/{characterId}/inventories/{inventoryId}/items/{itemId}/move",
+                            CHAR_ID, INV_ID, MOVE_ITEM_ID)
+                            .param("targetInventoryId", String.valueOf(TARGET_INV_ID))
+                            .contentType(MediaType.APPLICATION_FORM_URLENCODED))
+                    .andExpect(status().isInternalServerError())
+                    .andExpect(content().string(ERR_ITEM_NOT_FOUND));
 
-        assertThrows(IllegalArgumentException.class,
-                () -> itemController.moveItem(1L, 2L, 999L, 7L));
+            verify(itemService).moveToInventory(MOVE_ITEM_ID, TARGET_INV_ID);
+            verifyNoMoreInteractions(itemService);
+        }
     }
 }

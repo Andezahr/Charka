@@ -1,6 +1,5 @@
 package app.charka.controller;
 
-import app.charka.Routes;
 import app.charka.model.notes.Note;
 import app.charka.service.CharacterService;
 import app.charka.service.notes.NoteCategoryService;
@@ -17,16 +16,14 @@ import java.util.List;
 import java.util.Set;
 
 @Controller
-@RequestMapping(Routes.NOTE_ADD)
+@RequestMapping("/character/{characterId}/notes")
 @RequiredArgsConstructor
 public class NoteController {
     private final NoteService noteService;
     private final CharacterService characterService;
     private final NoteCategoryService categoryService;
 
-    private static final String NOTES_TEMPLATE = "notes";
-
-    @GetMapping
+    @GetMapping("/")
     public String listNotes(
             @PathVariable Long characterId,
             @RequestParam(required = false) Long categoryId,
@@ -47,7 +44,7 @@ public class NoteController {
         model.addAttribute("noteForm", new Note());
         model.addAttribute("categoryForm", new NoteCategory());
 
-        return NOTES_TEMPLATE;
+        return "notes";
     }
 
     @PostMapping
@@ -72,10 +69,10 @@ public class NoteController {
             noteService.addCategoriesToNote(saved.getId(), categoryIds);
         }
 
-        return String.format(Routes.NOTE_REDIRECT, characterId);
+        return "redirect:/character/" + characterId + "/notes";
     }
 
-    @PostMapping(Routes.NOTE_EDIT)
+    @PostMapping("/{noteId}/edit")
     public String updateNote(
             @PathVariable Long characterId,
             @PathVariable Long noteId,
@@ -95,19 +92,19 @@ public class NoteController {
             noteService.addCategoriesToNote(noteId, categoryIds);
         }
 
-        return String.format(Routes.NOTE_REDIRECT, characterId);
+        return "redirect:/character/" + characterId + "/notes";
     }
 
-    @PostMapping(Routes.NOTE_DELETE)
+    @PostMapping("/{noteId}/delete")
     public String deleteNote(
             @PathVariable Long characterId,
             @PathVariable Long noteId
     ) {
         noteService.deleteNote(noteId);
-        return String.format(Routes.NOTE_REDIRECT, characterId);
+        return "redirect:/character/" + characterId + "/notes";
     }
 
-    @GetMapping(Routes.NOTE_EDIT)
+    @GetMapping("/{noteId}/edit")
     public String editNoteForm(
             @PathVariable Long characterId,
             @PathVariable Long noteId,
@@ -126,6 +123,6 @@ public class NoteController {
         model.addAttribute("notes", notes);
         model.addAttribute("categoryForm", new NoteCategory());
 
-        return NOTES_TEMPLATE;
+        return "notes";
     }
 }
