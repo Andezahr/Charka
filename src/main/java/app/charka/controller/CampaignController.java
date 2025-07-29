@@ -26,8 +26,7 @@ public class CampaignController {
 
     @GetMapping
     public String campaignPage(@PathVariable Long campaignId, Model model) {
-        Campaign campaign = campaignService.getById(campaignId)
-                .orElseThrow(() -> new IllegalArgumentException("Кампания не найдена: " + campaignId));
+        Campaign campaign = campaignService.getById(campaignId);
 
         LocalDate currentDate = campaign.getCurrentDate();
 

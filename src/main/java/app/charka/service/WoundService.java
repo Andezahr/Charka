@@ -23,7 +23,7 @@ public class WoundService {
     private final CharacterRepository characterRepository;
 
     /**
-     * Получить все раны, связанных с указанным персонажем.
+     * Получить все раны, связанные с указанным персонажем.
      *
      * @param characterId идентификатор персонажа
      * @return список раненых записей; пустой список, если персонаж не найден или ран нет
@@ -34,8 +34,9 @@ public class WoundService {
     }
 
     @Transactional(readOnly = true)
-    public Optional<Wound> getById(Long id) {
-        return Optional.ofNullable(woundRepository.findById(id).orElseThrow(() -> new NoSuchElementException("Wound not found")));
+    public Wound getById(Long id) {
+        return woundRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Wound not found"));
     }
 
     /**
@@ -70,7 +71,6 @@ public class WoundService {
                         String.format(WOUND_NOT_FOUND, id)));
         existing.setName(updatedWound.getName());
         existing.setDate(updatedWound.getDate());
-        // персонаж не меняется в рамках обновления раны
         return woundRepository.save(existing);
     }
 

@@ -8,7 +8,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -21,8 +20,9 @@ public class CampaignService {
         return campaignRepository.save(campaign);
     }
 
-    public Optional<Campaign> getById(Long id) {
-        return campaignRepository.findById(id);
+    public Campaign getById(Long id) {
+        return campaignRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Campaign not found for ID: " + id));
     }
 
     public List<Campaign> getAll() {
@@ -32,7 +32,7 @@ public class CampaignService {
     @Transactional
     public Campaign rename(Long id, String newName) {
         Campaign campaign = campaignRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Campaign not found"));
+                .orElseThrow(() -> new IllegalArgumentException("Campaign not found for ID: " + id));
         campaign.setName(newName);
         return campaignRepository.save(campaign);
     }
@@ -41,11 +41,11 @@ public class CampaignService {
      * Обновляет текущую дату кампании.
      */
     @Transactional
-    public Campaign updateCurrentDate(Long id, LocalDate newDate) {
+    public void updateCurrentDate(Long id, LocalDate newDate) {
         Campaign campaign = campaignRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Campaign not found"));
+                .orElseThrow(() -> new IllegalArgumentException("Campaign not found for ID: " + id));
         campaign.setCurrentDate(newDate);
-        return campaignRepository.save(campaign);
+        campaignRepository.save(campaign);
     }
 
     @Transactional

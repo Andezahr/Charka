@@ -32,8 +32,9 @@ public class MoneyService {
     }
 
     @Transactional(readOnly = true)
-    public Optional<Money> findById(Long id) {
-        return moneyRepository.findById(id);
+    public Money findById(Long id) {
+        return moneyRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Operation not found for ID: " + id));
     }
 
     /**

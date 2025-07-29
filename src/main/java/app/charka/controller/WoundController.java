@@ -8,8 +8,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import java.util.NoSuchElementException;
-
 @Controller
 @RequestMapping("/character/{characterId}/wounds")
 public class WoundController {
@@ -35,7 +33,7 @@ public class WoundController {
 
     @PostMapping("/{woundId}/delete")
     public String deleteWound(@PathVariable Long characterId, @PathVariable Long woundId) {
-        Wound wound = woundService.getById(woundId).orElseThrow(() -> new NoSuchElementException("Wound not found"));
+        Wound wound = woundService.getById(woundId);
         if (wound.getCharacter().getId().equals(characterId)) {
             woundService.delete(wound.getId());
         }

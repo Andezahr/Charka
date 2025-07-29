@@ -26,22 +26,25 @@ public class CharacterService  {
      */
     @Transactional
     public Character createInCampaign(Long campaignId, Character character) {
-        var campaign = campaignService.getById(campaignId)
-                .orElseThrow(() -> new IllegalArgumentException("Campaign not found"));
+        Campaign campaign = campaignService.getById(campaignId)
+                .orElseThrow(() -> new IllegalArgumentException("Campaign not found: " + campaignId));
         character.setCampaign(campaign);
-        var saved = characterRepository.save(character);
+        Character saved = characterRepository.save(character);
         Inventory inventory = new Inventory();
         inventory.setName("С собой");
         inventoryService.create(saved.getId(), inventory);
         return saved;
     }
 
-    public Optional<Character> getById(Long id) {
-        return characterRepository.findById(id);
+    public Character getById(Long id) {
+        return characterRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Character not found for ID:" + id));
     }
 
     public List<Character> getCampaignCharacters(Campaign campaign) {
-        return characterRepository.findByCampaign(campaign);
+        return characterRepository
+                .findByCampaign(campaign)
+                .orElseThrow(() -> new IllegalArgumentException("Campaign not found"));
     }
 
     public List<Character> getAll() {

@@ -24,11 +24,8 @@ public class CharacterController {
 
     @GetMapping
     public String characterPage(@PathVariable Long id, Model model) {
-        Character character = characterService
-                .getById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid character Id:" + id));
+        Character character = characterService.getById(id);
 
-        // Получаем список операций с деньгами для персонажа
         List<Money> moneyList = moneyService.getByCharacter(id);
 
         long moneySum = moneyService.calculateBalance(id);

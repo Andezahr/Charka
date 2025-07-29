@@ -29,8 +29,7 @@ public class NoteController {
             @RequestParam(required = false) Long categoryId,
             Model model
     ) {
-        Character character = characterService.getById(characterId)
-                .orElseThrow(() -> new IllegalArgumentException("Character not найден"));
+        Character character = characterService.getById(characterId);
 
         List<Note> notes = (categoryId == null)
                 ? noteService.getNotesByCharacter(characterId)
@@ -59,8 +58,7 @@ public class NoteController {
             return listNotes(characterId, null, model);
         }
 
-        Character character = characterService.getById(characterId)
-                .orElseThrow(() -> new IllegalArgumentException("Character not found"));
+        Character character = characterService.getById(characterId);
         noteForm.setCharacter(character);
 
         Note saved = noteService.createNote(noteForm);
@@ -110,8 +108,7 @@ public class NoteController {
             @PathVariable Long noteId,
             Model model
     ) {
-        Character character = characterService.getById(characterId)
-                .orElseThrow(() -> new IllegalArgumentException("Character not найден"));
+        Character character = characterService.getById(characterId);
 
         Note note = noteService.getNoteById(noteId);
         List<NoteCategory> categories = categoryService.getAllCategories();
