@@ -15,8 +15,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.*;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import java.util.Optional;
-
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -62,7 +60,7 @@ class CampaignExportControllerTest {
         Campaign campaign = new Campaign();
         campaign.setId(VALID_ID);
 
-        when(campaignService.getById(VALID_ID)).thenReturn(Optional.of(campaign));
+        when(campaignService.getById(VALID_ID)).thenReturn(campaign);
         when(exportService.generateFileName(campaign)).thenReturn(FILE_NAME);
         when(exportService.exportCampaignToJson(campaign)).thenReturn(FILE_JSON);
 
@@ -87,7 +85,8 @@ class CampaignExportControllerTest {
     @Test
     @DisplayName("404 Not Found – кампания отсутствует")
     void downloadCampaign_returns404WhenCampaignAbsent() throws Exception {
-        when(campaignService.getById(MISSING_ID)).thenReturn(Optional.empty());
+        when(campaignService.getById(MISSING_ID))
+                .thenThrow(new IllegalArgumentException("Campaign not found for ID: " + MISSING_ID));
 
         mockMvc.perform(get("/api/campaigns/{id}/download", MISSING_ID))
                 .andExpect(status().isNotFound())
@@ -107,7 +106,7 @@ class CampaignExportControllerTest {
         Campaign campaign = new Campaign();
         campaign.setId(ERROR_ID);
 
-        when(campaignService.getById(ERROR_ID)).thenReturn(Optional.of(campaign));
+        when(campaignService.getById(ERROR_ID)).thenReturn(campaign);
         when(exportService.generateFileName(campaign)).thenReturn("campaign-7.json");
         when(exportService.exportCampaignToJson(campaign))
                 .thenThrow(new RuntimeException(ERROR_MSG));

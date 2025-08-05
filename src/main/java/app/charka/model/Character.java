@@ -1,5 +1,6 @@
 package app.charka.model;
 
+import app.charka.model.counters.Counter;
 import app.charka.model.notes.Note;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
@@ -40,4 +41,7 @@ public class Character {
     @JsonManagedReference
     @OneToMany(mappedBy = "character", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Note> notes = new ArrayList<>();
+
+    @OneToMany(mappedBy = "character", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Counter> counters = new ArrayList<>();
 }

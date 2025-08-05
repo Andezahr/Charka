@@ -3,7 +3,6 @@ package app.charka.service.campaign;
 import app.charka.model.Campaign;
 import app.charka.model.Chronicle;
 import app.charka.service.ChronicleService;
-import app.charka.service.MoneyService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,7 +21,6 @@ import java.time.LocalDate;
 public class CampaignTimelineService {
 
     private final ChronicleService chronicleService;
-    private final MoneyService moneyService;
     private final CampaignService campaignService;
 
     /**
@@ -36,7 +34,7 @@ public class CampaignTimelineService {
      */
     @Transactional
     public void proceedDate(Long campaignId, int daysToSkip, String description) {
-        Campaign campaign = campaignService.getById(campaignId).orElseThrow();
+        Campaign campaign = campaignService.getById(campaignId);
         LocalDate oldDate = campaign.getCurrentDate();
         LocalDate newDate = oldDate.plusDays(daysToSkip);
 

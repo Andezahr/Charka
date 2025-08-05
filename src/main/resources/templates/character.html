@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" lang="ru">
 <head>
   <meta charset="UTF-8">
   <title th:text="'Персонаж ' + ${character.name}">Персонаж</title>
@@ -203,7 +203,9 @@
       </div>
     </main>
     <footer class="character-footer">
-      <a href="/" class="btn btn-back">←</a>
+      <a href="/" class="btn btn-back">← Назад</a>
+      <a th:href="@{'/character/' + ${character.id} + '/counters'}" class="btn btn-secondary">Счетчики</a>
+      <a th:href="@{'/character/' + ${character.id} + '/notes'}" class="btn btn-secondary">Записки</a>
     </footer>
   </div>
 </div>

@@ -16,8 +16,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import java.util.Optional;
-
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -120,7 +118,7 @@ class WoundControllerTest {
             wound.setId(5L);
             wound.setCharacter(character);
 
-            when(woundService.getById(5L)).thenReturn(Optional.of(wound));
+            when(woundService.getById(5L)).thenReturn(wound);
 
             mockMvc.perform(post("/character/{charId}/wounds/{woundId}/delete", CHAR_ID, 5L))
                     .andExpect(status().is3xxRedirection())
@@ -140,7 +138,7 @@ class WoundControllerTest {
             foreignWound.setId(6L);
             foreignWound.setCharacter(otherCharacter);
 
-            when(woundService.getById(6L)).thenReturn(Optional.of(foreignWound));
+            when(woundService.getById(6L)).thenReturn(foreignWound);
 
             mockMvc.perform(post("/character/{charId}/wounds/{woundId}/delete", CHAR_ID, 6L))
                     .andExpect(status().is3xxRedirection())
@@ -154,12 +152,14 @@ class WoundControllerTest {
         @Test
         @DisplayName("500 Internal Server Error – рана не найдена")
         void deleteWound_notFound() throws Exception {
-            when(woundService.getById(99L)).thenReturn(Optional.empty());
+            when(woundService.getById(99L))
+                    .thenThrow(new IllegalArgumentException("Wound not found for id=99"));
+
 
             mockMvc.perform(post("/character/{charId}/wounds/{woundId}/delete", CHAR_ID, 99L))
                     .andExpect(status().isInternalServerError())
                     .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_PLAIN))
-                    .andExpect(content().string("Wound not found"));
+                    .andExpect(content().string("Wound not found for id=99"));
 
             verify(woundService).getById(99L);
             verifyNoMoreInteractions(woundService);

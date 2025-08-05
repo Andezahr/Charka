@@ -1,24 +1,20 @@
 package app.charka.service;
+import app.charka.exception.InventoryNotFoundException;
 import app.charka.model.Inventory;
 import app.charka.model.Item;
 import app.charka.model.Character;
 import app.charka.repository.InventoryRepository;
-import app.charka.repository.CharacterRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class InventoryService {
 
     private final InventoryRepository inventoryRepository;
-    private final CharacterRepository characterRepository;
-
-    private static final String INVENTORY_NOT_FOUND = "Inventory not found for id=%d";
 
     /**
      * Получить все инвентари, принадлежащие указанному персонажу.
@@ -32,23 +28,21 @@ public class InventoryService {
     }
 
     @Transactional(readOnly = true)
-    public Optional<Inventory> findById(Long id) {
-        return inventoryRepository.findById(id);
+    public Inventory getById(Long id) {
+        return inventoryRepository.findById(id)
+                .orElseThrow(InventoryNotFoundException.forId(id));
     }
 
     /**
      * Создать новый инвентарь для указанного персонажа.
      *
-     * @param characterId идентификатор персонажа
+     * @param character  персонаж
      * @param inventory   объект Inventory с заполненным полем name
      * @return сохраненный Inventory с присвоенным id и ссылкой на Character
      * @throws IllegalArgumentException если персонаж не найден
      */
     @Transactional
-    public Inventory create(Long characterId, Inventory inventory) {
-        Character character = characterRepository.findById(characterId)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Character not found for id=" + characterId));
+    public Inventory create(Character character, Inventory inventory) {
         inventory.setCharacter(character);
         return inventoryRepository.save(inventory);
     }
@@ -64,8 +58,8 @@ public class InventoryService {
     @Transactional
     public Inventory update(Long id, Inventory updatedInventory) {
         Inventory existing = inventoryRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        String.format(INVENTORY_NOT_FOUND, id)));
+                .orElseThrow(InventoryNotFoundException.forId(id));
+
         existing.setName(updatedInventory.getName());
         return inventoryRepository.save(existing);
     }
@@ -73,8 +67,8 @@ public class InventoryService {
     @Transactional
     public void delete(Long id) {
         Inventory existing = inventoryRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        String.format(INVENTORY_NOT_FOUND, id)));
+                .orElseThrow(InventoryNotFoundException.forId(id));
+
         inventoryRepository.delete(existing);
     }
 
@@ -87,8 +81,7 @@ public class InventoryService {
     @Transactional(readOnly = true)
     public List<Item> getContent(Long id) {
         Inventory inventory = inventoryRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        String.format(INVENTORY_NOT_FOUND, id)));
+                .orElseThrow(InventoryNotFoundException.forId(id));
         return inventory.getContent();
     }
 }

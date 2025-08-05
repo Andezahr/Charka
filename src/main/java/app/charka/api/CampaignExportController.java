@@ -38,11 +38,13 @@ public class CampaignExportController {
     public ResponseEntity<ByteArrayResource> downloadCampaign(@PathVariable Long id) {
         logger.info("Получен запрос на экспорт кампании id={}", id);
 
-        Campaign campaign = campaignService.getById(id)
-                .orElseThrow(() -> {
-                    logger.warn("Кампания с id={} не найдена", id);
-                    return new ResponseStatusException(HttpStatus.NOT_FOUND, "Campaign not found");
-                });
+        Campaign campaign;
+        try {
+            campaign = campaignService.getById(id);
+        } catch (IllegalArgumentException ex) {
+            logger.warn("Кампания с id={} не найдена", id);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Campaign not found", ex);
+        }
 
         String fileName = exportService.generateFileName(campaign);
         logger.debug("Имя файла для экспорта: {}", fileName);

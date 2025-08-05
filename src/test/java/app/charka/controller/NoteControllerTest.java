@@ -15,7 +15,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -75,7 +74,7 @@ class NoteControllerTest {
             List<Note> notes = List.of(new Note());
             List<NoteCategory> cats = List.of(new NoteCategory());
 
-            when(characterService.getById(CHAR_ID)).thenReturn(Optional.of(character));
+            when(characterService.getById(CHAR_ID)).thenReturn(character);
             when(noteService.getNotesByCharacter(CHAR_ID)).thenReturn(notes);
             when(categoryService.getAllCategories()).thenReturn(cats);
 
@@ -101,7 +100,7 @@ class NoteControllerTest {
             List<Note> notes = List.of(new Note());
             List<NoteCategory> cats = List.of(new NoteCategory());
 
-            when(characterService.getById(CHAR_ID)).thenReturn(Optional.of(character));
+            when(characterService.getById(CHAR_ID)).thenReturn(character);
             when(noteService.getNotesByCharacterAndCategory(CHAR_ID, CAT_ID)).thenReturn(notes);
             when(categoryService.getAllCategories()).thenReturn(cats);
 
@@ -120,7 +119,8 @@ class NoteControllerTest {
         @Test
         @DisplayName("500 – персонаж не найден")
         void listNotes_characterNotFound() throws Exception {
-            when(characterService.getById(CHAR_ID)).thenReturn(Optional.empty());
+            when(characterService.getById(CHAR_ID))
+                    .thenThrow(new IllegalArgumentException("Character not found for ID:" + CHAR_ID));
 
             mockMvc.perform(get("/character/{characterId}/notes/", CHAR_ID))
                     .andExpect(status().isInternalServerError());
@@ -139,7 +139,7 @@ class NoteControllerTest {
         @Test
         @DisplayName("302 – без категорий")
         void addNote_noCategories() throws Exception {
-            when(characterService.getById(CHAR_ID)).thenReturn(Optional.of(new Character()));
+            when(characterService.getById(CHAR_ID)).thenReturn(new Character());
             when(noteService.createNote(any())).thenReturn(new Note());
 
             mockMvc.perform(post("/character/{characterId}/notes", CHAR_ID)
@@ -155,7 +155,7 @@ class NoteControllerTest {
         @Test
         @DisplayName("302 – с категориями")
         void addNote_withCategories() throws Exception {
-            when(characterService.getById(CHAR_ID)).thenReturn(Optional.of(new Character()));
+            when(characterService.getById(CHAR_ID)).thenReturn(new Character());
             Note saved = new Note(); saved.setId(NOTE_ID);
             when(noteService.createNote(any())).thenReturn(saved);
 
@@ -245,7 +245,7 @@ class NoteControllerTest {
             List<NoteCategory> cats = List.of(new NoteCategory());
             List<Note> notes = List.of(new Note());
 
-            when(characterService.getById(CHAR_ID)).thenReturn(Optional.of(character));
+            when(characterService.getById(CHAR_ID)).thenReturn(character);
             when(noteService.getNoteById(NOTE_ID)).thenReturn(note);
             when(categoryService.getAllCategories()).thenReturn(cats);
             when(noteService.getNotesByCharacter(CHAR_ID)).thenReturn(notes);
@@ -269,7 +269,8 @@ class NoteControllerTest {
         @Test
         @DisplayName("500 – персонаж не найден")
         void editForm_characterNotFound() throws Exception {
-            when(characterService.getById(CHAR_ID)).thenReturn(Optional.empty());
+            when(characterService.getById(CHAR_ID))
+                    .thenThrow(new IllegalArgumentException("Character not found for ID:" + CHAR_ID));
 
             mockMvc.perform(get("/character/{characterId}/notes/{noteId}/edit", CHAR_ID, NOTE_ID))
                     .andExpect(status().isInternalServerError());

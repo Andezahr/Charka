@@ -1,5 +1,6 @@
 package app.charka.service;
 
+import app.charka.exception.CharacterNotFoundException;
 import app.charka.model.Campaign;
 import app.charka.model.Character;
 import app.charka.model.Inventory;
@@ -11,7 +12,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -26,25 +26,23 @@ public class CharacterService  {
      */
     @Transactional
     public Character createInCampaign(Long campaignId, Character character) {
-        Campaign campaign = campaignService.getById(campaignId)
-                .orElseThrow(() -> new IllegalArgumentException("Campaign not found: " + campaignId));
+        Campaign campaign = campaignService.getById(campaignId);
         character.setCampaign(campaign);
         Character saved = characterRepository.save(character);
         Inventory inventory = new Inventory();
-        inventory.setName("С собой");
-        inventoryService.create(saved.getId(), inventory);
+        inventory.setName("Backpack");
+        inventoryService.create(saved, inventory);
         return saved;
     }
 
     public Character getById(Long id) {
         return characterRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Character not found for ID:" + id));
+                .orElseThrow(CharacterNotFoundException.forId(id));
     }
 
     public List<Character> getCampaignCharacters(Campaign campaign) {
         return characterRepository
-                .findByCampaign(campaign)
-                .orElseThrow(() -> new IllegalArgumentException("Campaign not found"));
+                .findByCampaign(campaign);
     }
 
     public List<Character> getAll() {
@@ -54,7 +52,7 @@ public class CharacterService  {
     @Transactional
     public Character rename(Long id, String newName) {
         var character = characterRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Character not found"));
+                .orElseThrow(CharacterNotFoundException.forId(id));
         character.setName(newName);
         return characterRepository.save(character);
     }
@@ -62,7 +60,7 @@ public class CharacterService  {
     @Transactional
     public Character changeBirthDate(Long id, LocalDate newBirthDate) {
         var character = characterRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Character not found"));
+                .orElseThrow(CharacterNotFoundException.forId(id));
         character.setBirthDate(newBirthDate);
         return characterRepository.save(character);
     }

@@ -9,14 +9,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class WoundService {
 
-    private static final String WOUND_NOT_FOUND    = "Wound not found for id=%d";
+    private static final String WOUND_NOT_FOUND = "Wound not found for id=%d";
     private static final String CHARACTER_NOT_FOUND = "Character not found for id=%d";
 
     private final WoundRepository woundRepository;
@@ -26,17 +24,24 @@ public class WoundService {
      * Получить все раны, связанные с указанным персонажем.
      *
      * @param characterId идентификатор персонажа
-     * @return список раненых записей; пустой список, если персонаж не найден или ран нет
+     * @return список ран; пустой список, если персонаж не найден или ран нет
      */
     @Transactional(readOnly = true)
     public List<Wound> getByCharacter(Long characterId) {
         return woundRepository.findByCharacterId(characterId);
     }
 
+    /**
+     * Получить рану по идентификатору.
+     *
+     * @param id идентификатор раны
+     * @return Optional с раной, если найдена
+     */
     @Transactional(readOnly = true)
     public Wound getById(Long id) {
         return woundRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Wound not found"));
+                .orElseThrow(() -> new IllegalArgumentException(
+                String.format(WOUND_NOT_FOUND, id)));
     }
 
     /**
@@ -74,11 +79,17 @@ public class WoundService {
         return woundRepository.save(existing);
     }
 
+    /**
+     * Удалить рану по идентификатору.
+     *
+     * @param id идентификатор раны для удаления
+     * @throws IllegalArgumentException если рана с данным id не найдена
+     */
     @Transactional
     public void delete(Long id) {
-        Wound existing = woundRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        String.format(WOUND_NOT_FOUND, id)));
-        woundRepository.delete(existing);
+        if (!woundRepository.existsById(id)) {
+            throw new IllegalArgumentException(String.format(WOUND_NOT_FOUND, id));
+        }
+        woundRepository.deleteById(id);
     }
 }

@@ -55,7 +55,6 @@ public class ChronicleService {
         existing.setStartDate(updatedChronicle.getStartDate());
         existing.setEndDate(updatedChronicle.getEndDate());
         existing.setName(updatedChronicle.getName());
-        // Кампанию не меняем; для переноса между кампаниями нужно отдельный метод
         return chronicleRepository.save(existing);
     }
 

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Система счётчиков - Charka</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <style>
+    .counter-card {
+        transition: transform 0.2s;
+        border-left: 4px solid #007bff;
+    }
+    .counter-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .counter-value {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #007bff;
+    }
+    .btn-group-custom {
+        gap: 0.25rem;
+    }
+  </style>
+</head>
+<body class="bg-light">
+<div class="container mt-4">
+  <!-- Заголовок -->
+  <div class="row mb-4">
+    <div class="col text-center">
+      <h1 class="display-4 text-primary">
+        <i class="fas fa-calculator me-3"></i>Система счётчиков
+      </h1>
+      <p class="lead text-muted">Управление счётчиками персонажей</p>
+      <!-- Кнопка назад к персонажу -->
+      <a th:href="@{/character/{characterId}(characterId=${characterId})}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left me-1"></i>К персонажу
+      </a>
+    </div>
+  </div>
+
+  <!-- Сообщения об успехе/ошибке -->
+  <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+    <i class="fas fa-check-circle me-2"></i>
+    <span th:text="${successMessage}"></span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Закрыть"></button>
+  </div>
+
+  <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+    <i class="fas fa-exclamation-triangle me-2"></i>
+    <span th:text="${errorMessage}"></span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Закрыть"></button>
+  </div>
+
+  <!-- Список счётчиков -->
+  <div class="row" th:if="${counters != null and !counters.empty}">
+    <div class="col-lg-4 col-md-6 mb-4" th:each="counter : ${counters}">
+      <div class="card counter-card h-100">
+        <div class="card-header bg-primary text-white">
+          <h5 class="card-title mb-0">
+            <i class="fas fa-tachometer-alt me-2"></i>
+            <span th:text="${counter.name}">Счётчик</span>
+            <small class="text-light ms-2" th:text="'#' + ${counter.id}">#1</small>
+          </h5>
+        </div>
+
+        <div class="card-body text-center">
+          <!-- Текущее значение -->
+          <div class="counter-value mb-3" th:text="${counter.value}">0</div>
+
+          <!-- Информация о персонаже -->
+          <div th:if="${counter.characterName != null}" class="mb-3">
+            <small class="text-muted">
+              <i class="fas fa-user me-1"></i>
+              Персонаж: <span th:text="${counter.characterName}">-</span>
+            </small>
+          </div>
+
+          <!-- Кнопки управления -->
+          <div class="btn-group-custom d-flex flex-wrap justify-content-center">
+            <!-- Уменьшить на 1 -->
+            <form th:action="@{/character/{characterId}/counters/{counterId}/update(characterId=${characterId}, counterId=${counter.id})}" method="post" class="d-inline">
+              <input type="hidden" name="value" value="-1">
+              <button type="submit" class="btn btn-outline-danger btn-sm" aria-label="Уменьшить счётчик на 1">
+                <i class="fas fa-minus" aria-hidden="true"></i> -1
+              </button>
+            </form>
+
+            <!-- Увеличить на 1 -->
+            <form th:action="@{/character/{characterId}/counters/{counterId}/update(characterId=${characterId}, counterId=${counter.id})}" method="post" class="d-inline">
+              <input type="hidden" name="value" value="1">
+              <button type="submit" class="btn btn-outline-success btn-sm" aria-label="Увеличить счётчик на 1">
+                <i class="fas fa-plus" aria-hidden="true"></i> +1
+              </button>
+            </form>
+
+            <!-- Сброс -->
+            <form th:action="@{/character/{characterId}/counters/{counterId}/reset(characterId=${characterId}, counterId=${counter.id})}" method="post" class="d-inline">
+              <button type="submit" class="btn btn-outline-warning btn-sm" aria-label="Сбросить счётчик"
+                      onclick="return confirm('Сбросить счётчик?')">
+                <i class="fas fa-undo" aria-hidden="true"></i> Сброс
+              </button>
+            </form>
+          </div>
+
+          <!-- Установка произвольного значения -->
+          <div class="mt-3">
+            <form th:action="@{/character/{characterId}/counters/{counterId}/set(characterId=${characterId}, counterId=${counter.id})}" method="post" class="d-flex">
+              <label for="setValue" class="visually-hidden">Установить значение счётчика</label>
+              <input type="number" name="setValue" id="setValue" class="form-control form-control-sm me-2"
+                     placeholder="Значение" required style="max-width: 100px;" aria-label="Новое значение счётчика">
+              <button type="submit" class="btn btn-primary btn-sm" aria-label="Установить новое значение">
+                <i class="fas fa-edit" aria-hidden="true"></i> Установить
+              </button>
+            </form>
+          </div>
+
+          <!-- Изменение на произвольное значение -->
+          <div class="mt-2">
+            <div class="input-group input-group-sm">
+              <form th:action="@{/character/{characterId}/counters/{counterId}/update(characterId=${characterId}, counterId=${counter.id})}" method="post" class="d-flex w-100">
+                <span class="input-group-text">±</span>
+                <label for="changeValue" class="visually-hidden">Изменить счётчик на</label>
+                <input type="number" name="value" id="changeValue" class="form-control"
+                       placeholder="Изменить на..." required aria-label="Изменить счётчик на заданное значение">
+                <button type="submit" class="btn btn-outline-primary" aria-label="Применить изменение">
+                  <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Форма создания нового счётчика -->
+  <div class="row mt-4">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header bg-success text-white">
+          <h5 class="mb-0">
+            <i class="fas fa-plus me-2"></i>Создать новый счётчик
+          </h5>
+        </div>
+        <div class="card-body">
+          <form th:action="@{/character/{characterId}/counters/create(characterId=${characterId})}" method="post" th:object="${createRequest}">
+            <input type="hidden" th:field="*{characterId}" th:value="${characterId}">
+
+            <div class="mb-3">
+              <label for="name" class="form-label">Название счётчика</label>
+              <input type="text" class="form-control" id="name" th:field="*{name}" required>
+            </div>
+            <div class="mb-3">
+              <label for="counterType" class="form-label">Тип счётчика</label>
+              <select class="form-select" id="counterType" th:field="*{counterType}" required>
+                <option value="SIMPLE_INTEGER">Простой числовой</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="initialValue" class="form-label">Начальное значение</label>
+              <input type="number" class="form-control" id="initialValue" th:field="*{initialValue}" value="0" required>
+            </div>
+            <button type="submit" class="btn btn-success">
+              <i class="fas fa-plus me-1" aria-hidden="true"></i>Создать
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Пустое состояние -->
+  <div th:if="${counters == null or counters.empty}" class="row">
+    <div class="col text-center">
+      <div class="card bg-light">
+        <div class="card-body py-5">
+          <i class="fas fa-inbox fa-3x text-muted mb-3" aria-hidden="true"></i>
+          <h4 class="text-muted">Счётчики не найдены</h4>
+          <p class="text-muted">Создайте первый счётчик используя форму выше</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
