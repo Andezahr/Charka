@@ -1,7 +1,6 @@
 package app.charka.controller;
 
 import app.charka.model.Inventory;
-import app.charka.service.CharacterService;
 import app.charka.service.InventoryService;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -14,11 +13,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 public class InventoryController {
 
     private final InventoryService inventoryService;
-    private final CharacterService characterService;
 
-    public InventoryController(InventoryService inventoryService, CharacterService characterService) {
+    public InventoryController(InventoryService inventoryService) {
         this.inventoryService = inventoryService;
-        this.characterService = characterService;
     }
 
     @PostMapping
@@ -29,7 +26,7 @@ public class InventoryController {
         Inventory inventory = new Inventory();
         inventory.setName(name);
         inventoryService.create(
-                characterService.getById(characterId),
+                characterId,
                 inventory);
         return "redirect:/character/" + characterId;
     }

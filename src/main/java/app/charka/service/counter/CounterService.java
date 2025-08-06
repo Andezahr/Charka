@@ -3,6 +3,7 @@ package app.charka.service.counter;
 import app.charka.dto.counter.request.CounterCreateRequestDto;
 import app.charka.dto.counter.request.CounterUpdateRequestDto;
 import app.charka.dto.counter.response.CounterResponseDto;
+import app.charka.exception.CharacterNotFoundException;
 import app.charka.model.Character;
 import app.charka.model.counters.Counter;
 import app.charka.model.counters.strategy.CounterStrategyFactory;
@@ -22,42 +23,24 @@ public class CounterService {
     private final CharacterRepository characterRepository;
     private final CounterStrategyFactory strategyFactory;
 
-    /**
-     * Создать новый счётчик для персонажа
-     */
     @Transactional
     public CounterResponseDto createCounter(CounterCreateRequestDto requestDto) {
-        // Валидация обязательных полей
-        if (requestDto.getCharacterId() == null) {
-            throw new IllegalArgumentException("Character ID не может быть null");
-        }
 
         Character character = characterRepository.findById(requestDto.getCharacterId())
-                .orElseThrow(() -> new IllegalArgumentException("Персонаж с ID " + requestDto.getCharacterId() + " не найден"));
+                .orElseThrow(CharacterNotFoundException.forId(requestDto.getCharacterId()));
 
         Counter counter = new Counter();
         counter.setName(requestDto.getName());
         counter.setValue(requestDto.getInitialValue());
-        counter.setType(requestDto.getCounterType()); // Используем тип из DTO
+        counter.setType(requestDto.getCounterType());
         counter.setCharacter(character);
 
         Counter savedCounter = counterRepository.save(counter);
         return convertToResponseDto(savedCounter);
     }
 
-    /**
-     * Получить все счётчики персонажа
-     */
     @Transactional(readOnly = true)
     public List<CounterResponseDto> getAllCountersByCharacterId(Long characterId) {
-        if (characterId == null) {
-            throw new IllegalArgumentException("Character ID не может быть null");
-        }
-
-        // Проверяем, что персонаж существует
-        if (!characterRepository.existsById(characterId)) {
-            throw new IllegalArgumentException("Персонаж с ID " + characterId + " не найден");
-        }
 
         List<Counter> counters = counterRepository.findByCharacterId(characterId);
         return counters.stream()
@@ -65,9 +48,6 @@ public class CounterService {
                 .toList();
     }
 
-    /**
-     * Увеличить счётчик
-     */
     @Transactional
     public CounterResponseDto updateCounter(Long characterId, Long counterId, CounterUpdateRequestDto requestDto) {
         Counter counter = validateAndGetCounter(characterId, counterId);
@@ -85,9 +65,6 @@ public class CounterService {
         return convertToResponseDto(savedCounter);
     }
 
-    /**
-     * Установить значение счётчика
-     */
     @Transactional
     public CounterResponseDto setCounterValue(Long characterId, Long counterId, CounterUpdateRequestDto requestDto) {
         Counter counter = validateAndGetCounter(characterId, counterId);
@@ -100,9 +77,6 @@ public class CounterService {
         return convertToResponseDto(savedCounter);
     }
 
-    /**
-     * Сбросить счётчик
-     */
     @Transactional
     public CounterResponseDto resetCounter(Long characterId, Long counterId) {
         Counter counter = validateAndGetCounter(characterId, counterId);
@@ -117,18 +91,12 @@ public class CounterService {
         return convertToResponseDto(savedCounter);
     }
 
-    /**
-     * Удалить счётчик
-     */
     @Transactional
     public void deleteCounter(Long characterId, Long counterId) {
         Counter counter = validateAndGetCounter(characterId, counterId);
         counterRepository.delete(counter);
     }
 
-    /**
-     * Получить счётчик по ID с валидацией принадлежности персонажу
-     */
     @Transactional(readOnly = true)
     public CounterResponseDto getCounterById(Long characterId, Long counterId) {
         Counter counter = validateAndGetCounter(characterId, counterId);
@@ -149,7 +117,6 @@ public class CounterService {
         Counter counter = counterRepository.findById(counterId)
                 .orElseThrow(() -> new IllegalArgumentException("Счётчик с ID " + counterId + " не найден"));
 
-        // Проверяем, что счётчик принадлежит указанному персонажу
         if (!counter.getCharacter().getId().equals(characterId)) {
             throw new IllegalArgumentException("Счётчик " + counterId + " не принадлежит персонажу " + characterId);
         }
@@ -161,7 +128,7 @@ public class CounterService {
         CounterResponseDto dto = new CounterResponseDto();
         dto.setId(counter.getId());
         dto.setName(counter.getName());
-        dto.setCounterType(counter.getType()); // Используем реальный тип из entity
+        dto.setCounterType(counter.getType());
         dto.setValue(counter.getValue());
 
         if (counter.getCharacter() != null) {

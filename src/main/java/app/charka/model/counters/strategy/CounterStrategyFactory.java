@@ -2,6 +2,7 @@ package app.charka.model.counters.strategy;
 
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
@@ -11,7 +12,7 @@ public class CounterStrategyFactory {
 
     private final Map<String, CounterStrategy> strategies;
 
-    public CounterStrategyFactory(java.util.List<CounterStrategy> strategyList) {
+    public CounterStrategyFactory(List<CounterStrategy> strategyList) {
         this.strategies = strategyList.stream()
                 .collect(Collectors.toMap(CounterStrategy::getCounterType, s -> s));
     }

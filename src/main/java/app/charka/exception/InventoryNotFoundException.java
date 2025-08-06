@@ -1,8 +1,9 @@
 package app.charka.exception;
 
+import java.util.NoSuchElementException;
 import java.util.function.Supplier;
 
-public class InventoryNotFoundException extends IllegalArgumentException {
+public class InventoryNotFoundException extends NoSuchElementException {
     public InventoryNotFoundException(String message) {
         super(message);
     }

@@ -19,11 +19,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("CharacterService")
@@ -68,7 +70,7 @@ class CharacterServiceTest {
 
             verify(campaignService).getById(campaignId);
             verify(characterRepository).save(testCharacter);
-            verify(inventoryService).create(eq(savedCharacter), any(Inventory.class));
+            verify(inventoryService).create(eq(testCharacter.getId()), any(Inventory.class));
         }
 
         @Test
@@ -98,7 +100,7 @@ class CharacterServiceTest {
 
             characterService.createInCampaign(campaignId, testCharacter);
 
-            verify(inventoryService).create(eq(savedCharacter), captor.capture());
+            verify(inventoryService).create(eq(testCharacter.getId()), captor.capture());
             assertThat(captor.getValue().getName()).isEqualTo("Backpack");
         }
 
@@ -161,7 +163,7 @@ class CharacterServiceTest {
             when(characterRepository.findById(wrongId)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> characterService.getById(wrongId))
-                    .isInstanceOf(IllegalArgumentException.class)
+                    .isInstanceOf(NoSuchElementException.class)
                     .hasMessage("Character not found for ID = " + wrongId);
 
             verify(characterRepository).findById(wrongId);
@@ -173,7 +175,7 @@ class CharacterServiceTest {
         void shouldThrowException_ForAbsentIds(Long id) {
             when(characterRepository.findById(id)).thenReturn(Optional.empty());
             assertThatThrownBy(() -> characterService.getById(id))
-                    .isInstanceOf(IllegalArgumentException.class);
+                    .isInstanceOf(NoSuchElementException.class);
         }
     }
 
@@ -266,7 +268,7 @@ class CharacterServiceTest {
             when(characterRepository.findById(id)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> characterService.rename(id, "Name"))
-                    .isInstanceOf(IllegalArgumentException.class)
+                    .isInstanceOf(NoSuchElementException.class)
                     .hasMessage("Character not found for ID = " + id);
 
             verify(characterRepository, never()).save(any());
@@ -328,17 +330,14 @@ class CharacterServiceTest {
         @Test
         @DisplayName("should throw exception when character not found for birth date change")
         void shouldThrowException_WhenCharacterNotFoundForBirthDateChange() {
-            // Given
             Long id = 999L;
             LocalDate newBirthDate = LocalDate.now();
             when(characterRepository.findById(id)).thenReturn(Optional.empty());
 
-            // When & Then
             assertThatThrownBy(() -> characterService.changeBirthDate(id, newBirthDate))
-                    .isInstanceOf(IllegalArgumentException.class)
+                    .isInstanceOf(NoSuchElementException.class)
                     .hasMessage("Character not found for ID = " + id);
         }
-
 
         @Test
         @DisplayName("should handle null birth date")
@@ -399,7 +398,7 @@ class CharacterServiceTest {
             InOrder order = inOrder(campaignService, characterRepository, inventoryService);
             order.verify(campaignService).getById(id);
             order.verify(characterRepository).save(charToSave);
-            order.verify(inventoryService).create(eq(saved), any());
+            order.verify(inventoryService).create(eq(charToSave.getId()), any());
         }
 
         @Test
@@ -420,8 +419,6 @@ class CharacterServiceTest {
             verify(inventoryService, never()).create(any(), any());
         }
     }
-
-    /* ─────────────────────────── Helper methods ─────────────────────────── */
 
     private Campaign createTestCampaign(Long id, String name) {
         Campaign c = new Campaign();

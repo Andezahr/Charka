@@ -1,8 +1,9 @@
 package app.charka.service;
+import app.charka.exception.CharacterNotFoundException;
 import app.charka.exception.InventoryNotFoundException;
 import app.charka.model.Inventory;
 import app.charka.model.Item;
-import app.charka.model.Character;
+import app.charka.repository.CharacterRepository;
 import app.charka.repository.InventoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -15,6 +16,7 @@ import java.util.List;
 public class InventoryService {
 
     private final InventoryRepository inventoryRepository;
+    private final CharacterRepository characterRepository;
 
     /**
      * Получить все инвентари, принадлежащие указанному персонажу.
@@ -36,14 +38,18 @@ public class InventoryService {
     /**
      * Создать новый инвентарь для указанного персонажа.
      *
-     * @param character  персонаж
+     * @param characterId ID персонажа
      * @param inventory   объект Inventory с заполненным полем name
      * @return сохраненный Inventory с присвоенным id и ссылкой на Character
      * @throws IllegalArgumentException если персонаж не найден
      */
     @Transactional
-    public Inventory create(Character character, Inventory inventory) {
-        inventory.setCharacter(character);
+    public Inventory create(Long characterId, Inventory inventory) {
+        inventory.setCharacter(
+                characterRepository.findById(characterId)
+                .orElseThrow(
+                        CharacterNotFoundException.forId(characterId)
+                ));
         return inventoryRepository.save(inventory);
     }
 

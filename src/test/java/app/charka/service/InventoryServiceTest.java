@@ -1,7 +1,9 @@
 package app.charka.service;
 
+import app.charka.exception.CharacterNotFoundException;
 import app.charka.model.Character;
 import app.charka.model.Inventory;
+import app.charka.repository.CharacterRepository;
 import app.charka.repository.InventoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.junit.jupiter.api.*;
@@ -11,22 +13,22 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 
+import java.util.Optional;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("InventoryService")
-@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @RequiredArgsConstructor
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class InventoryServiceTest {
+
+    @Mock private CharacterRepository characterRepository;
     @Mock private InventoryRepository inventoryRepository;
     @InjectMocks private InventoryService inventoryService;
-
-    /**
-     * Creating inventory for character
-     */
 
     @Nested
     @DisplayName("Creating inventory for character")
@@ -42,25 +44,36 @@ public class InventoryServiceTest {
             testInventory = createTestInventory(null, "Backpack", null);
         }
 
+        @Test
+        @DisplayName("should create inventory successfully when character exists")
+        void shouldCreateInventorySuccessfully_WhenCharacterExists() {
+            Inventory savedInventory = createTestInventory(1L, "Backpack", testCharacter);
 
-    @Test
-    @DisplayName("should create inventory successfully when character exists")
-    void shouldCreateInventorySuccessfully_WhenCharacterExists() {
-        Inventory savedInventory = createTestInventory(1L, "Backpack", testCharacter);
+            when(characterRepository.findById(1L)).thenReturn(Optional.of(testCharacter));
+            when(inventoryRepository.save(any(Inventory.class))).thenReturn(savedInventory);
 
-        when(inventoryRepository.save(any(Inventory.class))).thenReturn(savedInventory);
+            Inventory result = inventoryService.create(testCharacter.getId(), testInventory);
 
-        Inventory result = inventoryService.create(testCharacter, testInventory);
+            assertThat(result)
+                    .extracting(Inventory::getId, Inventory::getName, Inventory::getCharacter)
+                    .containsExactly(1L, "Backpack", testCharacter);
 
-        assertThat(result)
-                .extracting(Inventory::getId, Inventory::getName, Inventory::getCharacter)
-                .containsExactly(1L, "Backpack", testCharacter);
+            verify(characterRepository).findById(1L);
+            verify(inventoryRepository).save(any(Inventory.class));
+        }
 
-        verify(inventoryRepository).save(any(Inventory.class));
-    }}
+        @Test
+        @DisplayName("should throw exception when character not found")
+        void shouldThrowException_WhenCharacterNotFound() {
+            when(characterRepository.findById(1L)).thenReturn(Optional.empty());
 
+            assertThatThrownBy(() -> inventoryService.create(1L, testInventory))
+                    .isInstanceOf(CharacterNotFoundException.class);
 
-
+            verify(characterRepository).findById(1L);
+            verify(inventoryRepository, never()).save(any(Inventory.class));
+        }
+    }
 
     private Character createTestCharacter(Long id, String name) {
         Character ch = new Character();
@@ -68,6 +81,7 @@ public class InventoryServiceTest {
         ch.setName(name);
         return ch;
     }
+
     private Inventory createTestInventory(Long id, String name, Character character) {
         Inventory inv = new Inventory();
         inv.setId(id);

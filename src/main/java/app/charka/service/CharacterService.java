@@ -31,7 +31,7 @@ public class CharacterService  {
         Character saved = characterRepository.save(character);
         Inventory inventory = new Inventory();
         inventory.setName("Backpack");
-        inventoryService.create(saved, inventory);
+        inventoryService.create(character.getId(), inventory);
         return saved;
     }
 

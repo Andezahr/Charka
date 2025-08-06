@@ -1,10 +1,9 @@
 package app.charka.controller;
 
 import app.charka.GlobalExceptionHandler;
+import app.charka.exception.CharacterNotFoundException;
 import app.charka.exception.InventoryNotFoundException;
 import app.charka.model.Inventory;
-import app.charka.model.Character;
-import app.charka.service.CharacterService;
 import app.charka.service.InventoryService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -31,9 +30,6 @@ class InventoryControllerTest {
     @Mock
     private InventoryService inventoryService;
 
-    @Mock
-    private CharacterService characterService;
-
     @InjectMocks
     private InventoryController inventoryController;
 
@@ -54,9 +50,6 @@ class InventoryControllerTest {
                 .build();
     }
 
-    // ======================================================================
-    //                           ADD INVENTORY BLOCK
-    // ======================================================================
     @Nested
     @DisplayName("Добавление инвентаря")
     class AddInventoryTests {
@@ -65,9 +58,10 @@ class InventoryControllerTest {
         @DisplayName("302 – успешное добавление инвентаря")
         void addInventory_success() throws Exception {
             // Given
-            Character character = new Character();
-            character.setId(CHAR_ID);
-            when(characterService.getById(CHAR_ID)).thenReturn(character);
+            Inventory createdInventory = new Inventory();
+            createdInventory.setName(NAME_SAMPLE);
+            when(inventoryService.create(eq(CHAR_ID), any(Inventory.class)))
+                    .thenReturn(createdInventory);
 
             // When + Then
             mockMvc.perform(post("/character/{characterId}/inventories", CHAR_ID)
@@ -77,45 +71,35 @@ class InventoryControllerTest {
                     .andExpect(redirectedUrl(REDIRECT_URL));
 
             // Verify
-            verify(characterService).getById(CHAR_ID);
-
-            ArgumentCaptor<Character> characterCaptor = ArgumentCaptor.forClass(Character.class);
             ArgumentCaptor<Inventory> inventoryCaptor = ArgumentCaptor.forClass(Inventory.class);
+            verify(inventoryService).create(eq(CHAR_ID), inventoryCaptor.capture());
 
-            verify(inventoryService).create(characterCaptor.capture(), inventoryCaptor.capture());
-
-            Character capturedCharacter = characterCaptor.getValue();
             Inventory capturedInventory = inventoryCaptor.getValue();
-
-            assertEquals(CHAR_ID, capturedCharacter.getId());
             assertEquals(NAME_SAMPLE, capturedInventory.getName());
 
-            verifyNoMoreInteractions(inventoryService, characterService);
+            verifyNoMoreInteractions(inventoryService);
         }
 
         @Test
         @DisplayName("500 – персонаж не найден")
         void addInventory_characterNotFound() throws Exception {
-            // Given
-            when(characterService.getById(MISSING_CHAR_ID))
-                    .thenThrow(new IllegalArgumentException("Character not found"));
+            // Given - исключение бросается из inventoryService, не characterService
+            when(inventoryService.create(eq(MISSING_CHAR_ID), any(Inventory.class)))
+                    .thenThrow(new CharacterNotFoundException("Character not found"));
 
             // When + Then
             mockMvc.perform(post("/character/{characterId}/inventories", MISSING_CHAR_ID)
                             .param("name", "Рюкзак")
                             .contentType(MediaType.APPLICATION_FORM_URLENCODED))
                     .andExpect(status().isInternalServerError())
-                    .andExpect(content().string("Character not found"));
+                    .andExpect(content().string(containsString("Character not found")));
 
             // Verify
-            verify(characterService).getById(MISSING_CHAR_ID);
-            verifyNoInteractions(inventoryService);
+            verify(inventoryService).create(eq(MISSING_CHAR_ID), any(Inventory.class));
+            verifyNoMoreInteractions(inventoryService);
         }
     }
 
-    // ======================================================================
-    //                         EDIT INVENTORY BLOCK
-    // ======================================================================
     @Nested
     @DisplayName("Редактирование инвентаря")
     class EditInventoryTests {
@@ -123,6 +107,12 @@ class InventoryControllerTest {
         @Test
         @DisplayName("302 – успешное редактирование инвентаря")
         void editInventory_success() throws Exception {
+            // Given
+            Inventory updatedInventory = new Inventory();
+            updatedInventory.setName("Новое имя");
+            when(inventoryService.update(eq(INV_ID), any(Inventory.class)))
+                    .thenReturn(updatedInventory);
+
             // When + Then
             mockMvc.perform(post("/character/{characterId}/inventories/{inventoryId}/edit", CHAR_ID, INV_ID)
                             .param("name", "Новое имя")
@@ -133,11 +123,10 @@ class InventoryControllerTest {
             // Verify
             ArgumentCaptor<Inventory> captor = ArgumentCaptor.forClass(Inventory.class);
             verify(inventoryService).update(eq(INV_ID), captor.capture());
-            Inventory updated = captor.getValue();
+            Inventory captured = captor.getValue();
 
-            assertEquals("Новое имя", updated.getName());
+            assertEquals("Новое имя", captured.getName());
             verifyNoMoreInteractions(inventoryService);
-            verifyNoInteractions(characterService);
         }
 
         @Test
@@ -145,7 +134,7 @@ class InventoryControllerTest {
         void editInventory_notFound() throws Exception {
             // Given
             doThrow(new InventoryNotFoundException("Inventory with id " + INV_ID + " not found"))
-                    .when(inventoryService).update(eq(INV_ID), any());
+                    .when(inventoryService).update(eq(INV_ID), any(Inventory.class));
 
             // When + Then
             mockMvc.perform(post("/character/{characterId}/inventories/{inventoryId}/edit", CHAR_ID, INV_ID)
@@ -155,15 +144,11 @@ class InventoryControllerTest {
                     .andExpect(content().string(containsString("Inventory with id " + INV_ID + " not found")));
 
             // Verify
-            verify(inventoryService).update(eq(INV_ID), any());
+            verify(inventoryService).update(eq(INV_ID), any(Inventory.class));
             verifyNoMoreInteractions(inventoryService);
-            verifyNoInteractions(characterService);
         }
     }
 
-    // ======================================================================
-    //                        DELETE INVENTORY BLOCK
-    // ======================================================================
     @Nested
     @DisplayName("Удаление инвентаря")
     class DeleteInventoryTests {
@@ -179,7 +164,6 @@ class InventoryControllerTest {
             // Verify
             verify(inventoryService).delete(DELETE_INV_ID);
             verifyNoMoreInteractions(inventoryService);
-            verifyNoInteractions(characterService);
         }
 
         @Test
@@ -197,7 +181,6 @@ class InventoryControllerTest {
             // Verify
             verify(inventoryService).delete(DELETE_INV_ID);
             verifyNoMoreInteractions(inventoryService);
-            verifyNoInteractions(characterService);
         }
     }
 }
