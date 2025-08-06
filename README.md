@@ -14,6 +14,7 @@
 
 ## Технологии
 
+```
 - Java 24
 - Spring Boot 3.x
     - Spring Web
@@ -21,7 +22,7 @@
     - Spring MVC + Thymeleaf
 - База данных H2 (в памяти)
 - Maven для сборки и управления зависимостями
-
+```
 
 ## Быстрый старт
 
@@ -43,6 +44,7 @@ http://localhost:8080
 
 ## Структура проекта
 
+```
 └── src
    ├── main
    │  ├── java/com/andezahr/charka
@@ -53,7 +55,8 @@ http://localhost:8080
    │    └── service/ — бизнес-логика
    └── resources
       ├── templates/ — Thymeleaf-шаблоны
-      └── application.properties
+      └── application.yml
+```
 
 ## Веб-интерфейс
 
