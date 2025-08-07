@@ -1,17 +1,17 @@
 # Charka
 
-**Charka** is a Java-based character management application for narrative role-playing games (RPGs). Built with Spring Boot, it provides a RESTful API and a web UI to create, read, update, and delete (CRUD) characters and their attributes, inventory, and background details.
+**Charka** is a Java-based character management application for narrative role-playing games (RPGs). Built with Spring Boot, it provides a RESTful API and a web UI to manage characters and their attributes, inventory, and background details.
 
-## Ключевые возможности
+## Key Features
 
-- Управление персонажами, учёт инвентарей: персонаж может иметь много тайников, где хранятся разные предметы
-- Заметки, редактирование, фильтр по категориям
-- Кастомные счетчики
-- Система отслеживания внутриигровой даты кампании и летописи
-- Веб-интерфейс на Spring MVC + Thymeleaf для удобного взаимодействия
+- Character management with inventory tracking: characters can have multiple stashes where different items are stored
+- Notes with editing capabilities and category filtering
+- Custom counters
+- System for tracking in-game campaign dates and chronicles
+- Web interface built with Spring MVC + Thymeleaf for convenient interaction
 
 
-## Технологии
+## Technologies
 
 ```
 - Java 24
@@ -19,65 +19,63 @@
     - Spring Web
     - Spring Data JPA
     - Spring MVC + Thymeleaf
-- База данных H2 (в памяти)
-- Maven для сборки и управления зависимостями
+- H2 Database (in-memory)
+- Maven for build management and dependency management
 ```
 
-## Быстрый старт
 
-1. Клонировать репозиторий
+## Quick Start
 
+1. Clone the repository
 ```bash
 git clone https://github.com/Andezahr/Charka.git
 cd Charka
 ```
 
-2. Собрать и запустить приложение
-
+2. Build and run the application
 ```bash
 ./mvnw spring-boot:run
 ```
 
-3. Перейти в браузере по адресу
-http://localhost:8080
+3. Navigate to http://localhost:8080 in your browser
 
-## Структура проекта
+## Project Structure
 
 ```
 └── src
-   ├── main
-   │  ├── java/com/andezahr/charka
-   │    ├── api/ — REST контроллеры (пока что он один)
-   │    ├── controller/ — MVC контроллеры
-   │    ├── model/ — сущности JPA
-   │    └── repository/ — репозитории Spring Data JPA
-   │    └── service/ — бизнес-логика
-   └── resources
-      ├── templates/ — Thymeleaf-шаблоны
-      └── application.yml
+   ├── main
+   │  ├── java/com/andezahr/charka
+   │    ├── api/ — REST controllers (currently just one)
+   │    ├── controller/ — MVC controllers
+   │    ├── model/ — JPA entities
+   │    └── repository/ — Spring Data JPA repositories
+   │    └── service/ — business logic
+   └── resources
+      ├── templates/ — Thymeleaf templates
+      └── application.yml
 ```
 
-## Веб-интерфейс
 
-- Главная страница: список персонажей и кампаний
-- Страница кампании: персонажи этой кампании и её летопись
-- Страница персонажа: его деньги и раны, инвентари и предметы
-- Страницы счетчиков и заметок персонажа
-- На странице кампании доступна кнопка скачивания информации кампании в JSON, чтобы можно было сбежать из приложения)
+## Web Interface
+
+- Home page: list of characters and campaigns
+- Campaign page: characters in the campaign and its chronicle
+- Character page: money and wounds, inventories and items
+- Character counter and notes pages
+- Campaign page features a JSON download button for campaign information (so you can escape from the application!)
 
 
-## Тестирование
+## Testing
 
 ```bash
 ./mvnw test
 ```
 
-В проекте есть небольшое количество web-slice тестов контроллеров и unit-тестов сервисов 
+The project includes a small number of web-slice controller tests and unit tests for services.
 
-## ToDo
-В будущем собираюсь переписать всё взаимодействие сервисов и контроллеров на DTO, затем написать окончательные тесты сервисов.
-Добавить больше реализаций счетчикам, конкретно нужен счетчик здоровья из Cyberpunk 2020. Нужны кастомные кубики связываемые с предметами. 
-Реализовать функционал характеристик и навыков персонажей, связать его с кубиками. Сделать фронтенд в едином стиле
+## TODO
+
+In the future, I plan to rewrite all service and controller interactions using DTOs, then write comprehensive service tests. Add more counter implementations, specifically need a health counter from Cyberpunk 2020. Need custom dice linked to items. Implement character attributes and skills functionality, connect it with dice. Create a unified frontend style.
 
 ---
-**Charka** открывает простые и расширяемые возможности управления персонажами для любых настольных RPG и интерактивных историй.
+**Charka** provides simple and extensible character management capabilities for any tabletop RPGs and interactive stories.
