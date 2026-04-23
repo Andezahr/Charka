@@ -8,6 +8,8 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -17,6 +19,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import app.charka.exception.CharacterNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -29,7 +32,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import app.charka.GlobalExceptionHandler;
+import app.charka.exception.GlobalExceptionHandler;
 import app.charka.model.Character;
 import app.charka.model.notes.Note;
 import app.charka.model.notes.NoteCategory;
@@ -123,7 +126,9 @@ class NoteControllerTest {
                     .thenThrow(new IllegalArgumentException("Character not found for ID:" + CHAR_ID));
 
             mockMvc.perform(get("/character/{characterId}/notes/", CHAR_ID))
-                    .andExpect(status().isInternalServerError());
+                    .andExpect(status().isInternalServerError())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.message").exists());
 
             verify(characterService).getById(CHAR_ID);
             verifyNoMoreInteractions(characterService);
@@ -182,7 +187,9 @@ class NoteControllerTest {
             mockMvc.perform(post("/character/{characterId}/notes", CHAR_ID)
                             .param("content", "Текст")
                             .contentType(MediaType.APPLICATION_FORM_URLENCODED))
-                    .andExpect(status().isInternalServerError());
+                    .andExpect(status().isInternalServerError())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.message").exists());
 
             verify(characterService).getById(CHAR_ID);
             verifyNoMoreInteractions(characterService, noteService);
@@ -270,10 +277,12 @@ class NoteControllerTest {
         @DisplayName("500 – персонаж не найден")
         void editForm_characterNotFound() throws Exception {
             when(characterService.getById(CHAR_ID))
-                    .thenThrow(new IllegalArgumentException("Character not found for ID:" + CHAR_ID));
+                    .thenThrow(new CharacterNotFoundException("Character not found for ID:" + CHAR_ID));
 
             mockMvc.perform(get("/character/{characterId}/notes/{noteId}/edit", CHAR_ID, NOTE_ID))
-                    .andExpect(status().isInternalServerError());
+                    .andExpect(status().isInternalServerError())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.message").exists());
 
             verify(characterService).getById(CHAR_ID);
             verifyNoMoreInteractions(characterService);

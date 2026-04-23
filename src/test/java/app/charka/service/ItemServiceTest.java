@@ -4,11 +4,8 @@ import app.charka.model.Item;
 import app.charka.model.Inventory;
 import app.charka.repository.ItemRepository;
 import app.charka.repository.InventoryRepository;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
-import org.junit.jupiter.api.MethodOrderer;
+import app.charka.service.impl.ItemServiceImpl;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
@@ -29,7 +26,16 @@ class ItemServiceTest {
 
     @Mock private ItemRepository itemRepository;
     @Mock private InventoryRepository inventoryRepository;
-    @InjectMocks private ItemService itemService;
+
+    private ItemService itemService;
+
+    @BeforeEach
+    void setUp() {
+        itemService = new ItemServiceImpl(
+                itemRepository,
+                inventoryRepository
+        );
+    }
 
     private static final String NOT_FOUND_MSG = "Item not found for id=%d";
 

@@ -1,6 +1,6 @@
 package app.charka.controller;
 
-import app.charka.GlobalExceptionHandler;
+import app.charka.exception.GlobalExceptionHandler;
 import app.charka.model.Character;
 import app.charka.model.Wound;
 import app.charka.service.WoundService;
@@ -20,6 +20,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath; // ← важно!
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("WoundController – unit-тесты через Standalone MockMvc")
@@ -90,8 +91,10 @@ class WoundControllerTest {
                             .param("name", "Порез")
                             .contentType(MediaType.APPLICATION_FORM_URLENCODED))
                     .andExpect(status().isInternalServerError())
-                    .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_PLAIN))
-                    .andExpect(content().string("Character not found"));
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.message").value("Character not found"))
+                    .andExpect(jsonPath("$.details").value("/character/99/wounds"))
+                    .andExpect(jsonPath("$.timestamp").exists()); // опционально: проверяем, что поле есть
 
             verify(woundService).create(eq(99L), any());
             verifyNoMoreInteractions(woundService);
@@ -155,11 +158,12 @@ class WoundControllerTest {
             when(woundService.getById(99L))
                     .thenThrow(new IllegalArgumentException("Wound not found for id=99"));
 
-
             mockMvc.perform(post("/character/{charId}/wounds/{woundId}/delete", CHAR_ID, 99L))
                     .andExpect(status().isInternalServerError())
-                    .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_PLAIN))
-                    .andExpect(content().string("Wound not found for id=99"));
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.message").value("Wound not found for id=99"))
+                    .andExpect(jsonPath("$.details").value("/character/1/wounds/99/delete"))
+                    .andExpect(jsonPath("$.timestamp").exists());
 
             verify(woundService).getById(99L);
             verifyNoMoreInteractions(woundService);

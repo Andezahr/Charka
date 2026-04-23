@@ -30,6 +30,14 @@ public class WoundController {
         woundService.create(characterId, newWound);
         return "redirect:/character/" + characterId;
     }
+    @PostMapping("/{woundId}/edit")
+    public String editWound(@PathVariable Long characterId, @PathVariable Long woundId, @RequestParam String name, @RequestParam Long severity) {
+        Wound updatedWound = woundService.getById(woundId);
+        updatedWound.setName(name);
+        updatedWound.setSeverity(severity);
+        woundService.update(woundId, updatedWound);
+        return "redirect:/character/" + characterId;
+    }
 
     @PostMapping("/{woundId}/delete")
     public String deleteWound(@PathVariable Long characterId, @PathVariable Long woundId) {

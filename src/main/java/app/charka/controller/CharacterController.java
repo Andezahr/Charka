@@ -26,13 +26,11 @@ public class CharacterController {
         Character character = characterService.getById(id);
 
         List<Money> moneyList = moneyService.getByCharacter(id);
-
         long moneySum = moneyService.calculateBalance(id);
 
         model.addAttribute("character", character);
         model.addAttribute("moneyList", moneyList);
         model.addAttribute("moneySum", moneySum);
-
         return "character";
     }
 }

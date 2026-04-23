@@ -1,6 +1,6 @@
 package app.charka.controller;
 
-import app.charka.GlobalExceptionHandler;
+import app.charka.exception.GlobalExceptionHandler;
 import app.charka.model.Item;
 import app.charka.service.ItemService;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,6 +19,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath; // ← добавлено
 
 
 @ExtendWith(MockitoExtension.class)
@@ -99,7 +100,8 @@ class ItemControllerTest {
                             .param("itemName", NAME_SHIELD)
                             .contentType(MediaType.APPLICATION_FORM_URLENCODED))
                     .andExpect(status().isInternalServerError())
-                    .andExpect(content().string(ERR_INV_NOT_FOUND));
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.message").value(ERR_INV_NOT_FOUND));
 
             verify(itemService).create(eq(MISSING_INV_ID), any());
             verifyNoMoreInteractions(itemService);
@@ -147,7 +149,8 @@ class ItemControllerTest {
                             .param("itemName", NAME_NEW)
                             .contentType(MediaType.APPLICATION_FORM_URLENCODED))
                     .andExpect(status().isInternalServerError())
-                    .andExpect(content().string(ERR_ITEM_NOT_FOUND));
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))  // ← изменено
+                    .andExpect(jsonPath("$.message").value(ERR_ITEM_NOT_FOUND));                  // ← изменено
 
             verify(itemService).update(eq(ITEM_ID), any(), any(), any(), any());
             verifyNoMoreInteractions(itemService);
@@ -182,7 +185,8 @@ class ItemControllerTest {
             mockMvc.perform(post("/character/{characterId}/inventories/{inventoryId}/items/{itemId}/delete",
                             CHAR_ID, INV_ID, DELETE_ITEM_ID))
                     .andExpect(status().isInternalServerError())
-                    .andExpect(content().string(ERR_DELETE));
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))  // ← изменено
+                    .andExpect(jsonPath("$.message").value(ERR_DELETE));                          // ← изменено
 
             verify(itemService).delete(DELETE_ITEM_ID);
             verifyNoMoreInteractions(itemService);
@@ -221,7 +225,8 @@ class ItemControllerTest {
                             .param("targetInventoryId", String.valueOf(TARGET_INV_ID))
                             .contentType(MediaType.APPLICATION_FORM_URLENCODED))
                     .andExpect(status().isInternalServerError())
-                    .andExpect(content().string(ERR_ITEM_NOT_FOUND));
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))  // ← изменено
+                    .andExpect(jsonPath("$.message").value(ERR_ITEM_NOT_FOUND));                  // ← изменено
 
             verify(itemService).moveToInventory(MOVE_ITEM_ID, TARGET_INV_ID);
             verifyNoMoreInteractions(itemService);

@@ -5,6 +5,7 @@ import app.charka.model.Character;
 import app.charka.model.Inventory;
 import app.charka.repository.CharacterRepository;
 import app.charka.service.campaign.CampaignService;
+import app.charka.service.impl.CharacterServiceImpl;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -12,7 +13,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -29,19 +29,26 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("CharacterService")
-@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class CharacterServiceTest {
 
     @Mock private CharacterRepository characterRepository;
     @Mock private CampaignService   campaignService;
-    @Mock private InventoryService  inventoryService;
-    @InjectMocks private CharacterService characterService;
+    @Mock private InventoryService inventoryService;
+    private CharacterService characterService;
+
+    @BeforeEach
+    void setUp() {
+        characterService = new CharacterServiceImpl(
+                characterRepository,
+                campaignService,
+                inventoryService
+        );
+    }
 
     /* ──────────────────── Creating character in campaign ─────────────────── */
 
     @Nested
     @DisplayName("Creating character in campaign")
-    @Order(1)
     class CreateInCampaignTests {
 
         private Campaign  testCampaign;
@@ -140,7 +147,6 @@ class CharacterServiceTest {
 
     @Nested
     @DisplayName("Getting character by ID")
-    @Order(2)
     class GetByIdTests {
 
         @Test
@@ -183,7 +189,6 @@ class CharacterServiceTest {
 
     @Nested
     @DisplayName("Getting campaign characters")
-    @Order(3)
     class GetCampaignCharactersTests {
 
         @Test
@@ -221,7 +226,6 @@ class CharacterServiceTest {
 
     @Nested
     @DisplayName("Getting all characters")
-    @Order(4)
     class GetAllTests {
 
         @Test
@@ -242,7 +246,6 @@ class CharacterServiceTest {
 
     @Nested
     @DisplayName("Renaming character")
-    @Order(5)
     class RenameTests {
 
         @Test
@@ -308,7 +311,6 @@ class CharacterServiceTest {
 
     @Nested
     @DisplayName("Changing birth date")
-    @Order(6)
     class ChangeBirthDateTests {
 
         @Test
@@ -356,7 +358,6 @@ class CharacterServiceTest {
 
     @Nested
     @DisplayName("Deleting character")
-    @Order(7)
     class DeleteTests {
 
         @Test
@@ -379,7 +380,6 @@ class CharacterServiceTest {
 
     @Nested
     @DisplayName("Service integration behavior")
-    @Order(8)
     class ServiceIntegrationTests {
 
         @Test

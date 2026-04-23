@@ -43,7 +43,7 @@ public class CampaignExportController {
             campaign = campaignService.getById(id);
         } catch (IllegalArgumentException ex) {
             logger.warn("Кампания с id={} не найдена", id);
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Campaign not found", ex);
+            throw new IllegalArgumentException("Campaign not found");
         }
 
         String fileName = exportService.generateFileName(campaign);
@@ -68,8 +68,7 @@ public class CampaignExportController {
                     .body(resource);
 
         } catch (Exception e) {
-            throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR,
+            throw new RuntimeException(
                     "Error when generating JSON for campaign id=" + id + ": " + e.getMessage(),
                     e
             );

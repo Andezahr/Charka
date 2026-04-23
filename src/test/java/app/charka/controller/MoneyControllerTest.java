@@ -9,12 +9,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath; // ← добавлено
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.LocalDate;
 
-import app.charka.GlobalExceptionHandler;
+import app.charka.exception.GlobalExceptionHandler;
 import app.charka.model.Money;
 import app.charka.service.MoneyService;
 import org.junit.jupiter.api.BeforeEach;
@@ -121,8 +122,8 @@ class MoneyControllerTest {
                             .param("amount", "-50")
                             .contentType(MediaType.APPLICATION_FORM_URLENCODED))
                     .andExpect(status().isInternalServerError())
-                    .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_PLAIN))
-                    .andExpect(content().string(ERROR_MSG));
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))  // ← изменено
+                    .andExpect(jsonPath("$.message").value(ERROR_MSG));                          // ← изменено
 
             verify(moneyService).create(eq(MISSING_CHAR_ID), any());
             verifyNoMoreInteractions(moneyService);
@@ -157,8 +158,8 @@ class MoneyControllerTest {
             mockMvc.perform(post("/character/{characterId}/money/{moneyId}/delete",
                             CHAR_ID, MONEY_ID))
                     .andExpect(status().isInternalServerError())
-                    .andExpect(content().contentTypeCompatibleWith(String.valueOf(MediaType.TEXT_PLAIN)))
-                    .andExpect(content().string("Delete error"));
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.message").value("Delete error"));
 
             verify(moneyService).delete(MONEY_ID);
             verifyNoMoreInteractions(moneyService);

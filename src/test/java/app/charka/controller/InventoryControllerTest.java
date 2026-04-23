@@ -1,7 +1,7 @@
 package app.charka.controller;
 
-import app.charka.GlobalExceptionHandler;
 import app.charka.exception.CharacterNotFoundException;
+import app.charka.exception.GlobalExceptionHandler;
 import app.charka.exception.InventoryNotFoundException;
 import app.charka.model.Inventory;
 import app.charka.service.InventoryService;
@@ -130,7 +130,7 @@ class InventoryControllerTest {
         }
 
         @Test
-        @DisplayName("500 – инвентарь не найден")
+        @DisplayName("00 – инвентарь не найден")
         void editInventory_notFound() throws Exception {
             // Given
             doThrow(new InventoryNotFoundException("Inventory with id " + INV_ID + " not found"))
@@ -167,7 +167,7 @@ class InventoryControllerTest {
         }
 
         @Test
-        @DisplayName("500 – ошибка при удалении")
+        @DisplayName("500 – не найден инвентарь при удалении")
         void deleteInventory_error() throws Exception {
             // Given
             doThrow(new InventoryNotFoundException("Inventory with id " + DELETE_INV_ID + " not found"))

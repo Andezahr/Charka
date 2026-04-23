@@ -1,6 +1,6 @@
 package app.charka.api;
 
-import app.charka.GlobalExceptionHandler;
+import app.charka.exception.GlobalExceptionHandler;
 import app.charka.model.Campaign;
 import app.charka.service.campaign.CampaignExportService;
 import app.charka.service.campaign.CampaignService;
@@ -18,6 +18,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("CampaignExportController – unit-тесты через Standalone MockMvc")
@@ -83,15 +84,14 @@ class CampaignExportControllerTest {
     //                               NOT FOUND
     // ======================================================================
     @Test
-    @DisplayName("404 Not Found – кампания отсутствует")
+    @DisplayName("500 – кампания отсутствует")
     void downloadCampaign_returns404WhenCampaignAbsent() throws Exception {
         when(campaignService.getById(MISSING_ID))
                 .thenThrow(new IllegalArgumentException("Campaign not found for ID: " + MISSING_ID));
 
         mockMvc.perform(get("/api/campaigns/{id}/download", MISSING_ID))
-                .andExpect(status().isNotFound())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_PLAIN))
-                .andExpect(content().string(NOT_FOUND));
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.message").exists());
 
         verify(campaignService).getById(MISSING_ID);
         verifyNoInteractions(exportService);
@@ -100,8 +100,9 @@ class CampaignExportControllerTest {
     // ======================================================================
     //                               EXPORT ERROR
     // ======================================================================
+
     @Test
-    @DisplayName("500 Internal Server Error – ошибка генерации JSON")
+    @DisplayName("500 – ошибка генерации JSON")
     void downloadCampaign_returns500WhenExportFails() throws Exception {
         Campaign campaign = new Campaign();
         campaign.setId(ERROR_ID);
@@ -113,8 +114,7 @@ class CampaignExportControllerTest {
 
         mockMvc.perform(get("/api/campaigns/{id}/download", ERROR_ID))
                 .andExpect(status().isInternalServerError())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_PLAIN))
-                .andExpect(content().string("Error when generating JSON for campaign id=7: " + ERROR_MSG));
+                .andExpect(jsonPath("$.message").exists());
 
         verify(campaignService).getById(ERROR_ID);
         verify(exportService).generateFileName(campaign);

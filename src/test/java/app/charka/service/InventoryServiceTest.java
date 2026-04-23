@@ -5,10 +5,10 @@ import app.charka.model.Character;
 import app.charka.model.Inventory;
 import app.charka.repository.CharacterRepository;
 import app.charka.repository.InventoryRepository;
+import app.charka.service.impl.InventoryServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -24,11 +24,22 @@ import static org.mockito.Mockito.*;
 @DisplayName("InventoryService")
 @RequiredArgsConstructor
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class InventoryServiceTest {
+class InventoryServiceTest {
 
-    @Mock private CharacterRepository characterRepository;
-    @Mock private InventoryRepository inventoryRepository;
-    @InjectMocks private InventoryService inventoryService;
+    @Mock
+    private CharacterRepository characterRepository;
+    @Mock
+    private InventoryRepository inventoryRepository;
+
+    private InventoryService inventoryService;
+
+    @BeforeEach
+    void setUp() {
+        inventoryService = new InventoryServiceImpl(
+                inventoryRepository,
+                characterRepository
+        );
+    }
 
     @Nested
     @DisplayName("Creating inventory for character")
