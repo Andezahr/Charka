@@ -1,6 +1,6 @@
 package app.charka.service.impl;
 
-import app.charka.exception.CharacterNotFoundException;
+import app.charka.exception.ElementNotFoundException;
 import app.charka.model.Campaign;
 import app.charka.model.Character;
 import app.charka.model.Inventory;
@@ -39,7 +39,7 @@ public class CharacterServiceImpl implements CharacterService {
 
     public Character getById(Long id) {
         return characterRepository.findById(id)
-                .orElseThrow(CharacterNotFoundException.forId(id));
+                .orElseThrow(ElementNotFoundException.forId(id));
     }
 
     public List<Character> getCampaignCharacters(Campaign campaign) {
@@ -54,7 +54,7 @@ public class CharacterServiceImpl implements CharacterService {
     @Transactional
     public Character rename(Long id, String newName) {
         var character = characterRepository.findById(id)
-                .orElseThrow(CharacterNotFoundException.forId(id));
+                .orElseThrow(ElementNotFoundException.forId(id));
         character.setName(newName);
         return characterRepository.save(character);
     }
@@ -62,7 +62,7 @@ public class CharacterServiceImpl implements CharacterService {
     @Transactional
     public Character changeBirthDate(Long id, LocalDate newBirthDate) {
         var character = characterRepository.findById(id)
-                .orElseThrow(CharacterNotFoundException.forId(id));
+                .orElseThrow(ElementNotFoundException.forId(id));
         character.setBirthDate(newBirthDate);
         return characterRepository.save(character);
     }

@@ -19,7 +19,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import app.charka.exception.CharacterNotFoundException;
+import app.charka.exception.ElementNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -277,7 +277,7 @@ class NoteControllerTest {
         @DisplayName("500 – персонаж не найден")
         void editForm_characterNotFound() throws Exception {
             when(characterService.getById(CHAR_ID))
-                    .thenThrow(new CharacterNotFoundException("Character not found for ID:" + CHAR_ID));
+                    .thenThrow(new ElementNotFoundException("Character not found for ID:" + CHAR_ID));
 
             mockMvc.perform(get("/character/{characterId}/notes/{noteId}/edit", CHAR_ID, NOTE_ID))
                     .andExpect(status().isInternalServerError())

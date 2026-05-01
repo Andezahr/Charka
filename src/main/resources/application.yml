@@ -12,9 +12,10 @@ spring:
 server:
   address: 0.0.0.0
   port: 8080
-logging:
-  level:
-    root: INFO
-    org:
-      springframework:
-        web: INFO
+  error:
+    include-stacktrace: never
+  logging:
+    level:
+      org.springframework.web.servlet.DispatcherServlet: WARN
+      org.springframework.boot.web.servlet.error: WARN
+      org.springframework.web.servlet.mvc.method.annotation.ExceptionHandlerExceptionResolver: WARN

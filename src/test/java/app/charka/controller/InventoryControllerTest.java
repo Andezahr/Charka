@@ -1,6 +1,6 @@
 package app.charka.controller;
 
-import app.charka.exception.CharacterNotFoundException;
+import app.charka.exception.ElementNotFoundException;
 import app.charka.exception.GlobalExceptionHandler;
 import app.charka.exception.InventoryNotFoundException;
 import app.charka.model.Inventory;
@@ -85,7 +85,7 @@ class InventoryControllerTest {
         void addInventory_characterNotFound() throws Exception {
             // Given - исключение бросается из inventoryService, не characterService
             when(inventoryService.create(eq(MISSING_CHAR_ID), any(Inventory.class)))
-                    .thenThrow(new CharacterNotFoundException("Character not found"));
+                    .thenThrow(new ElementNotFoundException("Character not found"));
 
             // When + Then
             mockMvc.perform(post("/character/{characterId}/inventories", MISSING_CHAR_ID)

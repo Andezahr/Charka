@@ -3,7 +3,7 @@ package app.charka.service.counter;
 import app.charka.dto.counter.request.CounterCreateRequestDto;
 import app.charka.dto.counter.request.CounterUpdateRequestDto;
 import app.charka.dto.counter.response.CounterResponseDto;
-import app.charka.exception.CharacterNotFoundException;
+import app.charka.exception.ElementNotFoundException;
 import app.charka.model.Character;
 import app.charka.model.counters.Counter;
 import app.charka.model.counters.strategy.CounterStrategyFactory;
@@ -27,7 +27,7 @@ public class CounterService {
     public CounterResponseDto createCounter(CounterCreateRequestDto requestDto) {
 
         Character character = characterRepository.findById(requestDto.getCharacterId())
-                .orElseThrow(CharacterNotFoundException.forId(requestDto.getCharacterId()));
+                .orElseThrow(ElementNotFoundException.forId(requestDto.getCharacterId()));
 
         Counter counter = new Counter();
         counter.setName(requestDto.getName());

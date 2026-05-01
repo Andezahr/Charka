@@ -1,6 +1,6 @@
 package app.charka.service;
 
-import app.charka.exception.CharacterNotFoundException;
+import app.charka.exception.ElementNotFoundException;
 import app.charka.model.Character;
 import app.charka.model.Inventory;
 import app.charka.repository.CharacterRepository;
@@ -79,7 +79,7 @@ class InventoryServiceTest {
             when(characterRepository.findById(1L)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> inventoryService.create(1L, testInventory))
-                    .isInstanceOf(CharacterNotFoundException.class);
+                    .isInstanceOf(ElementNotFoundException.class);
 
             verify(characterRepository).findById(1L);
             verify(inventoryRepository, never()).save(any(Inventory.class));
