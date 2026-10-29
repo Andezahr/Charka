@@ -1,4 +1,4 @@
-package app.charka.model.counters.strategy.health.cp2020;
+package app.charka.system.cp2020;
 
 import lombok.Builder;
 import lombok.Value;

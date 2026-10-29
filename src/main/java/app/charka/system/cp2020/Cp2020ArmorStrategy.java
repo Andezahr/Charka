@@ -1,10 +1,9 @@
-package app.charka.model.counters.strategy.health.cp2020;
+package app.charka.system.cp2020;
 
 import app.charka.model.counters.Counter;
 import app.charka.model.counters.strategy.AbstractCounterStrategy;
 import app.charka.model.counters.strategy.CounterContext;
-import app.charka.model.counters.strategy.health.cp2020.Cp2020ArmorView.ArmorLine;
-import app.charka.system.cp2020.Cp2020System;
+import app.charka.system.cp2020.Cp2020ArmorView.ArmorLine;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;

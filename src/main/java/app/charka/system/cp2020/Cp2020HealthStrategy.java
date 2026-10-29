@@ -1,4 +1,4 @@
-package app.charka.model.counters.strategy.health.cp2020;
+package app.charka.system.cp2020;
 
 import app.charka.model.counters.Counter;
 import app.charka.model.counters.strategy.AbstractCounterStrategy;
@@ -7,9 +7,8 @@ import app.charka.model.counters.strategy.health.DamageRequest;
 import app.charka.model.counters.strategy.health.DiceRoller;
 import app.charka.model.counters.strategy.health.HealthCounterStrategy;
 import app.charka.model.counters.strategy.health.HealthEvent;
-import app.charka.model.counters.strategy.health.cp2020.Cp2020HealthView.Option;
-import app.charka.model.counters.strategy.health.cp2020.Cp2020HealthView.TrackLevel;
-import app.charka.system.cp2020.Cp2020System;
+import app.charka.system.cp2020.Cp2020HealthView.Option;
+import app.charka.system.cp2020.Cp2020HealthView.TrackLevel;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -19,7 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static app.charka.model.counters.strategy.health.cp2020.Cp2020Rules.*;
+import static app.charka.system.cp2020.Cp2020Rules.*;
 
 /**
  * Здоровье по правилам Cyberpunk 2020 (Friday Night Firefight).

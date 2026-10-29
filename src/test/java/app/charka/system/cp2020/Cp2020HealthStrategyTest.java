@@ -1,4 +1,4 @@
-package app.charka.model.counters.strategy.health.cp2020;
+package app.charka.system.cp2020;
 
 import app.charka.model.counters.Counter;
 import app.charka.model.counters.strategy.CounterContext;
@@ -17,8 +17,8 @@ import java.util.Deque;
 import java.util.List;
 import java.util.Map;
 
-import static app.charka.model.counters.strategy.health.cp2020.Cp2020HealthStrategy.*;
-import static app.charka.model.counters.strategy.health.cp2020.Cp2020Location.*;
+import static app.charka.system.cp2020.Cp2020HealthStrategy.*;
+import static app.charka.system.cp2020.Cp2020Location.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 

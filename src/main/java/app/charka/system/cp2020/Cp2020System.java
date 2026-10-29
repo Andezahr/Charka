@@ -1,9 +1,9 @@
 package app.charka.system.cp2020;
 
 import app.charka.model.Campaign;
-import app.charka.model.counters.strategy.health.cp2020.Cp2020ArmorStrategy;
-import app.charka.model.counters.strategy.health.cp2020.Cp2020HealthStrategy;
-import app.charka.model.counters.strategy.health.cp2020.Cp2020StatsStrategy;
+import app.charka.system.cp2020.Cp2020ArmorStrategy;
+import app.charka.system.cp2020.Cp2020HealthStrategy;
+import app.charka.system.cp2020.Cp2020StatsStrategy;
 import app.charka.service.counter.HealthCounterService;
 import app.charka.system.Currency;
 import app.charka.system.GameSystem;
