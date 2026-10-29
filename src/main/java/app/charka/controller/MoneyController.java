@@ -34,6 +34,22 @@ public class MoneyController {
         return "redirect:/character/" + characterId;
     }
 
+    @PostMapping("/{moneyId}/edit")
+    public String editMoney(
+            @PathVariable Long characterId,
+            @PathVariable Long moneyId,
+            @RequestParam String name,
+            @RequestParam Long amount
+    ) {
+        Money existing = moneyService.findById(moneyId);
+        Money updated = new Money();
+        updated.setName(name);
+        updated.setAmount(amount);
+        updated.setOperationDate(existing.getOperationDate());
+        moneyService.update(moneyId, updated);
+        return "redirect:/character/" + characterId;
+    }
+
     @PostMapping("/{moneyId}/delete")
     public String deleteMoney(
             @PathVariable Long characterId,

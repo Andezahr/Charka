@@ -23,7 +23,7 @@ public class NoteController {
     private final CharacterService characterService;
     private final NoteCategoryService categoryService;
 
-    @GetMapping("/")
+    @GetMapping({"", "/"})
     public String listNotes(
             @PathVariable Long characterId,
             @RequestParam(required = false) Long categoryId,
@@ -40,6 +40,7 @@ public class NoteController {
         model.addAttribute("character", character);
         model.addAttribute("notes", notes);
         model.addAttribute("categories", categories);
+        model.addAttribute("categoryId", categoryId);
         model.addAttribute("noteForm", new Note());
         model.addAttribute("categoryForm", new NoteCategory());
 

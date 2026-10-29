@@ -35,7 +35,9 @@
       document.querySelectorAll('.btn-edit').forEach(btn => {
         btn.addEventListener('click', e => {
           e.preventDefault();
-          const form = btn.closest('.item-card').querySelector('.inline-edit-form');
+          // ближайшая карточка: у предмета это .subitem-card, а не карточка инвентаря вокруг него
+          const card = btn.closest('.subitem-card, .item-card');
+          const form = card.querySelector(':scope > .inline-edit-form');
           form.style.display = form.style.display === 'flex' ? 'none' : 'flex';
         });
       });

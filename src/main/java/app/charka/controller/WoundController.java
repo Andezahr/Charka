@@ -31,6 +31,24 @@ public class WoundController {
         return "redirect:/character/" + characterId;
     }
 
+    @PostMapping("/{woundId}/edit")
+    public String editWound(
+            @PathVariable Long characterId,
+            @PathVariable Long woundId,
+            @RequestParam String name,
+            @RequestParam(required = false) Long severity
+    ) {
+        Wound wound = woundService.getById(woundId);
+        if (wound.getCharacter().getId().equals(characterId)) {
+            Wound updated = new Wound();
+            updated.setName(name);
+            updated.setSeverity(severity);
+            updated.setDate(wound.getDate());
+            woundService.update(woundId, updated);
+        }
+        return "redirect:/character/" + characterId;
+    }
+
     @PostMapping("/{woundId}/delete")
     public String deleteWound(@PathVariable Long characterId, @PathVariable Long woundId) {
         Wound wound = woundService.getById(woundId);

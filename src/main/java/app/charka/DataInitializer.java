@@ -3,7 +3,6 @@ package app.charka;
 import app.charka.model.*;
 import app.charka.model.Character;
 import app.charka.repository.CampaignRepository;
-import app.charka.repository.InventoryRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
@@ -16,11 +15,9 @@ import java.util.*;
 public class DataInitializer implements CommandLineRunner {
 
     private final CampaignRepository campaignRepository;
-    private final InventoryRepository inventoryRepository;
 
-    public DataInitializer(CampaignRepository campaignRepository, InventoryRepository inventoryRepository) {
+    public DataInitializer(CampaignRepository campaignRepository) {
         this.campaignRepository = campaignRepository;
-        this.inventoryRepository = inventoryRepository;
     }
 
     @Override
@@ -29,43 +26,35 @@ public class DataInitializer implements CommandLineRunner {
         campaign.setName("Последний шанс");
         campaign.setStartDate(LocalDate.of(2037, 10, 27));
         campaign.setCurrentDate(campaign.getStartDate());
-
-        Chronicle chronicle = new Chronicle();
-        campaign.setChronicles(List.of(chronicle));
-
-        Item glasses = new Item();
-        glasses.setName("Очки");
-
-        Item glasses2 = new Item();
-        glasses2.setName("Очки");
-
-        Inventory kolyasickInventory = new Inventory();
-        kolyasickInventory.setName("Инвентарь Колясика");
-        kolyasickInventory.setContent(List.of(glasses));
-
-        Inventory olejaInventory = new Inventory();
-        olejaInventory.setName("Инвентарь Олежи");
-        olejaInventory.setContent(List.of(glasses2));
+        campaign.setChronicles(new ArrayList<>());
 
         Character kolyasick = new Character();
         kolyasick.setName("Колясик");
         kolyasick.setCampaign(campaign);
+        kolyasick.getInventories().add(createInventory("Инвентарь Колясика", kolyasick, "Очки"));
 
         Character oleja = new Character();
         oleja.setName("Олежа");
         oleja.setCampaign(campaign);
+        oleja.getInventories().add(createInventory("Инвентарь Олежи", oleja, "Очки"));
 
-        campaign.setCharacters(List.of(kolyasick, oleja));
+        campaign.setCharacters(new ArrayList<>(List.of(kolyasick, oleja)));
+        // персонажи, инвентари и предметы сохраняются каскадом
         campaignRepository.save(campaign);
+    }
 
+    private static Inventory createInventory(String name, Character owner, String itemName) {
+        Inventory inventory = new Inventory();
+        inventory.setName(name);
+        inventory.setCharacter(owner);
 
-        kolyasick.setWounds(Collections.emptyList());
-        kolyasick.setInventories(List.of(kolyasickInventory));
+        Item item = new Item();
+        item.setName(itemName);
+        item.setQuantity(1);
+        item.setCost(0);
+        item.setInventory(inventory);
 
-        oleja.setWounds(Collections.emptyList());
-        oleja.setInventories(List.of(olejaInventory));
-
-
-        inventoryRepository.save(kolyasickInventory);
+        inventory.setContent(new ArrayList<>(List.of(item)));
+        return inventory;
     }
 }

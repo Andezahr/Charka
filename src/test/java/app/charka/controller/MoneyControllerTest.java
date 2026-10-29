@@ -7,6 +7,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
@@ -125,6 +126,41 @@ class MoneyControllerTest {
                     .andExpect(content().string(ERROR_MSG));
 
             verify(moneyService).create(eq(MISSING_CHAR_ID), any());
+            verifyNoMoreInteractions(moneyService);
+        }
+    }
+
+    // ======================================================================
+    //                            EDIT MONEY BLOCK
+    // ======================================================================
+    @Nested
+    @DisplayName("Редактирование денег")
+    class EditMoneyTests {
+
+        @Test
+        @DisplayName("302 Redirect – имя и сумма обновлены, дата операции сохранена")
+        void editMoney_success() throws Exception {
+            Money existing = new Money();
+            existing.setId(MONEY_ID);
+            existing.setOperationDate(LocalDate.of(2025, 1, 15));
+            when(moneyService.findById(MONEY_ID)).thenReturn(existing);
+
+            mockMvc.perform(post("/character/{characterId}/money/{moneyId}/edit", CHAR_ID, MONEY_ID)
+                            .param("name", NAME_EXPENSE)
+                            .param("amount", "-30")
+                            .contentType(MediaType.APPLICATION_FORM_URLENCODED))
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(redirectedUrl(REDIRECT_URL));
+
+            ArgumentCaptor<Money> captor = ArgumentCaptor.forClass(Money.class);
+            verify(moneyService).findById(MONEY_ID);
+            verify(moneyService).update(eq(MONEY_ID), captor.capture());
+            Money updated = captor.getValue();
+            assertAll(
+                    () -> assertEquals(NAME_EXPENSE, updated.getName()),
+                    () -> assertEquals(-30L, updated.getAmount()),
+                    () -> assertEquals(LocalDate.of(2025, 1, 15), updated.getOperationDate())
+            );
             verifyNoMoreInteractions(moneyService);
         }
     }

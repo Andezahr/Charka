@@ -75,6 +75,7 @@ public class WoundService {
                 .orElseThrow(() -> new IllegalArgumentException(
                         String.format(WOUND_NOT_FOUND, id)));
         existing.setName(updatedWound.getName());
+        existing.setSeverity(updatedWound.getSeverity());
         existing.setDate(updatedWound.getDate());
         return woundRepository.save(existing);
     }

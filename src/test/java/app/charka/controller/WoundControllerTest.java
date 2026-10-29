@@ -16,6 +16,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.time.LocalDate;
+
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -94,6 +96,67 @@ class WoundControllerTest {
                     .andExpect(content().string("Character not found"));
 
             verify(woundService).create(eq(99L), any());
+            verifyNoMoreInteractions(woundService);
+        }
+    }
+
+    // ======================================================================
+    //                            EDIT WOUND BLOCK
+    // ======================================================================
+    @Nested
+    @DisplayName("Редактирование раны")
+    class EditWound {
+
+        private static final long CHAR_ID = 1L;
+        private static final long OTHER_CHAR_ID = 2L;
+
+        @Test
+        @DisplayName("302 Redirect – имя и тяжесть обновлены, дата сохранена")
+        void editWound_success() throws Exception {
+            Character character = new Character();
+            character.setId(CHAR_ID);
+            Wound wound = new Wound();
+            wound.setId(5L);
+            wound.setCharacter(character);
+            wound.setDate(LocalDate.of(2037, 10, 27));
+
+            when(woundService.getById(5L)).thenReturn(wound);
+
+            mockMvc.perform(post("/character/{charId}/wounds/{woundId}/edit", CHAR_ID, 5L)
+                            .param("name", "Ожог")
+                            .param("severity", "3")
+                            .contentType(MediaType.APPLICATION_FORM_URLENCODED))
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(redirectedUrl("/character/1"));
+
+            verify(woundService).getById(5L);
+            verify(woundService).update(eq(5L), argThat(w ->
+                    "Ожог".equals(w.getName())
+                            && Long.valueOf(3).equals(w.getSeverity())
+                            && LocalDate.of(2037, 10, 27).equals(w.getDate())
+            ));
+            verifyNoMoreInteractions(woundService);
+        }
+
+        @Test
+        @DisplayName("302 Redirect – рану другого персонажа не трогаем")
+        void editWound_wrongCharacter() throws Exception {
+            Character otherCharacter = new Character();
+            otherCharacter.setId(OTHER_CHAR_ID);
+            Wound foreignWound = new Wound();
+            foreignWound.setId(6L);
+            foreignWound.setCharacter(otherCharacter);
+
+            when(woundService.getById(6L)).thenReturn(foreignWound);
+
+            mockMvc.perform(post("/character/{charId}/wounds/{woundId}/edit", CHAR_ID, 6L)
+                            .param("name", "Ожог")
+                            .contentType(MediaType.APPLICATION_FORM_URLENCODED))
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(redirectedUrl("/character/1"));
+
+            verify(woundService).getById(6L);
+            verify(woundService, never()).update(anyLong(), any());
             verifyNoMoreInteractions(woundService);
         }
     }

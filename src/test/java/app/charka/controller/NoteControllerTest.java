@@ -28,6 +28,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.servlet.view.InternalResourceViewResolver;
 
 import app.charka.GlobalExceptionHandler;
 import app.charka.model.Character;
@@ -114,6 +115,28 @@ class NoteControllerTest {
             verify(noteService).getNotesByCharacterAndCategory(CHAR_ID, CAT_ID);
             verify(categoryService).getAllCategories();
             verifyNoMoreInteractions(characterService, noteService, categoryService);
+        }
+
+        @Test
+        @DisplayName("200 – путь без завершающего слеша, как в ссылках и redirect'ах")
+        void listNotes_withoutTrailingSlash() throws Exception {
+            Character character = new Character(); character.setId(CHAR_ID);
+
+            when(characterService.getById(CHAR_ID)).thenReturn(character);
+            when(noteService.getNotesByCharacterAndCategory(CHAR_ID, CAT_ID)).thenReturn(List.of());
+            when(categoryService.getAllCategories()).thenReturn(List.of());
+
+            // без ViewResolver standalone MockMvc считает вид "notes" циклическим для URL .../notes
+            MockMvc mvcWithViews = MockMvcBuilders
+                    .standaloneSetup(noteController)
+                    .setViewResolvers(new InternalResourceViewResolver("/templates/", ".html"))
+                    .build();
+
+            mvcWithViews.perform(get("/character/{characterId}/notes", CHAR_ID)
+                            .param("categoryId", String.valueOf(CAT_ID)))
+                    .andExpect(status().isOk())
+                    .andExpect(view().name("notes"))
+                    .andExpect(model().attribute("categoryId", CAT_ID));
         }
 
         @Test

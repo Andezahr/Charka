@@ -1,6 +1,7 @@
 package app.charka.model.counters;
 
 import app.charka.model.Character;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -18,6 +19,7 @@ public class Counter {
     private Integer value;
 
     @ManyToOne
+    @JsonBackReference
     private Character character;
 
     private String type;
