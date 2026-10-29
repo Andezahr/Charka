@@ -1,5 +1,6 @@
 package app.charka.controller;
 
+import app.charka.dto.counter.request.CounterAttributesRequestDto;
 import app.charka.dto.counter.request.CounterCreateRequestDto;
 import app.charka.dto.counter.request.CounterUpdateRequestDto;
 import app.charka.dto.counter.response.CounterResponseDto;
@@ -26,10 +27,12 @@ public class CounterController {
         List<CounterResponseDto> counters = counterService.getAllCountersByCharacterId(characterId);
         model.addAttribute("counters", counters);
         model.addAttribute("characterId", characterId);
+        model.addAttribute("counterTypes", counterService.getCounterTypes());
 
         // Создаем DTO и предзаполняем characterId
         CounterCreateRequestDto createRequest = new CounterCreateRequestDto();
         createRequest.setCharacterId(characterId);
+        createRequest.setCounterType("SIMPLE_INTEGER");
         model.addAttribute("createRequest", createRequest);
 
         return "counters/list";
@@ -106,12 +109,49 @@ public class CounterController {
 
         try {
             CounterResponseDto response = counterService.createCounter(requestDto);
-            redirectAttributes.addFlashAttribute("successMessage",
-                    "Счётчик '" + response.getName() + "' (тип: " + response.getCounterType() +
-                            ", начальное значение: " + response.getValue() + ") успешно создан");
+            String message = "Счётчик '" + response.getName() + "' создан";
+            if (!response.getCreatedWith().isEmpty()) {
+                message += ". Вместе с ним созданы обязательные: " + String.join(", ", response.getCreatedWith());
+            }
+            redirectAttributes.addFlashAttribute("successMessage", message);
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage",
                     "Ошибка создания счётчика: " + e.getMessage());
+        }
+        return "redirect:/character/" + characterId + "/counters";
+    }
+
+    /**
+     * Правка attributes из формы карточки: поля вида attributes[body], attributes[sp_HEAD].
+     */
+    @PostMapping("/{counterId}/attributes")
+    public String updateAttributes(@PathVariable Long characterId,
+                                   @PathVariable Long counterId,
+                                   @ModelAttribute CounterAttributesRequestDto requestDto,
+                                   RedirectAttributes redirectAttributes) {
+        try {
+            CounterResponseDto response = counterService.updateAttributes(characterId, counterId, requestDto.getAttributes());
+            redirectAttributes.addFlashAttribute("successMessage", "Счётчик '" + response.getName() + "' обновлён");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage",
+                    "Ошибка изменения счётчика: " + e.getMessage());
+        }
+        return "redirect:/character/" + characterId + "/counters";
+    }
+
+    /**
+     * Особое действие типа счётчика (например, ремонт брони).
+     */
+    @PostMapping("/{counterId}/action/{action}")
+    public String performAction(@PathVariable Long characterId,
+                                @PathVariable Long counterId,
+                                @PathVariable String action,
+                                RedirectAttributes redirectAttributes) {
+        try {
+            redirectAttributes.addFlashAttribute("successMessage",
+                    counterService.performAction(characterId, counterId, action));
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Ошибка: " + e.getMessage());
         }
         return "redirect:/character/" + characterId + "/counters";
     }

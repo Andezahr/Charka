@@ -9,4 +9,6 @@ import java.util.List;
 @Repository
 public interface CounterRepository extends JpaRepository<Counter, Long> {
     List<Counter> findByCharacterId(Long characterId);
+
+    List<Counter> findByCharacterCampaignId(Long campaignId);
 }

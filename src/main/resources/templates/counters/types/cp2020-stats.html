@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<!-- Характеристики Cyberpunk 2020: поля формы создания (create-fields) и карточка (card).
+     card ожидает в контексте counter (counter.view = Cp2020StatsView) и characterId -->
+<body>
+
+<th:block th:fragment="create-fields">
+  <div class="field-grid cp-field-grid-3">
+    <label class="field" th:each="key : ${ {'int', 'ref', 'tech', 'cool', 'attr', 'luck', 'ma', 'body', 'emp'} }">
+      <span class="label" th:text="${#strings.toUpperCase(key)}">INT</span>
+      <input type="number" th:name="'attributes[' + ${key} + ']'" min="1" max="20" value="6" required>
+    </label>
+  </div>
+  <p class="hint hint-left">По правилам при создании персонажа статы от 2 до 10.</p>
+</th:block>
+
+<div th:fragment="card" class="counter cp-card" data-editable
+     th:with="v=${counter.view},
+              base=@{/character/{characterId}/counters/{counterId}(characterId=${characterId}, counterId=${counter.id})}">
+  <div class="counter-head">
+    <div>
+      <div class="counter-name" th:text="${counter.name}">Характеристики</div>
+      <div class="counter-meta">Cyberpunk 2020</div>
+    </div>
+    <form th:action="${base}" th:method="delete" class="inline" data-confirm="Удалить счётчик?">
+      <button type="submit" class="icon-btn danger" title="Удалить счётчик">×</button>
+    </form>
+  </div>
+
+  <div class="cp-stats">
+    <div th:each="s : ${v.stats}" class="cp-stat" th:classappend="${s.reduced} ? 'is-reduced'"
+         th:title="${s.reduced} ? 'Без штрафов: ' + ${s.base}">
+      <span class="cp-stat-label" th:text="${s.name}">REF</span>
+      <span class="cp-stat-value" th:text="${s.effective}">8</span>
+      <span class="cp-stat-base" th:text="${s.reduced} ? 'из ' + ${s.base} : ' '">&nbsp;</span>
+    </div>
+  </div>
+
+  <dl class="cp-derived">
+    <div><dt>Бег</dt><dd th:text="${v.run} + ' м'">18 м</dd></div>
+    <div><dt>Прыжок</dt><dd th:text="${v.leap} + ' м'">4 м</dd></div>
+    <div><dt>Переноска</dt><dd th:text="${v.carry} + ' кг'">60 кг</dd></div>
+    <div><dt>Подъём</dt><dd th:text="${v.lift} + ' кг'">240 кг</dd></div>
+    <div title="Модификатор телосложения"><dt>BTM</dt><dd th:text="'−' + ${v.btm}">−2</dd></div>
+    <div title="Порог спасбросков без штрафов от ран"><dt>Спасбросок</dt><dd th:text="'≤ ' + ${v.save}">≤ 6</dd></div>
+    <div class="cp-derived-wide" th:classappend="${v.humanityLoss > 0} ? 'is-reduced'">
+      <dt>Человечность</dt><dd th:text="${v.humanity} + ' / ' + ${v.maxHumanity}">60 / 60</dd>
+    </div>
+  </dl>
+
+  <div class="cp-footer">
+    <span class="cp-muted-line">&nbsp;</span>
+    <button type="button" class="btn btn-sm btn-ghost" data-edit-toggle>Изменить</button>
+  </div>
+
+  <div class="edit-panel">
+    <form th:action="${base} + '/attributes'" method="post" class="form">
+      <div class="field-grid cp-field-grid-3">
+        <label class="field" th:each="s : ${v.stats}">
+          <span class="label" th:text="${s.name}">REF</span>
+          <input type="number" th:name="'attributes[' + ${s.key} + ']'" min="1" max="20" th:value="${s.base}" required>
+        </label>
+      </div>
+      <label class="field">
+        <span class="label">Потеря человечности (киберимпланты)</span>
+        <input type="number" name="attributes[humanityLoss]" min="0" max="200" th:value="${v.humanityLoss}" required>
+      </label>
+      <button type="submit" class="btn btn-sm btn-primary">Сохранить</button>
+    </form>
+  </div>
+</div>
+
+</body>
+</html>

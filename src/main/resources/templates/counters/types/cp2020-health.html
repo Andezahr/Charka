@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<!-- Здоровье Cyberpunk 2020: поля формы создания (create-fields) и карточка (card).
+     card ожидает в контексте counter (counter.view = Cp2020HealthView) и characterId -->
+<body>
+
+<th:block th:fragment="create-fields">
+  <th:block th:replace="~{counters/types/cp2020-stats :: create-fields}"></th:block>
+  <p class="hint hint-left">Здоровью нужны «Характеристики» и «Броня» — если их нет, они создадутся
+    автоматически с этими значениями. «Начальное значение» — уже полученный урон.</p>
+</th:block>
+
+<div th:fragment="card" class="counter counter-wide cp-card cp-health"
+     th:with="h=${counter.view},
+              base=@{/character/{characterId}/counters/{counterId}(characterId=${characterId}, counterId=${counter.id})}"
+     th:classappend="'is-' + ${h.statusCss}">
+
+  <div class="counter-head">
+    <div>
+      <div class="counter-name" th:text="${counter.name}">Здоровье</div>
+      <div class="counter-meta">Cyberpunk 2020</div>
+    </div>
+    <form th:action="${base}" th:method="delete" class="inline" data-confirm="Удалить счётчик?">
+      <button type="submit" class="icon-btn danger" title="Удалить счётчик">×</button>
+    </form>
+  </div>
+
+  <div class="cp-health-main">
+    <div class="cp-health-number">
+      <span class="cp-health-big" th:text="${h.damage}">0</span>
+      <span class="cp-health-max" th:text="'/ ' + ${h.maxDamage}">/ 40</span>
+    </div>
+    <div>
+      <div class="cp-health-status" th:text="${h.statusLabel}">Без ранений</div>
+      <div class="cp-muted-line">
+        <span th:text="'BTM −' + ${h.btm}">BTM −3</span>
+        <span th:unless="${h.dead}" th:text="' · оглушение ≤ ' + ${h.stunTarget}"> · оглушение ≤ 8</span>
+        <span th:if="${h.penalty != null}" th:text="' · ' + ${h.penalty}"> · REF −2</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Трек: 10 уровней по 4 клетки, подпись уровня — во всплывающей подсказке -->
+  <div>
+    <div class="cp-track">
+      <div th:each="lvl : ${h.track}" class="cp-track-level" th:classappend="${lvl.css}" th:title="${lvl.name}">
+        <span th:each="i : ${#numbers.sequence(1, 4)}" class="cp-box" th:classappend="${i <= lvl.filled} ? 'is-filled'"></span>
+      </div>
+    </div>
+    <div class="cp-track-legend">
+      <span>Лёгкое</span><span>Серьёзное</span><span>Критическое</span><span>Смертельное 0–6</span>
+    </div>
+  </div>
+
+  <!-- Состояния: появляются только когда нужны -->
+  <div th:if="${h.dead}" class="cp-callout">Персонаж мёртв. «Полностью вылечить» в разделе ниже вернёт его к жизни.</div>
+
+  <div th:if="${h.deathSaveRequired}" class="cp-callout danger">
+    <span class="cp-callout-text" th:text="'Смертельная рана: спасбросок от смерти каждый ход, d10 ≤ ' + ${h.deathTarget}">
+      Спасбросок от смерти</span>
+    <form th:action="${base} + '/health/save/DEATH'" method="post">
+      <input type="number" name="roll" min="1" max="10" placeholder="d10" aria-label="Бросок d10">
+      <button type="submit" class="btn btn-sm btn-danger">Бросить</button>
+    </form>
+    <form th:action="${base} + '/health/stabilize'" method="post">
+      <button type="submit" class="btn btn-sm">Стабилизирован медиком</button>
+    </form>
+  </div>
+
+  <div th:if="${h.stunned}" class="cp-callout warning">
+    <span class="cp-callout-text" th:text="'Оглушён: спасбросок, чтобы прийти в себя, d10 ≤ ' + ${h.stunTarget}">Оглушён</span>
+    <form th:action="${base} + '/health/save/STUN'" method="post">
+      <input type="number" name="roll" min="1" max="10" placeholder="d10" aria-label="Бросок d10">
+      <button type="submit" class="btn btn-sm btn-warning">Бросить</button>
+    </form>
+  </div>
+
+  <div class="cp-muted-line" th:if="${h.stabilized or !h.lostLimbs.empty}">
+    <span th:if="${h.stabilized}">Стабилизирован. </span>
+    <span th:unless="${h.lostLimbs.empty}"
+          th:text="'Потеряно: ' + ${#strings.listJoin(h.lostLimbs.![label], ', ')}">Потеряно: левая рука</span>
+  </div>
+
+  <!-- Урон -->
+  <form th:unless="${h.dead}" th:action="${base} + '/health/damage'" method="post" class="cp-damage">
+    <div class="form-row">
+      <input type="number" name="amount" min="0" placeholder="Урон" required class="cp-amount" aria-label="Урон">
+      <select name="location" aria-label="Зона попадания">
+        <option value="">Случайная зона</option>
+        <option th:each="l : ${h.locations}" th:value="${l.code}" th:text="${l.label}">Торс</option>
+      </select>
+      <select name="damageType" aria-label="Тип урона">
+        <option th:each="t : ${h.damageTypes}" th:value="${t.code}" th:text="${t.label}">Обычный</option>
+      </select>
+      <button type="submit" class="btn btn-danger">Нанести</button>
+    </div>
+    <label class="cp-plain-check">
+      <input type="checkbox" name="autoSave" checked>
+      <input type="hidden" name="_autoSave" value="on">
+      сразу бросить спасбросок от оглушения
+    </label>
+  </form>
+
+  <!-- Редкие действия свёрнуты -->
+  <details class="cp-more">
+    <summary>Лечение и правка</summary>
+    <div class="cp-more-body">
+      <form th:unless="${h.dead}" th:action="${base} + '/health/heal'" method="post" class="form-row">
+        <input type="number" name="points" min="1" placeholder="Очков лечения" required aria-label="Очков лечения">
+        <button type="submit" class="btn btn-sm btn-success">Вылечить</button>
+      </form>
+      <form th:unless="${h.dead or h.stunned}" th:action="${base} + '/health/save/STUN'" method="post" class="form-row">
+        <input type="number" name="roll" min="1" max="10" placeholder="d10 или пусто" aria-label="Бросок d10">
+        <button type="submit" class="btn btn-sm" th:text="'Спасбросок от оглушения (≤ ' + ${h.stunTarget} + ')'">Спасбросок</button>
+      </form>
+      <form th:action="${base} + '/update'" method="post" class="form-row">
+        <input type="number" name="value" placeholder="± урон без брони" required aria-label="Изменить урон вручную">
+        <button type="submit" class="btn btn-sm">Применить</button>
+      </form>
+      <form th:each="l : ${h.lostLimbs}" th:action="${base} + '/attributes'" method="post" class="form-row">
+        <input type="hidden" th:name="'attributes[lost_' + ${l.code} + ']'" value="0">
+        <button type="submit" class="btn btn-sm" th:text="'Вернуть: ' + ${l.label} + ' (кибер- или донорская)'">Вернуть</button>
+      </form>
+      <form th:action="${base} + '/reset'" method="post" data-confirm="Полностью вылечить персонажа?">
+        <button type="submit" class="btn btn-sm btn-warning">Полностью вылечить</button>
+      </form>
+    </div>
+  </details>
+</div>
+
+</body>
+</html>

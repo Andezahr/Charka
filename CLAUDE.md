@@ -18,7 +18,7 @@
 
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0)
-./mvnw test                 # ~101 тест, на 2026-10-29 все зелёные
+./mvnw test                 # 173 теста, на 2026-10-29 все зелёные
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -60,7 +60,17 @@ Campaign (name, startDate, currentDate)
 
 ### Счётчики (самая «архитектурная» часть)
 
-`CounterStrategy` (тип, `getNewValue(String current, Object input)`, `getResetValue()`) → `CounterStrategyFactory` собирает все бины-стратегии в Map по `getCounterType()`. Сейчас есть только `SimpleIntegerCounterStrategy` (`"SIMPLE_INTEGER"`, прибавляет input). Значения гоняются через `String`, хотя хранятся как `Integer`. Тип счётчика — строка без enum.
+`CounterStrategy` (тип, `getNewValue(String current, Object input)`, `getResetValue()`) → `CounterStrategyFactory` собирает все бины-стратегии в Map по `getCounterType()`. Значения гоняются через `String`, хотя хранятся как `Integer`. Тип счётчика — строка без enum.
+Default-методы стратегии: `getDisplayName()`/`getDefaultName()`, `getViewTemplate()` (шаблон с фрагментом `card` — каждый тип рисует свою карточку, `counters/list.html` не трогаем), `getCreateFieldsTemplate()` (фрагмент `create-fields` — доп. поля формы создания, уходят в `attributes[...]`), `usesInitialValue()`, `getRequiredCounterTypes()` (обязательные счётчики: создаются автоматически, удалить их, пока есть зависимый, нельзя), `isUniquePerCharacter()`, `getDisplayOrder()`, `initialize(counter, params)` (незнакомые ключи пропускать — params общие для всех создаваемых вместе), `reset(counter)`, `describe(CounterContext)` → данные карточки в `CounterResponseDto.view`, `updateAttributes(counter, map)`, `performAction(ctx, action)`.
+`Counter.attributes` (`Map<String,Integer>`, таблица `counter_attribute`) — доп. состояние стратегии сверх одного числа. `CounterContext` — счётчик + все счётчики персонажа, через него зависимые стратегии читают друг друга.
+
+Стратегии: `SimpleIntegerCounterStrategy` (`"SIMPLE_INTEGER"`, прибавляет input) и связка CP2020 (`strategy/health/cp2020/`):
+- `strategy/health/HealthCounterStrategy` — точка расширения для систем здоровья (урон, лечение, `healOverTime`, спасброски по коду, стабилизация, `describe` → `HealthView`). `DiceRoller` — кубики (в тестах подменяются).
+- `Cp2020StatsStrategy` (`"CP2020_STATS"`): все 9 статов `int/ref/tech/cool/attr/luck/ma/body/emp` + `humanityLoss`. Текущие значения: REF/INT/COOL со штрафами от ран (уровень из счётчика здоровья), EMP = человечность/10 (человечность = EMP×10 − потеря). Производные (`Cp2020Rules`): бег MA×3 м, прыжок бег/4, переноска BODY×10 кг, подъём BODY×40 кг, BTM, спасбросок = BODY.
+- `Cp2020ArmorStrategy` (`"CP2020_ARMOR"`): `sp_<ЗОНА>` — текущий SP, `max_<ЗОНА>` — полный; `wear()` при пробитии, действие `REPAIR` возвращает полный SP.
+- `Cp2020HealthStrategy` (`"CP2020_HEALTH"`, требует stats + armor): value = полученный урон 0..40; attributes: `lost_<ЗОНА>`, флаги `stunned/stabilized/dead/deathSavePending`. Порядок урона: зона → −SP (износ −1 при пробитии; AP — половина SP и урона; BYPASS — без брони) → ×2 в голову → −BTM (мин. 1) → >8 в голову = смерть, >8 в конечность = потеря + спасбросок от смерти → >40 = смерть → авто-спасбросок от оглушения. Таблицы — `Cp2020Rules`.
+- Карточки — `counters/types/cp2020-*.html`, стили — блок `.cp-*` в конце `app.css` (Russo One только у главного числа: в нём нет символов − ≤ →).
+- `HealthCounterService` — операции, не знающие о системе; `healOverTime` вызывается из `CampaignTimelineService.proceedDate` (1 очко/день, умирающие без стабилизации не лечатся).
 
 ### Время кампании
 
@@ -85,6 +95,8 @@ Campaign (name, startDate, currentDate)
 | POST | `/character/{id}/categories`, `.../{catId}/edit|delete` | категории заметок |
 | GET | `/character/{id}/counters` | счётчики |
 | POST | `/character/{id}/counters/create`, `/{cid}/update|set|reset`; DELETE `/{cid}` | счётчики |
+| POST | `/character/{id}/counters/{cid}/attributes`, `.../{cid}/action/{action}` | правка attributes и особые действия типа (ремонт брони) |
+| POST | `/character/{id}/counters/{cid}/health/damage|heal|stabilize`, `.../health/save/{STUN|DEATH}` | счётчик здоровья (итог + пошаговый расчёт во flash `healthSteps`) |
 
 ## Соглашения в коде
 
@@ -108,7 +120,7 @@ Campaign (name, startDate, currentDate)
 - Сущности отдаются прямо в шаблоны и в JSON; DTO есть только у счётчиков.
 - Сервисы ходят в чужие репозитории напрямую (Money/Wound/Inventory → `CharacterRepository`), разный стиль «не найдено».
 - Нет проверки принадлежности ресурса персонажу (кроме счётчиков и удаления ран): можно удалить/переместить чужой предмет, подставив id.
-- Стратегии счётчиков работают через `String`/`Object`, тип — строка.
+- Стратегии счётчиков работают через `String`/`Object`, тип — строка; стратегии лежат в `model/` и знают имена шаблонов.
 - Нет постоянного хранилища (H2 in-memory), нет миграций (Flyway/Liquibase), нет авторизации/пользователей.
 
 ## Планы автора (`TODO.txt`)

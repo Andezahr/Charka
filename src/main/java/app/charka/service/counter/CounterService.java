@@ -3,9 +3,12 @@ package app.charka.service.counter;
 import app.charka.dto.counter.request.CounterCreateRequestDto;
 import app.charka.dto.counter.request.CounterUpdateRequestDto;
 import app.charka.dto.counter.response.CounterResponseDto;
+import app.charka.dto.counter.response.CounterTypeDto;
 import app.charka.exception.CharacterNotFoundException;
 import app.charka.model.Character;
 import app.charka.model.counters.Counter;
+import app.charka.model.counters.strategy.CounterContext;
+import app.charka.model.counters.strategy.CounterStrategy;
 import app.charka.model.counters.strategy.CounterStrategyFactory;
 import app.charka.repository.CharacterRepository;
 import app.charka.repository.CounterRepository;
@@ -13,7 +16,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -23,20 +29,38 @@ public class CounterService {
     private final CharacterRepository characterRepository;
     private final CounterStrategyFactory strategyFactory;
 
+    /**
+     * Создаёт счётчик, а перед ним — недостающие обязательные счётчики
+     * ({@link CounterStrategy#getRequiredCounterTypes()}), например характеристики и броню для здоровья CP2020.
+     */
     @Transactional
     public CounterResponseDto createCounter(CounterCreateRequestDto requestDto) {
 
         Character character = characterRepository.findById(requestDto.getCharacterId())
                 .orElseThrow(CharacterNotFoundException.forId(requestDto.getCharacterId()));
 
+        CounterStrategy strategy = strategyFactory.getStrategy(requestDto.getCounterType());
+        List<Counter> siblings = new ArrayList<>(counterRepository.findByCharacterId(character.getId()));
+        if (strategy.isUniquePerCharacter() && hasType(siblings, strategy.getCounterType())) {
+            throw new IllegalStateException("У персонажа уже есть счётчик «" + strategy.getDisplayName() + "»");
+        }
+
+        List<String> createdWith = new ArrayList<>();
+        createRequired(strategy, character, siblings, requestDto.getAttributes(), createdWith);
+
         Counter counter = new Counter();
         counter.setName(requestDto.getName());
         counter.setValue(requestDto.getInitialValue());
-        counter.setType(requestDto.getCounterType());
+        counter.setType(strategy.getCounterType());
         counter.setCharacter(character);
+        strategy.initialize(counter, requestDto.getAttributes());
 
         Counter savedCounter = counterRepository.save(counter);
-        return convertToResponseDto(savedCounter);
+        siblings.add(savedCounter);
+
+        CounterResponseDto dto = convertToResponseDto(savedCounter, siblings);
+        dto.setCreatedWith(createdWith);
+        return dto;
     }
 
     @Transactional(readOnly = true)
@@ -44,7 +68,9 @@ public class CounterService {
 
         List<Counter> counters = counterRepository.findByCharacterId(characterId);
         return counters.stream()
-                .map(this::convertToResponseDto)
+                .sorted(Comparator.comparingInt(this::displayOrder)
+                        .thenComparing(Counter::getId, Comparator.nullsLast(Comparator.naturalOrder())))
+                .map(counter -> convertToResponseDto(counter, counters))
                 .toList();
     }
 
@@ -81,19 +107,62 @@ public class CounterService {
     public CounterResponseDto resetCounter(Long characterId, Long counterId) {
         Counter counter = validateAndGetCounter(characterId, counterId);
 
-        String resetValue = strategyFactory
-                .getStrategy(counter.getType())
-                .getResetValue();
-
-        counter.setValue(Integer.valueOf(resetValue));
+        strategyFactory.getStrategy(counter.getType()).reset(counter);
         Counter savedCounter = counterRepository.save(counter);
 
         return convertToResponseDto(savedCounter);
     }
 
+    /**
+     * Изменение attributes из формы редактирования карточки (характеристики, броня…).
+     */
+    @Transactional
+    public CounterResponseDto updateAttributes(Long characterId, Long counterId, Map<String, Integer> attributes) {
+        Counter counter = validateAndGetCounter(characterId, counterId);
+
+        strategyFactory.getStrategy(counter.getType()).updateAttributes(counter, attributes);
+        Counter savedCounter = counterRepository.save(counter);
+
+        return convertToResponseDto(savedCounter);
+    }
+
+    /**
+     * Особое действие типа счётчика (например, ремонт брони).
+     *
+     * @return сообщение для пользователя
+     */
+    @Transactional
+    public String performAction(Long characterId, Long counterId, String action) {
+        Counter counter = validateAndGetCounter(characterId, counterId);
+        CounterContext context = new CounterContext(counter, counterRepository.findByCharacterId(characterId));
+
+        String message = strategyFactory.getStrategy(counter.getType()).performAction(context, action);
+        counterRepository.save(counter);
+        return message;
+    }
+
+    /**
+     * Удаляет счётчик, если от него не зависит другой счётчик персонажа.
+     */
     @Transactional
     public void deleteCounter(Long characterId, Long counterId) {
         Counter counter = validateAndGetCounter(characterId, counterId);
+        List<Counter> siblings = counterRepository.findByCharacterId(characterId);
+
+        boolean otherOfSameType = siblings.stream()
+                .anyMatch(c -> !c.getId().equals(counter.getId()) && counter.getType().equals(c.getType()));
+        if (!otherOfSameType) {
+            siblings.stream()
+                    .filter(c -> !c.getId().equals(counter.getId()))
+                    .filter(c -> strategyFactory.findStrategy(c.getType())
+                            .map(s -> s.getRequiredCounterTypes().contains(counter.getType()))
+                            .orElse(false))
+                    .findFirst()
+                    .ifPresent(dependent -> {
+                        throw new IllegalStateException("«" + counter.getName() + "» нужен счётчику «"
+                                + dependent.getName() + "» — сначала удалите его");
+                    });
+        }
         counterRepository.delete(counter);
     }
 
@@ -104,9 +173,19 @@ public class CounterService {
     }
 
     /**
+     * Типы счётчиков, которые можно создать, — всё, что зарегистрировано в фабрике стратегий.
+     */
+    public List<CounterTypeDto> getCounterTypes() {
+        return strategyFactory.getAllStrategies().stream()
+                .map(s -> new CounterTypeDto(s.getCounterType(), s.getDisplayName(),
+                        s.getCreateFieldsTemplate(), s.usesInitialValue()))
+                .toList();
+    }
+
+    /**
      * Валидация и получение счётчика с проверкой принадлежности персонажу
      */
-    private Counter validateAndGetCounter(Long characterId, Long counterId) {
+    Counter validateAndGetCounter(Long characterId, Long counterId) {
         if (characterId == null) {
             throw new IllegalArgumentException("Character ID не может быть null");
         }
@@ -124,12 +203,58 @@ public class CounterService {
         return counter;
     }
 
+    /**
+     * Рекурсивно создаёт недостающие обязательные счётчики; параметры формы передаются каждому.
+     */
+    private void createRequired(CounterStrategy strategy, Character character, List<Counter> siblings,
+                                Map<String, Integer> params, List<String> createdWith) {
+        for (String requiredType : strategy.getRequiredCounterTypes()) {
+            if (hasType(siblings, requiredType)) {
+                continue;
+            }
+            CounterStrategy required = strategyFactory.getStrategy(requiredType);
+            createRequired(required, character, siblings, params, createdWith);
+
+            Counter counter = new Counter();
+            counter.setName(required.getDefaultName());
+            counter.setValue(0);
+            counter.setType(requiredType);
+            counter.setCharacter(character);
+            required.initialize(counter, params);
+            siblings.add(counterRepository.save(counter));
+            createdWith.add(counter.getName());
+        }
+    }
+
+    private static boolean hasType(List<Counter> counters, String type) {
+        return counters.stream().anyMatch(c -> type.equals(c.getType()));
+    }
+
+    private int displayOrder(Counter counter) {
+        return strategyFactory.findStrategy(counter.getType())
+                .map(CounterStrategy::getDisplayOrder)
+                .orElse(Integer.MAX_VALUE);
+    }
+
     private CounterResponseDto convertToResponseDto(Counter counter) {
+        List<Counter> siblings = counter.getCharacter() != null
+                ? counterRepository.findByCharacterId(counter.getCharacter().getId())
+                : List.of(counter);
+        return convertToResponseDto(counter, siblings);
+    }
+
+    private CounterResponseDto convertToResponseDto(Counter counter, List<Counter> siblings) {
         CounterResponseDto dto = new CounterResponseDto();
         dto.setId(counter.getId());
         dto.setName(counter.getName());
         dto.setCounterType(counter.getType());
         dto.setValue(counter.getValue());
+
+        strategyFactory.findStrategy(counter.getType()).ifPresent(strategy -> {
+            dto.setViewTemplate(strategy.getViewTemplate());
+            dto.setTypeName(strategy.getDisplayName());
+            dto.setView(strategy.describe(new CounterContext(counter, siblings)));
+        });
 
         if (counter.getCharacter() != null) {
             dto.setCharacterName(counter.getCharacter().getName());

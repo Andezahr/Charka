@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<!-- Броня Cyberpunk 2020 по зонам. card ожидает в контексте counter (counter.view = Cp2020ArmorView) и characterId -->
+<body>
+
+<div th:fragment="card" class="counter cp-card" data-editable
+     th:with="v=${counter.view},
+              base=@{/character/{characterId}/counters/{counterId}(characterId=${characterId}, counterId=${counter.id})}">
+  <div class="counter-head">
+    <div>
+      <div class="counter-name" th:text="${counter.name}">Броня</div>
+      <div class="counter-meta">SP по зонам · Cyberpunk 2020</div>
+    </div>
+    <form th:action="${base}" th:method="delete" class="inline" data-confirm="Удалить счётчик?">
+      <button type="submit" class="icon-btn danger" title="Удалить счётчик">×</button>
+    </form>
+  </div>
+
+  <div class="cp-armor">
+    <div th:each="a : ${v.locations}" class="cp-armor-cell" th:classappend="${a.worn} ? 'is-worn'"
+         th:title="${a.label} + ', бросок d10: ' + ${a.rolls}">
+      <span class="cp-armor-label" th:text="${a.shortLabel}">Торс</span>
+      <span class="cp-armor-value">
+        <span th:text="${a.sp}">0</span><span class="cp-armor-max" th:if="${a.worn}" th:text="' / ' + ${a.maxSp}"> / 10</span>
+      </span>
+    </div>
+  </div>
+
+  <div class="cp-footer">
+    <form th:if="${v.worn}" th:action="${base} + '/action/REPAIR'" method="post" class="inline"
+          title="Вернуть изношенной броне полный SP">
+      <button type="submit" class="btn btn-sm btn-warning">Ремонт</button>
+    </form>
+    <span th:unless="${v.worn}" class="cp-muted-line">Цела</span>
+    <button type="button" class="btn btn-sm btn-ghost" data-edit-toggle>Изменить</button>
+  </div>
+
+  <div class="edit-panel">
+    <form th:action="${base} + '/attributes'" method="post" class="form">
+      <div class="field-grid">
+        <label class="field" th:each="a : ${v.locations}">
+          <span class="label" th:text="${a.label}">Торс</span>
+          <input type="number" th:name="'attributes[sp_' + ${a.code} + ']'" min="0" max="60" th:value="${a.maxSp}" required>
+        </label>
+      </div>
+      <p class="hint hint-left">Новое значение — полный SP надетой брони, износ сбрасывается.</p>
+      <button type="submit" class="btn btn-sm btn-primary">Сохранить</button>
+    </form>
+  </div>
+</div>
+
+</body>
+</html>

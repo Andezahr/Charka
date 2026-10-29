@@ -3,6 +3,7 @@ package app.charka.service.campaign;
 import app.charka.model.Campaign;
 import app.charka.model.Chronicle;
 import app.charka.service.ChronicleService;
+import app.charka.service.counter.HealthCounterService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,6 +16,7 @@ import java.time.LocalDate;
  * - создание и сохранение новых записей Chroniсle через ChronicleService;
  * - обновление текущей даты кампании;
  * - координацию бизнес-логики автоматических трат через MoneyService;
+ * - естественное восстановление здоровья через HealthCounterService;
  */
 @Service
 @RequiredArgsConstructor
@@ -22,6 +24,7 @@ public class CampaignTimelineService {
 
     private final ChronicleService chronicleService;
     private final CampaignService campaignService;
+    private final HealthCounterService healthCounterService;
 
     /**
      * Переводит кампанию вперед на заданное количество дней,
@@ -47,6 +50,9 @@ public class CampaignTimelineService {
         chronicleService.create(campaign.getId(), chronicle);
 
         campaignService.updateCurrentDate(campaign.getId(), newDate);
+
+        // Раны заживают со временем (правила — в стратегии каждого счётчика здоровья)
+        healthCounterService.healOverTime(campaign.getId(), daysToSkip);
 
         // Реализовать периодические траты
     }

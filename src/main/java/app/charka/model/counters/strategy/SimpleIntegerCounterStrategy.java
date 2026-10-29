@@ -11,6 +11,11 @@ public class SimpleIntegerCounterStrategy extends AbstractCounterStrategy {
     }
 
     @Override
+    public String getDisplayName() {
+        return "Простой числовой";
+    }
+
+    @Override
     public String getNewValue(String currentValue, Object inputValue) {
         return String.valueOf((int) inputValue + Integer.parseInt(currentValue));
     }

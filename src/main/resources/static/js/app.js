@@ -24,6 +24,29 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Форма создания счётчика: доп. поля показываются только для выбранного типа.
+  // <select data-type-select> + блоки <div data-type-fields="ТИП">; поля скрытых блоков отключаются, чтобы не уходили на сервер
+  document.querySelectorAll('[data-type-select]').forEach(select => {
+    const form = select.closest('form');
+    const initialField = form.querySelector('[data-initial-field]');
+    const sync = () => {
+      form.querySelectorAll('[data-type-fields]').forEach(block => {
+        const active = block.dataset.typeFields === select.value;
+        block.hidden = !active;
+        block.querySelectorAll('input, select, textarea').forEach(el => { el.disabled = !active; });
+      });
+      // типам без начального значения (характеристики, броня) поле не нужно — прячем и шлём 0
+      if (initialField) {
+        const option = select.selectedOptions[0];
+        const hide = option && option.dataset.initial === 'false';
+        initialField.hidden = hide;
+        if (hide) initialField.querySelector('input').value = 0;
+      }
+    };
+    select.addEventListener('change', sync);
+    sync();
+  });
+
   // Закрытие уведомлений
   document.querySelectorAll('.alert-close').forEach(btn => {
     btn.addEventListener('click', () => btn.closest('.alert').remove());

@@ -2,9 +2,11 @@ package app.charka.model.counters.strategy;
 
 import org.springframework.stereotype.Component;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Component
@@ -23,5 +25,21 @@ public class CounterStrategyFactory {
             throw new NoSuchElementException("Strategy not found for type: " + counterType);
         }
         return strategy;
+    }
+
+    /**
+     * Мягкий поиск: для счётчиков с неизвестным (устаревшим) типом страница не должна падать.
+     */
+    public Optional<CounterStrategy> findStrategy(String counterType) {
+        return Optional.ofNullable(counterType).map(strategies::get);
+    }
+
+    /**
+     * Все зарегистрированные стратегии, отсортированные по названию — для формы создания.
+     */
+    public List<CounterStrategy> getAllStrategies() {
+        return strategies.values().stream()
+                .sorted(Comparator.comparing(CounterStrategy::getDisplayName))
+                .toList();
     }
 }

@@ -38,6 +38,8 @@
 }
 
 * { box-sizing: border-box; }
+/* .form, .field и т.п. задают display — без этого атрибут hidden на них не работает */
+[hidden] { display: none !important; }
 
 html, body { margin: 0; padding: 0; }
 
@@ -665,3 +667,130 @@ form.inline { display: inline-flex; margin: 0; }
 .counter-quick { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
 .counter-quick form, .counter-quick .btn { width: 100%; }
 .counter .form-row > input { flex: 1 1 60px; }
+
+/* ---------- Карточки CP2020: здоровье, характеристики, броня ----------
+   Спокойнее остальных: без свечения, Russo One только у главного числа,
+   цифры — Inter с моноширинными цифрами (в Russo One нет символов − ≤ →). */
+
+.counter-wide { grid-column: 1 / -1; }
+.field-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; }
+.hint.hint-left { text-align: left; margin: 0; }
+.alert-steps { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: var(--text-soft); }
+
+.cp-card {
+  --sev-light: #7cc492;
+  --sev-serious: #d8b25c;
+  --sev-critical: #dc8a5e;
+  --sev-mortal: #e07070;
+  gap: 12px;
+  background: var(--surface);
+  box-shadow: none;
+  font-variant-numeric: tabular-nums;
+}
+.cp-card:hover { transform: none; }
+.cp-card::before { height: 2px; background: var(--border-strong); }
+.cp-health.is-light::before { background: var(--sev-light); }
+.cp-health.is-serious::before { background: var(--sev-serious); }
+.cp-health.is-critical::before { background: var(--sev-critical); }
+.cp-health.is-mortal::before { background: var(--sev-mortal); }
+.cp-health.is-dead::before { background: var(--muted); }
+
+.cp-muted-line { font-size: 13px; color: var(--muted); }
+.cp-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; }
+
+/* Здоровье */
+.cp-health-main { display: flex; align-items: center; gap: 16px; }
+.cp-health-number { display: flex; align-items: baseline; gap: 4px; }
+.cp-health-big { font-family: var(--font-display); font-size: 40px; line-height: 1; color: var(--text); }
+.cp-health-max { font-size: 14px; color: var(--muted); }
+.cp-health-status { font-size: 16px; font-weight: 600; color: var(--text-soft); }
+.cp-health.is-light .cp-health-status { color: var(--sev-light); }
+.cp-health.is-serious .cp-health-status { color: var(--sev-serious); }
+.cp-health.is-critical .cp-health-status { color: var(--sev-critical); }
+.cp-health.is-mortal .cp-health-status, .cp-health.is-dead .cp-health-status { color: var(--sev-mortal); }
+
+.cp-track, .cp-track-legend { display: grid; gap: 6px; }
+.cp-track { grid-template-columns: repeat(10, minmax(0, 1fr)); }
+.cp-track-legend { grid-template-columns: 1fr 1fr 1fr 7fr; margin-top: 6px; }
+.cp-track-legend span {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cp-track-level { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; }
+.cp-box { height: 10px; border-radius: 2px; background: var(--surface-3); }
+.cp-track-level.light .cp-box.is-filled { background: var(--sev-light); }
+.cp-track-level.serious .cp-box.is-filled { background: var(--sev-serious); }
+.cp-track-level.critical .cp-box.is-filled { background: var(--sev-critical); }
+.cp-track-level.mortal .cp-box.is-filled { background: var(--sev-mortal); }
+
+.cp-callout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--text-soft);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.cp-callout.danger { border-color: rgba(224, 112, 112, 0.4); background: rgba(224, 112, 112, 0.08); }
+.cp-callout.warning { border-color: rgba(216, 178, 92, 0.4); background: rgba(216, 178, 92, 0.08); }
+.cp-callout-text { flex: 1 1 240px; }
+.cp-callout form { display: flex; gap: 6px; margin: 0; }
+.cp-callout input[type="number"] { width: 76px; padding: 6px 10px; }
+
+.cp-damage { display: flex; flex-direction: column; gap: 6px; margin: 0; }
+.cp-damage .form-row > input.cp-amount { flex: 0 1 90px; }
+.cp-damage .form-row > select { flex: 1 1 150px; }
+.cp-plain-check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); cursor: pointer; }
+.cp-plain-check input { accent-color: var(--accent); margin: 0; }
+
+details.cp-more { border-top: 1px solid var(--border); padding-top: 10px; }
+details.cp-more > summary { cursor: pointer; font-size: 13px; color: var(--muted); list-style: none; }
+details.cp-more > summary::-webkit-details-marker { display: none; }
+details.cp-more > summary::before { content: '+ '; }
+details.cp-more[open] > summary::before { content: '− '; }
+details.cp-more > summary:hover { color: var(--text-soft); }
+.cp-more-body { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.cp-more-body form { margin: 0; }
+
+/* Характеристики */
+.cp-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.cp-field-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.cp-stat, .cp-armor-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  min-width: 0;
+}
+.cp-stat-label { font-size: 11px; letter-spacing: .06em; color: var(--muted); }
+.cp-stat-value, .cp-armor-value { font-size: 22px; font-weight: 600; line-height: 1.2; color: var(--text); }
+.cp-stat-base { font-size: 11px; color: var(--muted); min-height: 1em; }
+
+.cp-derived { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 16px; margin: 0; font-size: 13px; }
+.cp-derived > div { display: flex; justify-content: space-between; gap: 8px; min-width: 0; }
+.cp-derived dt { color: var(--muted); }
+.cp-derived dd { margin: 0; color: var(--text-soft); white-space: nowrap; }
+.cp-derived .cp-derived-wide { grid-column: 1 / -1; }
+.cp-derived .is-reduced dd { color: var(--sev-critical); }
+.cp-stat.is-reduced .cp-stat-value { color: var(--sev-critical); }
+
+/* Броня */
+.cp-armor { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.cp-armor-label { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.cp-armor-max { font-size: 13px; font-weight: 400; color: var(--muted); }
+.cp-armor-cell.is-worn .cp-armor-value > span:first-child { color: var(--sev-serious); }
+
+@media (max-width: 600px) {
+  .cp-track { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .cp-track-legend { display: none; }
+}

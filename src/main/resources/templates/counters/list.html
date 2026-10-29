@@ -12,7 +12,7 @@
           th:text="${counters != null and !counters.empty and counters[0].characterName != null} ? ${counters[0].characterName} : 'Счётчики персонажа'">
         Счётчики персонажа
       </h1>
-      <p class="page-sub">ХП, опыт, патроны — всё, что нужно считать.</p>
+      <p class="page-sub">ХП, опыт, патроны — всё, что нужно считать. Для боя по CP2020 — счётчик «Здоровье».</p>
     </div>
     <div class="page-actions">
       <a th:href="@{/character/{characterId}(characterId=${characterId})}" class="btn btn-ghost">← К персонажу</a>
@@ -22,7 +22,12 @@
   <!-- Сообщения об успехе/ошибке -->
   <div th:if="${successMessage}" class="alert alert-success" role="alert">
     <span>✓</span>
-    <span class="alert-text" th:text="${successMessage}"></span>
+    <div class="alert-text">
+      <div th:text="${successMessage}"></div>
+      <ol th:if="${healthSteps != null and !healthSteps.empty}" class="alert-steps">
+        <li th:each="step : ${healthSteps}" th:text="${step}"></li>
+      </ol>
+    </div>
     <button type="button" class="alert-close" aria-label="Закрыть">×</button>
   </div>
   <div th:if="${errorMessage}" class="alert alert-error" role="alert">
@@ -47,11 +52,18 @@
           </div>
           <div class="field">
             <label for="counterType">Тип</label>
-            <select id="counterType" th:field="*{counterType}" required>
-              <option value="SIMPLE_INTEGER">Простой числовой</option>
+            <select id="counterType" th:field="*{counterType}" required data-type-select>
+              <option th:each="t : ${counterTypes}" th:value="${t.type}" th:text="${t.displayName}"
+                      th:attr="data-initial=${t.usesInitialValue}">Простой числовой</option>
             </select>
           </div>
-          <div class="field">
+          <!-- Доп. поля типа: показываются только для выбранного типа (см. data-type-fields в app.js) -->
+          <th:block th:each="t : ${counterTypes}" th:if="${t.createFieldsTemplate != null}">
+            <div class="form" th:attr="data-type-fields=${t.type}" hidden>
+              <th:block th:replace="~{__${t.createFieldsTemplate}__ :: create-fields}"></th:block>
+            </div>
+          </th:block>
+          <div class="field" data-initial-field>
             <label for="initialValue">Начальное значение</label>
             <input type="number" id="initialValue" name="initialValue"
                    th:value="${createRequest.initialValue != null} ? ${createRequest.initialValue} : 0" required>
@@ -64,49 +76,10 @@
     <!-- Список счётчиков -->
     <div>
       <div class="counter-grid" th:if="${counters != null and !counters.empty}">
-        <div th:each="counter : ${counters}" class="counter">
-          <div class="counter-head">
-            <div>
-              <div class="counter-name" th:text="${counter.name}">Счётчик</div>
-              <div class="counter-meta">
-                <span th:text="'#' + ${counter.id}">#1</span>
-                <span th:if="${counter.counterType != null}" th:text="'· ' + ${counter.counterType}">· SIMPLE_INTEGER</span>
-              </div>
-            </div>
-            <form th:action="@{/character/{characterId}/counters/{counterId}(characterId=${characterId}, counterId=${counter.id})}"
-                  th:method="delete" class="inline" data-confirm="Удалить счётчик?">
-              <button type="submit" class="icon-btn danger" title="Удалить счётчик">✕</button>
-            </form>
-          </div>
-
-          <div class="counter-value" th:text="${counter.value}">0</div>
-
-          <div class="counter-quick">
-            <form th:action="@{/character/{characterId}/counters/{counterId}/update(characterId=${characterId}, counterId=${counter.id})}" method="post">
-              <input type="hidden" name="value" value="-1">
-              <button type="submit" class="btn btn-danger" aria-label="Уменьшить на 1">−1</button>
-            </form>
-            <form th:action="@{/character/{characterId}/counters/{counterId}/reset(characterId=${characterId}, counterId=${counter.id})}"
-                  method="post" data-confirm="Сбросить счётчик?">
-              <button type="submit" class="btn btn-warning" aria-label="Сбросить">↺</button>
-            </form>
-            <form th:action="@{/character/{characterId}/counters/{counterId}/update(characterId=${characterId}, counterId=${counter.id})}" method="post">
-              <input type="hidden" name="value" value="1">
-              <button type="submit" class="btn btn-success" aria-label="Увеличить на 1">+1</button>
-            </form>
-          </div>
-
-          <form th:action="@{/character/{characterId}/counters/{counterId}/update(characterId=${characterId}, counterId=${counter.id})}"
-                method="post" class="form-row">
-            <input type="number" name="value" placeholder="± изменить на" required aria-label="Изменить счётчик на">
-            <button type="submit" class="btn btn-sm">Применить</button>
-          </form>
-          <form th:action="@{/character/{characterId}/counters/{counterId}/set(characterId=${characterId}, counterId=${counter.id})}"
-                method="post" class="form-row">
-            <input type="number" name="setValue" placeholder="= установить" required aria-label="Новое значение">
-            <button type="submit" class="btn btn-sm">Установить</button>
-          </form>
-        </div>
+        <!-- Каждый тип счётчика рисует себя сам: стратегия называет шаблон с фрагментом card -->
+        <th:block th:each="counter : ${counters}">
+          <div th:replace="~{__${counter.viewTemplate}__ :: card}"></div>
+        </th:block>
       </div>
 
       <div th:if="${counters == null or counters.empty}" class="card">

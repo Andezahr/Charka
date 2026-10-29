@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<!-- Карточка обычного числового счётчика. Ожидает в контексте counter и characterId -->
+<body>
+<div th:fragment="card" class="counter">
+  <div class="counter-head">
+    <div>
+      <div class="counter-name" th:text="${counter.name}">Счётчик</div>
+      <div class="counter-meta">
+        <span th:text="'#' + ${counter.id}">#1</span>
+        <span th:if="${counter.counterType != null}" th:text="'· ' + ${counter.counterType}">· SIMPLE_INTEGER</span>
+      </div>
+    </div>
+    <form th:action="@{/character/{characterId}/counters/{counterId}(characterId=${characterId}, counterId=${counter.id})}"
+          th:method="delete" class="inline" data-confirm="Удалить счётчик?">
+      <button type="submit" class="icon-btn danger" title="Удалить счётчик">✕</button>
+    </form>
+  </div>
+
+  <div class="counter-value" th:text="${counter.value}">0</div>
+
+  <div class="counter-quick">
+    <form th:action="@{/character/{characterId}/counters/{counterId}/update(characterId=${characterId}, counterId=${counter.id})}" method="post">
+      <input type="hidden" name="value" value="-1">
+      <button type="submit" class="btn btn-danger" aria-label="Уменьшить на 1">−1</button>
+    </form>
+    <form th:action="@{/character/{characterId}/counters/{counterId}/reset(characterId=${characterId}, counterId=${counter.id})}"
+          method="post" data-confirm="Сбросить счётчик?">
+      <button type="submit" class="btn btn-warning" aria-label="Сбросить">↺</button>
+    </form>
+    <form th:action="@{/character/{characterId}/counters/{counterId}/update(characterId=${characterId}, counterId=${counter.id})}" method="post">
+      <input type="hidden" name="value" value="1">
+      <button type="submit" class="btn btn-success" aria-label="Увеличить на 1">+1</button>
+    </form>
+  </div>
+
+  <form th:action="@{/character/{characterId}/counters/{counterId}/update(characterId=${characterId}, counterId=${counter.id})}"
+        method="post" class="form-row">
+    <input type="number" name="value" placeholder="± изменить на" required aria-label="Изменить счётчик на">
+    <button type="submit" class="btn btn-sm">Применить</button>
+  </form>
+  <form th:action="@{/character/{characterId}/counters/{counterId}/set(characterId=${characterId}, counterId=${counter.id})}"
+        method="post" class="form-row">
+    <input type="number" name="setValue" placeholder="= установить" required aria-label="Новое значение">
+    <button type="submit" class="btn btn-sm">Установить</button>
+  </form>
+</div>
+</body>
+</html>

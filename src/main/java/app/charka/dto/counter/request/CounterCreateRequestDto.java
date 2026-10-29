@@ -4,6 +4,9 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
+import java.util.HashMap;
+import java.util.Map;
+
 
 
 @Data
@@ -19,4 +22,7 @@ public class CounterCreateRequestDto {
     private Integer initialValue;
 
     private Long characterId;
+
+    /** Дополнительные поля, которые показывает форма выбранного типа (attributes[body] и т.п.) */
+    private Map<String, Integer> attributes = new HashMap<>();
 }
