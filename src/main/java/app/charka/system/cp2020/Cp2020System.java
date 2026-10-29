@@ -45,6 +45,11 @@ public class Cp2020System implements GameSystem {
         return List.of(Cp2020StatsStrategy.TYPE, Cp2020ArmorStrategy.TYPE, Cp2020HealthStrategy.TYPE);
     }
 
+    @Override
+    public List<String> getQuickDice() {
+        return List.of("d10", "d6", "2d6", "3d6");
+    }
+
     /**
      * Естественное лечение: 1 очко в день (правила — в {@link Cp2020HealthStrategy#healOverTime}).
      */

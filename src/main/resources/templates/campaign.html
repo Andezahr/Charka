@@ -53,42 +53,47 @@
       </div>
     </section>
 
-    <!-- Время и хроника -->
-    <section class="card">
-      <div class="card-head">
-        <h2 class="card-title"><span class="dot pink"></span>Хроника</h2>
-        <span class="badge" th:text="${#lists.size(campaign.chronicles)}">0</span>
-      </div>
-      <div class="card-body">
-        <div class="date-hero">
-          <span class="label">Текущая дата</span>
-          <div class="date" th:text="${currentDate}">2037-01-01</div>
+    <div class="stack">
+      <!-- Время и хроника -->
+      <section class="card">
+        <div class="card-head">
+          <h2 class="card-title"><span class="dot pink"></span>Хроника</h2>
+          <span class="badge" th:text="${#lists.size(campaign.chronicles)}">0</span>
         </div>
-      </div>
-      <div class="card-body">
-        <form th:action="@{'/campaign/' + ${campaign.id} + '/chronicles'}" method="post" class="form">
-          <div class="field">
-            <label for="chronicle-name">Время летит…</label>
-            <input id="chronicle-name" type="text" name="name" placeholder="Что произошло за это время" required autocomplete="off">
+        <div class="card-body">
+          <div class="date-hero">
+            <span class="label">Текущая дата</span>
+            <div class="date" th:text="${currentDate}">2037-01-01</div>
           </div>
-          <div class="form-row">
-            <input type="number" name="duration" placeholder="Дней" required min="1" aria-label="Длительность (дней)">
-            <button type="submit" class="btn btn-pink">⏩ Промотать</button>
-          </div>
-        </form>
-      </div>
-      <div class="card-body">
-        <div class="timeline" th:unless="${#lists.isEmpty(campaign.chronicles)}">
-          <div th:each="chronicle : ${campaign.chronicles}" class="timeline-item">
-            <div class="timeline-title" th:text="${chronicle.name}">Название</div>
-            <div class="timeline-dates">
-              <span th:text="${chronicle.startDate}">начало</span> — <span th:text="${chronicle.endDate}">конец</span>
+        </div>
+        <div class="card-body">
+          <form th:action="@{'/campaign/' + ${campaign.id} + '/chronicles'}" method="post" class="form">
+            <div class="field">
+              <label for="chronicle-name">Время летит…</label>
+              <input id="chronicle-name" type="text" name="name" placeholder="Что произошло за это время" required autocomplete="off">
+            </div>
+            <div class="form-row">
+              <input type="number" name="duration" placeholder="Дней" required min="1" aria-label="Длительность (дней)">
+              <button type="submit" class="btn btn-pink">⏩ Промотать</button>
+            </div>
+          </form>
+        </div>
+        <div class="card-body">
+          <div class="timeline" th:unless="${#lists.isEmpty(campaign.chronicles)}">
+            <div th:each="chronicle : ${campaign.chronicles}" class="timeline-item">
+              <div class="timeline-title" th:text="${chronicle.name}">Название</div>
+              <div class="timeline-dates">
+                <span th:text="${chronicle.startDate}">начало</span> — <span th:text="${chronicle.endDate}">конец</span>
+              </div>
             </div>
           </div>
+          <div th:if="${#lists.isEmpty(campaign.chronicles)}" class="empty">Хроника пуста</div>
         </div>
-        <div th:if="${#lists.isEmpty(campaign.chronicles)}" class="empty">Хроника пуста</div>
-      </div>
-    </section>
+      </section>
+
+      <!-- Кубики мастера и последние броски кампании -->
+      <section th:replace="~{fragments/dice :: card('/campaign/' + ${campaign.id} + '/roll', true)}"></section>
+    </div>
   </div>
 </main>
 </body>

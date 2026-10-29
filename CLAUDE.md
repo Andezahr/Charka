@@ -27,7 +27,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 195 тестов, на 2026-10-30 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 244 теста, на 2026-10-30 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -43,6 +43,7 @@ repository/    Spring Data репозитории (по одному на сущ
 service/       бизнес-логика; campaign/, counter/, notes/ — подпакеты
 controller/    MVC-контроллеры, возвращают имена шаблонов или redirect
 api/           REST: CampaignExportController (единственный JSON-эндпоинт)
+dice/         DiceExpression (разбор NdM±K), DiceResult, DiceService (броски + лог RollLog)
 system/        GameSystem, GameSystemRegistry, GenericSystem ("GENERIC"), Currency; cp2020/Cp2020System ("CP2020")
 dto/counter/   DTO только для счётчиков (единственный модуль, переведённый на DTO)
 exception/     NotFoundException.forId("Entity", id) (NoSuchElementException → 404), наследники CharacterNotFoundException, InventoryNotFoundException;
@@ -50,13 +51,14 @@ exception/     NotFoundException.forId("Entity", id) (NoSuchElementException →
 TODO.txt       список планов автора (см. ниже)
 ```
 
-Шаблоны: `src/main/resources/templates/` — `error.html`, `home.html`, `campaign.html`, `character.html`, `notes.html`, `counters/list.html`; общие куски — `fragments/layout.html` (`head(title)`, `topbar(characterId, active)` с вкладками Лист/Счётчики/Заметки).
+Шаблоны: `src/main/resources/templates/` — `error.html`, `home.html`, `campaign.html`, `character.html`, `notes.html`, `counters/list.html`; общие куски — `fragments/layout.html` (`head(title)`, `topbar(characterId, active)` с вкладками Лист/Счётчики/Заметки), `fragments/dice.html` (`card(action, showAuthor)` — карточка «Кубики»).
 Фронт единый: один CSS `static/css/app.css` (тёмная тема, токены в `:root`, шрифты Inter + Russo One с Google Fonts) и один JS `static/js/app.js` — без Bootstrap. JS-соглашения: `[data-edit-toggle]` открывает `.edit-panel` внутри ближайшего `[data-editable]`; `form[data-confirm]` спрашивает подтверждение; `[data-count-to]` — счётчик символов; `.alert-close` закрывает flash-сообщение.
 
 ## Доменная модель
 
 ```
 Campaign (name, system, startDate, currentDate)   — system: код GameSystem (колонка game_system)
+ ├─ RollLog* (character?, expression, details, total, label, gameDate, createdAt) — без коллекции в Campaign, не экспортируется
  ├─ Chronicle* (name, startDate, endDate)     — запись о прошедшем периоде
  └─ Character* (name, birthDate)
      ├─ Wound*     (name, severity, date)
@@ -97,7 +99,8 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 | POST | `/campaign/{id}/characters` | добавить персонажа (инвентарь «Backpack» + счётчики по умолчанию системы) |
 | POST | `/campaign/{id}/chronicles` | `name`, `duration` → промотать время |
 | GET | `/api/campaigns/{id}/download` | экспорт кампании в JSON-файл |
-| GET | `/character/{id}` | лист персонажа (раны, инвентари, деньги) |
+| POST | `/campaign/{id}/roll`, `/character/{id}/roll` | `expression` или `quick`, `label?` → бросок в лог, результат во flash |
+| GET | `/character/{id}` | лист персонажа (раны, инвентари, деньги, кубики) |
 | POST | `/character/{id}/wounds`, `.../wounds/{wid}/delete` | раны |
 | POST | `/character/{id}/inventories`, `.../{invId}/edit`, `.../{invId}/delete` | инвентари |
 | POST | `/character/{id}/inventories/{invId}/items` (+ `/{itemId}/edit|delete|move`) | предметы |
@@ -141,7 +144,7 @@ Default-методы стратегии: `getSystems()` (пусто = униве
    - **Отложенный счётчик** — события копятся и применяются позже.
    - **Мана / ячейки заклинаний** (D&D), **вдохновение**, **броня** (CP2020 SP/абляция).
 2. Периодические траты (привязать к `proceedDate`).
-3. Броски кубиков с сохранением истории.
+3. ~~Броски кубиков с сохранением истории.~~ (D-01..D-03)
 4. Возможно — чат кампании.
 
 Сделано из TODO: заметки, хроники, раны как отдельная сущность, смена даты, окно трат, базовые счётчики.

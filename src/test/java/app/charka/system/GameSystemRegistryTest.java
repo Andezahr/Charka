@@ -61,5 +61,7 @@ class GameSystemRegistryTest {
         assertThat(registry.get("CP2020").getDefaultCounterTypes())
                 .containsExactly("CP2020_STATS", "CP2020_ARMOR", "CP2020_HEALTH");
         assertThat(registry.get("GENERIC").getDefaultCounterTypes()).isEmpty();
+        assertThat(registry.get("CP2020").getQuickDice()).containsExactly("d10", "d6", "2d6", "3d6");
+        assertThat(registry.get("GENERIC").getQuickDice()).contains("d20", "d100");
     }
 }

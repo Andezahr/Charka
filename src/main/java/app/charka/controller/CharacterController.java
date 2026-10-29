@@ -1,9 +1,11 @@
 package app.charka.controller;
 
+import app.charka.dice.DiceService;
 import app.charka.model.Character;
 import app.charka.model.Money;
 import app.charka.service.CharacterService;
 import app.charka.service.MoneyService;
+import app.charka.system.GameSystem;
 import app.charka.system.GameSystemRegistry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -22,6 +24,7 @@ public class CharacterController {
     private final CharacterService characterService;
     private final MoneyService moneyService;
     private final GameSystemRegistry systemRegistry;
+    private final DiceService diceService;
 
     @GetMapping
     public String characterPage(@PathVariable Long id, Model model) {
@@ -34,7 +37,10 @@ public class CharacterController {
         model.addAttribute("character", character);
         model.addAttribute("moneyList", moneyList);
         model.addAttribute("moneySum", moneySum);
-        model.addAttribute("currency", systemRegistry.forCharacter(character).getCurrency());
+        GameSystem system = systemRegistry.forCharacter(character);
+        model.addAttribute("currency", system.getCurrency());
+        model.addAttribute("quickDice", system.getQuickDice());
+        model.addAttribute("recentRolls", diceService.recentForCharacter(id, 5));
 
         return "character";
     }

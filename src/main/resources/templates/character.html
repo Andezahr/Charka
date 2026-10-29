@@ -139,7 +139,7 @@
                     <div class="row-title" th:text="${item.name}">Предмет</div>
                     <div class="row-meta">
                       <span>× <span th:text="${item.quantity}">1</span></span>
-                      <span>₽ <span th:text="${item.cost}">0</span></span>
+                      <span th:text="${item.cost} + ' ' + ${currency.symbol}" th:title="${currency.name}">0</span>
                     </div>
                     <div class="row-desc" th:if="${!#strings.isEmpty(item.description)}" th:text="${item.description}">Описание</div>
                   </div>
@@ -179,47 +179,52 @@
       </section>
     </div>
 
-    <!-- ДЕНЬГИ -->
-    <section class="card">
-      <div class="card-head">
-        <h2 class="card-title"><span class="dot green"></span>Деньги</h2>
-        <span class="amount" th:classappend="${moneySum < 0} ? 'neg' : 'pos'"
-              th:text="${moneySum} + ' ' + ${currency.symbol}" th:title="${currency.name}">0</span>
-      </div>
-      <div class="card-body">
-        <form th:action="@{'/character/' + ${character.id} + '/money'}" method="post" class="form-row">
-          <input type="text" name="name" class="grow" placeholder="Описание" required autocomplete="off">
-          <input type="number" name="amount" class="narrow" th:placeholder="'±Сумма, ' + ${currency.symbol}" required autocomplete="off">
-          <button type="submit" class="btn btn-primary">＋</button>
-        </form>
-      </div>
-      <div class="card-body list">
-        <div th:each="money : ${moneyList}" class="row" data-editable>
-          <div class="row-main">
-            <div class="row-title" th:text="${money.name}">Операция</div>
-            <div class="row-meta"><span th:text="${money.operationDate}">дата</span></div>
-          </div>
-          <span class="amount" th:classappend="${money.amount < 0} ? 'neg' : 'pos'"
-                th:text="(${money.amount > 0} ? '+' + ${money.amount} : ${money.amount}) + ' ' + ${currency.symbol}">0</span>
-          <div class="row-actions">
-            <button type="button" class="icon-btn" data-edit-toggle title="Редактировать">✎</button>
-            <form th:action="@{'/character/' + ${character.id} + '/money/' + ${money.id} + '/delete'}"
-                  method="post" class="inline">
-              <button type="submit" class="icon-btn danger" title="Удалить">✕</button>
-            </form>
-          </div>
-          <form th:action="@{'/character/' + ${character.id} + '/money/' + ${money.id} + '/edit'}"
-                method="post" class="edit-panel">
-            <div class="form-row">
-              <input type="text" name="name" class="grow" th:value="${money.name}" required placeholder="Описание">
-              <input type="number" name="amount" class="narrow" th:value="${money.amount}" required placeholder="Сумма">
-              <button type="submit" class="btn btn-sm btn-primary">Сохранить</button>
-            </div>
+    <div class="stack">
+      <!-- КУБИКИ -->
+      <section th:replace="~{fragments/dice :: card('/character/' + ${character.id} + '/roll', false)}"></section>
+
+      <!-- ДЕНЬГИ -->
+      <section class="card">
+        <div class="card-head">
+          <h2 class="card-title"><span class="dot green"></span>Деньги</h2>
+          <span class="amount" th:classappend="${moneySum < 0} ? 'neg' : 'pos'"
+                th:text="${moneySum} + ' ' + ${currency.symbol}" th:title="${currency.name}">0</span>
+        </div>
+        <div class="card-body">
+          <form th:action="@{'/character/' + ${character.id} + '/money'}" method="post" class="form-row">
+            <input type="text" name="name" class="grow" placeholder="Описание" required autocomplete="off">
+            <input type="number" name="amount" class="narrow" th:placeholder="'±Сумма, ' + ${currency.symbol}" required autocomplete="off">
+            <button type="submit" class="btn btn-primary">＋</button>
           </form>
         </div>
-        <div th:if="${#lists.isEmpty(moneyList)}" class="empty">Нет операций</div>
-      </div>
-    </section>
+        <div class="card-body list">
+          <div th:each="money : ${moneyList}" class="row" data-editable>
+            <div class="row-main">
+              <div class="row-title" th:text="${money.name}">Операция</div>
+              <div class="row-meta"><span th:text="${money.operationDate}">дата</span></div>
+            </div>
+            <span class="amount" th:classappend="${money.amount < 0} ? 'neg' : 'pos'"
+                  th:text="(${money.amount > 0} ? '+' + ${money.amount} : ${money.amount}) + ' ' + ${currency.symbol}">0</span>
+            <div class="row-actions">
+              <button type="button" class="icon-btn" data-edit-toggle title="Редактировать">✎</button>
+              <form th:action="@{'/character/' + ${character.id} + '/money/' + ${money.id} + '/delete'}"
+                    method="post" class="inline">
+                <button type="submit" class="icon-btn danger" title="Удалить">✕</button>
+              </form>
+            </div>
+            <form th:action="@{'/character/' + ${character.id} + '/money/' + ${money.id} + '/edit'}"
+                  method="post" class="edit-panel">
+              <div class="form-row">
+                <input type="text" name="name" class="grow" th:value="${money.name}" required placeholder="Описание">
+                <input type="number" name="amount" class="narrow" th:value="${money.amount}" required placeholder="Сумма">
+                <button type="submit" class="btn btn-sm btn-primary">Сохранить</button>
+              </div>
+            </form>
+          </div>
+          <div th:if="${#lists.isEmpty(moneyList)}" class="empty">Нет операций</div>
+        </div>
+      </section>
+    </div>
   </div>
 </main>
 </body>

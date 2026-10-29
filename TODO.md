@@ -95,7 +95,7 @@ app.charka
 | Деньги | ✅ | дата операции игровая, валюта системы |
 | Кампания, время, хроника, заметки, простые счётчики | ✅ | — |
 | `Wound` (отдельные раны) | 🟡 | дублирует счётчик здоровья CP2020 |
-| Кубики | 🟡 | `DiceRoller` только внутри спасбросков |
+| Кубики | ✅ | `DiceService` + лог бросков, UI на листе и в кампании (D-01..D-03) |
 | Система у кампании | ✅ | `Campaign.system`, `GameSystemRegistry`, счётчики фильтруются (S-01..S-06) |
 | Хранилище | ✅ | PostgreSQL 17 в Docker + Flyway (F-01/F-02) |
 
@@ -163,14 +163,17 @@ app.charka
 
 ### Этап 2 — Кубики и проверки
 
-- [ ] **D-01 [CORE] `DiceService` и выражения.**
+- [x] **D-01 [CORE] `DiceService` и выражения.**
   Разбор `NdM`, `NdM+K`, `NdM-K`, `dM` (регистр не важен, пробелы игнорируются); результат = отдельные кубики + сумма.
   Использует `DiceRoller` (подменяемый в тестах). Ошибка на мусорный ввод.
   *Готово, когда:* параметризованные тесты на разбор и сумму.
-- [ ] **D-02 [CORE] Лог бросков.** Сущность `RollLog` (campaign, character nullable, expression, details, total, label, createdAt).
+  ✅ 2026-10-30 — пакет `app.charka.dice`: `DiceExpression.parse` (`NdM`, `NdM±K`, `dM`, также русская «к»; пределы 1..100 кубиков, 2..1000 граней, |K| ≤ 10000), `DiceResult` (кубики, сумма, `details()`), `DiceService.roll` через `DiceRoller`. `DiceExpressionTest` (параметризованные), `DiceServiceTest`.
+- [x] **D-02 [CORE] Лог бросков.** Сущность `RollLog` (campaign, character nullable, expression, details, total, label, createdAt).
   Все броски через `DiceService` пишутся в лог. Страница/блок «Последние броски» на странице кампании.
-- [ ] **D-03 [CORE] UI броска на листе персонажа.** Поле выражения + быстрые кнопки, результат во flash.
+  ✅ 2026-10-30 — `RollLog` (+ `gameDate` — игровая дата броска), миграция `V3__roll_log.sql` (FK: кампания ON DELETE CASCADE, персонаж ON DELETE SET NULL; коллекций в Campaign/Character нет — лог не попадает в JSON-экспорт). `DiceService.rollForCharacter/rollForCampaign` пишут в лог; на странице кампании — карточка «Кубики» (бросок мастера + 20 последних бросков с автором).
+- [x] **D-03 [CORE] UI броска на листе персонажа.** Поле выражения + быстрые кнопки, результат во flash.
   Кнопки берутся из системы (`GameSystem.getQuickDice()`: CP2020 — d10, d6, 2d6, 3d6; GENERIC — d4..d20, d100).
+  ✅ 2026-10-30 — `GameSystem.getQuickDice()` (CP2020: d10, d6, 2d6, 3d6; по умолчанию d4..d20, d100), общий фрагмент `fragments/dice.html :: card(action, showAuthor)`, `DiceController` (POST `/character/{id}/roll`, `/campaign/{id}/roll`; flash `rollResult`/`rollLabel`/`rollError`). На листе — 5 последних бросков персонажа. Проверено в браузере.
 - [ ] **D-04 [CP2020] Правила кубика CP2020.**
   `Cp2020Dice.rollCheck()`: 1d10; **10** — бросить ещё и прибавить (повторяется); **1** — критический провал (флаг фамбла).
   Пошаговый вывод: «10 → +7 = 17».

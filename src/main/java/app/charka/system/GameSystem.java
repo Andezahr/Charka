@@ -30,6 +30,13 @@ public interface GameSystem {
     }
 
     /**
+     * Выражения для быстрых кнопок броска ({@code DiceExpression}).
+     */
+    default List<String> getQuickDice() {
+        return List.of("d4", "d6", "d8", "d10", "d12", "d20", "d100");
+    }
+
+    /**
      * Вызывается после промотки времени кампании (лечение, траты по правилам системы).
      */
     default void onTimePassed(Campaign campaign, int days) {

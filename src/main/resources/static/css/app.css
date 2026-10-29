@@ -794,3 +794,15 @@ details.cp-more > summary:hover { color: var(--text-soft); }
   .cp-track { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   .cp-track-legend { display: none; }
 }
+
+/* ── Кубики (fragments/dice.html) ─────────────────────────────── */
+.dice-quick { display: flex; flex-wrap: wrap; gap: 6px; }
+.dice-result {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 14px; margin-bottom: 12px;
+  border: 1px solid var(--border); border-radius: 12px; background: var(--surface-3);
+}
+.dice-total { font-family: var(--font-display); font-size: 36px; line-height: 1; color: var(--accent); min-width: 48px; text-align: center; }
+.dice-detail { min-width: 0; }
+.dice-detail .row-meta { overflow-wrap: anywhere; }
+.roll-row .row-meta { overflow-wrap: anywhere; }

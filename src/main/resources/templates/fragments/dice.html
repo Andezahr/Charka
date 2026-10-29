@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<!-- Карточка «Кубики»: поле выражения, быстрые кнопки системы, результат из flash и последние броски.
+     Модель: quickDice, recentRolls; flash: rollResult, rollLabel, rollError. showAuthor — показывать, кто бросал. -->
+<body>
+
+<section th:fragment="card(action, showAuthor)" class="card" id="dice">
+  <div class="card-head">
+    <h2 class="card-title"><span class="dot"></span>Кубики</h2>
+  </div>
+
+  <div class="card-body">
+    <div th:if="${rollResult != null}" class="dice-result" role="status">
+      <div class="dice-total" th:text="${rollResult.total}">11</div>
+      <div class="dice-detail">
+        <div class="row-title">
+          <span th:if="${rollLabel != null}" th:text="${rollLabel} + ' · '">Атака · </span>
+          <span th:text="${rollResult.expression}">2d6+3</span>
+        </div>
+        <div class="row-meta" th:text="${rollResult.details()}">[3, 5] + 3 = 11</div>
+      </div>
+    </div>
+    <div th:if="${rollError != null}" class="alert alert-error" role="alert">
+      <span class="alert-text" th:text="${rollError}">Ошибка</span>
+      <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+    </div>
+
+    <form th:action="@{${action}}" method="post" class="form">
+      <div class="form-row">
+        <input type="text" name="expression" class="grow" placeholder="2d6+3" required autocomplete="off"
+               aria-label="Выражение броска" maxlength="64">
+        <input type="text" name="label" class="narrow" placeholder="Подпись" autocomplete="off"
+               aria-label="Подпись броска" maxlength="255">
+        <button type="submit" class="btn btn-primary">🎲 Бросить</button>
+      </div>
+      <div class="dice-quick">
+        <button th:each="d : ${quickDice}" type="submit" name="quick" th:value="${d}" formnovalidate
+                class="btn btn-sm" th:text="${d}">d10</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card-body list" th:unless="${#lists.isEmpty(recentRolls)}">
+    <div th:each="r : ${recentRolls}" class="row roll-row">
+      <div class="row-main">
+        <div class="row-title">
+          <span th:if="${showAuthor}" th:text="${r.character != null ? r.character.name : 'Мастер'}">Колясик</span>
+          <span th:if="${showAuthor and r.label != null}"> · </span>
+          <span th:if="${r.label != null}" th:text="${r.label}">Атака</span>
+          <span th:if="${!showAuthor and r.label == null}">Бросок</span>
+        </div>
+        <div class="row-meta">
+          <span th:text="${r.expression} + ': ' + ${r.details}">2d6: [3, 5] = 8</span>
+          <span th:if="${r.gameDate != null}" th:text="'· ' + ${r.gameDate}">· 2037-10-27</span>
+        </div>
+      </div>
+      <span class="amount" th:text="${r.total}">8</span>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>
