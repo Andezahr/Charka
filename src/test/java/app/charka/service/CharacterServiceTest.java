@@ -5,6 +5,10 @@ import app.charka.model.Character;
 import app.charka.model.Inventory;
 import app.charka.repository.CharacterRepository;
 import app.charka.service.campaign.CampaignService;
+import app.charka.service.counter.CounterService;
+import app.charka.system.GameSystemRegistry;
+import app.charka.system.GenericSystem;
+import app.charka.system.cp2020.Cp2020System;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -14,6 +18,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
@@ -35,6 +40,9 @@ class CharacterServiceTest {
     @Mock private CharacterRepository characterRepository;
     @Mock private CampaignService   campaignService;
     @Mock private InventoryService  inventoryService;
+    @Mock private CounterService    counterService;
+    @Spy  private GameSystemRegistry systemRegistry =
+            new GameSystemRegistry(List.of(new GenericSystem(), new Cp2020System(null)));
     @InjectMocks private CharacterService characterService;
 
     /* ──────────────────── Creating character in campaign ─────────────────── */
@@ -102,6 +110,36 @@ class CharacterServiceTest {
 
             verify(inventoryService).create(eq(testCharacter.getId()), captor.capture());
             assertThat(captor.getValue().getName()).isEqualTo("Backpack");
+        }
+
+        @Test
+        @DisplayName("should create default counters of the campaign system")
+        void shouldCreateDefaultCounters_OfCampaignSystem() {
+            Long campaignId = 1L;
+            testCampaign.setSystem(Cp2020System.CODE);
+            Character savedCharacter = createTestCharacter(1L, "Колясик", testCampaign);
+
+            when(campaignService.getById(campaignId)).thenReturn(testCampaign);
+            when(characterRepository.save(any(Character.class))).thenReturn(savedCharacter);
+
+            characterService.createInCampaign(campaignId, testCharacter);
+
+            verify(counterService).createDefaults(1L,
+                    List.of("CP2020_STATS", "CP2020_ARMOR", "CP2020_HEALTH"));
+        }
+
+        @Test
+        @DisplayName("should create no counters in a generic campaign")
+        void shouldCreateNoCounters_InGenericCampaign() {
+            Long campaignId = 1L;
+            Character savedCharacter = createTestCharacter(1L, "Гэндальф", testCampaign);
+
+            when(campaignService.getById(campaignId)).thenReturn(testCampaign);
+            when(characterRepository.save(any(Character.class))).thenReturn(savedCharacter);
+
+            characterService.createInCampaign(campaignId, testCharacter);
+
+            verify(counterService).createDefaults(1L, List.of());
         }
 
         @Test

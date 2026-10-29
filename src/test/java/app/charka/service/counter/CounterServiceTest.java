@@ -2,6 +2,8 @@ package app.charka.service.counter;
 
 import app.charka.dto.counter.request.CounterCreateRequestDto;
 import app.charka.dto.counter.response.CounterResponseDto;
+import app.charka.dto.counter.response.CounterTypeDto;
+import app.charka.model.Campaign;
 import app.charka.model.Character;
 import app.charka.model.counters.Counter;
 import app.charka.model.counters.strategy.CounterStrategyFactory;
@@ -12,6 +14,7 @@ import app.charka.model.counters.strategy.health.cp2020.Cp2020HealthStrategy;
 import app.charka.model.counters.strategy.health.cp2020.Cp2020StatsStrategy;
 import app.charka.repository.CharacterRepository;
 import app.charka.repository.CounterRepository;
+import app.charka.system.cp2020.Cp2020System;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -49,9 +52,12 @@ class CounterServiceTest {
                 new SimpleIntegerCounterStrategy(), new Cp2020StatsStrategy(), armor,
                 new Cp2020HealthStrategy(new RandomDiceRoller(), armor)));
         counterService = new CounterService(counterRepository, characterRepository, factory);
+        Campaign campaign = new Campaign();
+        campaign.setSystem(Cp2020System.CODE);
         character = new Character();
         character.setId(1L);
         character.setName("Колясик");
+        character.setCampaign(campaign);
     }
 
     private Counter existing(long id, String type) {
@@ -132,6 +138,80 @@ class CounterServiceTest {
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("уже есть");
             verify(counterRepository, never()).save(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("Game system")
+    class SystemTests {
+
+        @Test
+        @DisplayName("generic campaign offers only universal counter types")
+        void genericTypes() {
+            character.getCampaign().setSystem("GENERIC");
+            when(characterRepository.findById(1L)).thenReturn(Optional.of(character));
+
+            assertThat(counterService.getCounterTypes(1L)).extracting(CounterTypeDto::type)
+                    .containsExactly("SIMPLE_INTEGER");
+        }
+
+        @Test
+        @DisplayName("character without campaign is generic")
+        void noCampaignIsGeneric() {
+            character.setCampaign(null);
+            when(characterRepository.findById(1L)).thenReturn(Optional.of(character));
+
+            assertThat(counterService.getCounterTypes(1L)).extracting(CounterTypeDto::type)
+                    .containsExactly("SIMPLE_INTEGER");
+        }
+
+        @Test
+        @DisplayName("CP2020 campaign offers CP2020 and universal types")
+        void cp2020Types() {
+            when(characterRepository.findById(1L)).thenReturn(Optional.of(character));
+
+            assertThat(counterService.getCounterTypes(1L)).extracting(CounterTypeDto::type)
+                    .containsExactlyInAnyOrder("SIMPLE_INTEGER", Cp2020StatsStrategy.TYPE,
+                            Cp2020ArmorStrategy.TYPE, Cp2020HealthStrategy.TYPE);
+        }
+
+        @Test
+        @DisplayName("CP2020 counter is rejected in a generic campaign")
+        void rejectsForeignType() {
+            character.getCampaign().setSystem("GENERIC");
+            when(characterRepository.findById(1L)).thenReturn(Optional.of(character));
+
+            assertThatThrownBy(() -> counterService.createCounter(request(Cp2020HealthStrategy.TYPE, Map.of())))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("недоступен");
+            verify(counterRepository, never()).save(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("Default counters")
+    class DefaultsTests {
+
+        @Test
+        @DisplayName("creates each missing type once, skipping ones created as required")
+        void createsDefaults() {
+            List<Counter> stored = new ArrayList<>();
+            when(characterRepository.findById(1L)).thenReturn(Optional.of(character));
+            when(counterRepository.findByCharacterId(1L)).thenAnswer(inv -> new ArrayList<>(stored));
+            AtomicLong ids = new AtomicLong(100);
+            when(counterRepository.save(any(Counter.class))).thenAnswer(inv -> {
+                Counter c = inv.getArgument(0);
+                c.setId(ids.incrementAndGet());
+                stored.add(c);
+                return c;
+            });
+
+            List<String> created = counterService.createDefaults(1L, List.of(
+                    Cp2020HealthStrategy.TYPE, Cp2020StatsStrategy.TYPE, Cp2020ArmorStrategy.TYPE));
+
+            assertThat(stored).extracting(Counter::getType).containsExactly(
+                    Cp2020StatsStrategy.TYPE, Cp2020ArmorStrategy.TYPE, Cp2020HealthStrategy.TYPE);
+            assertThat(created).hasSize(3);
         }
     }
 

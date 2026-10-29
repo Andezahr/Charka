@@ -20,6 +20,25 @@
         <h2 class="card-title"><span class="dot pink"></span>Кампании</h2>
         <span class="badge" th:text="${#lists.size(campaigns)}">0</span>
       </div>
+      <div class="card-body">
+        <form th:action="@{/campaigns}" method="post" class="form">
+          <div class="field">
+            <label for="campaign-name">Новая кампания</label>
+            <input id="campaign-name" type="text" name="name" placeholder="Название" required autocomplete="off">
+          </div>
+          <div class="form-row">
+            <select name="system" aria-label="Игровая система" required>
+              <option th:each="s : ${systems}" th:value="${s.code}" th:text="${s.displayName}"
+                      th:selected="${s.code == 'CP2020'}">Система</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <input type="date" name="startDate" aria-label="Дата начала (по умолчанию — сегодня)"
+                   title="Дата начала (по умолчанию — сегодня)">
+            <button type="submit" class="btn btn-primary">＋ Создать</button>
+          </div>
+        </form>
+      </div>
       <div class="card-body list">
         <a th:each="campaign : ${campaigns}" th:href="@{'/campaign/' + ${campaign.id}}" class="row">
           <div class="with-avatar row-main">
@@ -27,6 +46,7 @@
             <div class="row-main">
               <div class="row-title" th:text="${campaign.name}">Кампания</div>
               <div class="row-meta">
+                <span th:text="${systemNames[campaign.system] ?: campaign.system}">Система</span>
                 <span th:if="${campaign.currentDate != null}">📅 <span th:text="${campaign.currentDate}">дата</span></span>
                 <span th:if="${campaign.characters != null}">
                   👥 <span th:text="${#lists.size(campaign.characters)}">0</span> перс.

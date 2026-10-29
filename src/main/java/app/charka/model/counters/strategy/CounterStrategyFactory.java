@@ -42,4 +42,13 @@ public class CounterStrategyFactory {
                 .sorted(Comparator.comparing(CounterStrategy::getDisplayName))
                 .toList();
     }
+
+    /**
+     * Стратегии, доступные в кампании системы {@code systemCode}: универсальные + свои для системы.
+     */
+    public List<CounterStrategy> getStrategiesFor(String systemCode) {
+        return getAllStrategies().stream()
+                .filter(s -> s.isAvailableIn(systemCode))
+                .toList();
+    }
 }

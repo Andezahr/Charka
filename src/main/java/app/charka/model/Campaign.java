@@ -16,6 +16,10 @@ public class Campaign {
 
     private String name;
 
+    /** Код игровой системы ({@code GameSystem.getCode()}), задаётся при создании кампании */
+    @Column(name = "game_system", nullable = false, length = 32)
+    private String system = "GENERIC";
+
     private LocalDate startDate;
     @Column(name = "current_date_value")
     private LocalDate currentDate;

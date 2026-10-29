@@ -12,6 +12,7 @@ import app.charka.model.counters.strategy.CounterStrategy;
 import app.charka.model.counters.strategy.CounterStrategyFactory;
 import app.charka.repository.CharacterRepository;
 import app.charka.repository.CounterRepository;
+import app.charka.system.GameSystemRegistry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +41,11 @@ public class CounterService {
                 .orElseThrow(CharacterNotFoundException.forId(requestDto.getCharacterId()));
 
         CounterStrategy strategy = strategyFactory.getStrategy(requestDto.getCounterType());
+        String systemCode = GameSystemRegistry.systemCodeOf(character);
+        if (!strategy.isAvailableIn(systemCode)) {
+            throw new IllegalArgumentException("Счётчик «" + strategy.getDisplayName()
+                    + "» недоступен в кампании системы " + systemCode);
+        }
         List<Counter> siblings = new ArrayList<>(counterRepository.findByCharacterId(character.getId()));
         if (strategy.isUniquePerCharacter() && hasType(siblings, strategy.getCounterType())) {
             throw new IllegalStateException("У персонажа уже есть счётчик «" + strategy.getDisplayName() + "»");
@@ -61,6 +67,31 @@ public class CounterService {
         CounterResponseDto dto = convertToResponseDto(savedCounter, siblings);
         dto.setCreatedWith(createdWith);
         return dto;
+    }
+
+    /**
+     * Создаёт персонажу счётчики по умолчанию (обычно {@code GameSystem.getDefaultCounterTypes()}) с именами
+     * по умолчанию. Типы, которые у персонажа уже есть (в том числе созданные как обязательные), пропускаются.
+     *
+     * @return имена созданных счётчиков
+     */
+    @Transactional
+    public List<String> createDefaults(Long characterId, List<String> counterTypes) {
+        List<String> created = new ArrayList<>();
+        for (String type : counterTypes) {
+            if (hasType(counterRepository.findByCharacterId(characterId), type)) {
+                continue;
+            }
+            CounterCreateRequestDto request = new CounterCreateRequestDto();
+            request.setCharacterId(characterId);
+            request.setCounterType(type);
+            request.setName(strategyFactory.getStrategy(type).getDefaultName());
+            request.setInitialValue(0);
+            CounterResponseDto dto = createCounter(request);
+            created.addAll(dto.getCreatedWith());
+            created.add(dto.getName());
+        }
+        return created;
     }
 
     @Transactional(readOnly = true)
@@ -173,10 +204,13 @@ public class CounterService {
     }
 
     /**
-     * Типы счётчиков, которые можно создать, — всё, что зарегистрировано в фабрике стратегий.
+     * Типы счётчиков, которые можно создать персонажу, — доступные в системе его кампании.
      */
-    public List<CounterTypeDto> getCounterTypes() {
-        return strategyFactory.getAllStrategies().stream()
+    @Transactional(readOnly = true)
+    public List<CounterTypeDto> getCounterTypes(Long characterId) {
+        Character character = characterRepository.findById(characterId)
+                .orElseThrow(CharacterNotFoundException.forId(characterId));
+        return strategyFactory.getStrategiesFor(GameSystemRegistry.systemCodeOf(character)).stream()
                 .map(s -> new CounterTypeDto(s.getCounterType(), s.getDisplayName(),
                         s.getCreateFieldsTemplate(), s.usesInitialValue()))
                 .toList();

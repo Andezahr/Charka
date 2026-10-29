@@ -4,12 +4,14 @@ import app.charka.model.counters.Counter;
 import app.charka.model.counters.strategy.AbstractCounterStrategy;
 import app.charka.model.counters.strategy.CounterContext;
 import app.charka.model.counters.strategy.health.cp2020.Cp2020StatsView.StatLine;
+import app.charka.system.cp2020.Cp2020System;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static app.charka.model.counters.strategy.health.cp2020.Cp2020Rules.*;
 
@@ -97,6 +99,11 @@ public class Cp2020StatsStrategy extends AbstractCounterStrategy {
     @Override
     public int getDisplayOrder() {
         return 20;
+    }
+
+    @Override
+    public Set<String> getSystems() {
+        return Set.of(Cp2020System.CODE);
     }
 
     @Override

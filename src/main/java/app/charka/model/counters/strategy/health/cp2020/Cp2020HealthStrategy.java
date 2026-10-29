@@ -9,6 +9,7 @@ import app.charka.model.counters.strategy.health.HealthCounterStrategy;
 import app.charka.model.counters.strategy.health.HealthEvent;
 import app.charka.model.counters.strategy.health.cp2020.Cp2020HealthView.Option;
 import app.charka.model.counters.strategy.health.cp2020.Cp2020HealthView.TrackLevel;
+import app.charka.system.cp2020.Cp2020System;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -16,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static app.charka.model.counters.strategy.health.cp2020.Cp2020Rules.*;
 
@@ -92,6 +94,11 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
     @Override
     public int getDisplayOrder() {
         return 10;
+    }
+
+    @Override
+    public Set<String> getSystems() {
+        return Set.of(Cp2020System.CODE);
     }
 
     /**

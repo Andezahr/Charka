@@ -12,7 +12,8 @@
           th:text="${counters != null and !counters.empty and counters[0].characterName != null} ? ${counters[0].characterName} : 'Счётчики персонажа'">
         Счётчики персонажа
       </h1>
-      <p class="page-sub">ХП, опыт, патроны — всё, что нужно считать. Для боя по CP2020 — счётчик «Здоровье».</p>
+      <p class="page-sub">ХП, опыт, патроны — всё, что нужно считать.
+        <span th:if="${#lists.contains(counterTypes.![type], 'CP2020_HEALTH')}">Для боя по CP2020 — счётчик «Здоровье».</span></p>
     </div>
     <div class="page-actions">
       <a th:href="@{/character/{characterId}(characterId=${characterId})}" class="btn btn-ghost">← К персонажу</a>

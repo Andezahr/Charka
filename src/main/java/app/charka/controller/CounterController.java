@@ -27,7 +27,7 @@ public class CounterController {
         List<CounterResponseDto> counters = counterService.getAllCountersByCharacterId(characterId);
         model.addAttribute("counters", counters);
         model.addAttribute("characterId", characterId);
-        model.addAttribute("counterTypes", counterService.getCounterTypes());
+        model.addAttribute("counterTypes", counterService.getCounterTypes(characterId));
 
         // Создаем DTO и предзаполняем characterId
         CounterCreateRequestDto createRequest = new CounterCreateRequestDto();

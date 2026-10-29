@@ -4,11 +4,13 @@ import app.charka.model.counters.Counter;
 import app.charka.model.counters.strategy.AbstractCounterStrategy;
 import app.charka.model.counters.strategy.CounterContext;
 import app.charka.model.counters.strategy.health.cp2020.Cp2020ArmorView.ArmorLine;
+import app.charka.system.cp2020.Cp2020System;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Броня CP2020 по зонам попадания. Для каждой зоны хранится полный SP надетой брони ({@code max_<ЗОНА>})
@@ -58,6 +60,11 @@ public class Cp2020ArmorStrategy extends AbstractCounterStrategy {
     @Override
     public int getDisplayOrder() {
         return 30;
+    }
+
+    @Override
+    public Set<String> getSystems() {
+        return Set.of(Cp2020System.CODE);
     }
 
     @Override

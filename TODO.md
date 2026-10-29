@@ -92,11 +92,11 @@ app.charka
 | Естественное лечение при промотке времени | ✅ | `CampaignTimelineService` → `HealthCounterService.healOverTime` |
 | Человечность / EMP | 🟡 | потеря вводится вручную, имплантов нет |
 | Инвентарь, предметы | 🟡 | только name/qty/cost/description, без типов |
-| Деньги | 🟡 | дата операции игровая, валюта не задана |
+| Деньги | ✅ | дата операции игровая, валюта системы |
 | Кампания, время, хроника, заметки, простые счётчики | ✅ | — |
 | `Wound` (отдельные раны) | 🟡 | дублирует счётчик здоровья CP2020 |
 | Кубики | 🟡 | `DiceRoller` только внутри спасбросков |
-| Система у кампании | ❌ | все типы счётчиков доступны всем |
+| Система у кампании | ✅ | `Campaign.system`, `GameSystemRegistry`, счётчики фильтруются (S-01..S-06) |
 | Хранилище | ✅ | PostgreSQL 17 в Docker + Flyway (F-01/F-02) |
 
 ---
@@ -118,36 +118,43 @@ app.charka
   Тестовый обработчик удалён, тесты контроллеров проверяют статус и `model.message`. `error.html` проверен в браузере (несуществующий персонаж и неизвестный URL → 404 в общем стиле).
 - [x] **F-04 [CORE] Деньги по игровой дате.** 2026-10-29 — `MoneyService.create`, если дата не задана; `MoneyServiceTest`.
   `MoneyService` ставит `operationDate = campaign.currentDate` (если у персонажа нет кампании — `LocalDate.now()`).
-- [ ] **F-05 [CORE] Раны по игровой дате.** Найдено при закрытии этапа 0: `WoundController.addWound` не ставит дату вовсе
+- [x] **F-05 [CORE] Раны по игровой дате.** Найдено при закрытии этапа 0: `WoundController.addWound` не ставит дату вовсе
   (`wound.date` = null). `WoundService.create` — как `MoneyService.create`: дата не задана → `campaign.currentDate`. Мелкая задача
   (или закрыть вместе с G-09).
+  ✅ 2026-10-30 — `WoundService.create` без даты → `MoneyService.gameDate` (игровая дата кампании); `WoundServiceTest`.
 - [ ] **F-06 [CORE] «Не найдено» → 404 во всех сервисах.** Старый код бросает `IllegalArgumentException` («... not found»),
   который `GlobalExceptionHandler` отдаёт как 400. Перевести Money/Wound/Item/Note/Campaign на свои `*NotFoundException.forId(id)`.
   Делать попутно, когда трогаешь сервис.
 
-### Этап 1 — Ядро мультисистемности (делать до любых новых правил CP2020)
+### Этап 1 — Ядро мультисистемности ✅ кроме S-07 (2026-10-30)
 
-- [ ] **S-01 [CORE] Контракт `GameSystem` и `GameSystemRegistry`.**
+- [x] **S-01 [CORE] Контракт `GameSystem` и `GameSystemRegistry`.**
   Пакет `app.charka.system`. Минимальный интерфейс: `getCode()`, `getDisplayName()`, `getCurrency()`
   (название + краткое обозначение), `getDefaultCounterTypes()`, `onTimePassed(Campaign, int days)` (default — ничего).
   Реализации: `GenericSystem` ("GENERIC") и `Cp2020System` ("CP2020").
   *Готово, когда:* реестр отдаёт обе системы, юнит-тест на поиск по коду и ошибку на неизвестный код.
-- [ ] **S-02 [CORE] Система у кампании.**
+  ✅ 2026-10-30 — пакет `app.charka.system`: `GameSystem` (+ `Currency`), `GameSystemRegistry` (`get`/`find`/`forCharacter`/`getAll`, статический `systemCodeOf(Character)` — без цикла бинов), `GenericSystem`, `cp2020/Cp2020System`; `GameSystemRegistryTest`.
+- [x] **S-02 [CORE] Система у кампании.**
   `Campaign.system` (String, not null, миграция: существующие = "CP2020"). Выбор системы при создании кампании
   (сейчас создания кампании в UI нет — добавить форму на `home.html`, POST `/campaigns`). Название системы на странице кампании.
   *Готово, когда:* можно создать кампанию GENERIC и CP2020, система видна на странице.
-- [ ] **S-03 [CORE] Счётчики фильтруются по системе.**
+  ✅ 2026-10-30 — `Campaign.system` (колонка `game_system`, миграция `V2__campaign_system.sql`, старые = CP2020; новая сущность по умолчанию GENERIC). Форма «Новая кампания» на главной → POST `/campaigns` (`HomeController`), `CampaignService.create` проверяет систему (неизвестная → 400), без даты начала — сегодня. Система — на главной и в шапке кампании. Демо-сид — CP2020.
+- [x] **S-03 [CORE] Счётчики фильтруются по системе.**
   `CounterStrategy.getSystems()` (пусто = универсальная; CP2020-стратегии → `Set.of("CP2020")`).
   `CounterStrategyFactory.getStrategiesFor(code)`; форма создания показывает только допустимые;
   `CounterService.create` отклоняет недопустимый тип с понятной ошибкой. Персонаж без кампании = GENERIC.
   *Готово, когда:* в кампании GENERIC нет пунктов CP2020 в форме, а прямой POST с `CP2020_HEALTH` даёт `errorMessage`.
-- [ ] **S-04 [CORE] Счётчики по умолчанию для нового персонажа.**
+  ✅ 2026-10-30 — `CounterStrategy.getSystems()`/`isAvailableIn()`, CP2020-стратегии → `Set.of("CP2020")`; `CounterStrategyFactory.getStrategiesFor(code)`; `CounterService.getCounterTypes(characterId)` и отказ в `createCounter` (→ `errorMessage`). Проверено в браузере.
+- [x] **S-04 [CORE] Счётчики по умолчанию для нового персонажа.**
   `CampaignController.addCharacter` → после создания персонажа создать `system.getDefaultCounterTypes()`
   (через `CounterService`, чтобы сработали `getRequiredCounterTypes`). Для CP2020 — STATS, ARMOR, HEALTH.
-- [ ] **S-05 [CORE] Хук времени через систему.**
+  ✅ 2026-10-30 — `CounterService.createDefaults(characterId, types)` (пропускает уже существующие типы) вызывается из `CharacterService.createInCampaign` (а не из контроллера — в той же транзакции).
+- [x] **S-05 [CORE] Хук времени через систему.**
   `CampaignTimelineService.proceedDate` вызывает `registry.get(campaign.system).onTimePassed(campaign, days)`;
   `Cp2020System.onTimePassed` делает `healOverTime`. Тест: в кампании GENERIC промотка не лечит CP2020-логикой.
-- [ ] **S-06 [CORE] Валюта системы в UI денег.** Эдди (`eb`) для CP2020, нейтральное «у.е.» для GENERIC.
+  ✅ 2026-10-30 — `CampaignTimelineService` → `registry.get(campaign.system).onTimePassed(...)`; `Cp2020System` → `healOverTime`. `CampaignTimelineServiceTest`.
+- [x] **S-06 [CORE] Валюта системы в UI денег.** Эдди (`eb`) для CP2020, нейтральное «у.е.» для GENERIC.
+  ✅ 2026-10-30 — `Currency` системы в модели листа (`currency`): баланс, суммы операций, подсказка поля — «eb» / «у.е.».
 - [ ] **S-07 [CP2020] Переезд пакета.** `model/counters/strategy/health/cp2020/*` → `system/cp2020/...`
   (стратегии остаются бинами `CounterStrategy`). Делать отдельным коммитом только с перемещением.
   `HealthCounterStrategy` и `DiceRoller` — остаются в ядре.
@@ -304,3 +311,6 @@ app.charka
   (Testcontainers — если понадобятся PG-специфичные вещи).
 - 2026-10-29 — Ошибки страниц: `IllegalArgumentException` = 400, `*NotFoundException` (`NoSuchElementException`) = 404.
   Новый код «не найдено» бросает свои `*NotFoundException.forId(id)`.
+- 2026-10-30 — Новая `Campaign` по умолчанию GENERIC (существующие в БД мигрированы в CP2020). Персонаж без кампании — GENERIC.
+  Код системы персонажа вычисляет статический `GameSystemRegistry.systemCodeOf`, чтобы `CounterService` не зависел
+  от реестра (иначе цикл: реестр → `Cp2020System` → `HealthCounterService` → `CounterService`).

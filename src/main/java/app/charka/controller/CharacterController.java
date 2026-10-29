@@ -4,6 +4,7 @@ import app.charka.model.Character;
 import app.charka.model.Money;
 import app.charka.service.CharacterService;
 import app.charka.service.MoneyService;
+import app.charka.system.GameSystemRegistry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -20,6 +21,7 @@ public class CharacterController {
 
     private final CharacterService characterService;
     private final MoneyService moneyService;
+    private final GameSystemRegistry systemRegistry;
 
     @GetMapping
     public String characterPage(@PathVariable Long id, Model model) {
@@ -32,6 +34,7 @@ public class CharacterController {
         model.addAttribute("character", character);
         model.addAttribute("moneyList", moneyList);
         model.addAttribute("moneySum", moneySum);
+        model.addAttribute("currency", systemRegistry.forCharacter(character).getCurrency());
 
         return "character";
     }

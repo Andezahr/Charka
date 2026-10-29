@@ -2,6 +2,7 @@ package app.charka.service.campaign;
 
 import app.charka.model.Campaign;
 import app.charka.repository.CampaignRepository;
+import app.charka.system.GameSystemRegistry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,9 +15,23 @@ import java.util.List;
 public class CampaignService {
 
     private final CampaignRepository campaignRepository;
+    private final GameSystemRegistry systemRegistry;
 
+    /**
+     * Сохраняет кампанию. Система должна быть зарегистрирована; без даты начала — сегодняшняя,
+     * текущая игровая дата по умолчанию равна дате начала.
+     *
+     * @throws IllegalArgumentException если система неизвестна
+     */
     @Transactional
     public Campaign create(Campaign campaign) {
+        campaign.setSystem(systemRegistry.get(campaign.getSystem()).getCode());
+        if (campaign.getStartDate() == null) {
+            campaign.setStartDate(LocalDate.now());
+        }
+        if (campaign.getCurrentDate() == null) {
+            campaign.setCurrentDate(campaign.getStartDate());
+        }
         return campaignRepository.save(campaign);
     }
 

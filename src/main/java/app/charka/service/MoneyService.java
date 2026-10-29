@@ -61,7 +61,10 @@ public class MoneyService {
         return moneyRepository.save(money);
     }
 
-    private static LocalDate gameDate(Character character) {
+    /**
+     * Текущая игровая дата персонажа: дата его кампании, без кампании — реальная.
+     */
+    static LocalDate gameDate(Character character) {
         Campaign campaign = character.getCampaign();
         if (campaign == null || campaign.getCurrentDate() == null) {
             return LocalDate.now();

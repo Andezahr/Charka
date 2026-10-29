@@ -6,6 +6,8 @@ import app.charka.model.Character;
 import app.charka.model.Inventory;
 import app.charka.repository.CharacterRepository;
 import app.charka.service.campaign.CampaignService;
+import app.charka.service.counter.CounterService;
+import app.charka.system.GameSystemRegistry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,9 +22,12 @@ public class CharacterService  {
     private final CharacterRepository characterRepository;
     private final CampaignService campaignService;
     private final InventoryService inventoryService;
+    private final CounterService counterService;
+    private final GameSystemRegistry systemRegistry;
 
     /**
-     * Создаёт нового персонажа в заданной кампании и выдаёт базовый инвентарь.
+     * Создаёт нового персонажа в заданной кампании, выдаёт базовый инвентарь
+     * и счётчики по умолчанию системы кампании (для CP2020 — характеристики, броня, здоровье).
      */
     @Transactional
     public Character createInCampaign(Long campaignId, Character character) {
@@ -32,6 +37,8 @@ public class CharacterService  {
         Inventory inventory = new Inventory();
         inventory.setName("Backpack");
         inventoryService.create(character.getId(), inventory);
+        counterService.createDefaults(saved.getId(),
+                systemRegistry.forCharacter(saved).getDefaultCounterTypes());
         return saved;
     }
 

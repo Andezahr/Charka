@@ -3,6 +3,7 @@ package app.charka;
 import app.charka.model.*;
 import app.charka.model.Character;
 import app.charka.repository.CampaignRepository;
+import app.charka.system.cp2020.Cp2020System;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
@@ -28,6 +29,7 @@ public class DataInitializer implements CommandLineRunner {
         }
         Campaign campaign = new Campaign();
         campaign.setName("Последний шанс");
+        campaign.setSystem(Cp2020System.CODE);
         campaign.setStartDate(LocalDate.of(2037, 10, 27));
         campaign.setCurrentDate(campaign.getStartDate());
         campaign.setChronicles(new ArrayList<>());

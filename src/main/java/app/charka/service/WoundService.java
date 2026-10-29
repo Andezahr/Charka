@@ -46,6 +46,7 @@ public class WoundService {
 
     /**
      * Создать новую запись о ране для указанного персонажа.
+     * Если дата не задана, ставится текущая игровая дата кампании персонажа.
      *
      * @param characterId идентификатор персонажа
      * @param wound       объект Wound с заполненными полями name и date
@@ -58,6 +59,9 @@ public class WoundService {
                 .orElseThrow(() -> new IllegalArgumentException(
                         String.format(CHARACTER_NOT_FOUND, characterId)));
         wound.setCharacter(character);
+        if (wound.getDate() == null) {
+            wound.setDate(MoneyService.gameDate(character));
+        }
         return woundRepository.save(wound);
     }
 

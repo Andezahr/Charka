@@ -7,7 +7,7 @@
 <main class="page">
   <div class="page-head">
     <div>
-      <span class="eyebrow">Кампания</span>
+      <span class="eyebrow">Кампания · <span th:text="${gameSystem.displayName}">Система</span></span>
       <h1 class="page-title" th:text="${campaign.name}">Название кампании</h1>
       <p class="page-sub" th:if="${campaign.startDate != null}">
         Началась <span th:text="${campaign.startDate}">дата</span>

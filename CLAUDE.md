@@ -27,7 +27,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 176 тестов, на 2026-10-29 все зелёные (живой PostgreSQL не нужен)
+./mvnw test                 # 198 тестов, на 2026-10-30 все зелёные (живой PostgreSQL не нужен)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -43,6 +43,7 @@ repository/    Spring Data репозитории (по одному на сущ
 service/       бизнес-логика; campaign/, counter/, notes/ — подпакеты
 controller/    MVC-контроллеры, возвращают имена шаблонов или redirect
 api/           REST: CampaignExportController (единственный JSON-эндпоинт)
+system/        GameSystem, GameSystemRegistry, GenericSystem ("GENERIC"), Currency; cp2020/Cp2020System ("CP2020")
 dto/counter/   DTO только для счётчиков (единственный модуль, переведённый на DTO)
 exception/     CharacterNotFoundException, InventoryNotFoundException (наследуют NoSuchElementException, фабрика forId());
                GlobalExceptionHandler (страницы → error.html: 404/400/500), ApiExceptionHandler (app.charka.api → text/plain)
@@ -55,7 +56,7 @@ TODO.txt       список планов автора (см. ниже)
 ## Доменная модель
 
 ```
-Campaign (name, startDate, currentDate)
+Campaign (name, system, startDate, currentDate)   — system: код GameSystem (колонка game_system)
  ├─ Chronicle* (name, startDate, endDate)     — запись о прошедшем периоде
  └─ Character* (name, birthDate)
      ├─ Wound*     (name, severity, date)
@@ -71,7 +72,7 @@ Campaign (name, startDate, currentDate)
 ### Счётчики (самая «архитектурная» часть)
 
 `CounterStrategy` (тип, `getNewValue(String current, Object input)`, `getResetValue()`) → `CounterStrategyFactory` собирает все бины-стратегии в Map по `getCounterType()`. Значения гоняются через `String`, хотя хранятся как `Integer`. Тип счётчика — строка без enum.
-Default-методы стратегии: `getDisplayName()`/`getDefaultName()`, `getViewTemplate()` (шаблон с фрагментом `card` — каждый тип рисует свою карточку, `counters/list.html` не трогаем), `getCreateFieldsTemplate()` (фрагмент `create-fields` — доп. поля формы создания, уходят в `attributes[...]`), `usesInitialValue()`, `getRequiredCounterTypes()` (обязательные счётчики: создаются автоматически, удалить их, пока есть зависимый, нельзя), `isUniquePerCharacter()`, `getDisplayOrder()`, `initialize(counter, params)` (незнакомые ключи пропускать — params общие для всех создаваемых вместе), `reset(counter)`, `describe(CounterContext)` → данные карточки в `CounterResponseDto.view`, `updateAttributes(counter, map)`, `performAction(ctx, action)`.
+Default-методы стратегии: `getSystems()` (пусто = универсальная; форма и `createCounter` показывают/принимают только типы системы кампании), `getDisplayName()`/`getDefaultName()`, `getViewTemplate()` (шаблон с фрагментом `card` — каждый тип рисует свою карточку, `counters/list.html` не трогаем), `getCreateFieldsTemplate()` (фрагмент `create-fields` — доп. поля формы создания, уходят в `attributes[...]`), `usesInitialValue()`, `getRequiredCounterTypes()` (обязательные счётчики: создаются автоматически, удалить их, пока есть зависимый, нельзя), `isUniquePerCharacter()`, `getDisplayOrder()`, `initialize(counter, params)` (незнакомые ключи пропускать — params общие для всех создаваемых вместе), `reset(counter)`, `describe(CounterContext)` → данные карточки в `CounterResponseDto.view`, `updateAttributes(counter, map)`, `performAction(ctx, action)`.
 `Counter.attributes` (`Map<String,Integer>`, таблица `counter_attribute`) — доп. состояние стратегии сверх одного числа. `CounterContext` — счётчик + все счётчики персонажа, через него зависимые стратегии читают друг друга.
 
 Стратегии: `SimpleIntegerCounterStrategy` (`"SIMPLE_INTEGER"`, прибавляет input) и связка CP2020 (`strategy/health/cp2020/`):
@@ -84,15 +85,16 @@ Default-методы стратегии: `getDisplayName()`/`getDefaultName()`, 
 
 ### Время кампании
 
-`CampaignTimelineService.proceedDate(campaignId, days, description)` создаёт `Chronicle` [старая дата → новая] и сдвигает `currentDate`. Место под периодические траты/лечение ран оставлено комментарием.
+`CampaignTimelineService.proceedDate(campaignId, days, description)` создаёт `Chronicle` [старая дата → новая], сдвигает `currentDate` и вызывает `GameSystem.onTimePassed` (CP2020 — естественное лечение). Место под периодические траты/лечение ран оставлено комментарием.
 
 ## HTTP-маршруты
 
 | Метод | Путь | Что делает |
 |---|---|---|
 | GET | `/` | список персонажей и кампаний |
+| POST | `/campaigns` | `name`, `system`, `startDate?` → новая кампания |
 | GET | `/campaign/{id}` | страница кампании |
-| POST | `/campaign/{id}/characters` | добавить персонажа (создаёт инвентарь «Backpack») |
+| POST | `/campaign/{id}/characters` | добавить персонажа (инвентарь «Backpack» + счётчики по умолчанию системы) |
 | POST | `/campaign/{id}/chronicles` | `name`, `duration` → промотать время |
 | GET | `/api/campaigns/{id}/download` | экспорт кампании в JSON-файл |
 | GET | `/character/{id}` | лист персонажа (раны, инвентари, деньги) |

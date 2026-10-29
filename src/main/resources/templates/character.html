@@ -30,7 +30,8 @@
   <div class="stats">
     <div class="stat">
       <div class="stat-label">Баланс</div>
-      <div class="stat-value accent" th:text="${moneySum}">0</div>
+      <div class="stat-value accent" th:text="${moneySum} + ' ' + ${currency.symbol}"
+           th:title="${currency.name}">0</div>
     </div>
     <div class="stat">
       <div class="stat-label">Ран</div>
@@ -182,12 +183,13 @@
     <section class="card">
       <div class="card-head">
         <h2 class="card-title"><span class="dot green"></span>Деньги</h2>
-        <span class="amount" th:classappend="${moneySum < 0} ? 'neg' : 'pos'" th:text="${moneySum}">0</span>
+        <span class="amount" th:classappend="${moneySum < 0} ? 'neg' : 'pos'"
+              th:text="${moneySum} + ' ' + ${currency.symbol}" th:title="${currency.name}">0</span>
       </div>
       <div class="card-body">
         <form th:action="@{'/character/' + ${character.id} + '/money'}" method="post" class="form-row">
           <input type="text" name="name" class="grow" placeholder="Описание" required autocomplete="off">
-          <input type="number" name="amount" class="narrow" placeholder="±Сумма" required autocomplete="off">
+          <input type="number" name="amount" class="narrow" th:placeholder="'±Сумма, ' + ${currency.symbol}" required autocomplete="off">
           <button type="submit" class="btn btn-primary">＋</button>
         </form>
       </div>
@@ -198,7 +200,7 @@
             <div class="row-meta"><span th:text="${money.operationDate}">дата</span></div>
           </div>
           <span class="amount" th:classappend="${money.amount < 0} ? 'neg' : 'pos'"
-                th:text="${money.amount > 0} ? '+' + ${money.amount} : ${money.amount}">0</span>
+                th:text="(${money.amount > 0} ? '+' + ${money.amount} : ${money.amount}) + ' ' + ${currency.symbol}">0</span>
           <div class="row-actions">
             <button type="button" class="icon-btn" data-edit-toggle title="Редактировать">✎</button>
             <form th:action="@{'/character/' + ${character.id} + '/money/' + ${money.id} + '/delete'}"

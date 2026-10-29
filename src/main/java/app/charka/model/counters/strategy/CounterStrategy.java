@@ -4,12 +4,27 @@ import app.charka.model.counters.Counter;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public interface CounterStrategy {
     String getCounterType();
     String getNewValue(String currentValue, Object inputValue);
     String  getResetValue();
     boolean canHandle(String counterType);
+
+    /**
+     * Коды игровых систем, в кампаниях которых доступен этот тип. Пустой набор — универсальный тип.
+     */
+    default Set<String> getSystems() {
+        return Set.of();
+    }
+
+    /**
+     * Доступен ли тип в кампании системы {@code systemCode}.
+     */
+    default boolean isAvailableIn(String systemCode) {
+        return getSystems().isEmpty() || getSystems().contains(systemCode);
+    }
 
     /**
      * Название типа для формы создания счётчика.
