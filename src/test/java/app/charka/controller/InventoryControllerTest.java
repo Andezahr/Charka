@@ -1,6 +1,6 @@
 package app.charka.controller;
 
-import app.charka.GlobalExceptionHandler;
+import app.charka.exception.GlobalExceptionHandler;
 import app.charka.exception.CharacterNotFoundException;
 import app.charka.exception.InventoryNotFoundException;
 import app.charka.model.Inventory;
@@ -81,7 +81,7 @@ class InventoryControllerTest {
         }
 
         @Test
-        @DisplayName("500 – персонаж не найден")
+        @DisplayName("404 – персонаж не найден")
         void addInventory_characterNotFound() throws Exception {
             // Given - исключение бросается из inventoryService, не characterService
             when(inventoryService.create(eq(MISSING_CHAR_ID), any(Inventory.class)))
@@ -91,8 +91,8 @@ class InventoryControllerTest {
             mockMvc.perform(post("/character/{characterId}/inventories", MISSING_CHAR_ID)
                             .param("name", "Рюкзак")
                             .contentType(MediaType.APPLICATION_FORM_URLENCODED))
-                    .andExpect(status().isInternalServerError())
-                    .andExpect(content().string(containsString("Character not found")));
+                    .andExpect(status().isNotFound())
+                    .andExpect(model().attribute("message", containsString("Character not found")));
 
             // Verify
             verify(inventoryService).create(eq(MISSING_CHAR_ID), any(Inventory.class));
@@ -130,7 +130,7 @@ class InventoryControllerTest {
         }
 
         @Test
-        @DisplayName("500 – инвентарь не найден")
+        @DisplayName("404 – инвентарь не найден")
         void editInventory_notFound() throws Exception {
             // Given
             doThrow(new InventoryNotFoundException("Inventory with id " + INV_ID + " not found"))
@@ -140,8 +140,8 @@ class InventoryControllerTest {
             mockMvc.perform(post("/character/{characterId}/inventories/{inventoryId}/edit", CHAR_ID, INV_ID)
                             .param("name", "Что-то")
                             .contentType(MediaType.APPLICATION_FORM_URLENCODED))
-                    .andExpect(status().isInternalServerError())
-                    .andExpect(content().string(containsString("Inventory with id " + INV_ID + " not found")));
+                    .andExpect(status().isNotFound())
+                    .andExpect(model().attribute("message", containsString("Inventory with id " + INV_ID + " not found")));
 
             // Verify
             verify(inventoryService).update(eq(INV_ID), any(Inventory.class));
@@ -167,7 +167,7 @@ class InventoryControllerTest {
         }
 
         @Test
-        @DisplayName("500 – ошибка при удалении")
+        @DisplayName("404 – ошибка при удалении")
         void deleteInventory_error() throws Exception {
             // Given
             doThrow(new InventoryNotFoundException("Inventory with id " + DELETE_INV_ID + " not found"))
@@ -175,8 +175,8 @@ class InventoryControllerTest {
 
             // When + Then
             mockMvc.perform(post("/character/{characterId}/inventories/{inventoryId}/delete", CHAR_ID, DELETE_INV_ID))
-                    .andExpect(status().isInternalServerError())
-                    .andExpect(content().string(containsString("Inventory with id " + DELETE_INV_ID + " not found")));
+                    .andExpect(status().isNotFound())
+                    .andExpect(model().attribute("message", containsString("Inventory with id " + DELETE_INV_ID + " not found")));
 
             // Verify
             verify(inventoryService).delete(DELETE_INV_ID);

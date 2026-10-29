@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<!-- Страница ошибки: рисуется и GlobalExceptionHandler-ом, и стандартным /error Spring Boot (status, error, message) -->
+<head th:replace="~{fragments/layout :: head('Ошибка')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: topbar(null, null)}"></header>
+
+<main class="page">
+  <div class="page-head">
+    <div>
+      <span class="eyebrow" th:text="'Ошибка ' + ${status}">Ошибка 500</span>
+      <h1 class="page-title" th:switch="${status}">
+        <span th:case="404">Не найдено</span>
+        <span th:case="400">Некорректный запрос</span>
+        <span th:case="*">Что-то пошло не так</span>
+      </h1>
+      <p class="page-sub" th:text="${message}" th:if="${message != null and !#strings.isEmpty(message)}">Описание ошибки</p>
+    </div>
+  </div>
+
+  <div class="page-actions">
+    <a th:href="@{/}" class="btn btn-primary">На главную</a>
+    <a href="javascript:history.back()" class="btn">← Назад</a>
+  </div>
+</main>
+</body>
+</html>

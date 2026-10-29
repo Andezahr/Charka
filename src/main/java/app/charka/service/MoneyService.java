@@ -1,5 +1,6 @@
 package app.charka.service;
 
+import app.charka.model.Campaign;
 import app.charka.model.Character;
 import app.charka.model.Money;
 import app.charka.repository.CharacterRepository;
@@ -8,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -39,9 +41,11 @@ public class MoneyService {
 
     /**
      * Создать новую финансовую операцию и привязать к персонажу.
+     * Если дата операции не задана, ставится текущая игровая дата кампании персонажа
+     * (персонаж без кампании — реальная дата).
      *
      * @param characterId идентификатор персонажа
-     * @param money       объект Money с заполненными полями amount, name, operationDate
+     * @param money       объект Money с заполненными полями amount, name и, необязательно, operationDate
      * @return сохранённая сущность Money с присвоенным id
      * @throws IllegalArgumentException если персонаж не найден
      */
@@ -51,7 +55,18 @@ public class MoneyService {
                 .orElseThrow(() -> new IllegalArgumentException(
                         String.format(CHARACTER_NOT_FOUND, characterId)));
         money.setCharacter(character);
+        if (money.getOperationDate() == null) {
+            money.setOperationDate(gameDate(character));
+        }
         return moneyRepository.save(money);
+    }
+
+    private static LocalDate gameDate(Character character) {
+        Campaign campaign = character.getCampaign();
+        if (campaign == null || campaign.getCurrentDate() == null) {
+            return LocalDate.now();
+        }
+        return campaign.getCurrentDate();
     }
 
     /**

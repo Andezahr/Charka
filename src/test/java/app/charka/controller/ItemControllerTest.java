@@ -1,6 +1,6 @@
 package app.charka.controller;
 
-import app.charka.GlobalExceptionHandler;
+import app.charka.exception.GlobalExceptionHandler;
 import app.charka.model.Item;
 import app.charka.service.ItemService;
 import org.junit.jupiter.api.BeforeEach;
@@ -89,7 +89,7 @@ class ItemControllerTest {
         }
 
         @Test
-        @DisplayName("500 – инвентарь не найден")
+        @DisplayName("400 – инвентарь не найден")
         void addItem_inventoryNotFound() throws Exception {
             doThrow(new IllegalArgumentException(ERR_INV_NOT_FOUND))
                     .when(itemService).create(eq(MISSING_INV_ID), any());
@@ -98,8 +98,8 @@ class ItemControllerTest {
                             CHAR_ID, MISSING_INV_ID)
                             .param("itemName", NAME_SHIELD)
                             .contentType(MediaType.APPLICATION_FORM_URLENCODED))
-                    .andExpect(status().isInternalServerError())
-                    .andExpect(content().string(ERR_INV_NOT_FOUND));
+                    .andExpect(status().isBadRequest())
+                    .andExpect(model().attribute("message", ERR_INV_NOT_FOUND));
 
             verify(itemService).create(eq(MISSING_INV_ID), any());
             verifyNoMoreInteractions(itemService);
@@ -137,7 +137,7 @@ class ItemControllerTest {
         }
 
         @Test
-        @DisplayName("500 – предмет не найден")
+        @DisplayName("400 – предмет не найден")
         void editItem_notFound() throws Exception {
             doThrow(new IllegalArgumentException(ERR_ITEM_NOT_FOUND))
                     .when(itemService).update(eq(ITEM_ID), any(), any(), any(), any());
@@ -146,8 +146,8 @@ class ItemControllerTest {
                             CHAR_ID, INV_ID, ITEM_ID)
                             .param("itemName", NAME_NEW)
                             .contentType(MediaType.APPLICATION_FORM_URLENCODED))
-                    .andExpect(status().isInternalServerError())
-                    .andExpect(content().string(ERR_ITEM_NOT_FOUND));
+                    .andExpect(status().isBadRequest())
+                    .andExpect(model().attribute("message", ERR_ITEM_NOT_FOUND));
 
             verify(itemService).update(eq(ITEM_ID), any(), any(), any(), any());
             verifyNoMoreInteractions(itemService);
@@ -182,7 +182,7 @@ class ItemControllerTest {
             mockMvc.perform(post("/character/{characterId}/inventories/{inventoryId}/items/{itemId}/delete",
                             CHAR_ID, INV_ID, DELETE_ITEM_ID))
                     .andExpect(status().isInternalServerError())
-                    .andExpect(content().string(ERR_DELETE));
+                    .andExpect(model().attribute("message", ERR_DELETE));
 
             verify(itemService).delete(DELETE_ITEM_ID);
             verifyNoMoreInteractions(itemService);
@@ -211,7 +211,7 @@ class ItemControllerTest {
         }
 
         @Test
-        @DisplayName("500 – предмет не найден для перемещения")
+        @DisplayName("400 – предмет не найден для перемещения")
         void moveItem_notFound() throws Exception {
             doThrow(new IllegalArgumentException(ERR_ITEM_NOT_FOUND))
                     .when(itemService).moveToInventory(MOVE_ITEM_ID, TARGET_INV_ID);
@@ -220,8 +220,8 @@ class ItemControllerTest {
                             CHAR_ID, INV_ID, MOVE_ITEM_ID)
                             .param("targetInventoryId", String.valueOf(TARGET_INV_ID))
                             .contentType(MediaType.APPLICATION_FORM_URLENCODED))
-                    .andExpect(status().isInternalServerError())
-                    .andExpect(content().string(ERR_ITEM_NOT_FOUND));
+                    .andExpect(status().isBadRequest())
+                    .andExpect(model().attribute("message", ERR_ITEM_NOT_FOUND));
 
             verify(itemService).moveToInventory(MOVE_ITEM_ID, TARGET_INV_ID);
             verifyNoMoreInteractions(itemService);

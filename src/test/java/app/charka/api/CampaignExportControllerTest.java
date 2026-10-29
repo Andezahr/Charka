@@ -1,6 +1,6 @@
 package app.charka.api;
 
-import app.charka.GlobalExceptionHandler;
+import app.charka.exception.ApiExceptionHandler;
 import app.charka.model.Campaign;
 import app.charka.service.campaign.CampaignExportService;
 import app.charka.service.campaign.CampaignService;
@@ -47,7 +47,7 @@ class CampaignExportControllerTest {
     void setUp() {
         mockMvc = MockMvcBuilders
                 .standaloneSetup(controller)
-                .setControllerAdvice(new GlobalExceptionHandler())
+                .setControllerAdvice(new ApiExceptionHandler())
                 .build();
     }
 

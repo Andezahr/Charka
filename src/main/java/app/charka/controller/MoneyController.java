@@ -8,8 +8,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import java.time.LocalDate;
-
 @Controller
 @RequestMapping("/character/{characterId}/money")
 public class MoneyController {
@@ -29,7 +27,7 @@ public class MoneyController {
         Money money = new Money();
         money.setName(name);
         money.setAmount(amount);
-        money.setOperationDate(LocalDate.now());
+        // дату операции (игровую) ставит сервис
         moneyService.create(characterId, money);
         return "redirect:/character/" + characterId;
     }

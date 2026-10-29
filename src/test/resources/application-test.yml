@@ -1,0 +1,6 @@
+# Интеграционные тесты: H2 в памяти в режиме PostgreSQL, схема — те же миграции Flyway
+spring:
+  datasource:
+    url: jdbc:h2:mem:charka;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1
+    username: sa
+    password:

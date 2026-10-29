@@ -1,6 +1,6 @@
 package app.charka.controller;
 
-import app.charka.GlobalExceptionHandler;
+import app.charka.exception.GlobalExceptionHandler;
 import app.charka.model.Character;
 import app.charka.model.Wound;
 import app.charka.service.WoundService;
@@ -92,8 +92,7 @@ class WoundControllerTest {
                             .param("name", "Порез")
                             .contentType(MediaType.APPLICATION_FORM_URLENCODED))
                     .andExpect(status().isInternalServerError())
-                    .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_PLAIN))
-                    .andExpect(content().string("Character not found"));
+                    .andExpect(model().attribute("message", "Character not found"));
 
             verify(woundService).create(eq(99L), any());
             verifyNoMoreInteractions(woundService);
@@ -213,16 +212,15 @@ class WoundControllerTest {
         }
 
         @Test
-        @DisplayName("500 Internal Server Error – рана не найдена")
+        @DisplayName("400 Bad Request – рана не найдена")
         void deleteWound_notFound() throws Exception {
             when(woundService.getById(99L))
                     .thenThrow(new IllegalArgumentException("Wound not found for id=99"));
 
 
             mockMvc.perform(post("/character/{charId}/wounds/{woundId}/delete", CHAR_ID, 99L))
-                    .andExpect(status().isInternalServerError())
-                    .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_PLAIN))
-                    .andExpect(content().string("Wound not found for id=99"));
+                    .andExpect(status().isBadRequest())
+                    .andExpect(model().attribute("message", "Wound not found for id=99"));
 
             verify(woundService).getById(99L);
             verifyNoMoreInteractions(woundService);

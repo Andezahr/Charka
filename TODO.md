@@ -92,30 +92,38 @@ app.charka
 | Естественное лечение при промотке времени | ✅ | `CampaignTimelineService` → `HealthCounterService.healOverTime` |
 | Человечность / EMP | 🟡 | потеря вводится вручную, имплантов нет |
 | Инвентарь, предметы | 🟡 | только name/qty/cost/description, без типов |
-| Деньги | 🟡 | дата операции реальная, валюта не задана |
+| Деньги | 🟡 | дата операции игровая, валюта не задана |
 | Кампания, время, хроника, заметки, простые счётчики | ✅ | — |
 | `Wound` (отдельные раны) | 🟡 | дублирует счётчик здоровья CP2020 |
 | Кубики | 🟡 | `DiceRoller` только внутри спасбросков |
 | Система у кампании | ❌ | все типы счётчиков доступны всем |
-| Хранилище | ❌ | H2 in-memory — данные теряются при перезапуске |
+| Хранилище | ✅ | PostgreSQL 17 в Docker + Flyway (F-01/F-02) |
 
 ---
 
 ## 4. План
 
-### Этап 0 — Фундамент
+### Этап 0 — Фундамент ✅ (2026-10-30, F-01..F-04)
 
-- [ ] **F-01 [CORE] Постоянное хранилище.**
-  H2 в файловом режиме (`spring.datasource.url=jdbc:h2:file:./data/charka`) + `data/` в `.gitignore`.
-  Профиль `dev` может оставаться in-memory. `DataInitializer` создаёт демо-кампанию только если кампаний нет.
-  *Готово, когда:* после перезапуска приложения персонажи и счётчики на месте.
-- [ ] **F-02 [CORE] Миграции Flyway.**
+- [x] **F-01 [CORE] Постоянное хранилище — PostgreSQL в Docker.** 2026-10-30 — `compose.yaml` (postgres:17, контейнер
+  `charka-postgres`, порт **5433**, volume `charka-pgdata`, `charka`/`charka_dev_pw`); `spring-boot-docker-compose` сам поднимает
+  контейнер при `spring-boot:run` (нужен запущенный Docker Desktop). Другое окружение — `DB_URL`/`DB_USER`/`DB_PASSWORD`.
+  `DataInitializer` сидит только в пустую БД. Тесты — H2 в режиме PostgreSQL на тех же миграциях.
+  Проверено: после перезапуска деньги и счётчик на месте, демо-кампания не задвоилась.
+- [x] **F-02 [CORE] Миграции Flyway.** 2026-10-29 — `db/migration/V1__init.sql`, `ddl-auto=validate`; схема проверена Hibernate на H2(PG-режим), на живом PostgreSQL 17 миграция применилась.
   `ddl-auto=validate`, `V1__init.sql` по текущей схеме (снять DDL с Hibernate). Дальше любые изменения сущностей — новой миграцией.
   *Готово, когда:* чистая БД поднимается миграциями, тесты зелёные.
-- [ ] **F-03 [CORE] `GlobalExceptionHandler` в `src/main`.**
-  Перенести из `src/test`, страница ошибки в общем стиле (`error.html`), 404 для `*NotFoundException`.
-- [ ] **F-04 [CORE] Деньги по игровой дате.**
+- [x] **F-03 [CORE] `GlobalExceptionHandler` в `src/main`.** 2026-10-29 — `exception/GlobalExceptionHandler` (страницы → `error.html`:
+  `NoSuchElementException` 404, `IllegalArgumentException` 400, прочее 500) + `ApiExceptionHandler` (`app.charka.api`, text/plain).
+  Тестовый обработчик удалён, тесты контроллеров проверяют статус и `model.message`. `error.html` проверен в браузере (несуществующий персонаж и неизвестный URL → 404 в общем стиле).
+- [x] **F-04 [CORE] Деньги по игровой дате.** 2026-10-29 — `MoneyService.create`, если дата не задана; `MoneyServiceTest`.
   `MoneyService` ставит `operationDate = campaign.currentDate` (если у персонажа нет кампании — `LocalDate.now()`).
+- [ ] **F-05 [CORE] Раны по игровой дате.** Найдено при закрытии этапа 0: `WoundController.addWound` не ставит дату вовсе
+  (`wound.date` = null). `WoundService.create` — как `MoneyService.create`: дата не задана → `campaign.currentDate`. Мелкая задача
+  (или закрыть вместе с G-09).
+- [ ] **F-06 [CORE] «Не найдено» → 404 во всех сервисах.** Старый код бросает `IllegalArgumentException` («... not found»),
+  который `GlobalExceptionHandler` отдаёт как 400. Перевести Money/Wound/Item/Note/Campaign на свои `*NotFoundException.forId(id)`.
+  Делать попутно, когда трогаешь сервис.
 
 ### Этап 1 — Ядро мультисистемности (делать до любых новых правил CP2020)
 
@@ -291,3 +299,8 @@ app.charka
   ядро общается с ними через `GameSystem` и реестры (см. разделы 1–2).
 - 2026-10-29 — Порядок: фундамент → ядро систем → кубики → навыки → оружие → бой → развитие → редкое.
   Новые правила CP2020 не пишутся до задач S-01..S-03, чтобы не переделывать.
+- 2026-10-29 — Хранилище — PostgreSQL (не H2-файл); 2026-10-30 — в Docker (`compose.yaml`, порт 5433), а не установленный в системе PG. Схема только через Flyway (`ddl-auto=validate`), каждое изменение
+  сущностей — новая миграция `V<n>__*.sql`. SQL пишем переносимым: тесты гоняют те же миграции на H2 в режиме PostgreSQL
+  (Testcontainers — если понадобятся PG-специфичные вещи).
+- 2026-10-29 — Ошибки страниц: `IllegalArgumentException` = 400, `*NotFoundException` (`NoSuchElementException`) = 404.
+  Новый код «не найдено» бросает свои `*NotFoundException.forId(id)`.

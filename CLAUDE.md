@@ -15,7 +15,9 @@
 
 - Java 24 (в `pom.xml`; локально стоит JDK 25), Spring Boot 3.5.3
 - Spring Web MVC + **Thymeleaf** (серверный рендеринг, формы с POST + redirect)
-- Spring Data JPA / Hibernate, **H2 in-memory** (настроек datasource нет → данные живут только до перезапуска, схема `ddl-auto` по умолчанию)
+- Spring Data JPA / Hibernate, **PostgreSQL 17 в Docker** (`compose.yaml`: контейнер `charka-postgres`, `localhost:5433/charka`, `charka`/`charka_dev_pw`; переопределяется `DB_URL`/`DB_USER`/`DB_PASSWORD`). `spring-boot-docker-compose` поднимает контейнер сам при `spring-boot:run` — нужен запущенный Docker Desktop. Установленный в системе PostgreSQL (5432) не используется
+- **Flyway**: схема только миграциями `src/main/resources/db/migration/V<n>__*.sql`, Hibernate `ddl-auto=validate` → любое изменение сущности = новая миграция
+- Тесты: H2 в режиме PostgreSQL на тех же миграциях (`application-test.yml`, `@ActiveProfiles("test")` у `@SpringBootTest`) — SQL миграций держать переносимым
 - Lombok (`@Data`, `@RequiredArgsConstructor`), Bean Validation
 - Тесты: JUnit 5, Spring Boot Test (MockMvc, Mockito)
 - Сборка: Maven Wrapper. Профили `dev`/`prod` объявлены в pom, но отдельных `application-*.yml` нет.
@@ -23,12 +25,13 @@
 ## Команды
 
 ```bash
-./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0)
-./mvnw test                 # 173 теста, на 2026-10-29 все зелёные
+./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
+docker compose up -d        # БД вручную (данные в volume charka-pgdata)
+./mvnw test                 # 176 тестов, на 2026-10-29 все зелёные (живой PostgreSQL не нужен)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
-При старте `DataInitializer` (CommandLineRunner) создаёт демо-кампанию «Последний шанс» с персонажами «Колясик» и «Олежа».
+При старте `DataInitializer` (CommandLineRunner), если кампаний в БД нет, создаёт демо-кампанию «Последний шанс» с персонажами «Колясик» и «Олежа».
 
 ## Структура (`src/main/java/app/charka`)
 
@@ -41,11 +44,12 @@ service/       бизнес-логика; campaign/, counter/, notes/ — под
 controller/    MVC-контроллеры, возвращают имена шаблонов или redirect
 api/           REST: CampaignExportController (единственный JSON-эндпоинт)
 dto/counter/   DTO только для счётчиков (единственный модуль, переведённый на DTO)
-exception/     CharacterNotFoundException, InventoryNotFoundException (наследуют NoSuchElementException, фабрика forId())
+exception/     CharacterNotFoundException, InventoryNotFoundException (наследуют NoSuchElementException, фабрика forId());
+               GlobalExceptionHandler (страницы → error.html: 404/400/500), ApiExceptionHandler (app.charka.api → text/plain)
 TODO.txt       список планов автора (см. ниже)
 ```
 
-Шаблоны: `src/main/resources/templates/` — `home.html`, `campaign.html`, `character.html`, `notes.html`, `counters/list.html`; общие куски — `fragments/layout.html` (`head(title)`, `topbar(characterId, active)` с вкладками Лист/Счётчики/Заметки).
+Шаблоны: `src/main/resources/templates/` — `error.html`, `home.html`, `campaign.html`, `character.html`, `notes.html`, `counters/list.html`; общие куски — `fragments/layout.html` (`head(title)`, `topbar(characterId, active)` с вкладками Лист/Счётчики/Заметки).
 Фронт единый: один CSS `static/css/app.css` (тёмная тема, токены в `:root`, шрифты Inter + Russo One с Google Fonts) и один JS `static/js/app.js` — без Bootstrap. JS-соглашения: `[data-edit-toggle]` открывает `.edit-panel` внутри ближайшего `[data-editable]`; `form[data-confirm]` спрашивает подтверждение; `[data-count-to]` — счётчик символов; `.alert-close` закрывает flash-сообщение.
 
 ## Доменная модель
@@ -117,9 +121,7 @@ Default-методы стратегии: `getDisplayName()`/`getDefaultName()`, 
 Исправлено 2026-10-29: edit-эндпоинты ран и денег, кнопка ✎ у предметов (открывала форму инвентаря), `GET /notes` без слеша (был 405), подсветка выбранной категории, рекурсия в JSON-экспорте при наличии счётчиков, битые сид-данные. Единый редизайн всех страниц; добавлены UI для перемещения предмета, переименования категории и удаления счётчика (включён `spring.mvc.hiddenmethod.filter`).
 
 **Открытые вопросы (не баги в текущем UI, но стоит решить)**
-- `MoneyController` ставит `operationDate = LocalDate.now()` (реальная дата), а не игровую `campaign.currentDate`.
 - `NoteCategory` глобальны для всех персонажей, хотя маршруты вложены в `/character/{id}`.
-- `GlobalExceptionHandler` лежит в `src/test`, т.е. в рантайме глобальной обработки ошибок нет.
 - Тесты контроллеров — standalone MockMvc без ViewResolver: если имя вида совпадает с последним сегментом URL (`notes` для `.../notes`), получится «Circular view path» — нужен `setViewResolvers(...)` (см. `NoteControllerTest`).
 
 **Архитектура**
@@ -127,7 +129,7 @@ Default-методы стратегии: `getDisplayName()`/`getDefaultName()`, 
 - Сервисы ходят в чужие репозитории напрямую (Money/Wound/Inventory → `CharacterRepository`), разный стиль «не найдено».
 - Нет проверки принадлежности ресурса персонажу (кроме счётчиков и удаления ран): можно удалить/переместить чужой предмет, подставив id.
 - Стратегии счётчиков работают через `String`/`Object`, тип — строка; стратегии лежат в `model/` и знают имена шаблонов.
-- Нет постоянного хранилища (H2 in-memory), нет миграций (Flyway/Liquibase), нет авторизации/пользователей.
+- Нет авторизации/пользователей.
 
 ## Планы автора (`TODO.txt`)
 

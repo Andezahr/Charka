@@ -2,6 +2,7 @@ package app.charka.controller;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.eq;
@@ -9,13 +10,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.LocalDate;
 
-import app.charka.GlobalExceptionHandler;
+import app.charka.exception.GlobalExceptionHandler;
 import app.charka.model.Money;
 import app.charka.service.MoneyService;
 import org.junit.jupiter.api.BeforeEach;
@@ -84,7 +85,7 @@ class MoneyControllerTest {
             assertAll("Поля Money при добавлении дохода",
                     () -> assertEquals(NAME_INCOME, saved.getName()),
                     () -> assertEquals(100L, saved.getAmount()),
-                    () -> assertEquals(LocalDate.now(), saved.getOperationDate())
+                    () -> assertNull(saved.getOperationDate(), "дату ставит сервис")
             );
             verifyNoMoreInteractions(moneyService);
         }
@@ -106,13 +107,13 @@ class MoneyControllerTest {
             assertAll("Поля Money при добавлении расхода",
                     () -> assertEquals(NAME_EXPENSE, saved.getName()),
                     () -> assertEquals(-50L, saved.getAmount()),
-                    () -> assertEquals(LocalDate.now(), saved.getOperationDate())
+                    () -> assertNull(saved.getOperationDate(), "дату ставит сервис")
             );
             verifyNoMoreInteractions(moneyService);
         }
 
         @Test
-        @DisplayName("500 Internal Server Error – персонаж не найден")
+        @DisplayName("400 Bad Request – персонаж не найден")
         void addMoney_characterNotFound() throws Exception {
             doThrow(new IllegalArgumentException(ERROR_MSG))
                     .when(moneyService).create(eq(MISSING_CHAR_ID), any());
@@ -121,9 +122,8 @@ class MoneyControllerTest {
                             .param("name", NAME_EXPENSE)
                             .param("amount", "-50")
                             .contentType(MediaType.APPLICATION_FORM_URLENCODED))
-                    .andExpect(status().isInternalServerError())
-                    .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_PLAIN))
-                    .andExpect(content().string(ERROR_MSG));
+                    .andExpect(status().isBadRequest())
+                    .andExpect(model().attribute("message", ERROR_MSG));
 
             verify(moneyService).create(eq(MISSING_CHAR_ID), any());
             verifyNoMoreInteractions(moneyService);
@@ -193,8 +193,7 @@ class MoneyControllerTest {
             mockMvc.perform(post("/character/{characterId}/money/{moneyId}/delete",
                             CHAR_ID, MONEY_ID))
                     .andExpect(status().isInternalServerError())
-                    .andExpect(content().contentTypeCompatibleWith(String.valueOf(MediaType.TEXT_PLAIN)))
-                    .andExpect(content().string("Delete error"));
+                    .andExpect(model().attribute("message", "Delete error"));
 
             verify(moneyService).delete(MONEY_ID);
             verifyNoMoreInteractions(moneyService);

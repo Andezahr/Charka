@@ -1,0 +1,19 @@
+# Локальная БД для разработки. Поднимается сама при ./mvnw spring-boot:run (spring-boot-docker-compose)
+# или вручную: docker compose up -d
+# Порт 5433 — чтобы не конфликтовать с установленным в системе PostgreSQL на 5432.
+services:
+  postgres:
+    image: postgres:17
+    container_name: charka-postgres
+    environment:
+      POSTGRES_DB: charka
+      POSTGRES_USER: charka
+      POSTGRES_PASSWORD: charka_dev_pw
+    ports:
+      - "5433:5432"
+    volumes:
+      - charka-pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  charka-pgdata:

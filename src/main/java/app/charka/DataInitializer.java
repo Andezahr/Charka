@@ -22,6 +22,10 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
+        // БД постоянная: демо-кампания нужна только при первом запуске
+        if (campaignRepository.count() > 0) {
+            return;
+        }
         Campaign campaign = new Campaign();
         campaign.setName("Последний шанс");
         campaign.setStartDate(LocalDate.of(2037, 10, 27));

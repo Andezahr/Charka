@@ -1,6 +1,19 @@
 spring:
   application:
     name: Charka
+  # PostgreSQL из compose.yaml (dev); на другом окружении — переменные DB_URL / DB_USER / DB_PASSWORD
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/charka}
+    username: ${DB_USER:charka}
+    password: ${DB_PASSWORD:charka_dev_pw}
+  docker:
+    compose:
+      # контейнер не гасим при остановке приложения — данные и так в volume, а старт быстрее
+      lifecycle-management: start-only
+  jpa:
+    # схему создаёт и меняет только Flyway (src/main/resources/db/migration), Hibernate лишь сверяет
+    hibernate:
+      ddl-auto: validate
   resources:
     cache:
       period: 0
@@ -17,6 +30,9 @@ spring:
 server:
   address: 0.0.0.0
   port: 8080
+  error:
+    # error.html показывает текст ошибки и для ошибок вне контроллеров (например, неизвестный URL)
+    include-message: always
 logging:
   level:
     root: INFO

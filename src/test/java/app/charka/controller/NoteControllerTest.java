@@ -30,7 +30,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.servlet.view.InternalResourceViewResolver;
 
-import app.charka.GlobalExceptionHandler;
+import app.charka.exception.GlobalExceptionHandler;
 import app.charka.model.Character;
 import app.charka.model.notes.Note;
 import app.charka.model.notes.NoteCategory;
@@ -140,13 +140,13 @@ class NoteControllerTest {
         }
 
         @Test
-        @DisplayName("500 – персонаж не найден")
+        @DisplayName("400 – персонаж не найден")
         void listNotes_characterNotFound() throws Exception {
             when(characterService.getById(CHAR_ID))
                     .thenThrow(new IllegalArgumentException("Character not found for ID:" + CHAR_ID));
 
             mockMvc.perform(get("/character/{characterId}/notes/", CHAR_ID))
-                    .andExpect(status().isInternalServerError());
+                    .andExpect(status().isBadRequest());
 
             verify(characterService).getById(CHAR_ID);
             verifyNoMoreInteractions(characterService);
@@ -197,7 +197,7 @@ class NoteControllerTest {
         }
 
         @Test
-        @DisplayName("500 – сервис бросает исключение")
+        @DisplayName("400 – сервис бросает исключение")
         void addNote_serviceError() throws Exception {
             doThrow(new IllegalArgumentException("Character not found"))
                     .when(characterService).getById(CHAR_ID);
@@ -205,7 +205,7 @@ class NoteControllerTest {
             mockMvc.perform(post("/character/{characterId}/notes", CHAR_ID)
                             .param("content", "Текст")
                             .contentType(MediaType.APPLICATION_FORM_URLENCODED))
-                    .andExpect(status().isInternalServerError());
+                    .andExpect(status().isBadRequest());
 
             verify(characterService).getById(CHAR_ID);
             verifyNoMoreInteractions(characterService, noteService);
@@ -290,13 +290,13 @@ class NoteControllerTest {
         }
 
         @Test
-        @DisplayName("500 – персонаж не найден")
+        @DisplayName("400 – персонаж не найден")
         void editForm_characterNotFound() throws Exception {
             when(characterService.getById(CHAR_ID))
                     .thenThrow(new IllegalArgumentException("Character not found for ID:" + CHAR_ID));
 
             mockMvc.perform(get("/character/{characterId}/notes/{noteId}/edit", CHAR_ID, NOTE_ID))
-                    .andExpect(status().isInternalServerError());
+                    .andExpect(status().isBadRequest());
 
             verify(characterService).getById(CHAR_ID);
             verifyNoMoreInteractions(characterService);
