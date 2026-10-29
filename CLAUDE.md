@@ -27,7 +27,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 198 тестов, на 2026-10-30 все зелёные (живой PostgreSQL не нужен)
+./mvnw test                 # 195 тестов, на 2026-10-30 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -45,7 +45,7 @@ controller/    MVC-контроллеры, возвращают имена ша�
 api/           REST: CampaignExportController (единственный JSON-эндпоинт)
 system/        GameSystem, GameSystemRegistry, GenericSystem ("GENERIC"), Currency; cp2020/Cp2020System ("CP2020")
 dto/counter/   DTO только для счётчиков (единственный модуль, переведённый на DTO)
-exception/     CharacterNotFoundException, InventoryNotFoundException (наследуют NoSuchElementException, фабрика forId());
+exception/     NotFoundException.forId("Entity", id) (NoSuchElementException → 404), наследники CharacterNotFoundException, InventoryNotFoundException;
                GlobalExceptionHandler (страницы → error.html: 404/400/500), ApiExceptionHandler (app.charka.api → text/plain)
 TODO.txt       список планов автора (см. ниже)
 ```
@@ -75,7 +75,7 @@ Campaign (name, system, startDate, currentDate)   — system: код GameSystem 
 Default-методы стратегии: `getSystems()` (пусто = универсальная; форма и `createCounter` показывают/принимают только типы системы кампании), `getDisplayName()`/`getDefaultName()`, `getViewTemplate()` (шаблон с фрагментом `card` — каждый тип рисует свою карточку, `counters/list.html` не трогаем), `getCreateFieldsTemplate()` (фрагмент `create-fields` — доп. поля формы создания, уходят в `attributes[...]`), `usesInitialValue()`, `getRequiredCounterTypes()` (обязательные счётчики: создаются автоматически, удалить их, пока есть зависимый, нельзя), `isUniquePerCharacter()`, `getDisplayOrder()`, `initialize(counter, params)` (незнакомые ключи пропускать — params общие для всех создаваемых вместе), `reset(counter)`, `describe(CounterContext)` → данные карточки в `CounterResponseDto.view`, `updateAttributes(counter, map)`, `performAction(ctx, action)`.
 `Counter.attributes` (`Map<String,Integer>`, таблица `counter_attribute`) — доп. состояние стратегии сверх одного числа. `CounterContext` — счётчик + все счётчики персонажа, через него зависимые стратегии читают друг друга.
 
-Стратегии: `SimpleIntegerCounterStrategy` (`"SIMPLE_INTEGER"`, прибавляет input) и связка CP2020 (`strategy/health/cp2020/`):
+Стратегии: `SimpleIntegerCounterStrategy` (`"SIMPLE_INTEGER"`, прибавляет input) и связка CP2020 (`system/cp2020/`, доступна только кампаниям CP2020):
 - `strategy/health/HealthCounterStrategy` — точка расширения для систем здоровья (урон, лечение, `healOverTime`, спасброски по коду, стабилизация, `describe` → `HealthView`). `DiceRoller` — кубики (в тестах подменяются).
 - `Cp2020StatsStrategy` (`"CP2020_STATS"`): все 9 статов `int/ref/tech/cool/attr/luck/ma/body/emp` + `humanityLoss`. Текущие значения: REF/INT/COOL со штрафами от ран (уровень из счётчика здоровья), EMP = человечность/10 (человечность = EMP×10 − потеря). Производные (`Cp2020Rules`): бег MA×3 м, прыжок бег/4, переноска BODY×10 кг, подъём BODY×40 кг, BTM, спасбросок = BODY.
 - `Cp2020ArmorStrategy` (`"CP2020_ARMOR"`): `sp_<ЗОНА>` — текущий SP, `max_<ЗОНА>` — полный; `wear()` при пробитии, действие `REPAIR` возвращает полный SP.
@@ -113,7 +113,7 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 ## Соглашения в коде
 
 - Сервисы: `@Service @RequiredArgsConstructor`, `@Transactional` на запись, `@Transactional(readOnly = true)` на чтение, JavaDoc на русском.
-- «Не найдено» → в основном `IllegalArgumentException` с форматной константой (`ITEM_NOT_FOUND = "Item not found for id=%d"`), в новом коде — свои исключения с `forId(id)`. В заметках — голый `RuntimeException`.
+- «Не найдено» → `NotFoundException` (404), сообщение `"Item not found for id=%d"`; `IllegalArgumentException` — только некорректный ввод (400).
 - Контроллеры (кроме счётчиков) принимают `@RequestParam` и собирают сущность вручную, после POST — `redirect:/...`.
 - Контроллер счётчиков — образец «нового» стиля: DTO + `@Valid` + flash-сообщения `successMessage`/`errorMessage`.
 - Тесты разбиты на `@Nested` классы по операциям.
@@ -128,7 +128,7 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 
 **Архитектура**
 - Сущности отдаются прямо в шаблоны и в JSON; DTO есть только у счётчиков.
-- Сервисы ходят в чужие репозитории напрямую (Money/Wound/Inventory → `CharacterRepository`), разный стиль «не найдено».
+- Сервисы ходят в чужие репозитории напрямую (Money/Wound/Inventory → `CharacterRepository`).
 - Нет проверки принадлежности ресурса персонажу (кроме счётчиков и удаления ран): можно удалить/переместить чужой предмет, подставив id.
 - Стратегии счётчиков работают через `String`/`Object`, тип — строка; стратегии лежат в `model/` и знают имена шаблонов.
 - Нет авторизации/пользователей.

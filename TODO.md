@@ -60,7 +60,7 @@ app.charka
  │   ├─ GameSystemRegistry       собирает бины GameSystem в Map по code (как CounterStrategyFactory)
  │   └─ UniversalSystem          "GENERIC" — без спец-правил, только ядро
  ├─ system/cp2020/               [CP2020] Cp2020System + Rules, навыки, оружие, фамблы
- │   (сюда же со временем переедут strategy/health/cp2020/*)
+ │   (стратегии счётчиков CP2020 уже здесь — S-07)
  └─ system/dnd5e/                [DND5E] позже
 ```
 
@@ -103,7 +103,7 @@ app.charka
 
 ## 4. План
 
-### Этап 0 — Фундамент ✅ (2026-10-30, F-01..F-04)
+### Этап 0 — Фундамент ✅ (2026-10-30, F-01..F-06)
 
 - [x] **F-01 [CORE] Постоянное хранилище — PostgreSQL в Docker.** 2026-10-30 — `compose.yaml` (postgres:17, контейнер
   `charka-postgres`, порт **5433**, volume `charka-pgdata`, `charka`/`charka_dev_pw`); `spring-boot-docker-compose` сам поднимает
@@ -122,11 +122,12 @@ app.charka
   (`wound.date` = null). `WoundService.create` — как `MoneyService.create`: дата не задана → `campaign.currentDate`. Мелкая задача
   (или закрыть вместе с G-09).
   ✅ 2026-10-30 — `WoundService.create` без даты → `MoneyService.gameDate` (игровая дата кампании); `WoundServiceTest`.
-- [ ] **F-06 [CORE] «Не найдено» → 404 во всех сервисах.** Старый код бросает `IllegalArgumentException` («... not found»),
+- [x] **F-06 [CORE] «Не найдено» → 404 во всех сервисах.** Старый код бросает `IllegalArgumentException` («... not found»),
   который `GlobalExceptionHandler` отдаёт как 400. Перевести Money/Wound/Item/Note/Campaign на свои `*NotFoundException.forId(id)`.
   Делать попутно, когда трогаешь сервис.
+  ✅ 2026-10-30 — общий `exception/NotFoundException.forId("Item", id)` (Character/InventoryNotFoundException — его наследники); Item/Wound/Money/Chronicle/Campaign/Counter/Note/NoteCategory бросают его при «не найдено» (сообщения те же) → 404. Экспорт кампании ловит `NoSuchElementException`.
 
-### Этап 1 — Ядро мультисистемности ✅ кроме S-07 (2026-10-30)
+### Этап 1 — Ядро мультисистемности ✅ (2026-10-30, S-01..S-07)
 
 - [x] **S-01 [CORE] Контракт `GameSystem` и `GameSystemRegistry`.**
   Пакет `app.charka.system`. Минимальный интерфейс: `getCode()`, `getDisplayName()`, `getCurrency()`
@@ -155,9 +156,10 @@ app.charka
   ✅ 2026-10-30 — `CampaignTimelineService` → `registry.get(campaign.system).onTimePassed(...)`; `Cp2020System` → `healOverTime`. `CampaignTimelineServiceTest`.
 - [x] **S-06 [CORE] Валюта системы в UI денег.** Эдди (`eb`) для CP2020, нейтральное «у.е.» для GENERIC.
   ✅ 2026-10-30 — `Currency` системы в модели листа (`currency`): баланс, суммы операций, подсказка поля — «eb» / «у.е.».
-- [ ] **S-07 [CP2020] Переезд пакета.** `model/counters/strategy/health/cp2020/*` → `system/cp2020/...`
+- [x] **S-07 [CP2020] Переезд пакета.** `model/counters/strategy/health/cp2020/*` → `system/cp2020/...`
   (стратегии остаются бинами `CounterStrategy`). Делать отдельным коммитом только с перемещением.
   `HealthCounterStrategy` и `DiceRoller` — остаются в ядре.
+  ✅ 2026-10-30 — всё из `model/counters/strategy/health/cp2020/` (и тесты) → плоский пакет `app.charka.system.cp2020` рядом с `Cp2020System`, отдельным коммитом.
 
 ### Этап 2 — Кубики и проверки
 
@@ -310,7 +312,7 @@ app.charka
   сущностей — новая миграция `V<n>__*.sql`. SQL пишем переносимым: тесты гоняют те же миграции на H2 в режиме PostgreSQL
   (Testcontainers — если понадобятся PG-специфичные вещи).
 - 2026-10-29 — Ошибки страниц: `IllegalArgumentException` = 400, `*NotFoundException` (`NoSuchElementException`) = 404.
-  Новый код «не найдено» бросает свои `*NotFoundException.forId(id)`.
+  Код «не найдено» бросает `NotFoundException.forId("Entity", id)` (2026-10-30: один общий класс вместо класса на сущность).
 - 2026-10-30 — Новая `Campaign` по умолчанию GENERIC (существующие в БД мигрированы в CP2020). Персонаж без кампании — GENERIC.
   Код системы персонажа вычисляет статический `GameSystemRegistry.systemCodeOf`, чтобы `CounterService` не зависел
   от реестра (иначе цикл: реестр → `Cp2020System` → `HealthCounterService` → `CounterService`).
