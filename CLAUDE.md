@@ -18,7 +18,7 @@
 
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0)
-./mvnw test                 # ~93 теста, на 2026-10-29 все зелёные
+./mvnw test                 # ~101 тест, на 2026-10-29 все зелёные
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -39,7 +39,8 @@ exception/     CharacterNotFoundException, InventoryNotFoundException (насл�
 TODO.txt       список планов автора (см. ниже)
 ```
 
-Шаблоны: `src/main/resources/templates/` — `home.html`, `campaign.html`, `character.html`, `notes.html`, `counters/list.html`. CSS: `static/css/styles.css`, `static/css/character.css`. Страница счётчиков использует Bootstrap 5.1.3 + Font Awesome с CDN, остальные — свой CSS. В `character.html` небольшой inline-JS для показа inline-форм редактирования.
+Шаблоны: `src/main/resources/templates/` — `home.html`, `campaign.html`, `character.html`, `notes.html`, `counters/list.html`; общие куски — `fragments/layout.html` (`head(title)`, `topbar(characterId, active)` с вкладками Лист/Счётчики/Заметки).
+Фронт единый: один CSS `static/css/app.css` (тёмная тема, токены в `:root`, шрифты Inter + Russo One с Google Fonts) и один JS `static/js/app.js` — без Bootstrap. JS-соглашения: `[data-edit-toggle]` открывает `.edit-panel` внутри ближайшего `[data-editable]`; `form[data-confirm]` спрашивает подтверждение; `[data-count-to]` — счётчик символов; `.alert-close` закрывает flash-сообщение.
 
 ## Доменная модель
 
@@ -95,10 +96,9 @@ Campaign (name, startDate, currentDate)
 
 ## Известные проблемы и долг (кандидаты на модернизацию)
 
-Исправлено 2026-10-29: edit-эндпоинты ран и денег, кнопка ✎ у предметов (открывала форму инвентаря), `GET /notes` без слеша (был 405), подсветка выбранной категории, рекурсия в JSON-экспорте при наличии счётчиков, битые сид-данные.
+Исправлено 2026-10-29: edit-эндпоинты ран и денег, кнопка ✎ у предметов (открывала форму инвентаря), `GET /notes` без слеша (был 405), подсветка выбранной категории, рекурсия в JSON-экспорте при наличии счётчиков, битые сид-данные. Единый редизайн всех страниц; добавлены UI для перемещения предмета, переименования категории и удаления счётчика (включён `spring.mvc.hiddenmethod.filter`).
 
 **Открытые вопросы (не баги в текущем UI, но стоит решить)**
-- `CounterController.deleteCounter` — `@DeleteMapping`, но HTML-формы умеют только GET/POST, а `HiddenHttpMethodFilter` не включён; кнопки удаления в `counters/list.html` нет.
 - `MoneyController` ставит `operationDate = LocalDate.now()` (реальная дата), а не игровую `campaign.currentDate`.
 - `NoteCategory` глобальны для всех персонажей, хотя маршруты вложены в `/character/{id}`.
 - `GlobalExceptionHandler` лежит в `src/test`, т.е. в рантайме глобальной обработки ошибок нет.
@@ -110,7 +110,6 @@ Campaign (name, startDate, currentDate)
 - Нет проверки принадлежности ресурса персонажу (кроме счётчиков и удаления ран): можно удалить/переместить чужой предмет, подставив id.
 - Стратегии счётчиков работают через `String`/`Object`, тип — строка.
 - Нет постоянного хранилища (H2 in-memory), нет миграций (Flyway/Liquibase), нет авторизации/пользователей.
-- Разнородный фронт: часть страниц на Bootstrap с CDN, часть на своём CSS.
 
 ## Планы автора (`TODO.txt`)
 

@@ -1,215 +1,224 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <title th:text="'Персонаж ' + ${character.name}">Персонаж</title>
-  <link rel="stylesheet" th:href="@{/css/character.css}">
-  <style>
-    .inline-edit-form {
-      display: none;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-      margin-top: 0.5rem;
-    }
-    .btn-symbol {
-      background: transparent;
-      border: none;
-      font-size: 1rem;
-      cursor: pointer;
-      padding: 0 0.3rem;
-      line-height: 1;
-    }
-    .btn-symbol:hover {
-      color: #2e86de;
-    }
-    .item-actions,
-    .inventory-actions,
-    .subitem-actions {
-      display: flex;
-      gap: 0.3rem;
-      align-items: center;
-    }
-  </style>
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      document.querySelectorAll('.btn-edit').forEach(btn => {
-        btn.addEventListener('click', e => {
-          e.preventDefault();
-          // ближайшая карточка: у предмета это .subitem-card, а не карточка инвентаря вокруг него
-          const card = btn.closest('.subitem-card, .item-card');
-          const form = card.querySelector(':scope > .inline-edit-form');
-          form.style.display = form.style.display === 'flex' ? 'none' : 'flex';
-        });
-      });
-    });
-  </script>
-</head>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Персонаж ' + ${character.name})}"></head>
 <body>
-<div class="page-wrapper">
-  <div class="container">
-    <header class="character-header">
-      <h1 th:text="${character.name}">Имя персонажа</h1>
-    </header>
-    <main class="character-content">
-      <div class="left-column">
-        <!-- РАНЫ -->
-        <section class="section">
-          <h2 class="section-title">Раны</h2>
-          <form th:action="@{'/character/' + ${character.id} + '/wounds'}" method="post" class="add-form">
-            <div class="form-group">
-              <input type="text" name="name" placeholder="Описание" required autocomplete="off">
-              <input type="number" name="severity" placeholder="Тяжесть" min="1" step="1">
-            </div>
-            <button type="submit" class="btn btn-primary">Добавить</button>
+<header th:replace="~{fragments/layout :: topbar(${character.id}, 'sheet')}"></header>
+
+<main class="page">
+  <div class="page-head">
+    <div class="with-avatar">
+      <div>
+        <span class="eyebrow">Лист персонажа</span>
+        <h1 class="page-title" th:text="${character.name}">Имя персонажа</h1>
+        <p class="page-sub">
+          <span th:if="${character.campaign != null}">
+            Кампания: <a th:href="@{'/campaign/' + ${character.campaign.id}}" th:text="${character.campaign.name}">Кампания</a>
+          </span>
+          <span th:if="${character.birthDate != null}">
+            · родился <span th:text="${character.birthDate}">дата</span>
+          </span>
+        </p>
+      </div>
+    </div>
+    <div class="page-actions">
+      <a th:href="@{/}" class="btn btn-ghost">← На главную</a>
+      <a th:href="@{'/character/' + ${character.id} + '/counters'}" class="btn">Счётчики</a>
+      <a th:href="@{'/character/' + ${character.id} + '/notes'}" class="btn">Заметки</a>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">Баланс</div>
+      <div class="stat-value accent" th:text="${moneySum}">0</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Ран</div>
+      <div class="stat-value" th:classappend="${!#lists.isEmpty(character.wounds)} ? 'danger'"
+           th:text="${#lists.size(character.wounds)}">0</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Инвентарей</div>
+      <div class="stat-value" th:text="${#lists.size(character.inventories)}">0</div>
+    </div>
+  </div>
+
+  <div class="grid grid-main">
+    <div class="stack">
+      <!-- РАНЫ -->
+      <section class="card">
+        <div class="card-head">
+          <h2 class="card-title"><span class="dot red"></span>Раны</h2>
+          <span class="badge" th:text="${#lists.size(character.wounds)}">0</span>
+        </div>
+        <div class="card-body">
+          <form th:action="@{'/character/' + ${character.id} + '/wounds'}" method="post" class="form-row">
+            <input type="text" name="name" class="grow" placeholder="Описание раны" required autocomplete="off">
+            <input type="number" name="severity" class="narrow" placeholder="Тяжесть" min="1" step="1">
+            <button type="submit" class="btn btn-primary">＋ Добавить</button>
           </form>
-          <div class="items-list">
-            <div th:each="wound : ${character.wounds}" class="item-card">
-              <div class="item-info">
-                <span class="item-name" th:text="${wound.name}">Название</span>
-                <span th:if="${wound.severity != null}" class="item-detail">
-                    (тяжесть: <span th:text="${wound.severity}">1</span>)
-                  </span>
+        </div>
+        <div class="card-body list">
+          <div th:each="wound : ${character.wounds}" class="row" data-editable>
+            <div class="row-main">
+              <div class="row-title" th:text="${wound.name}">Название</div>
+              <div class="row-meta">
+                <span th:if="${wound.severity != null}" class="chip red" th:text="'Тяжесть ' + ${wound.severity}">Тяжесть 1</span>
+                <span th:if="${wound.date != null}" th:text="${wound.date}">дата</span>
               </div>
-              <div class="item-actions">
-                <button class="btn-symbol btn-edit" title="Редактировать">✎</button>
-                <form th:action="@{'/character/' + ${character.id} + '/wounds/' + ${wound.id} + '/delete'}"
-                      method="post" class="inline-form" style="margin:0;">
-                  <button type="submit" class="btn-symbol" title="Удалить">🗑</button>
-                </form>
-              </div>
-              <form th:action="@{'/character/' + ${character.id} + '/wounds/' + ${wound.id} + '/edit'}"
-                    method="post" class="inline-edit-form" style="display:none;flex-wrap:wrap;">
-                <input type="text" name="name" th:value="${wound.name}" required placeholder="Описание">
-                <input type="number" name="severity" th:value="${wound.severity}" min="1" placeholder="Тяжесть">
-                <button type="submit" class="btn btn-small btn-secondary">OK</button>
+            </div>
+            <div class="row-actions">
+              <button type="button" class="icon-btn" data-edit-toggle title="Редактировать">✎</button>
+              <form th:action="@{'/character/' + ${character.id} + '/wounds/' + ${wound.id} + '/delete'}"
+                    method="post" class="inline">
+                <button type="submit" class="icon-btn danger" title="Удалить">✕</button>
               </form>
             </div>
-            <div th:if="${#lists.isEmpty(character.wounds)}" class="empty-state">
-              <span>Нет ран</span>
-            </div>
+            <form th:action="@{'/character/' + ${character.id} + '/wounds/' + ${wound.id} + '/edit'}"
+                  method="post" class="edit-panel">
+              <div class="form-row">
+                <input type="text" name="name" class="grow" th:value="${wound.name}" required placeholder="Описание">
+                <input type="number" name="severity" class="narrow" th:value="${wound.severity}" min="1" placeholder="Тяжесть">
+                <button type="submit" class="btn btn-sm btn-primary">Сохранить</button>
+              </div>
+            </form>
           </div>
-        </section>
+          <div th:if="${#lists.isEmpty(character.wounds)}" class="empty">Нет ран — персонаж цел</div>
+        </div>
+      </section>
 
-        <!-- ИНВЕНТАРИ -->
-        <section class="section">
-          <h2 class="section-title">Инвентари</h2>
-          <form th:action="@{'/character/' + ${character.id} + '/inventories'}" method="post" class="add-form">
-            <div class="form-group">
-              <input type="text" name="name" placeholder="Название" required autocomplete="off">
-            </div>
-            <button type="submit" class="btn btn-primary">Добавить</button>
+      <!-- ИНВЕНТАРИ -->
+      <section class="card">
+        <div class="card-head">
+          <h2 class="card-title"><span class="dot yellow"></span>Инвентари</h2>
+          <span class="badge" th:text="${#lists.size(character.inventories)}">0</span>
+        </div>
+        <div class="card-body">
+          <form th:action="@{'/character/' + ${character.id} + '/inventories'}" method="post" class="form-row">
+            <input type="text" name="name" class="grow" placeholder="Название нового инвентаря" required autocomplete="off">
+            <button type="submit" class="btn btn-primary">＋ Добавить</button>
           </form>
-          <div class="items-list">
-            <div th:each="inv : ${character.inventories}" class="item-card inventory-card">
-              <div class="inventory-header">
-                <span class="item-name" th:text="${inv.name}">Инвентарь</span>
-                <div class="inventory-actions">
-                  <button class="btn-symbol btn-edit" title="Переименовать">✎</button>
-                  <form th:action="@{'/character/' + ${character.id} + '/inventories/' + ${inv.id} + '/delete'}"
-                        method="post" class="inline-form" style="margin:0;">
-                    <button type="submit" class="btn-symbol" title="Удалить">🗑</button>
-                  </form>
-                </div>
+        </div>
+        <div class="card-body">
+          <div th:each="inv : ${character.inventories}" class="inventory">
+            <div class="inventory-head" data-editable>
+              <div class="inventory-name">
+                🎒 <span th:text="${inv.name}">Инвентарь</span>
+                <span class="badge" th:text="${#lists.size(inv.content)}">0</span>
+              </div>
+              <div class="row-actions">
+                <button type="button" class="icon-btn" data-edit-toggle title="Переименовать">✎</button>
+                <form th:action="@{'/character/' + ${character.id} + '/inventories/' + ${inv.id} + '/delete'}"
+                      method="post" class="inline" data-confirm="Удалить инвентарь вместе со всеми предметами?">
+                  <button type="submit" class="icon-btn danger" title="Удалить">✕</button>
+                </form>
               </div>
               <form th:action="@{'/character/' + ${character.id} + '/inventories/' + ${inv.id} + '/edit'}"
-                    method="post" class="inline-edit-form" style="display:none;flex-wrap:wrap;">
-                <input type="text" name="name" th:value="${inv.name}" required placeholder="Название">
-                <button type="submit" class="btn btn-small btn-secondary">OK</button>
+                    method="post" class="edit-panel">
+                <div class="form-row">
+                  <input type="text" name="name" class="grow" th:value="${inv.name}" required placeholder="Название">
+                  <button type="submit" class="btn btn-sm btn-primary">Сохранить</button>
+                </div>
               </form>
-              <div class="inventory-content">
-                <form th:action="@{'/character/' + ${character.id} + '/inventories/' + ${inv.id} + '/items'}"
-                      method="post" class="add-subitem-form">
-                  <div class="form-group">
-                    <input type="text" name="itemName" placeholder="Название" required autocomplete="off">
-                    <input type="number" name="quantity" placeholder="Кол-во" required min="1">
-                    <input type="number" name="cost" placeholder="Цена" required min="0">
-                    <input type="text" name="description" placeholder="Описание">
-                    <button type="submit" class="btn btn-primary">Добавить</button>
+            </div>
+
+            <div class="inventory-body">
+              <form th:action="@{'/character/' + ${character.id} + '/inventories/' + ${inv.id} + '/items'}"
+                    method="post" class="form-row">
+                <input type="text" name="itemName" class="grow" placeholder="Предмет" required autocomplete="off">
+                <input type="number" name="quantity" class="narrow" placeholder="Кол-во" required min="1">
+                <input type="number" name="cost" class="narrow" placeholder="Цена" required min="0">
+                <input type="text" name="description" class="grow" placeholder="Описание">
+                <button type="submit" class="btn btn-sm btn-primary">＋</button>
+              </form>
+
+              <div class="list">
+                <div th:each="item : ${inv.content}" class="row" data-editable>
+                  <div class="row-main">
+                    <div class="row-title" th:text="${item.name}">Предмет</div>
+                    <div class="row-meta">
+                      <span>× <span th:text="${item.quantity}">1</span></span>
+                      <span>₽ <span th:text="${item.cost}">0</span></span>
+                    </div>
+                    <div class="row-desc" th:if="${!#strings.isEmpty(item.description)}" th:text="${item.description}">Описание</div>
                   </div>
-                </form>
-                <div class="items-sublist">
-                  <div th:each="item : ${inv.content}" class="subitem-card">
-                    <div class="item-info">
-                      <span class="item-name" th:text="${item.name}">Предмет</span>
-                      <span class="item-quantity">×<span th:text="${item.quantity}">1</span></span>
-                      <span class="item-cost">₽<span th:text="${item.cost}">0</span></span>
-                    </div>
-                    <div class="subitem-actions">
-                      <button class="btn-symbol btn-edit" title="Редактировать">✎</button>
-                      <form th:action="@{'/character/' + ${character.id} + '/inventories/' + ${inv.id} + '/items/' + ${item.id} + '/delete'}"
-                            method="post" class="inline-form" style="margin:0;">
-                        <button type="submit" class="btn-symbol" title="Удалить">🗑</button>
-                      </form>
-                    </div>
-                    <form th:action="@{'/character/' + ${character.id} + '/inventories/' + ${inv.id} + '/items/' + ${item.id} + '/edit'}"
-                          method="post" class="inline-edit-form" style="display:none;flex-wrap:wrap;">
-                      <input type="text" name="itemName" th:value="${item.name}" required placeholder="Название">
-                      <input type="number" name="quantity" th:value="${item.quantity}" min="1" placeholder="Кол-во">
-                      <input type="number" name="cost" th:value="${item.cost}" min="0" placeholder="Цена">
-                      <input type="text" name="description" th:value="${item.description}" placeholder="Описание">
-                      <button type="submit" class="btn btn-small btn-secondary">OK</button>
+                  <div class="row-actions">
+                    <button type="button" class="icon-btn" data-edit-toggle title="Редактировать / переместить">✎</button>
+                    <form th:action="@{'/character/' + ${character.id} + '/inventories/' + ${inv.id} + '/items/' + ${item.id} + '/delete'}"
+                          method="post" class="inline">
+                      <button type="submit" class="icon-btn danger" title="Удалить">✕</button>
                     </form>
                   </div>
-                  <div th:if="${#lists.isEmpty(inv.content)}" class="empty-state">
-                    <span>Нет предметов</span>
+                  <div class="edit-panel">
+                    <form th:action="@{'/character/' + ${character.id} + '/inventories/' + ${inv.id} + '/items/' + ${item.id} + '/edit'}"
+                          method="post" class="form-row">
+                      <input type="text" name="itemName" class="grow" th:value="${item.name}" required placeholder="Название">
+                      <input type="number" name="quantity" class="narrow" th:value="${item.quantity}" min="1" placeholder="Кол-во">
+                      <input type="number" name="cost" class="narrow" th:value="${item.cost}" min="0" placeholder="Цена">
+                      <input type="text" name="description" class="grow" th:value="${item.description}" placeholder="Описание">
+                      <button type="submit" class="btn btn-sm btn-primary">Сохранить</button>
+                    </form>
+                    <form th:if="${#lists.size(character.inventories) > 1}"
+                          th:action="@{'/character/' + ${character.id} + '/inventories/' + ${inv.id} + '/items/' + ${item.id} + '/move'}"
+                          method="post" class="form-row">
+                      <select name="targetInventoryId" required aria-label="Куда переместить">
+                        <option th:each="target : ${character.inventories}" th:if="${target.id != inv.id}"
+                                th:value="${target.id}" th:text="'Переместить в: ' + ${target.name}">Инвентарь</option>
+                      </select>
+                      <button type="submit" class="btn btn-sm">⇄ Переместить</button>
+                    </form>
                   </div>
                 </div>
+                <div th:if="${#lists.isEmpty(inv.content)}" class="empty">Пусто</div>
               </div>
             </div>
-            <div th:if="${#lists.isEmpty(character.inventories)}" class="empty-state">
-              <span>Нет инвентарей</span>
-            </div>
           </div>
-        </section>
-      </div>
+          <div th:if="${#lists.isEmpty(character.inventories)}" class="empty">Нет инвентарей</div>
+        </div>
+      </section>
+    </div>
 
-      <div class="right-column">
-        <section class="section">
-          <h2 class="section-title">Деньги</h2>
-          <div class="money-summary">
-            <span class="money-total">Сумма: <strong th:text="${moneySum}">0</strong></span>
-          </div>
-          <form th:action="@{'/character/' + ${character.id} + '/money'}" method="post" class="add-form">
-            <div class="form-group">
-              <input type="text" name="name" placeholder="Описание" required autocomplete="off">
-              <input type="number" name="amount" placeholder="Сумма" required autocomplete="off">
-            </div>
-            <button type="submit" class="btn btn-primary">Добавить</button>
-          </form>
-          <div class="items-list">
-            <div th:each="money : ${moneyList}" class="item-card money-item">
-              <div class="item-info">
-                <span class="item-name" th:text="${money.name}">Операция</span>
-                <span class="money-amount" th:text="${money.amount}">0</span>
-                <span class="item-date" th:text="${money.operationDate}">Дата</span>
-              </div>
-              <div class="item-actions">
-                <button class="btn-symbol btn-edit" title="Редактировать">✎</button>
-                <form th:action="@{'/character/' + ${character.id} + '/money/' + ${money.id} + '/delete'}"
-                      method="post" class="inline-form" style="margin:0;">
-                  <button type="submit" class="btn-symbol" title="Удалить">🗑</button>
-                </form>
-              </div>
-              <form th:action="@{'/character/' + ${character.id} + '/money/' + ${money.id} + '/edit'}"
-                    method="post" class="inline-edit-form" style="display:none;flex-wrap:wrap;">
-                <input type="text" name="name" th:value="${money.name}" required placeholder="Описание">
-                <input type="number" name="amount" th:value="${money.amount}" placeholder="Сумма">
-                <button type="submit" class="btn btn-small btn-secondary">OK</button>
-              </form>
-            </div>
-            <div th:if="${#lists.isEmpty(moneyList)}" class="empty-state">
-              <span>Нет операций</span>
-            </div>
-          </div>
-        </section>
+    <!-- ДЕНЬГИ -->
+    <section class="card">
+      <div class="card-head">
+        <h2 class="card-title"><span class="dot green"></span>Деньги</h2>
+        <span class="amount" th:classappend="${moneySum < 0} ? 'neg' : 'pos'" th:text="${moneySum}">0</span>
       </div>
-    </main>
-    <footer class="character-footer">
-      <a href="/" class="btn btn-back">← Назад</a>
-      <a th:href="@{'/character/' + ${character.id} + '/counters'}" class="btn btn-secondary">Счетчики</a>
-      <a th:href="@{'/character/' + ${character.id} + '/notes'}" class="btn btn-secondary">Записки</a>
-    </footer>
+      <div class="card-body">
+        <form th:action="@{'/character/' + ${character.id} + '/money'}" method="post" class="form-row">
+          <input type="text" name="name" class="grow" placeholder="Описание" required autocomplete="off">
+          <input type="number" name="amount" class="narrow" placeholder="±Сумма" required autocomplete="off">
+          <button type="submit" class="btn btn-primary">＋</button>
+        </form>
+      </div>
+      <div class="card-body list">
+        <div th:each="money : ${moneyList}" class="row" data-editable>
+          <div class="row-main">
+            <div class="row-title" th:text="${money.name}">Операция</div>
+            <div class="row-meta"><span th:text="${money.operationDate}">дата</span></div>
+          </div>
+          <span class="amount" th:classappend="${money.amount < 0} ? 'neg' : 'pos'"
+                th:text="${money.amount > 0} ? '+' + ${money.amount} : ${money.amount}">0</span>
+          <div class="row-actions">
+            <button type="button" class="icon-btn" data-edit-toggle title="Редактировать">✎</button>
+            <form th:action="@{'/character/' + ${character.id} + '/money/' + ${money.id} + '/delete'}"
+                  method="post" class="inline">
+              <button type="submit" class="icon-btn danger" title="Удалить">✕</button>
+            </form>
+          </div>
+          <form th:action="@{'/character/' + ${character.id} + '/money/' + ${money.id} + '/edit'}"
+                method="post" class="edit-panel">
+            <div class="form-row">
+              <input type="text" name="name" class="grow" th:value="${money.name}" required placeholder="Описание">
+              <input type="number" name="amount" class="narrow" th:value="${money.amount}" required placeholder="Сумма">
+              <button type="submit" class="btn btn-sm btn-primary">Сохранить</button>
+            </div>
+          </form>
+        </div>
+        <div th:if="${#lists.isEmpty(moneyList)}" class="empty">Нет операций</div>
+      </div>
+    </section>
   </div>
-</div>
+</main>
 </body>
 </html>

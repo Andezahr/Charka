@@ -8,6 +8,11 @@ spring:
       cache: false
   thymeleaf:
     cache: false
+  mvc:
+    # позволяет HTML-формам слать DELETE через скрытое поле _method (удаление счётчиков)
+    hiddenmethod:
+      filter:
+        enabled: true
 
 server:
   address: 0.0.0.0

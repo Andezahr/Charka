@@ -1,34 +1,68 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8">
-    <title>Домашняя страница</title>
-    <link rel="stylesheet" th:href="@{/css/styles.css}">
-</head>
+<head th:replace="~{fragments/layout :: head('Главная')}"></head>
 <body>
-<div class="page-wrapper">
-    <div class="character-header">
-        <h1>Домашняя страница</h1>
-    </div>
-    <div class="container">
-        <h2>Список имён персонажей</h2>
-        <ul>
-            <li th:each="character : ${characters}">
-                <a th:href="@{'/character/' + ${character.id}}"
-                   th:text="${character.name}"></a>
-            </li>
-            <li th:if="${#lists.isEmpty(characters)}" class="empty-state">Пока нет ни одного персонажа</li>
-        </ul>
+<header th:replace="~{fragments/layout :: topbar(null, 'home')}"></header>
 
-        <h2>Список кампаний</h2>
-        <ul>
-            <li th:each="campaign : ${campaigns}">
-                <a th:href="@{'/campaign/' + ${campaign.id}}"
-                   th:text="${campaign.name}"></a>
-            </li>
-            <li th:if="${#lists.isEmpty(campaigns)}" class="empty-state">Пока нет ни одной кампании</li>
-        </ul>
+<main class="page">
+  <div class="page-head">
+    <div>
+      <span class="eyebrow">Менеджер персонажей</span>
+      <h1 class="page-title">Добро пожаловать в Charka</h1>
+      <p class="page-sub">Кампании, персонажи, их раны, инвентари, деньги и заметки — в одном месте.</p>
     </div>
-</div>
+  </div>
+
+  <div class="grid grid-2">
+    <!-- Кампании -->
+    <section class="card">
+      <div class="card-head">
+        <h2 class="card-title"><span class="dot pink"></span>Кампании</h2>
+        <span class="badge" th:text="${#lists.size(campaigns)}">0</span>
+      </div>
+      <div class="card-body list">
+        <a th:each="campaign : ${campaigns}" th:href="@{'/campaign/' + ${campaign.id}}" class="row">
+          <div class="with-avatar row-main">
+            <span class="avatar pink" th:text="${#strings.substring(campaign.name, 0, 1)}">К</span>
+            <div class="row-main">
+              <div class="row-title" th:text="${campaign.name}">Кампания</div>
+              <div class="row-meta">
+                <span th:if="${campaign.currentDate != null}">📅 <span th:text="${campaign.currentDate}">дата</span></span>
+                <span th:if="${campaign.characters != null}">
+                  👥 <span th:text="${#lists.size(campaign.characters)}">0</span> перс.
+                </span>
+              </div>
+            </div>
+          </div>
+          <span class="arrow">→</span>
+        </a>
+        <div th:if="${#lists.isEmpty(campaigns)}" class="empty">Пока нет ни одной кампании</div>
+      </div>
+    </section>
+
+    <!-- Персонажи -->
+    <section class="card">
+      <div class="card-head">
+        <h2 class="card-title"><span class="dot"></span>Персонажи</h2>
+        <span class="badge" th:text="${#lists.size(characters)}">0</span>
+      </div>
+      <div class="card-body list">
+        <a th:each="character : ${characters}" th:href="@{'/character/' + ${character.id}}" class="row">
+          <div class="with-avatar row-main">
+            <span class="avatar" th:text="${#strings.substring(character.name, 0, 1)}">П</span>
+            <div class="row-main">
+              <div class="row-title" th:text="${character.name}">Персонаж</div>
+              <div class="row-meta" th:if="${character.campaign != null}">
+                <span th:text="${character.campaign.name}">Кампания</span>
+              </div>
+            </div>
+          </div>
+          <span class="arrow">→</span>
+        </a>
+        <div th:if="${#lists.isEmpty(characters)}" class="empty">Пока нет ни одного персонажа</div>
+      </div>
+    </section>
+  </div>
+</main>
 </body>
 </html>

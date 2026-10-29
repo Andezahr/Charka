@@ -1,177 +1,95 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
-<head>
-  <meta charset="UTF-8">
-  <title th:text="'Кампания: ' + ${campaign.name}">Кампания</title>
-  <link rel="stylesheet" th:href="@{/css/styles.css}">
-</head>
+<head th:replace="~{fragments/layout :: head('Кампания: ' + ${campaign.name})}"></head>
 <body>
-<div class="page-wrapper">
-  <div class="container">
-    <header class="character-header">
-      <h1 th:text="${campaign.name}">Название кампании</h1>
-    </header>
+<header th:replace="~{fragments/layout :: topbar(null, 'campaign')}"></header>
 
-    <main class="character-content">
-      <div class="left-column">
-
-
-        <!-- Персонажи и их раны -->
-        <section class="section">
-          <h2 class="section-title">Персонажи кампании</h2>
-          <!-- Форма добавления персонажа -->
-
-          <div class="items-list">
-            <div th:each="character : ${campaign.characters}" class="item-card">
-              <div class="item-info">
-                <a th:href="@{'/character/' + ${character.id}}" class="character-link">
-                  <span class="item-name" th:text="${character.name}">Имя персонажа</span>
-                </a>
-              </div>
-              <div class="character-wounds">
-                <strong>Раны:</strong>
-                <ul>
-                  <li th:each="wound : ${character.wounds}" class="wound-item">
-                    <span th:text="${wound.name}">Рана</span>
-                    <span th:if="${wound.severity != null}" class="wound-severity">
-                      (тяжесть: <span th:text="${wound.severity}">0</span>)
-                    </span>
-                  </li>
-                  <li th:if="${#lists.isEmpty(character.wounds)}" class="empty-state-small">Нет ран</li>
-                </ul>
-              </div>
-            </div>
-            <div th:if="${#lists.isEmpty(campaign.characters)}" class="empty-state">
-              <span>Нет персонажей</span>
-            </div>
-          </div>
-          <form th:action="@{'/campaign/' + ${campaign.id} + '/characters'}" method="post" class="add-form">
-            <div class="form-group">
-              <input type="text" name="name" placeholder="Имя персонажа" required autocomplete="off">
-            </div>
-            <button type="submit" class="btn btn-primary">Добавить персонажа</button>
-          </form>
-        </section>
-      </div>
-
-      <div class="right-column">
-        <!-- Хрониклы -->
-        <section class="section">
-          <h2 class="section-title">Хрониклы</h2>
-          <div class="info-item">
-            <strong>Текущая дата:</strong>
-            <span th:text="${currentDate}">Дата</span>
-          </div>
-          <!-- Форма добавления хроникла -->
-          <form th:action="@{'/campaign/' + ${campaign.id} + '/chronicles'}" method="post" class="add-form">
-            <div class="form-group">
-              <input type="text" name="name" placeholder="Название хроникла" required autocomplete="off">
-              <input type="number" name="duration" placeholder="Длительность (дней)" required min="1">
-            </div>
-            <button type="submit" class="btn btn-primary">Добавить хроникл</button>
-          </form>
-          <div class="items-list">
-            <div th:each="chronicle : ${campaign.chronicles}" class="item-card">
-              <div class="item-info">
-                <span class="item-name" th:text="${chronicle.name}">Название хроникла</span>
-                <span class="item-detail">
-                  <span th:text="${chronicle.startDate}">Дата начала</span>
-                  &mdash;
-                  <span th:text="${chronicle.endDate}">Дата окончания</span>
-                </span>
-              </div>
-            </div>
-            <div th:if="${#lists.isEmpty(campaign.chronicles)}" class="empty-state">
-              <span>Нет хрониклов</span>
-            </div>
-          </div>
-        </section>
-      </div>
-    </main>
-
-    <footer class="character-footer">
-      <a href="/" class="btn btn-back">← Назад к списку кампаний</a>
-      <a th:href="@{'/api/campaigns/' + ${campaign.id} + '/download'}"
-         class="btn btn-download"
-         download>
-        ⬇ Скачать кампанию в JSON
-      </a>
-    </footer>
+<main class="page">
+  <div class="page-head">
+    <div>
+      <span class="eyebrow">Кампания</span>
+      <h1 class="page-title" th:text="${campaign.name}">Название кампании</h1>
+      <p class="page-sub" th:if="${campaign.startDate != null}">
+        Началась <span th:text="${campaign.startDate}">дата</span>
+      </p>
+    </div>
+    <div class="page-actions">
+      <a th:href="@{/}" class="btn btn-ghost">← На главную</a>
+      <a th:href="@{'/api/campaigns/' + ${campaign.id} + '/download'}" class="btn" download>⬇ Скачать JSON</a>
+    </div>
   </div>
-</div>
 
-<!-- Дополнительные стили для ссылок персонажей -->
-<style>
-  .character-link {
-    text-decoration: none;
-    color: inherit;
-    transition: all 0.2s ease;
-  }
+  <div class="grid grid-main">
+    <!-- Персонажи и их раны -->
+    <section class="card">
+      <div class="card-head">
+        <h2 class="card-title"><span class="dot"></span>Персонажи кампании</h2>
+        <span class="badge" th:text="${#lists.size(campaign.characters)}">0</span>
+      </div>
+      <div class="card-body">
+        <form th:action="@{'/campaign/' + ${campaign.id} + '/characters'}" method="post" class="form-row">
+          <input type="text" name="name" class="grow" placeholder="Имя нового персонажа" required autocomplete="off">
+          <button type="submit" class="btn btn-primary">＋ Добавить</button>
+        </form>
+      </div>
+      <div class="card-body list">
+        <div th:each="character : ${campaign.characters}" class="char-card">
+          <div class="char-card-head">
+            <a th:href="@{'/character/' + ${character.id}}" class="with-avatar">
+              <span class="avatar" th:text="${#strings.substring(character.name, 0, 1)}">П</span>
+              <span class="char-card-name" th:text="${character.name}">Имя персонажа</span>
+            </a>
+            <a th:href="@{'/character/' + ${character.id}}" class="btn btn-sm btn-ghost">Открыть →</a>
+          </div>
+          <div class="chips">
+            <span th:each="wound : ${character.wounds}" class="chip red">
+              🩸 <span th:text="${wound.name}">Рана</span>
+              <span th:if="${wound.severity != null}" th:text="'· ' + ${wound.severity}">· 1</span>
+            </span>
+            <span th:if="${#lists.isEmpty(character.wounds)}" class="chip muted">Без ран</span>
+          </div>
+        </div>
+        <div th:if="${#lists.isEmpty(campaign.characters)}" class="empty">В кампании пока нет персонажей</div>
+      </div>
+    </section>
 
-  .character-link:hover {
-    color: #667eea;
-    text-decoration: none;
-  }
-
-  .character-link:hover .item-name {
-    color: #667eea;
-    transform: translateX(5px);
-  }
-
-  .character-wounds {
-    margin-top: 15px;
-    padding-left: 20px;
-  }
-
-  .character-wounds strong {
-    color: #4a5568;
-    font-size: 0.95em;
-  }
-
-  .character-wounds ul {
-    list-style: none;
-    padding: 0;
-    margin: 8px 0;
-  }
-
-  .wound-item {
-    padding: 4px 0;
-    font-size: 0.9em;
-    color: #718096;
-  }
-
-  .wound-severity {
-    font-style: italic;
-    color: #a0aec0;
-  }
-
-  .empty-state-small {
-    padding: 8px;
-    color: #a0aec0;
-    font-style: italic;
-    font-size: 0.9em;
-  }
-
-  .item-card {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .btn-download {
-    margin-left: 20px;
-    padding: 9px 20px;
-    background: #667eea;
-    color: #fff;
-    border-radius: 5px;
-    text-decoration: none;
-    font-weight: 600;
-    transition: background 0.2s;
-  }
-
-  .btn-download:hover {
-    background: #5a67d8;
-    color: #fff;
-  }
-</style>
+    <!-- Время и хроника -->
+    <section class="card">
+      <div class="card-head">
+        <h2 class="card-title"><span class="dot pink"></span>Хроника</h2>
+        <span class="badge" th:text="${#lists.size(campaign.chronicles)}">0</span>
+      </div>
+      <div class="card-body">
+        <div class="date-hero">
+          <span class="label">Текущая дата</span>
+          <div class="date" th:text="${currentDate}">2037-01-01</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <form th:action="@{'/campaign/' + ${campaign.id} + '/chronicles'}" method="post" class="form">
+          <div class="field">
+            <label for="chronicle-name">Время летит…</label>
+            <input id="chronicle-name" type="text" name="name" placeholder="Что произошло за это время" required autocomplete="off">
+          </div>
+          <div class="form-row">
+            <input type="number" name="duration" placeholder="Дней" required min="1" aria-label="Длительность (дней)">
+            <button type="submit" class="btn btn-pink">⏩ Промотать</button>
+          </div>
+        </form>
+      </div>
+      <div class="card-body">
+        <div class="timeline" th:unless="${#lists.isEmpty(campaign.chronicles)}">
+          <div th:each="chronicle : ${campaign.chronicles}" class="timeline-item">
+            <div class="timeline-title" th:text="${chronicle.name}">Название</div>
+            <div class="timeline-dates">
+              <span th:text="${chronicle.startDate}">начало</span> — <span th:text="${chronicle.endDate}">конец</span>
+            </div>
+          </div>
+        </div>
+        <div th:if="${#lists.isEmpty(campaign.chronicles)}" class="empty">Хроника пуста</div>
+      </div>
+    </section>
+  </div>
+</main>
 </body>
 </html>

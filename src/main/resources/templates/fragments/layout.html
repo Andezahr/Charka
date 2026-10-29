@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<!-- Общие куски разметки для всех страниц: <head>, верхняя панель, вкладки персонажа -->
+
+<head th:fragment="head(title)">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title th:text="${title} + ' · Charka'">Charka</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Russo+One&display=swap">
+  <link rel="stylesheet" th:href="@{/css/app.css}">
+  <script th:src="@{/js/app.js}" defer></script>
+</head>
+
+<body>
+
+<!-- Верхняя панель. characterId != null → показываются вкладки персонажа, active — текущая вкладка -->
+<header th:fragment="topbar(characterId, active)" class="topbar">
+  <div class="topbar-inner">
+    <a th:href="@{/}" class="brand">
+      <span class="brand-mark">◆</span>
+      <span class="brand-name">Charka</span>
+    </a>
+    <nav class="topnav" th:if="${characterId != null}">
+      <a th:href="@{'/character/' + ${characterId}}"
+         th:classappend="${active == 'sheet'} ? 'is-active'">Лист</a>
+      <a th:href="@{'/character/' + ${characterId} + '/counters'}"
+         th:classappend="${active == 'counters'} ? 'is-active'">Счётчики</a>
+      <a th:href="@{'/character/' + ${characterId} + '/notes'}"
+         th:classappend="${active == 'notes'} ? 'is-active'">Заметки</a>
+    </nav>
+    <nav class="topnav" th:unless="${characterId != null}">
+      <a th:href="@{/}" th:classappend="${active == 'home'} ? 'is-active'">Главная</a>
+    </nav>
+  </div>
+</header>
+
+</body>
+</html>
