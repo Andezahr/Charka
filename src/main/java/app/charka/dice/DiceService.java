@@ -90,15 +90,30 @@ public class DiceService {
     }
 
     private void log(Campaign campaign, Character character, DiceResult result, String label) {
+        log(campaign, character, result.expression().toString(), result.details(), result.total(), label);
+    }
+
+    /**
+     * Запись произвольного броска в лог (проверки и т.п.). Слишком длинная расшифровка обрезается.
+     *
+     * @param campaign  кампания, может быть null
+     * @param character персонаж, null — бросок мастера
+     */
+    @Transactional
+    public void log(Campaign campaign, Character character, String expression, String details, int total, String label) {
         RollLog entry = new RollLog();
         entry.setCampaign(campaign);
         entry.setCharacter(character);
-        entry.setExpression(result.expression().toString());
-        entry.setDetails(result.details());
-        entry.setTotal(result.total());
-        entry.setLabel(label == null || label.isBlank() ? null : label.strip());
+        entry.setExpression(truncate(expression, 64));
+        entry.setDetails(truncate(details, 1000));
+        entry.setTotal(total);
+        entry.setLabel(label == null || label.isBlank() ? null : truncate(label.strip(), 255));
         entry.setGameDate(campaign == null ? null : campaign.getCurrentDate());
         entry.setCreatedAt(LocalDateTime.now());
         rollLogRepository.save(entry);
+    }
+
+    private static String truncate(String text, int max) {
+        return text.length() <= max ? text : text.substring(0, max - 1) + "…";
     }
 }

@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.ModelAndView;
 
@@ -36,6 +37,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ModelAndView handleIllegalArgument(IllegalArgumentException ex) {
         return errorPage(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    /** Параметр запроса не того типа (буквы в числовом поле) → 400, а не 500 */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ModelAndView handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        return errorPage(HttpStatus.BAD_REQUEST, "Некорректное значение параметра «" + ex.getName() + "»");
     }
 
     @ExceptionHandler(RuntimeException.class)

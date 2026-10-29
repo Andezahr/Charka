@@ -40,6 +40,7 @@ public class CharacterController {
         GameSystem system = systemRegistry.forCharacter(character);
         model.addAttribute("currency", system.getCurrency());
         model.addAttribute("quickDice", system.getQuickDice());
+        model.addAttribute("difficultyPresets", system.getCheckResolver().getDifficultyPresets());
         model.addAttribute("recentRolls", diceService.recentForCharacter(id, 5));
 
         return "character";

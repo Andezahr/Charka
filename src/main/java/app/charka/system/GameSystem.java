@@ -1,5 +1,7 @@
 package app.charka.system;
 
+import app.charka.check.CheckResolver;
+import app.charka.check.GenericCheckResolver;
 import app.charka.model.Campaign;
 
 import java.util.List;
@@ -9,6 +11,8 @@ import java.util.List;
  * Ядро обращается к правилам только через этот интерфейс, реализации находит {@link GameSystemRegistry}.
  */
 public interface GameSystem {
+
+    CheckResolver GENERIC_CHECK = new GenericCheckResolver();
 
     /**
      * Код системы, хранится в {@code Campaign.system} («CP2020», «GENERIC»).
@@ -34,6 +38,13 @@ public interface GameSystem {
      */
     default List<String> getQuickDice() {
         return List.of("d4", "d6", "d8", "d10", "d12", "d20", "d100");
+    }
+
+    /**
+     * Правила проверки «бросок + модификатор против сложности». По умолчанию — d20 без критов.
+     */
+    default CheckResolver getCheckResolver() {
+        return GENERIC_CHECK;
     }
 
     /**

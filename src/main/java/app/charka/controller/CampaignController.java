@@ -44,6 +44,7 @@ public class CampaignController {
         GameSystem gameSystem = systemRegistry.find(campaign.getSystem()).orElseGet(systemRegistry::getGeneric);
         model.addAttribute("gameSystem", gameSystem);
         model.addAttribute("quickDice", gameSystem.getQuickDice());
+        model.addAttribute("difficultyPresets", gameSystem.getCheckResolver().getDifficultyPresets());
         model.addAttribute("recentRolls", diceService.recentForCampaign(campaignId, 20));
 
         return "campaign";

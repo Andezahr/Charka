@@ -806,3 +806,9 @@ details.cp-more > summary:hover { color: var(--text-soft); }
 .dice-detail { min-width: 0; }
 .dice-detail .row-meta { overflow-wrap: anywhere; }
 .roll-row .row-meta { overflow-wrap: anywhere; }
+.dice-check { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); }
+.dice-result.is-success { border-color: rgba(74, 222, 128, 0.45); }
+.dice-result.is-success .dice-total { color: var(--success); }
+.dice-result.is-fail { border-color: rgba(248, 113, 113, 0.45); }
+.dice-result.is-fail .dice-total { color: var(--danger); }
+.dice-result .alert-steps { margin-top: 4px; }

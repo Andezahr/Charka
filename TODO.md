@@ -161,7 +161,7 @@ app.charka
   `HealthCounterStrategy` и `DiceRoller` — остаются в ядре.
   ✅ 2026-10-30 — всё из `model/counters/strategy/health/cp2020/` (и тесты) → плоский пакет `app.charka.system.cp2020` рядом с `Cp2020System`, отдельным коммитом.
 
-### Этап 2 — Кубики и проверки
+### Этап 2 — Кубики и проверки ✅ (2026-10-30, D-01..D-05)
 
 - [x] **D-01 [CORE] `DiceService` и выражения.**
   Разбор `NdM`, `NdM+K`, `NdM-K`, `dM` (регистр не важен, пробелы игнорируются); результат = отдельные кубики + сумма.
@@ -174,11 +174,13 @@ app.charka
 - [x] **D-03 [CORE] UI броска на листе персонажа.** Поле выражения + быстрые кнопки, результат во flash.
   Кнопки берутся из системы (`GameSystem.getQuickDice()`: CP2020 — d10, d6, 2d6, 3d6; GENERIC — d4..d20, d100).
   ✅ 2026-10-30 — `GameSystem.getQuickDice()` (CP2020: d10, d6, 2d6, 3d6; по умолчанию d4..d20, d100), общий фрагмент `fragments/dice.html :: card(action, showAuthor)`, `DiceController` (POST `/character/{id}/roll`, `/campaign/{id}/roll`; flash `rollResult`/`rollLabel`/`rollError`). На листе — 5 последних бросков персонажа. Проверено в браузере.
-- [ ] **D-04 [CP2020] Правила кубика CP2020.**
+- [x] **D-04 [CP2020] Правила кубика CP2020.**
   `Cp2020Dice.rollCheck()`: 1d10; **10** — бросить ещё и прибавить (повторяется); **1** — критический провал (флаг фамбла).
   Пошаговый вывод: «10 → +7 = 17».
-- [ ] **D-05 [CORE] Контракт проверки.** `CheckResolver` / `CheckRequest` / `CheckResult` (шаги, итог, успех, крит, провал).
+  ✅ 2026-10-30 — `system/cp2020/Cp2020Dice.rollCheck(DiceRoller)` (взрыв 10, предел 20 перебросов; фамбл — 1 на первом кубике) + `Cp2020CheckResolver`: фамбл = провал всегда, взрыв = крит, сложности Easy 10 … Nearly Impossible 30. Шаг «Бросок d10: 10 → +7 = 17». `Cp2020CheckResolverTest`.
+- [x] **D-05 [CORE] Контракт проверки.** `CheckResolver` / `CheckRequest` / `CheckResult` (шаги, итог, успех, крит, провал).
   `GameSystem.getCheckResolver()`. GENERIC: «кубик + модификатор vs DC».
+  ✅ 2026-10-30 — пакет `app.charka.check`: `CheckRequest(label, modifier, difficulty?)`, `CheckResult` (notation, шаги, итог, успех/null, крит, фамбл, `outcome()`), `CheckResolver.resolve(request, DiceRoller)` — без состояния, кубики передаёт `CheckService` (системам не нужны зависимости). `GameSystem.getCheckResolver()` (по умолчанию `GenericCheckResolver`: d20 + мод, успех при итог ≥ DC). `CheckService` пишет проверки в лог бросков («d10!+5 vs 15», шаги через «; »). UI: форма «Проверить» в карточке «Кубики» (мод., DC с подсказками системы, подпись), POST `/character/{id}/check`, `/campaign/{id}/check`. Проверено в браузере.
 
 ### Этап 3 — Навыки и роль (CP2020)
 
@@ -319,3 +321,5 @@ app.charka
 - 2026-10-30 — Новая `Campaign` по умолчанию GENERIC (существующие в БД мигрированы в CP2020). Персонаж без кампании — GENERIC.
   Код системы персонажа вычисляет статический `GameSystemRegistry.systemCodeOf`, чтобы `CounterService` не зависел
   от реестра (иначе цикл: реестр → `Cp2020System` → `HealthCounterService` → `CounterService`).
+- 2026-10-30 — Проверки: успех при «итог ≥ сложность» (CP2020 и GENERIC). Фамбл CP2020 — всегда провал, последствия —
+  таблица фамблов (K-06). Резолверы без состояния, `DiceRoller` им передаёт `CheckService`.

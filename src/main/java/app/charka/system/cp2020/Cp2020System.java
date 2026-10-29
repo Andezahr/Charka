@@ -1,9 +1,7 @@
 package app.charka.system.cp2020;
 
+import app.charka.check.CheckResolver;
 import app.charka.model.Campaign;
-import app.charka.system.cp2020.Cp2020ArmorStrategy;
-import app.charka.system.cp2020.Cp2020HealthStrategy;
-import app.charka.system.cp2020.Cp2020StatsStrategy;
 import app.charka.service.counter.HealthCounterService;
 import app.charka.system.Currency;
 import app.charka.system.GameSystem;
@@ -22,6 +20,8 @@ public class Cp2020System implements GameSystem {
     public static final String CODE = "CP2020";
 
     private static final Currency CURRENCY = new Currency("Евродоллары", "eb");
+
+    private static final CheckResolver CHECK_RESOLVER = new Cp2020CheckResolver();
 
     private final HealthCounterService healthCounterService;
 
@@ -48,6 +48,11 @@ public class Cp2020System implements GameSystem {
     @Override
     public List<String> getQuickDice() {
         return List.of("d10", "d6", "2d6", "3d6");
+    }
+
+    @Override
+    public CheckResolver getCheckResolver() {
+        return CHECK_RESOLVER;
     }
 
     /**

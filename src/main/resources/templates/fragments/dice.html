@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <!-- Карточка «Кубики»: поле выражения, быстрые кнопки системы, результат из flash и последние броски.
-     Модель: quickDice, recentRolls; flash: rollResult, rollLabel, rollError. showAuthor — показывать, кто бросал. -->
+     Модель: quickDice, difficultyPresets, recentRolls; flash: rollResult, checkResult, rollLabel, rollError. showAuthor — показывать, кто бросал. -->
 <body>
 
-<section th:fragment="card(action, showAuthor)" class="card" id="dice">
+<section th:fragment="card(base, showAuthor)" class="card" id="dice">
   <div class="card-head">
     <h2 class="card-title"><span class="dot"></span>Кубики</h2>
   </div>
@@ -20,12 +20,25 @@
         <div class="row-meta" th:text="${rollResult.details()}">[3, 5] + 3 = 11</div>
       </div>
     </div>
+    <div th:if="${checkResult != null}" class="dice-result" role="status"
+         th:classappend="${checkResult.success == null} ? '' : (${checkResult.success} ? 'is-success' : 'is-fail')">
+      <div class="dice-total" th:text="${checkResult.total}">17</div>
+      <div class="dice-detail">
+        <div class="row-title">
+          <span th:text="${rollLabel != null ? rollLabel : 'Проверка'}">Проверка</span>
+          <span th:text="'· ' + ${checkResult.outcome()}">· 17 vs 15 — успех</span>
+        </div>
+        <ol class="alert-steps">
+          <li th:each="step : ${checkResult.steps}" th:text="${step}">Бросок d10: 7</li>
+        </ol>
+      </div>
+    </div>
     <div th:if="${rollError != null}" class="alert alert-error" role="alert">
       <span class="alert-text" th:text="${rollError}">Ошибка</span>
       <button type="button" class="alert-close" aria-label="Закрыть">×</button>
     </div>
 
-    <form th:action="@{${action}}" method="post" class="form">
+    <form th:action="@{${base} + '/roll'}" method="post" class="form">
       <div class="form-row">
         <input type="text" name="expression" class="grow" placeholder="2d6+3" required autocomplete="off"
                aria-label="Выражение броска" maxlength="64">
@@ -37,6 +50,21 @@
         <button th:each="d : ${quickDice}" type="submit" name="quick" th:value="${d}" formnovalidate
                 class="btn btn-sm" th:text="${d}">d10</button>
       </div>
+    </form>
+
+    <form th:action="@{${base} + '/check'}" method="post" class="form dice-check">
+      <div class="form-row">
+        <input type="number" name="modifier" class="narrow" placeholder="±Мод." step="1"
+               aria-label="Модификатор проверки" title="Стат + навык + прочие модификаторы">
+        <input type="number" name="difficulty" class="narrow" placeholder="DC" step="1" min="0"
+               list="difficulty-presets" aria-label="Сложность (необязательно)" title="Сложность (необязательно)">
+        <input type="text" name="label" class="grow" placeholder="Что проверяем" autocomplete="off"
+               aria-label="Подпись проверки" maxlength="255">
+        <button type="submit" class="btn">✓ Проверить</button>
+      </div>
+      <datalist id="difficulty-presets">
+        <option th:each="d : ${difficultyPresets}" th:value="${d.value}" th:label="${d.key}">15</option>
+      </datalist>
     </form>
   </div>
 

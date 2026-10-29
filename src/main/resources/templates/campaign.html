@@ -92,7 +92,7 @@
       </section>
 
       <!-- Кубики мастера и последние броски кампании -->
-      <section th:replace="~{fragments/dice :: card('/campaign/' + ${campaign.id} + '/roll', true)}"></section>
+      <section th:replace="~{fragments/dice :: card('/campaign/' + ${campaign.id}, true)}"></section>
     </div>
   </div>
 </main>
