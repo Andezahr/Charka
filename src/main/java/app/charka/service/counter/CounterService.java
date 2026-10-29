@@ -1,5 +1,6 @@
 package app.charka.service.counter;
 
+import app.charka.exception.NotFoundException;
 import app.charka.dto.counter.request.CounterCreateRequestDto;
 import app.charka.dto.counter.request.CounterUpdateRequestDto;
 import app.charka.dto.counter.response.CounterResponseDto;
@@ -228,7 +229,7 @@ public class CounterService {
         }
 
         Counter counter = counterRepository.findById(counterId)
-                .orElseThrow(() -> new IllegalArgumentException("Счётчик с ID " + counterId + " не найден"));
+                .orElseThrow(() -> new NotFoundException("Счётчик с ID " + counterId + " не найден"));
 
         if (!counter.getCharacter().getId().equals(characterId)) {
             throw new IllegalArgumentException("Счётчик " + counterId + " не принадлежит персонажу " + characterId);

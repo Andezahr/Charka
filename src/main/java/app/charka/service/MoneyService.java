@@ -1,5 +1,6 @@
 package app.charka.service;
 
+import app.charka.exception.NotFoundException;
 import app.charka.model.Campaign;
 import app.charka.model.Character;
 import app.charka.model.Money;
@@ -36,7 +37,7 @@ public class MoneyService {
     @Transactional(readOnly = true)
     public Money findById(Long id) {
         return moneyRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Operation not found for ID: " + id));
+                .orElseThrow(() -> new NotFoundException("Operation not found for ID: " + id));
     }
 
     /**
@@ -47,12 +48,12 @@ public class MoneyService {
      * @param characterId идентификатор персонажа
      * @param money       объект Money с заполненными полями amount, name и, необязательно, operationDate
      * @return сохранённая сущность Money с присвоенным id
-     * @throws IllegalArgumentException если персонаж не найден
+     * @throws NotFoundException если персонаж не найден
      */
     @Transactional
     public Money create(Long characterId, Money money) {
         Character character = characterRepository.findById(characterId)
-                .orElseThrow(() -> new IllegalArgumentException(
+                .orElseThrow(() -> new NotFoundException(
                         String.format(CHARACTER_NOT_FOUND, characterId)));
         money.setCharacter(character);
         if (money.getOperationDate() == null) {
@@ -78,12 +79,12 @@ public class MoneyService {
      * @param id           идентификатор операции
      * @param updatedMoney объект Money с новыми значениями amount, name, operationDate
      * @return обновлённая и сохранённая сущность Money
-     * @throws IllegalArgumentException если операция не найдена
+     * @throws NotFoundException если операция не найдена
      */
     @Transactional
     public Money update(Long id, Money updatedMoney) {
         Money existing = moneyRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException(
+                .orElseThrow(() -> new NotFoundException(
                         "Money entry not found for id=" + id));
         existing.setAmount(updatedMoney.getAmount());
         existing.setName(updatedMoney.getName());
@@ -95,12 +96,12 @@ public class MoneyService {
      * Удалить финансовую операцию по её идентификатору.
      *
      * @param id идентификатор операции для удаления
-     * @throws IllegalArgumentException если операция не найдена
+     * @throws NotFoundException если операция не найдена
      */
     @Transactional
     public void delete(Long id) {
         Money existing = moneyRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException(
+                .orElseThrow(() -> new NotFoundException(
                         "Money entry not found for id=" + id));
         moneyRepository.delete(existing);
     }
@@ -110,7 +111,7 @@ public class MoneyService {
      *
      * @param characterId идентификатор персонажа
      * @return итоговая сумма (доходы минус расходы)
-     * @throws IllegalArgumentException если персонаж не найден
+     * @throws NotFoundException если персонаж не найден
      */
     @Transactional(readOnly = true)
     public long calculateBalance(Long characterId) {
@@ -125,7 +126,7 @@ public class MoneyService {
      *
      * @param characterId идентификатор персонажа
      * @return список операций с amount > 0; пустой список, если нет доходов
-     * @throws IllegalArgumentException если персонаж не найден
+     * @throws NotFoundException если персонаж не найден
      */
     @Transactional(readOnly = true)
     public List<Money> getIncomes(Long characterId) {
@@ -140,7 +141,7 @@ public class MoneyService {
      *
      * @param characterId идентификатор персонажа
      * @return список операций с amount < 0; пустой список, если нет расходов
-     * @throws IllegalArgumentException если персонаж не найден
+     * @throws NotFoundException если персонаж не найден
      */
     @Transactional(readOnly = true)
     public List<Money> getExpenses(Long characterId) {

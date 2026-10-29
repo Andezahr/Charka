@@ -1,5 +1,6 @@
 package app.charka.service.notes;
 
+import app.charka.exception.NotFoundException;
 import app.charka.model.notes.Note;
 import app.charka.model.notes.NoteCategory;
 import app.charka.repository.NoteCategoryRepository;
@@ -32,7 +33,7 @@ public class NoteService {
     @Transactional
     public Note updateNote(Long noteId, Note updatedNote) {
         Note note = noteRepository.findById(noteId)
-                .orElseThrow(() -> new RuntimeException(NOTE_NOT_FOUND));
+                .orElseThrow(() -> new NotFoundException(NOTE_NOT_FOUND));
 
         note.setName(updatedNote.getName());
         note.setText(updatedNote.getText());
@@ -43,7 +44,7 @@ public class NoteService {
     @Transactional
     public Note addCategoriesToNote(Long noteId, Set<Long> categoryIds) {
         Note note = noteRepository.findById(noteId)
-                .orElseThrow(() -> new RuntimeException(NOTE_NOT_FOUND));
+                .orElseThrow(() -> new NotFoundException(NOTE_NOT_FOUND));
 
         Set<NoteCategory> categories = categoryIds.stream()
                 .map(categoryRepository::findById)
@@ -61,11 +62,11 @@ public class NoteService {
     @Transactional
     public Note removeCategoriesFromNote(Long noteId, Set<Long> categoryIds) {
         Note note = noteRepository.findById(noteId)
-                .orElseThrow(() -> new RuntimeException(NOTE_NOT_FOUND));
+                .orElseThrow(() -> new NotFoundException(NOTE_NOT_FOUND));
 
         categoryIds.forEach(categoryId -> {
             NoteCategory category = categoryRepository.findById(categoryId)
-                    .orElseThrow(() -> new RuntimeException(CATEGORY_NOT_FOUND));
+                    .orElseThrow(() -> new NotFoundException(CATEGORY_NOT_FOUND));
             note.getCategories().remove(category);
         });
 

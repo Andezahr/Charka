@@ -1,5 +1,6 @@
 package app.charka.service;
 
+import app.charka.exception.NotFoundException;
 import app.charka.model.Item;
 import app.charka.model.Inventory;
 import app.charka.repository.ItemRepository;
@@ -88,7 +89,7 @@ class ItemServiceTest {
             when(itemRepository.findById(id)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> itemService.findById(id))
-                    .isInstanceOf(IllegalArgumentException.class)
+                    .isInstanceOf(NotFoundException.class)
                     .hasMessage("Item not found for id=" + id);
 
             verify(itemRepository).findById(id);
@@ -129,7 +130,7 @@ class ItemServiceTest {
             when(inventoryRepository.findById(invId)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> itemService.create(invId, toSave))
-                    .isInstanceOf(IllegalArgumentException.class)
+                    .isInstanceOf(NotFoundException.class)
                     .hasMessage("Inventory not found for id=" + invId);
 
             verify(itemRepository, never()).save(any());
@@ -179,7 +180,7 @@ class ItemServiceTest {
             Item nonExistent = new Item();
 
             assertThatThrownBy(() -> itemService.update(id, nonExistent))
-                    .isInstanceOf(IllegalArgumentException.class)
+                    .isInstanceOf(NotFoundException.class)
                     .hasMessage(String.format(NOT_FOUND_MSG, id));
         }
     }
@@ -214,7 +215,7 @@ class ItemServiceTest {
             when(itemRepository.findById(id)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> itemService.update(id, "N", 1,1,"D"))
-                    .isInstanceOf(IllegalArgumentException.class)
+                    .isInstanceOf(NotFoundException.class)
                     .hasMessage(String.format(NOT_FOUND_MSG, id));
         }
     }
@@ -243,7 +244,7 @@ class ItemServiceTest {
             when(itemRepository.findById(id)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> itemService.delete(id))
-                    .isInstanceOf(IllegalArgumentException.class)
+                    .isInstanceOf(NotFoundException.class)
                     .hasMessage(String.format(NOT_FOUND_MSG, id));
 
             verify(itemRepository, never()).delete(any());
@@ -277,7 +278,7 @@ class ItemServiceTest {
             when(itemRepository.findById(5L)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> itemService.moveToInventory(5L, 1L))
-                    .isInstanceOf(IllegalArgumentException.class)
+                    .isInstanceOf(NotFoundException.class)
                     .hasMessage(String.format(NOT_FOUND_MSG, 5L));
         }
 
@@ -289,7 +290,7 @@ class ItemServiceTest {
             when(inventoryRepository.findById(9L)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> itemService.moveToInventory(3L, 9L))
-                    .isInstanceOf(IllegalArgumentException.class)
+                    .isInstanceOf(NotFoundException.class)
                     .hasMessage("Target inventory not found for id=9");
         }
     }

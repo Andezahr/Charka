@@ -1,5 +1,6 @@
 package app.charka.service;
 
+import app.charka.exception.NotFoundException;
 import app.charka.model.Wound;
 import app.charka.model.Character;
 import app.charka.repository.WoundRepository;
@@ -40,7 +41,7 @@ public class WoundService {
     @Transactional(readOnly = true)
     public Wound getById(Long id) {
         return woundRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException(
+                .orElseThrow(() -> new NotFoundException(
                 String.format(WOUND_NOT_FOUND, id)));
     }
 
@@ -51,12 +52,12 @@ public class WoundService {
      * @param characterId идентификатор персонажа
      * @param wound       объект Wound с заполненными полями name и date
      * @return сохранённая сущность Wound с присвоенным id и привязкой к персонажу
-     * @throws IllegalArgumentException если персонаж с данным id не найден
+     * @throws NotFoundException если персонаж с данным id не найден
      */
     @Transactional
     public Wound create(Long characterId, Wound wound) {
         Character character = characterRepository.findById(characterId)
-                .orElseThrow(() -> new IllegalArgumentException(
+                .orElseThrow(() -> new NotFoundException(
                         String.format(CHARACTER_NOT_FOUND, characterId)));
         wound.setCharacter(character);
         if (wound.getDate() == null) {
@@ -71,12 +72,12 @@ public class WoundService {
      * @param id            идентификатор раны для обновления
      * @param updatedWound  объект Wound с новыми значениями name и/или date
      * @return обновлённая и сохранённая сущность Wound
-     * @throws IllegalArgumentException если рана с данным id не найдена
+     * @throws NotFoundException если рана с данным id не найдена
      */
     @Transactional
     public Wound update(Long id, Wound updatedWound) {
         Wound existing = woundRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException(
+                .orElseThrow(() -> new NotFoundException(
                         String.format(WOUND_NOT_FOUND, id)));
         existing.setName(updatedWound.getName());
         existing.setSeverity(updatedWound.getSeverity());
@@ -88,12 +89,12 @@ public class WoundService {
      * Удалить рану по идентификатору.
      *
      * @param id идентификатор раны для удаления
-     * @throws IllegalArgumentException если рана с данным id не найдена
+     * @throws NotFoundException если рана с данным id не найдена
      */
     @Transactional
     public void delete(Long id) {
         if (!woundRepository.existsById(id)) {
-            throw new IllegalArgumentException(String.format(WOUND_NOT_FOUND, id));
+            throw new NotFoundException(String.format(WOUND_NOT_FOUND, id));
         }
         woundRepository.deleteById(id);
     }

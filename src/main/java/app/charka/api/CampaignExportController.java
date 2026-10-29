@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.NoSuchElementException;
 
 
 /**
@@ -41,7 +42,7 @@ public class CampaignExportController {
         Campaign campaign;
         try {
             campaign = campaignService.getById(id);
-        } catch (IllegalArgumentException ex) {
+        } catch (NoSuchElementException | IllegalArgumentException ex) {
             logger.warn("Кампания с id={} не найдена", id);
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Campaign not found", ex);
         }

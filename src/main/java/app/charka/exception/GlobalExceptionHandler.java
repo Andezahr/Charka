@@ -21,7 +21,7 @@ public class GlobalExceptionHandler {
 
     static final String ERROR_VIEW = "error";
 
-    /** {@code *NotFoundException} (наследники {@link NoSuchElementException}) → 404 */
+    /** {@link NotFoundException} и наследники (все — {@link NoSuchElementException}) → 404 */
     @ExceptionHandler(NoSuchElementException.class)
     public ModelAndView handleNotFound(NoSuchElementException ex) {
         return errorPage(HttpStatus.NOT_FOUND, ex.getMessage());
@@ -32,7 +32,7 @@ public class GlobalExceptionHandler {
         return errorPage(ex.getStatusCode(), ex.getReason());
     }
 
-    /** Некорректные данные запроса и старый стиль «не найдено» через IllegalArgumentException → 400 */
+    /** Некорректные данные запроса → 400 */
     @ExceptionHandler(IllegalArgumentException.class)
     public ModelAndView handleIllegalArgument(IllegalArgumentException ex) {
         return errorPage(HttpStatus.BAD_REQUEST, ex.getMessage());

@@ -1,9 +1,8 @@
 package app.charka.exception;
 
-import java.util.NoSuchElementException;
 import java.util.function.Supplier;
 
-public class CharacterNotFoundException extends NoSuchElementException {
+public class CharacterNotFoundException extends NotFoundException {
     public CharacterNotFoundException(String exceptionText) {
         super(exceptionText);
     }

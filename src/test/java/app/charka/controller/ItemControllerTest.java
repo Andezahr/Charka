@@ -1,5 +1,6 @@
 package app.charka.controller;
 
+import app.charka.exception.NotFoundException;
 import app.charka.exception.GlobalExceptionHandler;
 import app.charka.model.Item;
 import app.charka.service.ItemService;
@@ -89,16 +90,16 @@ class ItemControllerTest {
         }
 
         @Test
-        @DisplayName("400 – инвентарь не найден")
+        @DisplayName("404 – инвентарь не найден")
         void addItem_inventoryNotFound() throws Exception {
-            doThrow(new IllegalArgumentException(ERR_INV_NOT_FOUND))
+            doThrow(new NotFoundException(ERR_INV_NOT_FOUND))
                     .when(itemService).create(eq(MISSING_INV_ID), any());
 
             mockMvc.perform(post("/character/{characterId}/inventories/{inventoryId}/items",
                             CHAR_ID, MISSING_INV_ID)
                             .param("itemName", NAME_SHIELD)
                             .contentType(MediaType.APPLICATION_FORM_URLENCODED))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andExpect(model().attribute("message", ERR_INV_NOT_FOUND));
 
             verify(itemService).create(eq(MISSING_INV_ID), any());
@@ -137,16 +138,16 @@ class ItemControllerTest {
         }
 
         @Test
-        @DisplayName("400 – предмет не найден")
+        @DisplayName("404 – предмет не найден")
         void editItem_notFound() throws Exception {
-            doThrow(new IllegalArgumentException(ERR_ITEM_NOT_FOUND))
+            doThrow(new NotFoundException(ERR_ITEM_NOT_FOUND))
                     .when(itemService).update(eq(ITEM_ID), any(), any(), any(), any());
 
             mockMvc.perform(post("/character/{characterId}/inventories/{inventoryId}/items/{itemId}/edit",
                             CHAR_ID, INV_ID, ITEM_ID)
                             .param("itemName", NAME_NEW)
                             .contentType(MediaType.APPLICATION_FORM_URLENCODED))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andExpect(model().attribute("message", ERR_ITEM_NOT_FOUND));
 
             verify(itemService).update(eq(ITEM_ID), any(), any(), any(), any());
@@ -211,16 +212,16 @@ class ItemControllerTest {
         }
 
         @Test
-        @DisplayName("400 – предмет не найден для перемещения")
+        @DisplayName("404 – предмет не найден для перемещения")
         void moveItem_notFound() throws Exception {
-            doThrow(new IllegalArgumentException(ERR_ITEM_NOT_FOUND))
+            doThrow(new NotFoundException(ERR_ITEM_NOT_FOUND))
                     .when(itemService).moveToInventory(MOVE_ITEM_ID, TARGET_INV_ID);
 
             mockMvc.perform(post("/character/{characterId}/inventories/{inventoryId}/items/{itemId}/move",
                             CHAR_ID, INV_ID, MOVE_ITEM_ID)
                             .param("targetInventoryId", String.valueOf(TARGET_INV_ID))
                             .contentType(MediaType.APPLICATION_FORM_URLENCODED))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andExpect(model().attribute("message", ERR_ITEM_NOT_FOUND));
 
             verify(itemService).moveToInventory(MOVE_ITEM_ID, TARGET_INV_ID);

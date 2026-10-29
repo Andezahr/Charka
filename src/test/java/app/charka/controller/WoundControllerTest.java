@@ -1,5 +1,6 @@
 package app.charka.controller;
 
+import app.charka.exception.NotFoundException;
 import app.charka.exception.GlobalExceptionHandler;
 import app.charka.model.Character;
 import app.charka.model.Wound;
@@ -212,14 +213,14 @@ class WoundControllerTest {
         }
 
         @Test
-        @DisplayName("400 Bad Request – рана не найдена")
+        @DisplayName("404 Not Found – рана не найдена")
         void deleteWound_notFound() throws Exception {
             when(woundService.getById(99L))
-                    .thenThrow(new IllegalArgumentException("Wound not found for id=99"));
+                    .thenThrow(new NotFoundException("Wound not found for id=99"));
 
 
             mockMvc.perform(post("/character/{charId}/wounds/{woundId}/delete", CHAR_ID, 99L))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andExpect(model().attribute("message", "Wound not found for id=99"));
 
             verify(woundService).getById(99L);

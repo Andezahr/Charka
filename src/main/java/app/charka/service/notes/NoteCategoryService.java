@@ -1,5 +1,6 @@
 package app.charka.service.notes;
 
+import app.charka.exception.NotFoundException;
 import app.charka.model.notes.NoteCategory;
 import app.charka.repository.NoteCategoryRepository;
 import lombok.RequiredArgsConstructor;
@@ -50,7 +51,7 @@ public class NoteCategoryService {
     @Transactional
     public NoteCategory updateCategory(Long id, NoteCategory updated) {
         NoteCategory category = categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException(CATEGORY_NOT_FOUND));
+                .orElseThrow(() -> new NotFoundException(CATEGORY_NOT_FOUND));
         category.setName(updated.getName());
         return categoryRepository.save(category);
     }

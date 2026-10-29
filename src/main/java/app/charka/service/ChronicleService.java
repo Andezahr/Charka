@@ -1,5 +1,6 @@
 package app.charka.service;
 
+import app.charka.exception.NotFoundException;
 import app.charka.model.Campaign;
 import app.charka.model.Chronicle;
 import app.charka.repository.CampaignRepository;
@@ -28,12 +29,12 @@ public class ChronicleService {
      * @param campaignId идентификатор кампании
      * @param chronicle  объект Chronicle с заполненными полями startDate, endDate и name
      * @return сохранённая Chronicle с присвоенным id и связью на Campaign
-     * @throws IllegalArgumentException если кампания не найдена
+     * @throws NotFoundException если кампания не найдена
      */
     @Transactional
     public Chronicle create(Long campaignId, Chronicle chronicle) {
         Campaign campaign = campaignRepository.findById(campaignId)
-                .orElseThrow(() -> new IllegalArgumentException(
+                .orElseThrow(() -> new NotFoundException(
                         String.format(CAMPAIGN_NOT_FOUND, campaignId)));
         chronicle.setCampaign(campaign);
         return chronicleRepository.save(chronicle);
@@ -45,12 +46,12 @@ public class ChronicleService {
      * @param id               идентификатор хроники
      * @param updatedChronicle объект Chronicle с новыми значениями startDate, endDate и name
      * @return обновлённая Chronicle
-     * @throws IllegalArgumentException если хроника не найдена
+     * @throws NotFoundException если хроника не найдена
      */
     @Transactional
     public Chronicle update(Long id, Chronicle updatedChronicle) {
         Chronicle existing = chronicleRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException(
+                .orElseThrow(() -> new NotFoundException(
                         String.format(CHRONICLE_NOT_FOUND, id)));
         existing.setStartDate(updatedChronicle.getStartDate());
         existing.setEndDate(updatedChronicle.getEndDate());
@@ -61,7 +62,7 @@ public class ChronicleService {
     @Transactional
     public void delete(Long id) {
         Chronicle existing = chronicleRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException(
+                .orElseThrow(() -> new NotFoundException(
                         String.format(CHRONICLE_NOT_FOUND, id)));
         chronicleRepository.delete(existing);
     }

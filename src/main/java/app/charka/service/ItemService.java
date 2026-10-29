@@ -1,5 +1,6 @@
 package app.charka.service;
 
+import app.charka.exception.NotFoundException;
 import app.charka.model.Item;
 import app.charka.model.Inventory;
 import app.charka.repository.ItemRepository;
@@ -35,7 +36,7 @@ public class ItemService {
 
     @Transactional(readOnly = true)
     public Item findById(Long id) {
-        return itemRepository.findById(id).orElseThrow(() -> new IllegalArgumentException(
+        return itemRepository.findById(id).orElseThrow(() -> new NotFoundException(
                 String.format(ITEM_NOT_FOUND, id)));
     }
 
@@ -45,12 +46,12 @@ public class ItemService {
      * @param inventoryId идентификатор инвентаря, к которому будут добавлены предметы
      * @param item        объект предмета с заполненными полями name, quantity, cost, description
      * @return сохраненный объект Item с присвоенным id и ссылкой на Inventory
-     * @throws IllegalArgumentException если inventoryId некорректен (инвентарь не найден)
+     * @throws NotFoundException если inventoryId некорректен (инвентарь не найден)
      */
     @Transactional
     public Item create(Long inventoryId, Item item) {
         Inventory inventory = inventoryRepository.findById(inventoryId)
-                .orElseThrow(() -> new IllegalArgumentException(
+                .orElseThrow(() -> new NotFoundException(
                         "Inventory not found for id=" + inventoryId));
         item.setInventory(inventory);
         return itemRepository.save(item);
@@ -62,12 +63,12 @@ public class ItemService {
      * @param id          идентификатор предмета для обновления
      * @param updatedItem объект с новыми значениями полей name, quantity, cost, description
      * @return обновленный и сохраненный объект Item
-     * @throws IllegalArgumentException если предмет с указанным id не найден
+     * @throws NotFoundException если предмет с указанным id не найден
      */
     @Transactional
     public Item update(Long id, Item updatedItem) {
         Item existing = itemRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException(
+                .orElseThrow(() -> new NotFoundException(
                         String.format(ITEM_NOT_FOUND, id)));
         existing.setName(updatedItem.getName());
         existing.setQuantity(updatedItem.getQuantity());
@@ -79,7 +80,7 @@ public class ItemService {
     @Transactional
     public Item update(Long id, String name, Integer quantity, Integer cost, String description) {
         Item existing = itemRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException(
+                .orElseThrow(() -> new NotFoundException(
                         String.format(ITEM_NOT_FOUND, id)));
         existing.setName(name);
         existing.setQuantity(quantity);
@@ -91,7 +92,7 @@ public class ItemService {
     @Transactional
     public void delete(Long id) {
         Item existing = itemRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException(
+                .orElseThrow(() -> new NotFoundException(
                         String.format(ITEM_NOT_FOUND, id)));
         itemRepository.delete(existing);
     }
@@ -102,15 +103,15 @@ public class ItemService {
      * @param itemId       идентификатор предмета
      * @param targetInvId  идентификатор целевого инвентаря
      * @return обновленный и сохраненный объект Item с новым Inventory
-     * @throws IllegalArgumentException если предмет или целевой инвентарь не найдены
+     * @throws NotFoundException если предмет или целевой инвентарь не найдены
      */
     @Transactional
     public Item moveToInventory(Long itemId, Long targetInvId) {
         Item item = itemRepository.findById(itemId)
-                .orElseThrow(() -> new IllegalArgumentException(
+                .orElseThrow(() -> new NotFoundException(
                         String.format(ITEM_NOT_FOUND, itemId)));
         Inventory target = inventoryRepository.findById(targetInvId)
-                .orElseThrow(() -> new IllegalArgumentException(
+                .orElseThrow(() -> new NotFoundException(
                         "Target inventory not found for id=" + targetInvId));
         // Перепривязываем к новому инвентарю
         item.setInventory(target);
