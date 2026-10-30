@@ -1,5 +1,6 @@
 package app.charka.service;
 
+import app.charka.service.impl.InventoryServiceImpl;
 import app.charka.exception.CharacterNotFoundException;
 import app.charka.model.Character;
 import app.charka.model.Inventory;
@@ -28,7 +29,7 @@ public class InventoryServiceTest {
 
     @Mock private CharacterRepository characterRepository;
     @Mock private InventoryRepository inventoryRepository;
-    @InjectMocks private InventoryService inventoryService;
+    @InjectMocks private InventoryServiceImpl inventoryService;
 
     @Nested
     @DisplayName("Creating inventory for character")

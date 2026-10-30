@@ -1,5 +1,6 @@
 package app.charka.service;
 
+import app.charka.service.impl.WoundServiceImpl;
 import app.charka.model.Campaign;
 import app.charka.model.Character;
 import app.charka.model.Wound;
@@ -29,7 +30,7 @@ class WoundServiceTest {
 
     @Mock private WoundRepository woundRepository;
     @Mock private CharacterRepository characterRepository;
-    @InjectMocks private WoundService woundService;
+    @InjectMocks private WoundServiceImpl woundService;
 
     @Nested
     @DisplayName("Дата раны при создании")

@@ -33,6 +33,7 @@ server:
   error:
     # error.html показывает текст ошибки и для ошибок вне контроллеров (например, неизвестный URL)
     include-message: always
+    include-stacktrace: never
 logging:
   level:
     root: INFO

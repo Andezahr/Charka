@@ -1,5 +1,6 @@
 package app.charka.service;
 
+import app.charka.service.impl.ItemServiceImpl;
 import app.charka.exception.NotFoundException;
 import app.charka.model.Item;
 import app.charka.model.Inventory;
@@ -30,7 +31,7 @@ class ItemServiceTest {
 
     @Mock private ItemRepository itemRepository;
     @Mock private InventoryRepository inventoryRepository;
-    @InjectMocks private ItemService itemService;
+    @InjectMocks private ItemServiceImpl itemService;
 
     private static final String NOT_FOUND_MSG = "Item not found for id=%d";
 

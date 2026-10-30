@@ -1,5 +1,6 @@
 package app.charka.service;
 
+import app.charka.service.impl.CharacterServiceImpl;
 import app.charka.model.Campaign;
 import app.charka.model.Character;
 import app.charka.model.Inventory;
@@ -43,7 +44,7 @@ class CharacterServiceTest {
     @Mock private CounterService    counterService;
     @Spy  private GameSystemRegistry systemRegistry =
             new GameSystemRegistry(List.of(new GenericSystem(), new Cp2020System(null)));
-    @InjectMocks private CharacterService characterService;
+    @InjectMocks private CharacterServiceImpl characterService;
 
     /* ──────────────────── Creating character in campaign ─────────────────── */
 

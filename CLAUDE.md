@@ -33,7 +33,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 515 тестов, на 2026-10-30 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 521 тест, на 2026-10-30 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -46,7 +46,7 @@ model/         JPA-сущности (используются напрямую �
   counters/    Counter + strategy/ (стратегии изменения значения счётчика)
   notes/       Note, NoteCategory
 repository/    Spring Data репозитории (по одному на сущность)
-service/       бизнес-логика; campaign/, counter/, notes/ — подпакеты
+service/       бизнес-логика; campaign/, counter/, notes/ — подпакеты. Character, Chronicle, Inventory, Item, Money, Wound — интерфейс здесь (с @Transactional), реализация в impl/ (с @Override и JavaDoc)
 controller/    MVC-контроллеры, возвращают имена шаблонов или redirect
 api/           REST: CampaignExportController, SkillCheckController (проверка навыка)
 dice/         DiceExpression (разбор NdM±K), DiceResult, DiceService (броски + лог RollLog)

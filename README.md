@@ -7,7 +7,8 @@
 ![Java](https://img.shields.io/badge/Java-24-orange)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.3-6DB33F)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-336791)
-![Tests](https://img.shields.io/badge/tests-515%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-521%20passing-brightgreen)
+![License](https://img.shields.io/badge/license-MIT-blue)
 
 ---
 
@@ -121,7 +122,7 @@ docker compose up -d
 src/main/java/app/charka
 ├── model/        JPA-сущности: Campaign, Character, Wound, Inventory, Item, Money, Note, Counter…
 ├── repository/   Spring Data репозитории
-├── service/      бизнес-логика (кампании, время, счётчики, заметки…)
+├── service/      бизнес-логика (кампании, время, счётчики, заметки…); impl/ — реализации интерфейсов сервисов
 ├── controller/   MVC-контроллеры страниц
 ├── api/          REST: экспорт кампании в JSON
 ├── dice/         разбор выражений NdM±K, броски, лог бросков

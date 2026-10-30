@@ -8,6 +8,7 @@ import app.charka.model.Item;
 import app.charka.repository.InventoryRepository;
 import app.charka.repository.ItemRepository;
 import app.charka.service.ItemService;
+import app.charka.service.impl.ItemServiceImpl;
 import app.charka.system.GameSystemRegistry;
 import app.charka.system.GenericSystem;
 import app.charka.system.cp2020.Cp2020Ammo;
@@ -334,7 +335,7 @@ class ItemTypesTest {
         @BeforeEach
         void setUp() {
             GameSystemRegistry registry = new GameSystemRegistry(List.of(new GenericSystem(), new Cp2020System(null)));
-            itemService = new ItemService(itemRepository, inventoryRepository, registry);
+            itemService = new ItemServiceImpl(itemRepository, inventoryRepository, registry);
             inventory = inventoryIn(Cp2020System.CODE);
             when(inventoryRepository.findById(1L)).thenReturn(Optional.of(inventory));
             when(itemRepository.save(any())).thenAnswer(call -> call.getArgument(0));

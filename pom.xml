@@ -20,13 +20,6 @@
 	<description>Character sheet service</description>
 	<url>https://github.com/Andezahr/Charka</url>
 
-	<licenses>
-		<license>
-			<name>Apache License 2.0</name>
-			<url>https://www.apache.org/licenses/LICENSE-2.0</url>
-		</license>
-	</licenses>
-
 	<developers>
 		<developer>
 			<name>Andezahr</name>

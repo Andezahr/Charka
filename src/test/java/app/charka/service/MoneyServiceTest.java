@@ -1,5 +1,6 @@
 package app.charka.service;
 
+import app.charka.service.impl.MoneyServiceImpl;
 import app.charka.model.Campaign;
 import app.charka.model.Character;
 import app.charka.model.Money;
@@ -29,7 +30,7 @@ class MoneyServiceTest {
 
     @Mock private MoneyRepository moneyRepository;
     @Mock private CharacterRepository characterRepository;
-    @InjectMocks private MoneyService moneyService;
+    @InjectMocks private MoneyServiceImpl moneyService;
 
     @Nested
     @DisplayName("Дата операции при создании")
