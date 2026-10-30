@@ -2,6 +2,7 @@ package app.charka.system.cp2020;
 
 import app.charka.check.CheckRequest;
 import app.charka.check.CheckResolver;
+import app.charka.item.ItemTypeDefinition;
 import app.charka.model.Campaign;
 import app.charka.model.Character;
 import app.charka.model.CharacterSkill;
@@ -102,6 +103,11 @@ public class Cp2020System implements GameSystem {
                         stats.put(line.getKey(),
                                 new StatValue(line.getKey(), line.getName(), line.getBase(), line.getEffective()))));
         return stats;
+    }
+
+    @Override
+    public List<ItemTypeDefinition> getItemTypes() {
+        return Cp2020ItemTypes.ALL;
     }
 
     @Override

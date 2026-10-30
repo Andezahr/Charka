@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Выбор типа предмета и поля каждого типа; видимость полей переключает app.js ([data-item-form]).
+     Если у системы только обычный предмет, выбирать нечего и формы выглядят как раньше. -->
+<th:block th:fragment="type-fields(types, item)">
+  <select th:if="${#lists.size(types) > 1}" name="itemType" class="item-type-select" aria-label="Тип предмета">
+    <option th:each="t : ${types}" th:value="${t.code}" th:text="${t.displayName}"
+            th:selected="${item != null and item.type == t.code}">Обычный предмет</option>
+  </select>
+  <th:block th:each="t : ${types}">
+    <div th:unless="${#lists.isEmpty(t.fields)}" class="field-grid item-fields" th:attr="data-item-fields=${t.code}" hidden>
+      <th:block th:each="f : ${t.fields}"
+                th:with="value=${item != null and item.type == t.code ? item.properties[f.key] : null}">
+        <label th:if="${f.flag}" class="check">
+          <input type="checkbox" th:name="'prop.' + ${f.key}" value="1" th:checked="${value != null}" disabled>
+          <span th:text="${f.label}">Бронебойное</span>
+        </label>
+        <label th:unless="${f.flag}" class="field">
+          <span class="label" th:text="${f.label}">Точность</span>
+          <select th:if="${f.choice}" th:name="'prop.' + ${f.key}" th:required="${f.required}" disabled>
+            <option th:unless="${f.required}" value="">—</option>
+            <option th:each="o : ${f.options}" th:value="${o.value}" th:text="${o.value} + ' — ' + ${o.label}"
+                    th:selected="${value == o.value}">SMG — Пистолет-пулемёт</option>
+          </select>
+          <input th:unless="${f.choice}" th:type="${f.number} ? 'number' : 'text'" th:name="'prop.' + ${f.key}"
+                 th:value="${value}" th:attr="min=${f.min},max=${f.max}" autocomplete="off" disabled>
+        </label>
+      </th:block>
+    </div>
+  </th:block>
+</th:block>
+</body>
+</html>

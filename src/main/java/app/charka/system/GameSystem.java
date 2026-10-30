@@ -3,6 +3,7 @@ package app.charka.system;
 import app.charka.check.CheckRequest;
 import app.charka.check.CheckResolver;
 import app.charka.check.GenericCheckResolver;
+import app.charka.item.ItemTypeDefinition;
 import app.charka.model.Campaign;
 import app.charka.model.Character;
 import app.charka.model.CharacterSkill;
@@ -100,6 +101,17 @@ public interface GameSystem {
      */
     default Map<String, StatValue> getCurrentStats(Character character) {
         return Map.of();
+    }
+
+    /**
+     * Типы предметов системы; обычный предмет есть всегда.
+     */
+    default List<ItemTypeDefinition> getItemTypes() {
+        return List.of(ItemTypeDefinition.GENERIC);
+    }
+
+    default Optional<ItemTypeDefinition> findItemType(String code) {
+        return getItemTypes().stream().filter(type -> type.code().equals(code)).findFirst();
     }
 
     /**

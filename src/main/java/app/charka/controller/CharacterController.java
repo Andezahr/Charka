@@ -1,6 +1,7 @@
 package app.charka.controller;
 
 import app.charka.dice.DiceService;
+import app.charka.item.ItemTypeDefinition;
 import app.charka.model.Character;
 import app.charka.model.Money;
 import app.charka.service.CharacterService;
@@ -15,6 +16,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.util.List;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Controller
 @RequiredArgsConstructor
@@ -39,6 +42,9 @@ public class CharacterController {
         model.addAttribute("moneySum", moneySum);
         GameSystem system = systemRegistry.forCharacter(character);
         model.addAttribute("currency", system.getCurrency());
+        model.addAttribute("itemTypes", system.getItemTypes());
+        model.addAttribute("itemTypeByCode", system.getItemTypes().stream()
+                .collect(Collectors.toMap(ItemTypeDefinition::code, Function.identity())));
         model.addAttribute("roles", system.rolesOf(character));
         model.addAttribute("quickDice", system.getQuickDice());
         model.addAttribute("difficultyPresets", system.getCheckResolver().getDifficultyPresets());

@@ -31,7 +31,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 405 тестов, на 2026-10-30 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 423 теста, на 2026-10-30 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -49,17 +49,18 @@ controller/    MVC-контроллеры, возвращают имена ша�
 api/           REST: CampaignExportController, SkillCheckController (проверка навыка)
 dice/         DiceExpression (разбор NdM±K), DiceResult, DiceService (броски + лог RollLog)
 check/        CheckRequest/CheckResult/CheckResolver (GenericCheckResolver: d20), OpposedCheckResult, CheckService (правила системы + лог)
+item/         ItemTypeDefinition, ItemField (поля типа предмета, проверка ввода, строка предмета); типы отдаёт GameSystem.getItemTypes()
 skill/        SkillDefinition, CharacterRole, StatValue, SkillSheet, SkillCheck, SkillOpponent, SkillProgression (контракт прокачки), SkillImprovement, SkillService (навыки, роли, проверка, прокачка)
 system/        GameSystem, GameSystemRegistry, GenericSystem ("GENERIC"), Currency; cp2020/ — Cp2020System ("CP2020"),
-               стратегии счётчиков, Cp2020Rules, Cp2020Dice (d10: на 10 один дополнительный кубик), Cp2020CheckResolver, Cp2020Skills (каталог, роли), Cp2020Fumbles (таблица книги), Cp2020SkillRules (языки по семьям, бонусы от других навыков, требования), Cp2020SkillProgression + Cp2020IpStrategy (очки улучшения)
+               стратегии счётчиков, Cp2020Rules, Cp2020Dice (d10: на 10 один дополнительный кубик), Cp2020CheckResolver, Cp2020Skills (каталог, роли), Cp2020Fumbles (таблица книги), Cp2020SkillRules (языки по семьям, бонусы от других навыков, требования), Cp2020ItemTypes (оружие), Cp2020SkillProgression + Cp2020IpStrategy (очки улучшения)
 dto/counter/   DTO только для счётчиков (единственный модуль, переведённый на DTO)
 exception/     NotFoundException.forId("Entity", id) (NoSuchElementException → 404), наследники CharacterNotFoundException, InventoryNotFoundException;
                GlobalExceptionHandler (страницы → error.html: 404/400/500), ApiExceptionHandler (app.charka.api → text/plain)
 TODO.txt       список планов автора (см. ниже)
 ```
 
-Шаблоны: `src/main/resources/templates/` — `error.html`, `home.html`, `campaign.html`, `character.html`, `notes.html`, `counters/list.html`, `skills/list.html`; общие куски — `fragments/layout.html` (`head(title)`, `topbar(characterId, active)` с вкладками Лист/Навыки/Счётчики/Заметки; «Навыки» — только если у системы есть каталог), `fragments/dice.html` (`card(action, showAuthor)` — карточка «Кубики», `check-result` — итог проверки).
-Фронт единый: один CSS `static/css/app.css` (тёмная тема, токены в `:root`, шрифты Inter + Russo One с Google Fonts) и один JS `static/js/app.js` — без Bootstrap. JS-соглашения: `[data-edit-toggle]` открывает `.edit-panel` внутри ближайшего `[data-editable]`; `form[data-confirm]` спрашивает подтверждение; `[data-count-to]` — счётчик символов; `.alert-close` закрывает flash-сообщение; `[data-skills]` — страница навыков (фильтр, поиск, правка уровней, диалог проверки).
+Шаблоны: `src/main/resources/templates/` — `error.html`, `home.html`, `campaign.html`, `character.html`, `notes.html`, `counters/list.html`, `skills/list.html`; общие куски — `fragments/layout.html` (`head(title)`, `topbar(characterId, active)` с вкладками Лист/Навыки/Счётчики/Заметки; «Навыки» — только если у системы есть каталог), `fragments/dice.html` (`card(action, showAuthor)` — карточка «Кубики», `check-result` — итог проверки), `fragments/items.html` (`type-fields(types, item)` — выбор типа и поля предмета).
+Фронт единый: один CSS `static/css/app.css` (тёмная тема, токены в `:root`, шрифты Inter + Russo One с Google Fonts) и один JS `static/js/app.js` — без Bootstrap. JS-соглашения: `[data-edit-toggle]` открывает `.edit-panel` внутри ближайшего `[data-editable]`; `form[data-confirm]` спрашивает подтверждение; `[data-count-to]` — счётчик символов; `.alert-close` закрывает flash-сообщение; `[data-item-form]` — поля выбранного типа предмета; `[data-skills]` — страница навыков (фильтр, поиск, правка уровней, диалог проверки).
 
 **Убирая что-то с экрана ради разгрузки, записывай в `TODO.md`, где это вернуть** (пример — таблица «Скрыто с экрана навыков» и пометки в задачах G-05, P-01, I-06, C-03, C-07).
 
@@ -72,7 +73,7 @@ Campaign (name, system, startDate, currentDate)   — system: код GameSystem 
  └─ Character* (name, birthDate, roles)       — roles: коды из GameSystem.getRoles(), таблица character_role; уровень роли = уровень спецспособности
      ├─ CharacterSkill* (skillCode, level, customName?) — код из каталога системы; уровень 0 у обычного навыка не хранится
      ├─ Wound*     (name, severity, date)
-     ├─ Inventory* (name) └─ Item* (name, quantity, cost, description)
+     ├─ Inventory* (name) └─ Item* (name, quantity, cost, description, type, properties) — type: код из GameSystem.getItemTypes()
      ├─ Money*     (name, amount, operationDate) — журнал операций, баланс = сумма amount
      ├─ Note*      (name ≤255, text ≤1000, createdAt) ←M:N→ NoteCategory (глобальные, не привязаны к персонажу)
      └─ Counter*   (name, value:Integer, type:String)
@@ -114,7 +115,7 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 | GET | `/character/{id}` | лист персонажа (раны, инвентари, деньги, кубики) |
 | POST | `/character/{id}/wounds`, `.../wounds/{wid}/delete` | раны |
 | POST | `/character/{id}/inventories`, `.../{invId}/edit`, `.../{invId}/delete` | инвентари |
-| POST | `/character/{id}/inventories/{invId}/items` (+ `/{itemId}/edit|delete|move`) | предметы |
+| POST | `/character/{id}/inventories/{invId}/items` (+ `/{itemId}/edit|delete|move`) | предметы; `itemType`, `prop.<ключ>` — тип и его поля |
 | POST | `/character/{id}/money`, `.../money/{mid}/delete` | деньги |
 | GET | `/character/{id}/notes/` | заметки (фильтр `?categoryId=`) |
 | POST | `/character/{id}/notes`, `.../{noteId}/edit|delete`; GET `.../{noteId}/edit` | заметки |

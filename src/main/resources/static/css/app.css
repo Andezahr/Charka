@@ -823,6 +823,13 @@ details.cp-more > summary:hover { color: var(--text-soft); }
 .dice-result.is-fail .dice-total { color: var(--danger); }
 .dice-result .alert-steps { margin-top: 4px; }
 
+/* ---------- Типы предметов ---------- */
+
+.form-row > .item-type-select { flex: 1 1 100%; }
+.form-row > .item-fields { flex: 1 1 100%; }
+.item-fields .check { align-self: end; justify-self: start; white-space: nowrap; }
+.item-line .item-type-name { color: var(--accent); }
+
 /* ---------- Навыки ---------- */
 
 .skills-head { margin-bottom: 16px; }

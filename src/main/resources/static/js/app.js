@@ -47,6 +47,21 @@ document.addEventListener('DOMContentLoaded', () => {
     sync();
   });
 
+  // Форма предмета: показываем поля выбранного типа; поля других типов выключены и не отправляются
+  document.querySelectorAll('[data-item-form]').forEach(form => {
+    const type = form.elements.itemType;
+    if (!type) return;
+    const sync = () => {
+      form.querySelectorAll('[data-item-fields]').forEach(group => {
+        const active = group.dataset.itemFields === type.value;
+        group.hidden = !active;
+        group.querySelectorAll('input, select').forEach(field => { field.disabled = !active; });
+      });
+    };
+    type.addEventListener('change', sync);
+    sync();
+  });
+
   // Страница навыков. Видимость строк: изученные и спецспособности ролей; «Все навыки», прокачка, ручная правка
   // и поиск показывают весь каталог. Без JS видно всё, но проверка и правка требуют JS.
   document.querySelectorAll('[data-skills]').forEach(page => {

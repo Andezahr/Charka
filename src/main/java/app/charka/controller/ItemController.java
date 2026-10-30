@@ -1,5 +1,6 @@
 package app.charka.controller;
 
+import app.charka.item.ItemTypeDefinition;
 import app.charka.model.Item;
 import app.charka.service.ItemService;
 import org.springframework.stereotype.Controller;
@@ -7,10 +8,16 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @Controller
 @RequestMapping("/character/{characterId}/inventories/{inventoryId}/items")
 public class ItemController {
+
+    private static final String PROPERTY_PREFIX = "prop.";
 
     private final ItemService itemService;
 
@@ -18,6 +25,9 @@ public class ItemController {
         this.itemService = itemService;
     }
 
+    /**
+     * Значения полей типа приходят параметрами {@code prop.<ключ>}. Некорректный ввод — flash {@code errorMessage}.
+     */
     @PostMapping
     public String addItem(
             @PathVariable Long characterId,
@@ -25,15 +35,18 @@ public class ItemController {
             @RequestParam String itemName,
             @RequestParam(required = false) Integer quantity,
             @RequestParam(required = false) Integer cost,
-            @RequestParam(required = false) String description
+            @RequestParam(required = false) String description,
+            @RequestParam(defaultValue = ItemTypeDefinition.GENERIC_CODE) String itemType,
+            @RequestParam Map<String, String> params,
+            RedirectAttributes redirectAttributes
     ) {
         Item item = new Item();
         item.setName(itemName);
         item.setQuantity(quantity);
         item.setCost(cost);
         item.setDescription(description);
-        itemService.create(inventoryId, item);
-        return "redirect:/character/" + characterId;
+        return handle(characterId, redirectAttributes,
+                () -> itemService.create(inventoryId, item, itemType, properties(params)));
     }
 
     @PostMapping("/{itemId}/edit")
@@ -44,9 +57,31 @@ public class ItemController {
             @RequestParam String itemName,
             @RequestParam(required = false) Integer quantity,
             @RequestParam(required = false) Integer cost,
-            @RequestParam(required = false) String description
+            @RequestParam(required = false) String description,
+            @RequestParam(defaultValue = ItemTypeDefinition.GENERIC_CODE) String itemType,
+            @RequestParam Map<String, String> params,
+            RedirectAttributes redirectAttributes
     ) {
-        itemService.update(itemId, itemName, quantity, cost, description);
+        return handle(characterId, redirectAttributes,
+                () -> itemService.update(itemId, itemName, quantity, cost, description, itemType, properties(params)));
+    }
+
+    private static Map<String, String> properties(Map<String, String> params) {
+        Map<String, String> properties = new HashMap<>();
+        params.forEach((key, value) -> {
+            if (key.startsWith(PROPERTY_PREFIX)) {
+                properties.put(key.substring(PROPERTY_PREFIX.length()), value);
+            }
+        });
+        return properties;
+    }
+
+    private static String handle(Long characterId, RedirectAttributes redirectAttributes, Runnable action) {
+        try {
+            action.run();
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        }
         return "redirect:/character/" + characterId;
     }
 

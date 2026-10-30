@@ -1,15 +1,19 @@
 package app.charka.service;
 
 import app.charka.exception.NotFoundException;
+import app.charka.item.ItemTypeDefinition;
 import app.charka.model.Item;
 import app.charka.model.Inventory;
 import app.charka.repository.ItemRepository;
 import app.charka.repository.InventoryRepository;
+import app.charka.system.GameSystem;
+import app.charka.system.GameSystemRegistry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 
 
 @Service
@@ -18,6 +22,7 @@ public class ItemService {
 
     private final ItemRepository itemRepository;
     private final InventoryRepository inventoryRepository;
+    private final GameSystemRegistry systemRegistry;
 
     private static final String ITEM_NOT_FOUND = "Item not found for id=%d";
 
@@ -87,6 +92,43 @@ public class ItemService {
         existing.setCost(cost);
         existing.setDescription(description);
         return itemRepository.save(existing);
+    }
+
+    /**
+     * Создать предмет заданного типа.
+     *
+     * @param typeCode   код типа из системы кампании
+     * @param properties значения полей типа из формы
+     * @throws IllegalArgumentException если тип недоступен в системе или значение не подходит полю
+     */
+    @Transactional
+    public Item create(Long inventoryId, Item item, String typeCode, Map<String, String> properties) {
+        Inventory inventory = inventoryRepository.findById(inventoryId)
+                .orElseThrow(() -> new NotFoundException(
+                        "Inventory not found for id=" + inventoryId));
+        applyType(item, inventory, typeCode, properties);
+        return create(inventoryId, item);
+    }
+
+    /**
+     * Обновить предмет вместе с типом; значения прежнего типа не сохраняются.
+     */
+    @Transactional
+    public Item update(Long id, String name, Integer quantity, Integer cost, String description,
+                       String typeCode, Map<String, String> properties) {
+        Item existing = update(id, name, quantity, cost, description);
+        applyType(existing, existing.getInventory(), typeCode, properties);
+        return existing;
+    }
+
+    private void applyType(Item item, Inventory inventory, String typeCode, Map<String, String> properties) {
+        GameSystem system = systemRegistry.forCharacter(inventory.getCharacter());
+        ItemTypeDefinition type = system.findItemType(typeCode)
+                .orElseThrow(() -> new IllegalArgumentException("Тип предмета недоступен в этой системе: " + typeCode));
+        Map<String, String> values = type.normalize(properties);
+        item.setType(type.code());
+        item.getProperties().clear();
+        item.getProperties().putAll(values);
     }
 
     @Transactional

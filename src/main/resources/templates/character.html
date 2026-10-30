@@ -5,6 +5,10 @@
 <header th:replace="~{fragments/layout :: topbar(${character.id}, 'sheet')}"></header>
 
 <main class="page">
+  <div th:if="${errorMessage != null}" class="alert alert-error" role="alert">
+    <span class="alert-text" th:text="${errorMessage}">Ошибка</span>
+    <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+  </div>
   <div class="page-head">
     <div class="with-avatar">
       <div>
@@ -126,21 +130,26 @@
 
             <div class="inventory-body">
               <form th:action="@{'/character/' + ${character.id} + '/inventories/' + ${inv.id} + '/items'}"
-                    method="post" class="form-row">
+                    method="post" class="form-row" data-item-form>
                 <input type="text" name="itemName" class="grow" placeholder="Предмет" required autocomplete="off">
                 <input type="number" name="quantity" class="narrow" placeholder="Кол-во" required min="1">
                 <input type="number" name="cost" class="narrow" placeholder="Цена" required min="0">
                 <input type="text" name="description" class="grow" placeholder="Описание">
+                <th:block th:replace="~{fragments/items :: type-fields(${itemTypes}, null)}"></th:block>
                 <button type="submit" class="btn btn-sm btn-primary">＋</button>
               </form>
 
               <div class="list">
-                <div th:each="item : ${inv.content}" class="row" data-editable>
+                <div th:each="item : ${inv.content}" class="row" data-editable th:with="itemType=${itemTypeByCode[item.type]}">
                   <div class="row-main">
                     <div class="row-title" th:text="${item.name}">Предмет</div>
                     <div class="row-meta">
                       <span>× <span th:text="${item.quantity}">1</span></span>
                       <span th:text="${item.cost} + ' ' + ${currency.symbol}" th:title="${currency.name}">0</span>
+                    </div>
+                    <div class="row-meta item-line" th:if="${itemType != null and !#lists.isEmpty(itemType.fields)}">
+                      <span class="item-type-name" th:text="${itemType.displayName}">Оружие</span>
+                      <span th:each="line : ${itemType.describe(item.properties)}" th:text="${line.text}" th:title="${line.title}">WA 0</span>
                     </div>
                     <div class="row-desc" th:if="${!#strings.isEmpty(item.description)}" th:text="${item.description}">Описание</div>
                   </div>
@@ -153,11 +162,12 @@
                   </div>
                   <div class="edit-panel">
                     <form th:action="@{'/character/' + ${character.id} + '/inventories/' + ${inv.id} + '/items/' + ${item.id} + '/edit'}"
-                          method="post" class="form-row">
+                          method="post" class="form-row" data-item-form>
                       <input type="text" name="itemName" class="grow" th:value="${item.name}" required placeholder="Название">
                       <input type="number" name="quantity" class="narrow" th:value="${item.quantity}" min="1" placeholder="Кол-во">
                       <input type="number" name="cost" class="narrow" th:value="${item.cost}" min="0" placeholder="Цена">
                       <input type="text" name="description" class="grow" th:value="${item.description}" placeholder="Описание">
+                      <th:block th:replace="~{fragments/items :: type-fields(${itemTypes}, ${item})}"></th:block>
                       <button type="submit" class="btn btn-sm btn-primary">Сохранить</button>
                     </form>
                     <form th:if="${#lists.size(character.inventories) > 1}"

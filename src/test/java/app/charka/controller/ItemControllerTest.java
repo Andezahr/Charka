@@ -77,7 +77,7 @@ class ItemControllerTest {
                     .andExpect(redirectedUrl(REDIRECT_URL));
 
             ArgumentCaptor<Item> captor = ArgumentCaptor.forClass(Item.class);
-            verify(itemService).create(eq(INV_ID), captor.capture());
+            verify(itemService).create(eq(INV_ID), captor.capture(), eq("GENERIC"), eq(java.util.Map.of()));
             Item saved = captor.getValue();
 
             assertAll("Поля Item при добавлении",
@@ -93,7 +93,7 @@ class ItemControllerTest {
         @DisplayName("404 – инвентарь не найден")
         void addItem_inventoryNotFound() throws Exception {
             doThrow(new NotFoundException(ERR_INV_NOT_FOUND))
-                    .when(itemService).create(eq(MISSING_INV_ID), any());
+                    .when(itemService).create(eq(MISSING_INV_ID), any(), any(), any());
 
             mockMvc.perform(post("/character/{characterId}/inventories/{inventoryId}/items",
                             CHAR_ID, MISSING_INV_ID)
@@ -102,7 +102,7 @@ class ItemControllerTest {
                     .andExpect(status().isNotFound())
                     .andExpect(model().attribute("message", ERR_INV_NOT_FOUND));
 
-            verify(itemService).create(eq(MISSING_INV_ID), any());
+            verify(itemService).create(eq(MISSING_INV_ID), any(), any(), any());
             verifyNoMoreInteractions(itemService);
         }
     }
@@ -132,7 +132,9 @@ class ItemControllerTest {
                     NAME_NEW,
                     3,
                     50,
-                    DESCRIPTION
+                    DESCRIPTION,
+                    "GENERIC",
+                    java.util.Map.of()
             );
             verifyNoMoreInteractions(itemService);
         }
@@ -141,7 +143,7 @@ class ItemControllerTest {
         @DisplayName("404 – предмет не найден")
         void editItem_notFound() throws Exception {
             doThrow(new NotFoundException(ERR_ITEM_NOT_FOUND))
-                    .when(itemService).update(eq(ITEM_ID), any(), any(), any(), any());
+                    .when(itemService).update(eq(ITEM_ID), any(), any(), any(), any(), any(), any());
 
             mockMvc.perform(post("/character/{characterId}/inventories/{inventoryId}/items/{itemId}/edit",
                             CHAR_ID, INV_ID, ITEM_ID)
@@ -150,7 +152,7 @@ class ItemControllerTest {
                     .andExpect(status().isNotFound())
                     .andExpect(model().attribute("message", ERR_ITEM_NOT_FOUND));
 
-            verify(itemService).update(eq(ITEM_ID), any(), any(), any(), any());
+            verify(itemService).update(eq(ITEM_ID), any(), any(), any(), any(), any(), any());
             verifyNoMoreInteractions(itemService);
         }
     }
@@ -226,6 +228,39 @@ class ItemControllerTest {
 
             verify(itemService).moveToInventory(MOVE_ITEM_ID, TARGET_INV_ID);
             verifyNoMoreInteractions(itemService);
+        }
+    }
+
+    @Nested
+    @DisplayName("Тип предмета")
+    class ItemTypeTests {
+
+        @Test
+        @DisplayName("поля типа приходят параметрами prop.*, остальное в них не попадает")
+        void properties() throws Exception {
+            mockMvc.perform(post("/character/{c}/inventories/{i}/items", CHAR_ID, INV_ID)
+                            .param("itemName", NAME_SWORD)
+                            .param("itemType", "CP2020_WEAPON")
+                            .param("prop.category", "RIF")
+                            .param("prop.range", "400"))
+                    .andExpect(status().is3xxRedirection());
+
+            verify(itemService).create(eq(INV_ID), any(), eq("CP2020_WEAPON"),
+                    eq(java.util.Map.of("category", "RIF", "range", "400")));
+        }
+
+        @Test
+        @DisplayName("некорректный ввод — возврат на лист с сообщением, а не страница ошибки")
+        void badInput() throws Exception {
+            doThrow(new IllegalArgumentException("Поле «Тип» обязательно"))
+                    .when(itemService).update(eq(ITEM_ID), any(), any(), any(), any(), any(), any());
+
+            mockMvc.perform(post("/character/{c}/inventories/{i}/items/{id}/edit", CHAR_ID, INV_ID, ITEM_ID)
+                            .param("itemName", NAME_NEW)
+                            .param("itemType", "CP2020_WEAPON"))
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(redirectedUrl(REDIRECT_URL))
+                    .andExpect(flash().attribute("errorMessage", "Поле «Тип» обязательно"));
         }
     }
 }
