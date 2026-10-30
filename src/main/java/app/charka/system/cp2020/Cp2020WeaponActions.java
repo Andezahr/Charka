@@ -96,7 +96,12 @@ final class Cp2020WeaponActions {
         return actions;
     }
 
-    private static String emptyReason(Item weapon) {
+    /** Один выстрел атаки: {@link Cp2020AttackRules} */
+    static String fireOne(Item weapon) {
+        return fire(weapon, 1);
+    }
+
+    static String emptyReason(Item weapon) {
         if (usesMagazines(weapon)) {
             return hasMagazine(weapon) ? "Магазин пуст" : "В оружии нет магазина";
         }

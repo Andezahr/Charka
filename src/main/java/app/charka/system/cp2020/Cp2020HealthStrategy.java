@@ -179,7 +179,10 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
             event.step("Бронебойный: прошедший урон делится пополам → " + damage);
         }
         if (type != Cp2020DamageType.BYPASS && sp > 0) {
-            int worn = armorStrategy.wear(armor, location);
+            int worn = sp;
+            for (int i = 0; i < request.getArmorWear(); i++) {
+                worn = armorStrategy.wear(armor, location);
+            }
             event.step("Броня пробита и изношена: SP «" + location.getLabel() + "» " + sp + " → " + worn);
         }
 

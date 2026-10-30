@@ -70,7 +70,7 @@ public final class Cp2020Weapons {
             gun(SHOTGUNS, "Arasaka Rapid Assault 12", "SHT", -1, "N", "C", "4D6", "00", 20, 10, "ST", 50, 900),
             gun(SHOTGUNS, "Sternmeyer Stakeout 10", "SHT", -2, "N", "R", "4D6", "00", 10, 2, "ST", 50, 450),
 
-            note(armorPiercing(gun(HEAVY, "Barrett-Arasaka Light 20mm", "HVY", 0, "N", "R", "4D10", "20/9mm", 10, 1, "VR", 450, 2000)),
+            note(armorWear(armorPiercing(gun(HEAVY, "Barrett-Arasaka Light 20mm", "HVY", 0, "N", "R", "4D10", "20/9mm", 10, 1, "VR", 450, 2000)), 2),
                     "Подкалиберный бронебойный снаряд: броня теряет 2 SP за попадание"),
             gun(HEAVY, "Scorpion 16 Missile Launcher", "HVY", -1, "N", "R", "7D10", null, 1, 1, "VR", 1000, 3000),
             gun(HEAVY, "Militech Arms RPG-A", "HVY", -2, "N", "R", "6D10", null, 1, 1, "VR", 750, 1500),
@@ -178,9 +178,17 @@ public final class Cp2020Weapons {
         return withFlag(item, Cp2020ItemTypes.DIRECT_LOAD);
     }
 
+    private static CatalogItem armorWear(CatalogItem item, int points) {
+        return withProperty(item, Cp2020ItemTypes.ARMOR_WEAR, String.valueOf(points));
+    }
+
     private static CatalogItem withFlag(CatalogItem item, String flag) {
+        return withProperty(item, flag, "1");
+    }
+
+    private static CatalogItem withProperty(CatalogItem item, String key, String value) {
         Map<String, String> properties = new HashMap<>(item.properties());
-        properties.put(flag, "1");
+        properties.put(key, value);
         return new CatalogItem(item.key(), item.group(), item.name(), item.typeCode(), item.cost(), item.description(),
                 properties, item.packSize(), item.individual());
     }

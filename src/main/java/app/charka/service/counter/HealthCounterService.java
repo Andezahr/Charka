@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -43,6 +44,24 @@ public class HealthCounterService {
         // урон изнашивает броню — сохраняем и соседние счётчики
         counterRepository.saveAll(context.getSiblings());
         return event;
+    }
+
+    /**
+     * Урон персонажу без выбора счётчика: например, от атаки.
+     *
+     * @return итог; пусто, если у персонажа нет счётчика здоровья
+     */
+    @Transactional
+    public Optional<HealthEvent> applyDamage(Long characterId, DamageRequest request) {
+        List<Counter> siblings = counterRepository.findByCharacterId(characterId);
+        for (Counter counter : siblings) {
+            if (strategyFactory.findStrategy(counter.getType()).orElse(null) instanceof HealthCounterStrategy health) {
+                HealthEvent event = health.applyDamage(new CounterContext(counter, siblings), request);
+                counterRepository.saveAll(siblings);
+                return Optional.of(event);
+            }
+        }
+        return Optional.empty();
     }
 
     @Transactional

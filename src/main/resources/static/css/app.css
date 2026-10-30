@@ -961,3 +961,12 @@ html:has(.is-editing) {
 .dialog .btn.is-active { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
 .dialog-more summary { cursor: pointer; }
 .dialog-more input { margin-top: 8px; }
+
+/* Диалог атаки */
+.attack-dialog { width: min(560px, calc(100vw - 32px)); }
+.attack-section { margin: 0; padding: 0; border: 0; }
+.attack-section legend { padding: 0; margin-bottom: 8px; font-size: 13px; color: var(--text-soft); }
+.attack-options { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; align-items: start; }
+.attack-options .check { white-space: normal; }
+.attack-steps { margin: 6px 0 0; padding-left: 18px; font-size: 13px; }
+.attack-steps li + li { margin-top: 2px; }

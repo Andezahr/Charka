@@ -18,4 +18,7 @@ public class DamageRequest {
     /** Сразу бросить проверки, положенные после ранения (в CP2020 — спасбросок от оглушения) */
     @Builder.Default
     boolean autoSave = true;
+    /** На сколько пробитие изнашивает броню, если у системы есть износ */
+    @Builder.Default
+    int armorWear = 1;
 }

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Диалог атаки оружием; что спрашивать, задаёт AttackForm системы. Модификаторы открыты сразу: в атаке они главное содержимое. -->
+<dialog th:fragment="dialog(characterId, item, form, targets)" class="dialog attack-dialog" th:id="'attack-' + ${item.id}">
+  <form th:action="@{'/character/' + ${characterId} + '/items/' + ${item.id} + '/attack'}" method="post" class="form">
+    <div>
+      <h2 class="card-title" th:text="'Атака: ' + ${item.name}">Атака: Minami</h2>
+      <p class="page-sub">
+        <span th:if="${form.damage != null}" th:text="'Урон ' + ${form.damage}">Урон 2D6+3</span>
+        <span th:if="${form.range != null}" th:text="' · дальность ' + ${form.range} + ' м'"> · дальность 200 м</span>
+      </p>
+    </div>
+
+    <div class="field-grid">
+      <label class="field">
+        <span class="label">Цель</span>
+        <select name="target">
+          <option th:each="t : ${targets}" th:value="${t.id}" th:text="${t.name}">Олежа</option>
+          <option value="">Без листа</option>
+        </select>
+      </label>
+      <label class="field">
+        <span class="label">Имя цели без листа</span>
+        <input type="text" name="targetName" maxlength="100" autocomplete="off">
+      </label>
+      <label class="field">
+        <span class="label">Расстояние, м</span>
+        <input type="number" name="distance" min="0" required>
+      </label>
+      <label class="field">
+        <span class="label">Зона (выбор −4)</span>
+        <select name="location">
+          <option value="">Случайная</option>
+          <option th:each="l : ${form.locations}" th:value="${l.value}" th:text="${l.label}">Торс</option>
+        </select>
+      </label>
+      <label class="field" th:if="${#lists.size(form.skills) > 1}">
+        <span class="label">Навык</span>
+        <select name="skill">
+          <option th:each="s : ${form.skills}" th:value="${s.value}" th:text="${s.label}">Пистолеты</option>
+        </select>
+      </label>
+    </div>
+
+    <fieldset th:each="section : ${form.sections}" class="attack-section">
+      <legend th:text="${section.name}">Цель</legend>
+      <div class="attack-options">
+        <th:block th:each="choice : ${section.choices}">
+          <label th:if="${choice.flag}" class="check">
+            <input type="checkbox" th:name="'option.' + ${choice.key}" th:value="${choice.options[0].value}">
+            <span th:text="${choice.options[0].label}">Цель неподвижна +4</span>
+          </label>
+          <label th:unless="${choice.flag}" class="field">
+            <span class="label" th:text="${choice.label}">Цель движется</span>
+            <select th:name="'option.' + ${choice.key}">
+              <option value="">—</option>
+              <option th:each="o : ${choice.options}" th:value="${o.value}" th:text="${o.label}">REF больше 10 −3</option>
+            </select>
+          </label>
+        </th:block>
+      </div>
+    </fieldset>
+
+    <label class="field">
+      <span class="label">Прочий модификатор</span>
+      <input type="number" name="modifier" value="0">
+    </label>
+
+    <div class="form-row dialog-actions">
+      <button type="button" class="btn btn-ghost" data-dialog-close>Закрыть</button>
+      <button type="submit" class="btn btn-primary">🎲 Выстрелить</button>
+    </div>
+  </form>
+</dialog>
+</body>
+</html>

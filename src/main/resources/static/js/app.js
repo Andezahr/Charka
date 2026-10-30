@@ -1,6 +1,14 @@
 // Общий JS для всех страниц Charka
 document.addEventListener('DOMContentLoaded', () => {
 
+  // Диалог по кнопке: [data-dialog-open="id диалога"]; закрывает [data-dialog-close] внутри него
+  document.querySelectorAll('[data-dialog-open]').forEach(btn => {
+    const dialog = document.getElementById(btn.dataset.dialogOpen);
+    if (!dialog) return;
+    btn.addEventListener('click', () => dialog.showModal());
+    dialog.querySelector('[data-dialog-close]').addEventListener('click', () => dialog.close());
+  });
+
   // Кнопка ✎ открывает/закрывает ближайшую inline-форму редактирования:
   // ищем ближайший [data-editable] и его прямого потомка .edit-panel
   document.querySelectorAll('[data-edit-toggle]').forEach(btn => {

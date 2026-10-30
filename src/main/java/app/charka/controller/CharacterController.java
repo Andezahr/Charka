@@ -1,5 +1,7 @@
 package app.charka.controller;
 
+import app.charka.attack.AttackForm;
+import app.charka.attack.AttackRules;
 import app.charka.dice.DiceService;
 import app.charka.item.CatalogItem;
 import app.charka.item.ItemTypeDefinition;
@@ -17,8 +19,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -56,6 +60,23 @@ public class CharacterController {
         model.addAttribute("itemNotes", character.getInventories().stream()
                 .flatMap(inventory -> inventory.getContent().stream())
                 .collect(Collectors.toMap(Item::getId, system::getItemNotes)));
+        AttackRules attackRules = system.getAttackRules();
+        if (attackRules != null) {
+            Map<Long, AttackForm> attackForms = new HashMap<>();
+            character.getInventories().stream()
+                    .flatMap(inventory -> inventory.getContent().stream())
+                    .forEach(item -> {
+                        AttackForm form = attackRules.form(item);
+                        if (form != null) {
+                            attackForms.put(item.getId(), form);
+                        }
+                    });
+            model.addAttribute("attackForms", attackForms);
+            model.addAttribute("attackTargets", character.getCampaign() == null ? List.of()
+                    : character.getCampaign().getCharacters().stream()
+                    .filter(other -> !other.getId().equals(id))
+                    .toList());
+        }
         model.addAttribute("roles", system.rolesOf(character));
         model.addAttribute("quickDice", system.getQuickDice());
         model.addAttribute("difficultyPresets", system.getCheckResolver().getDifficultyPresets());

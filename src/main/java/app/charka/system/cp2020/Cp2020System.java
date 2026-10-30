@@ -1,5 +1,6 @@
 package app.charka.system.cp2020;
 
+import app.charka.attack.AttackRules;
 import app.charka.check.CheckRequest;
 import app.charka.check.CheckResolver;
 import app.charka.item.CatalogItem;
@@ -39,6 +40,8 @@ public class Cp2020System implements GameSystem {
     private static final CheckResolver CHECK_RESOLVER = new Cp2020CheckResolver();
 
     private static final SkillProgression SKILL_PROGRESSION = new Cp2020SkillProgression();
+
+    private static final AttackRules ATTACK_RULES = new Cp2020AttackRules();
 
     /** Стратегия без состояния; нужна только чтобы посчитать текущие статы */
     private static final Cp2020StatsStrategy STATS = new Cp2020StatsStrategy();
@@ -135,6 +138,11 @@ public class Cp2020System implements GameSystem {
     @Override
     public String performItemAction(Item item, String action, Map<String, String> params) {
         return Cp2020WornArmor.isArmor(item) ? Cp2020ArmorActions.perform(item, action) : Cp2020WeaponActions.perform(item, action, params);
+    }
+
+    @Override
+    public AttackRules getAttackRules() {
+        return ATTACK_RULES;
     }
 
     @Override

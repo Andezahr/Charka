@@ -1,5 +1,6 @@
 package app.charka.system;
 
+import app.charka.attack.AttackRules;
 import app.charka.check.CheckRequest;
 import app.charka.check.CheckResolver;
 import app.charka.check.GenericCheckResolver;
@@ -147,6 +148,13 @@ public interface GameSystem {
      */
     default String performItemAction(Item item, String action, Map<String, String> params) {
         throw new IllegalArgumentException("Неизвестное действие с предметом: " + action);
+    }
+
+    /**
+     * Правила атаки оружием; null — у системы их нет.
+     */
+    default AttackRules getAttackRules() {
+        return null;
     }
 
     /**

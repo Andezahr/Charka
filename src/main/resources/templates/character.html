@@ -174,9 +174,23 @@
                       <span class="alert-text" th:text="${actionResult}">Выпущено 3</span>
                       <button type="button" class="alert-close" aria-label="Закрыть">×</button>
                     </div>
+                    <div th:if="${actionItemId == item.id and attackResult != null}" class="alert item-result" role="status"
+                         th:classappend="${attackResult.hit} ? 'alert-success' : 'alert-error'">
+                      <div class="alert-text">
+                        <strong th:text="${attackResult.title} + ': ' + ${attackResult.outcome}">Minami → Олежа: попадание</strong>
+                        <ol class="attack-steps"><li th:each="step : ${attackResult.steps}" th:text="${step}">Бросок d10: 7</li></ol>
+                      </div>
+                      <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+                    </div>
                     <div th:if="${actionItemId == item.id and actionError != null}" class="alert alert-error item-result" role="alert">
                       <span class="alert-text" th:text="${actionError}">Магазин пуст</span>
                       <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+                    </div>
+                    <div class="item-actions" th:if="${attackForms != null and attackForms[item.id] != null}">
+                      <button type="button" class="btn btn-sm btn-primary" th:attr="data-dialog-open='attack-' + ${item.id}"
+                              th:disabled="${attackForms[item.id].unavailable != null}">Атаковать</button>
+                      <p th:if="${attackForms[item.id].unavailable != null}" class="item-action-note" th:text="${attackForms[item.id].unavailable}">Магазин пуст</p>
+                      <dialog th:replace="~{fragments/attack :: dialog(${character.id}, ${item}, ${attackForms[item.id]}, ${attackTargets})}"></dialog>
                     </div>
                     <div class="item-actions" th:unless="${#lists.isEmpty(itemActions[item.id])}">
                       <form th:each="action : ${itemActions[item.id]}"
