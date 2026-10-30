@@ -79,6 +79,11 @@ public class Cp2020System implements GameSystem {
     }
 
     @Override
+    public int getRoleUnlockLevel() {
+        return Cp2020Rules.ROLE_UNLOCK_LEVEL;
+    }
+
+    @Override
     public SkillProgression getSkillProgression() {
         return SKILL_PROGRESSION;
     }

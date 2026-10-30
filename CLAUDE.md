@@ -29,7 +29,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 348 тестов, на 2026-10-30 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 353 теста, на 2026-10-30 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -121,7 +121,7 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 | POST | `/character/{id}/skills/custom`, `.../custom/{sid}/delete` | свой навык (язык, эксперт, боевое искусство) |
 | POST | `/character/{id}/skills/setup` | создать недостающие счётчики системы |
 | POST | `/api/characters/{id}/skills/check` | `code` или `skillId`, `modifier`, `difficulty?` → проверка навыка, JSON (диалог, без перезагрузки) |
-| POST | `/character/{id}/roles` | `role` (несколько) → роли персонажа целиком |
+| POST | `/character/{id}/roles` | `role` (несколько) → роли персонажа целиком; новая роль — по правилу системы (CP2020: 4 уровень спецспособности текущей) |
 | POST | `/character/{id}/skills/improve` | `code` или `skillId` → следующий уровень за очки системы (CP2020: IP) |
 | GET | `/character/{id}/counters` | счётчики |
 | POST | `/character/{id}/counters/create`, `/{cid}/update|set|reset`; DELETE `/{cid}` | счётчики |

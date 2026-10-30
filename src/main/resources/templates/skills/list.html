@@ -17,12 +17,12 @@
       <div class="edit-panel">
         <form th:action="${base} + '/roles'" method="post" class="form">
           <div class="checks">
-            <label th:each="r : ${sheet.roles}" class="check">
-              <input type="checkbox" name="role" th:value="${r.code}"
-                     th:checked="${#lists.contains(sheet.heldRoles, r)}">
+            <label th:each="r : ${sheet.roleOptions}" class="check" th:classappend="${r.available} ? '' : 'is-locked'">
+              <input type="checkbox" name="role" th:value="${r.code}" th:checked="${r.held}" th:disabled="${!r.available}">
               <span th:text="${r.name}">Соло</span>
             </label>
           </div>
+          <p th:if="${sheet.roleHint != null}" class="hint hint-left" th:text="${sheet.roleHint}">Новая роль откроется…</p>
           <div><button type="submit" class="btn btn-sm btn-primary">Сохранить</button></div>
         </form>
       </div>

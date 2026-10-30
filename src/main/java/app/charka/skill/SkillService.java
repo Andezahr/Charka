@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Навыки и роли персонажа. Какие навыки и роли существуют, как считаются статы и сколько стоит прокачка — решает
@@ -90,7 +91,17 @@ public class SkillService {
                         customTypes.getOrDefault(statCode, List.of()), rows));
             }
         });
-        return new SkillSheet(heldRoles, system.getRoles(), groups, stats.isEmpty(),
+        List<CharacterRole> unfinished = rolesBelowUnlock(character, system, heldRoles);
+        List<SkillSheet.RoleOption> roleOptions = system.getRoles().stream()
+                .map(role -> {
+                    boolean held = heldRoles.contains(role);
+                    boolean available = held || unfinished.isEmpty()
+                            || rolesBelowUnlock(character, system, List.of(role)).isEmpty();
+                    return new SkillSheet.RoleOption(role.code(), role.name(), held, available);
+                })
+                .toList();
+        String roleHint = unfinished.isEmpty() ? null : unlockHint(system, unfinished);
+        return new SkillSheet(heldRoles, roleOptions, roleHint, groups, stats.isEmpty(),
                 progression == null ? null : progression.getPointsName(), points);
     }
 
@@ -190,7 +201,9 @@ public class SkillService {
 
     /**
      * Задаёт роли персонажа целиком. Уровень спецспособности снятой роли сохраняется:
-     * способность недоступна, пока роль не вернут.
+     * способность недоступна, пока роль не вернут. Если система ограничивает новые роли
+     * ({@link GameSystem#getRoleUnlockLevel()}), при добавлении после изменения может остаться
+     * не больше одной роли ниже порога: новые роли берутся по одной.
      *
      * @param roleCodes коды ролей системы; пусто — снять все
      */
@@ -199,12 +212,23 @@ public class SkillService {
         Character character = getCharacter(characterId);
         GameSystem system = systemRegistry.forCharacter(character);
         Set<String> codes = new HashSet<>();
+        List<CharacterRole> requested = new ArrayList<>();
         if (roleCodes != null) {
             for (String code : roleCodes) {
                 CharacterRole role = system.findRole(code)
                         .orElseThrow(() -> new IllegalArgumentException("Неизвестная роль: " + code));
-                codes.add(role.code());
+                if (codes.add(role.code())) {
+                    requested.add(role);
+                }
             }
+        }
+        boolean adding = !character.getRoles().containsAll(codes);
+        if (adding && rolesBelowUnlock(character, system, requested).size() > 1) {
+            List<CharacterRole> unfinished = rolesBelowUnlock(character, system, system.rolesOf(character));
+            throw new IllegalArgumentException(unfinished.isEmpty()
+                    ? "Новые роли берутся по одной: следующая откроется, когда спецспособность предыдущей достигнет уровня "
+                            + system.getRoleUnlockLevel()
+                    : unlockHint(system, unfinished));
         }
         character.getRoles().clear();
         character.getRoles().addAll(codes);
@@ -235,6 +259,27 @@ public class SkillService {
         }
         CheckRequest request = CheckRequest.ofParts(name, parts, difficulty, definition.code());
         return new SkillCheck(name, checkService.checkForCharacter(characterId, request));
+    }
+
+    /**
+     * Роли, спецспособность которых ещё ниже порога для новой роли; без порога в системе — ни одной.
+     */
+    private static List<CharacterRole> rolesBelowUnlock(Character character, GameSystem system, List<CharacterRole> roles) {
+        int unlockLevel = system.getRoleUnlockLevel();
+        return roles.stream()
+                .filter(role -> role.specialSkillCode() != null)
+                .filter(role -> {
+                    CharacterSkill skill = plainSkill(character, role.specialSkillCode());
+                    return (skill == null ? 0 : skill.getLevel()) < unlockLevel;
+                })
+                .toList();
+    }
+
+    private static String unlockHint(GameSystem system, List<CharacterRole> unfinished) {
+        String abilities = unfinished.stream()
+                .map(role -> "«" + definition(system, role.specialSkillCode()).name() + "»")
+                .collect(Collectors.joining(", "));
+        return "Новая роль откроется, когда " + abilities + " достигнет уровня " + system.getRoleUnlockLevel();
     }
 
     private void setPlainLevel(Character character, String code, int level) {

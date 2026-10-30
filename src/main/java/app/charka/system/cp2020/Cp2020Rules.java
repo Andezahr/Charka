@@ -21,6 +21,8 @@ public final class Cp2020Rules {
     public static final int NATURAL_HEALING_PER_DAY = 1;
     /** Человечность = EMP × 10; каждые потерянные 10 очков снижают EMP на 1 */
     public static final int HUMANITY_PER_EMP = 10;
+    /** Домашнее правило (из Cyberpunk RED): новая роль открывается, когда спецспособность текущей достигла этого уровня */
+    public static final int ROLE_UNLOCK_LEVEL = 4;
 
     private static final String[] LEVEL_NAMES = {
             "Лёгкое", "Серьёзное", "Критическое",

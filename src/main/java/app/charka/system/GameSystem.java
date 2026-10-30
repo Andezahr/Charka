@@ -80,6 +80,13 @@ public interface GameSystem {
     }
 
     /**
+     * Уровень спецспособности, нужный текущим ролям, чтобы взять новую; 0 — без ограничений.
+     */
+    default int getRoleUnlockLevel() {
+        return 0;
+    }
+
+    /**
      * Прокачка навыков за очки; null — у системы её нет.
      */
     default SkillProgression getSkillProgression() {

@@ -827,7 +827,8 @@ details.cp-more > summary:hover { color: var(--text-soft); }
 
 .skills-head { margin-bottom: 16px; }
 .skills-role { display: flex; align-items: center; gap: 4px; }
-.skills-head .edit-panel { max-width: 380px; }
+.skills-head .edit-panel { max-width: 420px; }
+.check.is-locked { opacity: .45; cursor: not-allowed; }
 
 .skills-notice {
   display: flex;

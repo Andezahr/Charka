@@ -298,6 +298,7 @@ class SkillServiceTest {
         @Test
         @DisplayName("задаются целиком: несколько ролей, пусто — снять все")
         void setsAndClears() {
+            addSkill(10L, "combat_sense", null, 4);
             skillService.setRoles(1L, List.of("solo", "netrunner"));
             assertThat(character.getRoles()).containsExactlyInAnyOrder("solo", "netrunner");
 
@@ -306,6 +307,87 @@ class SkillServiceTest {
 
             skillService.setRoles(1L, null);
             assertThat(character.getRoles()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("новая роль закрыта, пока спецспособность текущей ниже 4 уровня")
+        void newRoleLocked() {
+            character.getRoles().add("solo");
+            addSkill(10L, "combat_sense", null, 3);
+
+            assertThatThrownBy(() -> skillService.setRoles(1L, List.of("solo", "netrunner")))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("Новая роль откроется, когда «Боевое чутьё» достигнет уровня 4");
+            assertThat(character.getRoles()).containsExactly("solo");
+        }
+
+        @Test
+        @DisplayName("на 4 уровне открывается одна новая роль, следующая — когда и она дойдёт до 4")
+        void rolesOpenOneByOne() {
+            character.getRoles().add("solo");
+            addSkill(10L, "combat_sense", null, 4);
+
+            skillService.setRoles(1L, List.of("solo", "netrunner"));
+            assertThatThrownBy(() -> skillService.setRoles(1L, List.of("solo", "netrunner", "cop")))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("«Интерфейс»");
+
+            addSkill(11L, "interface", null, 4);
+            skillService.setRoles(1L, List.of("solo", "netrunner", "cop"));
+            assertThat(character.getRoles()).containsExactlyInAnyOrder("solo", "netrunner", "cop");
+        }
+
+        @Test
+        @DisplayName("две новые роли разом нельзя, первую роль можно взять сразу")
+        void onlyOneAtATime() {
+            assertThatThrownBy(() -> skillService.setRoles(1L, List.of("solo", "netrunner")))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageStartingWith("Новые роли берутся по одной");
+            assertThat(character.getRoles()).isEmpty();
+
+            skillService.setRoles(1L, List.of("solo"));
+            assertThat(character.getRoles()).containsExactly("solo");
+        }
+
+        @Test
+        @DisplayName("снять роль и заменить её можно всегда, вернуть прокачанную — тоже")
+        void removeAndReturn() {
+            character.getRoles().add("solo");
+
+            skillService.setRoles(1L, List.of("netrunner"));
+            assertThat(character.getRoles()).containsExactly("netrunner");
+
+            addSkill(10L, "combat_sense", null, 5);
+            skillService.setRoles(1L, List.of("solo", "netrunner"));
+            assertThat(character.getRoles()).containsExactlyInAnyOrder("solo", "netrunner");
+
+            skillService.setRoles(1L, List.of("solo"));
+            assertThat(character.getRoles()).containsExactly("solo");
+        }
+
+        @Test
+        @DisplayName("лист: закрытые роли и подсказка; при 4 уровне всё открыто")
+        void sheetOptions() {
+            character.getRoles().add("solo");
+            CharacterSkill sense = addSkill(10L, "combat_sense", null, 3);
+            addSkill(11L, "interface", null, 4);
+
+            SkillSheet sheet = skillService.getSheet(1L);
+
+            assertThat(sheet.roleHint()).isEqualTo("Новая роль откроется, когда «Боевое чутьё» достигнет уровня 4");
+            assertThat(option(sheet, "solo").held()).isTrue();
+            assertThat(option(sheet, "solo").available()).isTrue();
+            assertThat(option(sheet, "cop").available()).isFalse();
+            assertThat(option(sheet, "netrunner").available()).isTrue();
+
+            sense.setLevel(4);
+            SkillSheet unlocked = skillService.getSheet(1L);
+            assertThat(unlocked.roleHint()).isNull();
+            assertThat(option(unlocked, "cop").available()).isTrue();
+        }
+
+        private SkillSheet.RoleOption option(SkillSheet sheet, String code) {
+            return sheet.roleOptions().stream().filter(o -> o.code().equals(code)).findFirst().orElseThrow();
         }
 
         @Test

@@ -6,14 +6,22 @@ import java.util.List;
  * Данные страницы навыков.
  *
  * @param heldRoles    роли персонажа
- * @param roles        все роли системы
+ * @param roleOptions  все роли системы для выбора
+ * @param roleHint     почему нельзя взять новую роль; null — можно
  * @param groups       навыки по группам: сначала спецспособности ролей, затем по статам в порядке каталога
  * @param statsMissing у персонажа нет статов — итоги считаются только по уровню
  * @param pointsName   название очков развития; null — у системы нет прокачки за очки
  * @param points       очки персонажа; null — нет прокачки или счётчика очков
  */
-public record SkillSheet(List<CharacterRole> heldRoles, List<CharacterRole> roles, List<Group> groups,
+public record SkillSheet(List<CharacterRole> heldRoles, List<RoleOption> roleOptions, String roleHint, List<Group> groups,
                          boolean statsMissing, String pointsName, Integer points) {
+
+    /**
+     * @param held      роль есть у персонажа
+     * @param available роль можно отметить
+     */
+    public record RoleOption(String code, String name, boolean held, boolean available) {
+    }
 
     /**
      * Система развивает навыки за очки, но у персонажа нет их счётчика.
