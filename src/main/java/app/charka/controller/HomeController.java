@@ -29,7 +29,7 @@ public class HomeController {
 
     @GetMapping("/")
     public String home(Model model) {
-        model.addAttribute("characters", characterService.getAll());
+        model.addAttribute("characters", characterService.getAll().stream().filter(character -> !character.isNpc()).toList());
         model.addAttribute("campaigns", campaignService.getAll());
         model.addAttribute("systems", systemRegistry.getAll());
         model.addAttribute("systemNames", systemRegistry.getDisplayNames());

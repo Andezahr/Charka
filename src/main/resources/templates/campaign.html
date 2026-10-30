@@ -24,7 +24,7 @@
     <section class="card">
       <div class="card-head">
         <h2 class="card-title"><span class="dot"></span>Персонажи кампании</h2>
-        <span class="badge" th:text="${#lists.size(campaign.characters)}">0</span>
+        <span class="badge" th:text="${#lists.size(players)}">0</span>
       </div>
       <div class="card-body">
         <form th:action="@{'/campaign/' + ${campaign.id} + '/characters'}" method="post" class="form-row">
@@ -33,7 +33,7 @@
         </form>
       </div>
       <div class="card-body list">
-        <div th:each="character : ${campaign.characters}" class="char-card">
+        <div th:each="character : ${players}" class="char-card">
           <div class="char-card-head">
             <a th:href="@{'/character/' + ${character.id}}" class="with-avatar">
               <span class="avatar" th:text="${#strings.substring(character.name, 0, 1)}">П</span>
@@ -49,11 +49,74 @@
             <span th:if="${#lists.isEmpty(character.wounds)}" class="chip muted">Без ран</span>
           </div>
         </div>
-        <div th:if="${#lists.isEmpty(campaign.characters)}" class="empty">В кампании пока нет персонажей</div>
+        <div th:if="${#lists.isEmpty(players)}" class="empty">В кампании пока нет персонажей</div>
       </div>
     </section>
 
     <div class="stack">
+      <!-- NPC мастера -->
+      <section class="card" id="npcs">
+        <div class="card-head">
+          <h2 class="card-title"><span class="dot red"></span>NPC</h2>
+          <span class="badge" th:text="${#lists.size(npcs)}">0</span>
+        </div>
+        <div class="card-body">
+          <div th:if="${npcMessage != null}" class="alert alert-success" role="status">
+            <span class="alert-text" th:text="${npcMessage}">Создано: Бустер 1</span>
+            <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+          </div>
+          <div th:if="${npcError != null}" class="alert alert-error" role="alert">
+            <span class="alert-text" th:text="${npcError}">Нет такого шаблона</span>
+            <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+          </div>
+          <form th:action="@{'/campaign/' + ${campaign.id} + '/npcs'}" method="post" class="form">
+            <div class="field-grid">
+              <label class="field" th:unless="${#lists.isEmpty(npcTemplates)}">
+                <span class="label">Шаблон</span>
+                <select name="template">
+                  <option th:each="t : ${npcTemplates}" th:value="${t.code}" th:text="${t.label}">Бустер</option>
+                  <option value="">Пустой</option>
+                </select>
+              </label>
+              <label class="field">
+                <span class="label">Имя</span>
+                <input type="text" name="name" maxlength="100" placeholder="По шаблону" autocomplete="off">
+              </label>
+              <label class="field">
+                <span class="label">Сколько</span>
+                <input type="number" name="count" min="1" max="20" value="1" required>
+              </label>
+            </div>
+            <div class="form-row">
+              <label class="check" th:unless="${#lists.isEmpty(npcTemplates)}">
+                <input type="checkbox" name="advanced" value="true">
+                <span>Продвинутый</span>
+              </label>
+              <button type="submit" class="btn btn-primary">＋ Создать NPC</button>
+            </div>
+          </form>
+        </div>
+        <div class="card-body list">
+          <div th:each="npc : ${npcs}" class="char-card">
+            <div class="char-card-head">
+              <a th:href="@{'/character/' + ${npc.id}}" class="with-avatar">
+                <span class="avatar" th:text="${#strings.substring(npc.name, 0, 1)}">Б</span>
+                <span class="char-card-name" th:text="${npc.name}">Бустер 1</span>
+              </a>
+              <form th:action="@{'/character/' + ${npc.id} + '/npc/delete'}" method="post"
+                    th:attr="data-confirm='Удалить ' + ${npc.name} + '?'">
+                <button type="submit" class="btn btn-sm btn-ghost" aria-label="Удалить NPC">✕</button>
+              </form>
+            </div>
+            <form th:action="@{'/character/' + ${npc.id} + '/npc/copy'}" method="post" class="form-row npc-copy">
+              <input type="number" name="count" min="1" max="20" value="1" required aria-label="Сколько копий">
+              <button type="submit" class="btn btn-sm">Ещё таких же</button>
+            </form>
+          </div>
+          <div th:if="${#lists.isEmpty(npcs)}" class="empty">NPC пока нет</div>
+        </div>
+      </section>
+
       <!-- Время и хроника -->
       <section class="card">
         <div class="card-head">

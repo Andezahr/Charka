@@ -11,6 +11,9 @@ import app.charka.model.Character;
 import app.charka.model.CharacterSkill;
 import app.charka.model.Item;
 import app.charka.model.counters.strategy.CounterContext;
+import app.charka.model.counters.strategy.health.DiceRoller;
+import app.charka.npc.NpcSheet;
+import app.charka.npc.NpcTemplate;
 import app.charka.service.counter.HealthCounterService;
 import app.charka.skill.CharacterRole;
 import app.charka.skill.SkillDefinition;
@@ -148,6 +151,16 @@ public class Cp2020System implements GameSystem {
     @Override
     public List<CheckRequest.Part> getSkillBonuses(Character character, SkillDefinition definition, CharacterSkill skill) {
         return Cp2020SkillRules.bonuses(character, definition, skill);
+    }
+
+    @Override
+    public List<NpcTemplate> getNpcTemplates() {
+        return Cp2020Npcs.templates();
+    }
+
+    @Override
+    public NpcSheet rollNpc(String templateCode, boolean advanced, DiceRoller dice) {
+        return Cp2020Npcs.roll(templateCode, advanced, dice);
     }
 
     /**

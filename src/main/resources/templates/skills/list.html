@@ -180,7 +180,7 @@
         <label class="field">
           <span class="label">Противник</span>
           <select name="opponentId" data-opponent>
-            <option th:each="o : ${opponents}" th:value="${o.id}" th:text="${o.name}">Олежа</option>
+            <th:block th:replace="~{fragments/attack :: target-options(${opponents})}"></th:block>
             <option value="">Другой, без листа</option>
           </select>
         </label>

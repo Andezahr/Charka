@@ -11,6 +11,9 @@ import app.charka.model.Campaign;
 import app.charka.model.Character;
 import app.charka.model.CharacterSkill;
 import app.charka.model.Item;
+import app.charka.model.counters.strategy.health.DiceRoller;
+import app.charka.npc.NpcSheet;
+import app.charka.npc.NpcTemplate;
 import app.charka.skill.CharacterRole;
 import app.charka.skill.SkillDefinition;
 import app.charka.skill.SkillProgression;
@@ -164,6 +167,23 @@ public interface GameSystem {
      */
     default List<CheckRequest.Part> getSkillBonuses(Character character, SkillDefinition definition, CharacterSkill skill) {
         return List.of();
+    }
+
+    /**
+     * Шаблоны быстрого создания NPC; пусто — только пустой NPC.
+     */
+    default List<NpcTemplate> getNpcTemplates() {
+        return List.of();
+    }
+
+    /**
+     * Выбросить NPC по шаблону.
+     *
+     * @param advanced продвинутый NPC, если система это различает
+     * @throws IllegalArgumentException неизвестный шаблон
+     */
+    default NpcSheet rollNpc(String templateCode, boolean advanced, DiceRoller dice) {
+        throw new IllegalArgumentException("Нет такого шаблона NPC: " + templateCode);
     }
 
     /**

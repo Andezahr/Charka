@@ -24,6 +24,9 @@ public class Character {
 
     private LocalDate birthDate;
 
+    /** Персонаж мастера, а не игрока */
+    private boolean npc;
+
     /** Коды ролей/классов из {@code GameSystem.getRoles()}; ролей может быть несколько */
     @ElementCollection
     @CollectionTable(name = "character_role", joinColumns = @JoinColumn(name = "character_id"))

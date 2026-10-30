@@ -12,7 +12,7 @@
   <div class="page-head">
     <div class="with-avatar">
       <div>
-        <span class="eyebrow">Лист персонажа</span>
+        <span class="eyebrow" th:text="${character.npc} ? 'Лист NPC' : 'Лист персонажа'">Лист персонажа</span>
         <h1 class="page-title" th:text="${character.name}">Имя персонажа</h1>
         <p class="page-sub">
           <span th:unless="${#lists.isEmpty(roles)}" th:text="${#strings.listJoin(roles.![name], ', ')} + ' · '">Соло · </span>

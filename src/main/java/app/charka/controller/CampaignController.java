@@ -39,10 +39,12 @@ public class CampaignController {
         LocalDate currentDate = campaign.getCurrentDate();
 
         model.addAttribute("campaign", campaign);
-        model.addAttribute("characters", campaign.getCharacters());
+        model.addAttribute("players", campaign.getCharacters().stream().filter(character -> !character.isNpc()).toList());
+        model.addAttribute("npcs", campaign.getCharacters().stream().filter(Character::isNpc).toList());
         model.addAttribute("currentDate", currentDate);
         GameSystem gameSystem = systemRegistry.find(campaign.getSystem()).orElseGet(systemRegistry::getGeneric);
         model.addAttribute("gameSystem", gameSystem);
+        model.addAttribute("npcTemplates", gameSystem.getNpcTemplates());
         model.addAttribute("quickDice", gameSystem.getQuickDice());
         model.addAttribute("difficultyPresets", gameSystem.getCheckResolver().getDifficultyPresets());
         model.addAttribute("recentRolls", diceService.recentForCampaign(campaignId, 20));

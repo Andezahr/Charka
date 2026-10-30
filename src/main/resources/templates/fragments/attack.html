@@ -31,7 +31,7 @@
       <label class="field">
         <span class="label" data-attack-target-label>Цель</span>
         <select name="target" data-attack-target>
-          <option th:each="t : ${targets}" th:value="${t.id}" th:text="${t.name}">Олежа</option>
+          <th:block th:replace="~{fragments/attack :: target-options(${targets})}"></th:block>
           <option value="">Без листа</option>
         </select>
       </label>
@@ -89,6 +89,16 @@
   </form>
 </dialog>
 
+<!-- Персонажи кампании для выбора: игроки отдельно от NPC -->
+<th:block th:fragment="target-options(targets)">
+  <optgroup label="Игроки" th:unless="${#lists.isEmpty(targets.?[!npc])}">
+    <option th:each="t : ${targets.?[!npc]}" th:value="${t.id}" th:text="${t.name}">Олежа</option>
+  </optgroup>
+  <optgroup label="NPC" th:unless="${#lists.isEmpty(targets.?[npc])}">
+    <option th:each="t : ${targets.?[npc]}" th:value="${t.id}" th:text="${t.name}">Бустер 1</option>
+  </optgroup>
+</th:block>
+
 <!-- Итог атаки. Если заряд упал мимо, мастер выбирает здесь, кого задело: позиций на листе нет. -->
 <div th:fragment="result(characterId, result, targets)" class="alert item-result" role="status"
      th:classappend="${result.hit} ? 'alert-success' : 'alert-error'">
@@ -107,7 +117,7 @@
       <label class="field grow">
         <span class="label" th:text="'Кого задело (урон ' + ${result.scattered.amount} + ', зона ' + ${result.scattered.radius} + ' м)'">Кого задело</span>
         <select name="target" multiple required>
-          <option th:each="t : ${targets}" th:value="${t.id}" th:text="${t.name}">Олежа</option>
+          <th:block th:replace="~{fragments/attack :: target-options(${targets})}"></th:block>
         </select>
       </label>
       <button type="submit" class="btn btn-sm btn-primary">Применить урон</button>
