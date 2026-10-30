@@ -7,7 +7,7 @@ import app.charka.item.ItemTypeDefinition;
 import java.util.List;
 
 /**
- * Типы предметов CP2020. Поля оружия — код оружия книги (с. 60): тип, точность, скрытность, доступность,
+ * Типы предметов CP2020. Поля оружия — код оружия книги (с. 60; дробовик в кодах и таблицах — SHT): тип, точность, скрытность, доступность,
  * урон и патрон, магазин, скорострельность, надёжность; дальность — из таблицы оружия (с. 62).
  */
 public final class Cp2020ItemTypes {
@@ -21,7 +21,7 @@ public final class Cp2020ItemTypes {
             ItemField.choice("category", "Тип", true,
                     new Option("P", "Пистолет"),
                     new Option("SMG", "Пистолет-пулемёт"),
-                    new Option("SHG", "Дробовик"),
+                    new Option("SHT", "Дробовик"),
                     new Option("RIF", "Винтовка"),
                     new Option("HVY", "Тяжёлое"),
                     new Option("MELEE", "Холодное"),

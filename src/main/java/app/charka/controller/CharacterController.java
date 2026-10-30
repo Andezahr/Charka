@@ -1,6 +1,7 @@
 package app.charka.controller;
 
 import app.charka.dice.DiceService;
+import app.charka.item.CatalogItem;
 import app.charka.item.ItemTypeDefinition;
 import app.charka.model.Character;
 import app.charka.model.Money;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -45,6 +47,8 @@ public class CharacterController {
         model.addAttribute("itemTypes", system.getItemTypes());
         model.addAttribute("itemTypeByCode", system.getItemTypes().stream()
                 .collect(Collectors.toMap(ItemTypeDefinition::code, Function.identity())));
+        model.addAttribute("itemCatalog", system.getItemCatalog().stream()
+                .collect(Collectors.groupingBy(CatalogItem::group, LinkedHashMap::new, Collectors.toList())));
         model.addAttribute("roles", system.rolesOf(character));
         model.addAttribute("quickDice", system.getQuickDice());
         model.addAttribute("difficultyPresets", system.getCheckResolver().getDifficultyPresets());

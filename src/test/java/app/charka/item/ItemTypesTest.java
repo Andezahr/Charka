@@ -12,6 +12,7 @@ import app.charka.system.GameSystemRegistry;
 import app.charka.system.GenericSystem;
 import app.charka.system.cp2020.Cp2020ItemTypes;
 import app.charka.system.cp2020.Cp2020System;
+import app.charka.system.cp2020.Cp2020Weapons;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -111,6 +112,30 @@ class ItemTypesTest {
         }
 
         @Test
+        @DisplayName("справочник: коды уникальны, каждая строка проходит проверку полей без потерь")
+        void catalogValid() {
+            assertThat(Cp2020Weapons.CATALOG).hasSize(73);
+            assertThat(Cp2020Weapons.CATALOG).extracting(CatalogItem::key).doesNotHaveDuplicates();
+            assertThat(Cp2020Weapons.CATALOG).allSatisfy(entry -> {
+                assertThat(entry.typeCode()).isEqualTo(Cp2020ItemTypes.WEAPON);
+                assertThat(Cp2020ItemTypes.WEAPON_TYPE.normalize(entry.properties())).isEqualTo(entry.properties());
+                assertThat(entry.properties()).containsKey("damage");
+            });
+        }
+
+        @ParameterizedTest(name = "{0}: {1} {2}")
+        @CsvSource({"militech_ronin_light_assault, RIF, 5D6, 30, 400, 450", "arasaka_rapid_assault_12, SHT, 4D6, 10, 50, 900",
+                "barrett_arasaka_light_20mm, HVY, 4D10, 1, 450, 2000", "uzi_miniauto_9, SMG, 2D6+1, 35, 150, 475"})
+        @DisplayName("выборочные строки совпадают с таблицей книги")
+        void catalogRows(String key, String category, String damage, String rof, String range, int cost) {
+            CatalogItem entry = Cp2020Weapons.CATALOG.stream().filter(e -> e.key().equals(key)).findFirst().orElseThrow();
+
+            assertThat(entry.properties()).containsEntry("category", category).containsEntry("damage", damage)
+                    .containsEntry("rof", rof).containsEntry("range", range);
+            assertThat(entry.cost()).isEqualTo(cost);
+        }
+
+        @Test
         @DisplayName("бронебойность показывается отметкой AP")
         void armorPiercing() {
             Map<String, String> properties = Cp2020ItemTypes.WEAPON_TYPE.normalize(Map.of("category", "P", "armorPiercing", "1"));
@@ -185,6 +210,31 @@ class ItemTypesTest {
 
             assertThat(item.getType()).isEqualTo(ItemTypeDefinition.GENERIC_CODE);
             assertThat(item.getProperties()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("из справочника: название, цена, количество, тип и свойства")
+        void fromCatalog() {
+            Item item = itemService.addFromCatalog(1L, "arasaka_minami_10", 2);
+
+            assertThat(item.getName()).isEqualTo("Arasaka Minami 10");
+            assertThat(item.getQuantity()).isEqualTo(2);
+            assertThat(item.getCost()).isEqualTo(500);
+            assertThat(item.getType()).isEqualTo(Cp2020ItemTypes.WEAPON);
+            assertThat(item.getProperties()).containsEntry("damage", "2D6+3").containsEntry("rof", "20");
+            verify(itemRepository).save(item);
+        }
+
+        @Test
+        @DisplayName("неизвестный код, неверное количество, система без справочника — ошибка, ничего не сохраняется")
+        void fromCatalogRejected() {
+            Inventory generic = inventoryIn(GenericSystem.CODE);
+            when(inventoryRepository.findById(2L)).thenReturn(Optional.of(generic));
+
+            assertThatThrownBy(() -> itemService.addFromCatalog(1L, "nope", 1)).isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> itemService.addFromCatalog(1L, "arasaka_minami_10", 0)).isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> itemService.addFromCatalog(2L, "arasaka_minami_10", 1)).isInstanceOf(IllegalArgumentException.class);
+            verify(itemRepository, never()).save(any());
         }
 
         @Test

@@ -3,6 +3,7 @@ package app.charka.system;
 import app.charka.check.CheckRequest;
 import app.charka.check.CheckResolver;
 import app.charka.check.GenericCheckResolver;
+import app.charka.item.CatalogItem;
 import app.charka.item.ItemTypeDefinition;
 import app.charka.model.Campaign;
 import app.charka.model.Character;
@@ -112,6 +113,13 @@ public interface GameSystem {
 
     default Optional<ItemTypeDefinition> findItemType(String code) {
         return getItemTypes().stream().filter(type -> type.code().equals(code)).findFirst();
+    }
+
+    /**
+     * Справочник готовых предметов; пусто — у системы его нет.
+     */
+    default List<CatalogItem> getItemCatalog() {
+        return List.of();
     }
 
     /**

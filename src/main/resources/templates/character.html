@@ -139,6 +139,23 @@
                 <button type="submit" class="btn btn-sm btn-primary">＋</button>
               </form>
 
+              <div th:unless="${#maps.isEmpty(itemCatalog)}" class="item-catalog" data-editable>
+                <button type="button" class="btn btn-sm btn-ghost" data-edit-toggle>＋ Из справочника</button>
+                <div class="edit-panel">
+                  <form th:action="@{'/character/' + ${character.id} + '/inventories/' + ${inv.id} + '/items/catalog'}"
+                        method="post" class="form-row">
+                    <select name="catalogKey" class="item-type-select" required aria-label="Предмет из справочника">
+                      <optgroup th:each="group : ${itemCatalog}" th:label="${group.key}">
+                        <option th:each="entry : ${group.value}" th:value="${entry.key}"
+                                th:text="${entry.name} + ' — ' + ${entry.properties['damage']} + (${entry.cost > 0} ? ', ' + ${entry.cost} + ' ' + ${currency.symbol} : '')">Arasaka Minami 10</option>
+                      </optgroup>
+                    </select>
+                    <input type="number" name="quantity" class="narrow" value="1" min="1" required aria-label="Количество">
+                    <button type="submit" class="btn btn-sm btn-primary">Добавить</button>
+                  </form>
+                </div>
+              </div>
+
               <div class="list">
                 <div th:each="item : ${inv.content}" class="row" data-editable th:with="itemType=${itemTypeByCode[item.type]}">
                   <div class="row-main">

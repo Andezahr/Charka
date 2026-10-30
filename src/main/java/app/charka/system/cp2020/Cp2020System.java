@@ -2,6 +2,7 @@ package app.charka.system.cp2020;
 
 import app.charka.check.CheckRequest;
 import app.charka.check.CheckResolver;
+import app.charka.item.CatalogItem;
 import app.charka.item.ItemTypeDefinition;
 import app.charka.model.Campaign;
 import app.charka.model.Character;
@@ -108,6 +109,11 @@ public class Cp2020System implements GameSystem {
     @Override
     public List<ItemTypeDefinition> getItemTypes() {
         return Cp2020ItemTypes.ALL;
+    }
+
+    @Override
+    public List<CatalogItem> getItemCatalog() {
+        return Cp2020Weapons.CATALOG;
     }
 
     @Override

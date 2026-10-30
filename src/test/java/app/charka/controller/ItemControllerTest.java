@@ -250,6 +250,18 @@ class ItemControllerTest {
         }
 
         @Test
+        @DisplayName("предмет из справочника: код и количество уходят в сервис")
+        void fromCatalog() throws Exception {
+            mockMvc.perform(post("/character/{c}/inventories/{i}/items/catalog", CHAR_ID, INV_ID)
+                            .param("catalogKey", "arasaka_minami_10")
+                            .param("quantity", "2"))
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(redirectedUrl(REDIRECT_URL));
+
+            verify(itemService).addFromCatalog(INV_ID, "arasaka_minami_10", 2);
+        }
+
+        @Test
         @DisplayName("некорректный ввод — возврат на лист с сообщением, а не страница ошибки")
         void badInput() throws Exception {
             doThrow(new IllegalArgumentException("Поле «Тип» обязательно"))

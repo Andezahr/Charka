@@ -1,6 +1,7 @@
 package app.charka.service;
 
 import app.charka.exception.NotFoundException;
+import app.charka.item.CatalogItem;
 import app.charka.item.ItemTypeDefinition;
 import app.charka.model.Item;
 import app.charka.model.Inventory;
@@ -119,6 +120,33 @@ public class ItemService {
         Item existing = update(id, name, quantity, cost, description);
         applyType(existing, existing.getInventory(), typeCode, properties);
         return existing;
+    }
+
+    /**
+     * Добавить в инвентарь предмет из справочника системы кампании.
+     *
+     * @param key      код строки справочника
+     * @param quantity количество, не меньше 1
+     * @throws IllegalArgumentException если такого предмета в справочнике нет или количество неверное
+     */
+    @Transactional
+    public Item addFromCatalog(Long inventoryId, String key, int quantity) {
+        if (quantity < 1) {
+            throw new IllegalArgumentException("Количество должно быть не меньше 1");
+        }
+        Inventory inventory = inventoryRepository.findById(inventoryId)
+                .orElseThrow(() -> new NotFoundException(
+                        "Inventory not found for id=" + inventoryId));
+        CatalogItem entry = systemRegistry.forCharacter(inventory.getCharacter()).getItemCatalog().stream()
+                .filter(candidate -> candidate.key().equals(key))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Такого предмета нет в справочнике: " + key));
+        Item item = new Item();
+        item.setName(entry.name());
+        item.setQuantity(quantity);
+        item.setCost(entry.cost());
+        item.setDescription(entry.description());
+        return create(inventoryId, item, entry.typeCode(), entry.properties());
     }
 
     private void applyType(Item item, Inventory inventory, String typeCode, Map<String, String> properties) {

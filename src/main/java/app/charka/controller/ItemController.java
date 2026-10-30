@@ -49,6 +49,21 @@ public class ItemController {
                 () -> itemService.create(inventoryId, item, itemType, properties(params)));
     }
 
+    /**
+     * Предмет из справочника системы.
+     */
+    @PostMapping("/catalog")
+    public String addFromCatalog(
+            @PathVariable Long characterId,
+            @PathVariable Long inventoryId,
+            @RequestParam String catalogKey,
+            @RequestParam(defaultValue = "1") int quantity,
+            RedirectAttributes redirectAttributes
+    ) {
+        return handle(characterId, redirectAttributes,
+                () -> itemService.addFromCatalog(inventoryId, catalogKey, quantity));
+    }
+
     @PostMapping("/{itemId}/edit")
     public String editItem(
             @PathVariable Long characterId,
