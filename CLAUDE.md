@@ -29,7 +29,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 268 тестов, на 2026-10-30 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 321 тест, на 2026-10-30 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -47,15 +47,16 @@ controller/    MVC-контроллеры, возвращают имена ша�
 api/           REST: CampaignExportController (единственный JSON-эндпоинт)
 dice/         DiceExpression (разбор NdM±K), DiceResult, DiceService (броски + лог RollLog)
 check/        CheckRequest/CheckResult/CheckResolver (GenericCheckResolver: d20), CheckService (правила системы + лог)
+skill/        SkillDefinition, CharacterRole, StatValue, SkillSheet, SkillCheck, SkillService (навыки, роль, проверка навыка)
 system/        GameSystem, GameSystemRegistry, GenericSystem ("GENERIC"), Currency; cp2020/ — Cp2020System ("CP2020"),
-               стратегии счётчиков, Cp2020Rules, Cp2020Dice (взрывной d10), Cp2020CheckResolver
+               стратегии счётчиков, Cp2020Rules, Cp2020Dice (взрывной d10), Cp2020CheckResolver, Cp2020Skills (каталог, роли), Cp2020Fumbles
 dto/counter/   DTO только для счётчиков (единственный модуль, переведённый на DTO)
 exception/     NotFoundException.forId("Entity", id) (NoSuchElementException → 404), наследники CharacterNotFoundException, InventoryNotFoundException;
                GlobalExceptionHandler (страницы → error.html: 404/400/500), ApiExceptionHandler (app.charka.api → text/plain)
 TODO.txt       список планов автора (см. ниже)
 ```
 
-Шаблоны: `src/main/resources/templates/` — `error.html`, `home.html`, `campaign.html`, `character.html`, `notes.html`, `counters/list.html`; общие куски — `fragments/layout.html` (`head(title)`, `topbar(characterId, active)` с вкладками Лист/Счётчики/Заметки), `fragments/dice.html` (`card(action, showAuthor)` — карточка «Кубики»).
+Шаблоны: `src/main/resources/templates/` — `error.html`, `home.html`, `campaign.html`, `character.html`, `notes.html`, `counters/list.html`, `skills/list.html`; общие куски — `fragments/layout.html` (`head(title)`, `topbar(characterId, active)` с вкладками Лист/Навыки/Счётчики/Заметки; «Навыки» — только если у системы есть каталог), `fragments/dice.html` (`card(action, showAuthor)` — карточка «Кубики», `check-result` — итог проверки).
 Фронт единый: один CSS `static/css/app.css` (тёмная тема, токены в `:root`, шрифты Inter + Russo One с Google Fonts) и один JS `static/js/app.js` — без Bootstrap. JS-соглашения: `[data-edit-toggle]` открывает `.edit-panel` внутри ближайшего `[data-editable]`; `form[data-confirm]` спрашивает подтверждение; `[data-count-to]` — счётчик символов; `.alert-close` закрывает flash-сообщение.
 
 ## Доменная модель
@@ -64,7 +65,8 @@ TODO.txt       список планов автора (см. ниже)
 Campaign (name, system, startDate, currentDate)   — system: код GameSystem (колонка game_system)
  ├─ RollLog* (character?, expression, details, total, label, gameDate, createdAt) — без коллекции в Campaign, не экспортируется
  ├─ Chronicle* (name, startDate, endDate)     — запись о прошедшем периоде
- └─ Character* (name, birthDate)
+ └─ Character* (name, birthDate, role)        — role: код из GameSystem.getRoles()
+     ├─ CharacterSkill* (skillCode, level, customName?) — код из каталога системы; уровень 0 у обычного навыка не хранится
      ├─ Wound*     (name, severity, date)
      ├─ Inventory* (name) └─ Item* (name, quantity, cost, description)
      ├─ Money*     (name, amount, operationDate) — журнал операций, баланс = сумма amount
@@ -113,6 +115,10 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 | GET | `/character/{id}/notes/` | заметки (фильтр `?categoryId=`) |
 | POST | `/character/{id}/notes`, `.../{noteId}/edit|delete`; GET `.../{noteId}/edit` | заметки |
 | POST | `/character/{id}/categories`, `.../{catId}/edit|delete` | категории заметок |
+| GET, POST | `/character/{id}/skills` | страница навыков; POST `level.<код>`, `custom.<id>` → уровни разом |
+| POST | `/character/{id}/skills/custom`, `.../custom/{sid}/delete` | свой навык (язык, эксперт, боевое искусство) |
+| POST | `/character/{id}/skills/check` | `code` или `skillId`, `modifier`, `difficulty?` → проверка навыка |
+| POST | `/character/{id}/role` | `role` → роль персонажа |
 | GET | `/character/{id}/counters` | счётчики |
 | POST | `/character/{id}/counters/create`, `/{cid}/update|set|reset`; DELETE `/{cid}` | счётчики |
 | POST | `/character/{id}/counters/{cid}/attributes`, `.../{cid}/action/{action}` | правка attributes и особые действия типа (ремонт брони) |

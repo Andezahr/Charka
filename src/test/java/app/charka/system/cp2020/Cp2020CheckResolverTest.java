@@ -12,6 +12,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Deque;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -112,12 +113,42 @@ class Cp2020CheckResolverTest {
         @Test
         @DisplayName("фамбл — провал, даже если итог выше сложности")
         void fumbleAlwaysFails() {
-            CheckResult result = resolver.resolve(new CheckRequest(null, 20, 15), dice(1));
+            CheckResult result = resolver.resolve(new CheckRequest(null, 20, 15), dice(1, 3));
 
             assertThat(result.total()).isEqualTo(21);
             assertThat(result.fumble()).isTrue();
             assertThat(result.success()).isFalse();
             assertThat(result.outcome()).isEqualTo("21 vs 15 — критический провал");
+        }
+
+        @Test
+        @DisplayName("фамбл навыка — бросок по таблице его типа, результат в шагах")
+        void fumbleTableStep() {
+            CheckRequest request = CheckRequest.ofParts("Пистолеты",
+                    List.of(new CheckRequest.Part("REF", 8), new CheckRequest.Part("Пистолеты", 4)), 15, "handgun");
+
+            CheckResult result = resolver.resolve(request, dice(1, 5));
+
+            assertThat(result.total()).isEqualTo(13);
+            assertThat(result.steps()).containsExactly(
+                    "Бросок d10: 1 — критический провал",
+                    "REF +8, Пистолеты +4 → 13",
+                    "Фамбл — провал независимо от итога",
+                    "Таблица фамблов (боевая), d10 = 5: оружие выпало из рук");
+        }
+
+        @Test
+        @DisplayName("части модификатора: шаг со слагаемыми и сумма")
+        void partsStep() {
+            CheckRequest request = CheckRequest.ofParts("Драка",
+                    List.of(new CheckRequest.Part("REF", 6), new CheckRequest.Part("Драка", 0),
+                            new CheckRequest.Part("Мод.", -2)), null, "brawling");
+
+            CheckResult result = resolver.resolve(request, dice(5));
+
+            assertThat(result.total()).isEqualTo(9);
+            assertThat(result.notation()).isEqualTo("d10!+4");
+            assertThat(result.steps()).contains("REF +6, Драка +0, Мод. -2 → 9");
         }
 
         @Test

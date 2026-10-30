@@ -96,6 +96,7 @@ app.charka
 | Кампания, время, хроника, заметки, простые счётчики | ✅ | — |
 | `Wound` (отдельные раны) | 🟡 | дублирует счётчик здоровья CP2020 |
 | Кубики | ✅ | `DiceService` + лог бросков, UI на листе и в кампании (D-01..D-03) |
+| Навыки и роль, проверка навыка, фамблы | ✅ | `app.charka.skill`, `Cp2020Skills`, `Cp2020Fumbles` (K-01..K-06) |
 | Система у кампании | ✅ | `Campaign.system`, `GameSystemRegistry`, счётчики фильтруются (S-01..S-06) |
 | Хранилище | ✅ | PostgreSQL 17 в Docker + Flyway (F-01/F-02) |
 
@@ -182,25 +183,33 @@ app.charka
   `GameSystem.getCheckResolver()`. GENERIC: «кубик + модификатор vs DC».
   ✅ 2026-10-30 — пакет `app.charka.check`: `CheckRequest(label, modifier, difficulty?)`, `CheckResult` (notation, шаги, итог, успех/null, крит, фамбл, `outcome()`), `CheckResolver.resolve(request, DiceRoller)` — без состояния, кубики передаёт `CheckService` (системам не нужны зависимости). `GameSystem.getCheckResolver()` (по умолчанию `GenericCheckResolver`: d20 + мод, успех при итог ≥ DC). `CheckService` пишет проверки в лог бросков («d10!+5 vs 15», шаги через «; »). UI: форма «Проверить» в карточке «Кубики» (мод., DC с подсказками системы, подпись), POST `/character/{id}/check`, `/campaign/{id}/check`. Проверено в браузере.
 
-### Этап 3 — Навыки и роль (CP2020)
+### Этап 3 — Навыки и роль (CP2020) ✅ (2026-10-30, K-01..K-06; открыты K-07, K-08)
 
-- [ ] **K-01 [CORE] Механизм навыков.** `SkillDefinition` (code, name, statCode, costMultiplier, category, special),
+- [x] **K-01 [CORE] Механизм навыков.** `SkillDefinition` (code, name, statCode, costMultiplier, category, special),
   `GameSystem.getSkillCatalog()`, сущность `CharacterSkill` (character, skillCode, level 0..10, customName для «Expert: ...» / языков).
-- [ ] **K-02 [CP2020] Каталог навыков CP2020.** Полный список навыков книги по статам (ATTR, BODY, COOL, EMP, INT, REF, TECH)
+  ✅ 2026-10-30 — пакет `app.charka.skill`: `SkillDefinition` (вместо `category` — флаг `custom`; группировка по стату), `SkillService`, `SkillSheet`; `GameSystem.getSkillCatalog()`/`getCurrentStats(character)`; `CharacterSkill`, миграция `V4__skills_and_role.sql`. Обычный навык с уровнем 0 не хранится. Навыки и роль попадают в JSON-экспорт.
+- [x] **K-02 [CP2020] Каталог навыков CP2020.** Полный список навыков книги по статам (ATTR, BODY, COOL, EMP, INT, REF, TECH)
   + спецспособности ролей. Множитель IP для сложных навыков (например, Martial Arts ×2+, Pilot ×2+ — сверить по книге).
   Хранить как enum/класс в `system/cp2020`.
-- [ ] **K-03 [CP2020] Роль персонажа.** Solo, Rockerboy, Netrunner, Media, Nomad, Fixer, Cop, Corporate, Techie, Medtechie
+  ✅ 2026-10-30 — `system/cp2020/Cp2020Skills`. Состав и статы сверены с [Master Skill List](https://kolidascope.fandom.com/wiki/Skills_(Cyberpunk)); там нет Intimidate, Seduction, Wilderness Survival — оставлены по памяти о книге. Множители и статы спецспособностей — см. K-08.
+- [x] **K-03 [CP2020] Роль персонажа.** Solo, Rockerboy, Netrunner, Media, Nomad, Fixer, Cop, Corporate, Techie, Medtechie
   + спецспособность роли (Combat Sense, Charismatic Leadership, Interface, Credibility, Family, Streetdeal, Authority,
-  Resources, Jury Rig, Medical Tech). Где хранить роль — в `Character` нет системных полей → либо `CharacterSkill`-спецспособность
-  + системный атрибут персонажа (`Character.attributes` Map, ядро), либо поле в счётчике STATS. **Выбрать и записать сюда.**
-- [ ] **K-04 [CP2020] Карточка навыков.** Новая вкладка «Навыки» в `topbar` (только если у системы есть каталог):
+  Resources, Jury Rig, Medical Tech).
+  ✅ 2026-10-30 — решение: колонка ядра `Character.role` (код), список — `GameSystem.getRoles()` (`CharacterRole` с кодом спецспособности). Map атрибутов не вводили: нужно одно значение. Чужая спецспособность скрыта, пока у неё нет уровня. Выбор — на странице навыков, роль видна на листе.
+- [x] **K-04 [CP2020] Карточка навыков.** Новая вкладка «Навыки» в `topbar` (только если у системы есть каталог):
   навыки сгруппированы по статам, у каждого — уровень и итог `STAT(текущий, со штрафом ран) + SKILL`. Правка уровней.
-- [ ] **K-05 [CP2020] Проверка навыка.** Кнопка у навыка → модалка: сложность (Easy 10 / Average 15 / Difficult 20 /
+  ✅ 2026-10-30 — `SkillController`, `templates/skills/list.html`; правка уровней — отдельным режимом, чтобы проверка не теряла несохранённое; свои навыки (язык, эксперт, боевое искусство). Проверено в браузере, в т.ч. на ширине 375 (шапка переносит вкладки). На живом PostgreSQL миграция V4 ещё не запускалась (Docker был выключен): проверено на H2.
+- [x] **K-05 [CP2020] Проверка навыка.** Кнопка у навыка → модалка: сложность (Easy 10 / Average 15 / Difficult 20 /
   Very Difficult 25 / Nearly Impossible 30 или своё число), доп. модификатор → `Cp2020CheckResolver`:
   `STAT + SKILL + mods + 1d10 (взрыв 10)` vs DC. Результат + шаги во flash, запись в лог бросков.
-  Противопоставленная проверка — вторая ступень (оба бросают, больший выигрывает).
-- [ ] **K-06 [CP2020] Фамбл-таблицы.** При «1» — бросок 1d10 по таблице фамблов (общая/боевая/техника/реф/эмпатия/медицина
+  ✅ 2026-10-30 — POST `/character/{id}/skills/check`, `<dialog>`; `CheckRequest.parts` дают шаг «REF +8, Пистолеты +4 → 19», `skillCode` — выбор таблицы фамблов.
+- [x] **K-06 [CP2020] Фамбл-таблицы.** При «1» — бросок 1d10 по таблице фамблов (общая/боевая/техника/реф/эмпатия/медицина
   — сверить с книгой), текст в результат проверки.
+  ✅ 2026-10-30 — `system/cp2020/Cp2020Fumbles`: таблица по навыку, свободная проверка — общая; исход идёт шагом в результат и в лог. Формулировки обобщённые — см. K-08.
+- [ ] **K-07 [CP2020] Противопоставленная проверка.** Оба бросают, больший выигрывает (вторая ступень K-05).
+- [ ] **K-08 [CP2020] Сверить с книгой правил.** В открытых источниках данных не нашлось, сейчас значения по памяти:
+  таблицы фамблов `Cp2020Fumbles` (только боевая близка к книге, остальные — обобщённые исходы без чисел), статы спецспособностей
+  и множители стоимости `Cp2020Skills` (боевые искусства сейчас ×2, в книге зависят от стиля), наличие Intimidate, Seduction, Wilderness Survival.
 
 ### Этап 4 — Типизированные предметы и оружие
 
@@ -323,3 +332,5 @@ app.charka
   от реестра (иначе цикл: реестр → `Cp2020System` → `HealthCounterService` → `CounterService`).
 - 2026-10-30 — Проверки: успех при «итог ≥ сложность» (CP2020 и GENERIC). Фамбл CP2020 — всегда провал, последствия —
   таблица фамблов (K-06). Резолверы без состояния, `DiceRoller` им передаёт `CheckService`.
+- 2026-10-30 — Роль/класс — поле ядра `Character.role`, список даёт система. Навыки: каталог в коде системы, в БД только коды и уровни;
+  ядро получает текущие статы через `GameSystem.getCurrentStats`, поэтому не знает о счётчиках CP2020.

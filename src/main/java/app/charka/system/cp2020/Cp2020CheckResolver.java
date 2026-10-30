@@ -12,7 +12,7 @@ import java.util.Map;
 
 /**
  * Проверка CP2020: 1d10 (10 взрывается, 1 — фамбл) + стат + навык + модификаторы против сложности.
- * Фамбл — всегда провал; что именно случилось, решает таблица фамблов (K-06).
+ * Фамбл — всегда провал; что именно случилось, решает таблица фамблов ({@link Cp2020Fumbles}).
  */
 public class Cp2020CheckResolver implements CheckResolver {
 
@@ -40,14 +40,16 @@ public class Cp2020CheckResolver implements CheckResolver {
             rollStep += " — критический провал";
         }
         steps.add(rollStep);
-        if (request.modifier() != 0) {
-            steps.add("Модификатор " + CheckResolver.signed(request.modifier()) + " → " + total);
+        String modifierStep = CheckResolver.modifierStep(request, total);
+        if (modifierStep != null) {
+            steps.add(modifierStep);
         }
 
         Boolean success = CheckResolver.meets(total, request.difficulty());
         if (roll.fumble()) {
             success = Boolean.FALSE;
             steps.add("Фамбл — провал независимо от итога");
+            steps.add(Cp2020Fumbles.roll(request.skillCode(), dice));
         } else if (success != null) {
             steps.add("Сложность " + request.difficulty() + " → " + (success ? "успех" : "провал"));
         }

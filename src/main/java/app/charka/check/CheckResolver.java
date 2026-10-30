@@ -3,6 +3,7 @@ package app.charka.check;
 import app.charka.model.counters.strategy.health.DiceRoller;
 
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Правила проверки игровой системы ({@code GameSystem.getCheckResolver()}).
@@ -24,6 +25,19 @@ public interface CheckResolver {
      */
     static Boolean meets(int total, Integer difficulty) {
         return difficulty == null ? null : total >= difficulty;
+    }
+
+    /**
+     * Шаг расчёта с модификатором: «REF +8, Пистолеты +4 → 19», для одного числа — «Модификатор +5 → 12».
+     * Null, если прибавлять нечего.
+     */
+    static String modifierStep(CheckRequest request, int total) {
+        if (request.parts().isEmpty()) {
+            return request.modifier() == 0 ? null : "Модификатор " + signed(request.modifier()) + " → " + total;
+        }
+        return request.parts().stream()
+                .map(part -> part.name() + " " + signed(part.value()))
+                .collect(Collectors.joining(", ")) + " → " + total;
     }
 
     static String signed(int value) {

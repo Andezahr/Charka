@@ -1,0 +1,140 @@
+package app.charka.controller;
+
+import app.charka.check.CheckResolver;
+import app.charka.model.Character;
+import app.charka.service.CharacterService;
+import app.charka.skill.SkillCheck;
+import app.charka.skill.SkillService;
+import app.charka.system.GameSystemRegistry;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * Страница навыков и роль персонажа. Проверка навыка — flash {@code checkResult}/{@code rollLabel},
+ * некорректный ввод — {@code errorMessage}.
+ */
+@Controller
+@RequiredArgsConstructor
+@RequestMapping("/character/{characterId}")
+public class SkillController {
+
+    private static final String LEVEL_PREFIX = "level.";
+    private static final String CUSTOM_PREFIX = "custom.";
+
+    private final SkillService skillService;
+    private final CharacterService characterService;
+    private final GameSystemRegistry systemRegistry;
+
+    @GetMapping("/skills")
+    public String skills(@PathVariable Long characterId, Model model) {
+        Character character = characterService.getById(characterId);
+        if (!skillService.hasCatalog(characterId)) {
+            return redirectToSheet(characterId);
+        }
+        CheckResolver resolver = systemRegistry.forCharacter(character).getCheckResolver();
+        model.addAttribute("character", character);
+        model.addAttribute("sheet", skillService.getSheet(characterId));
+        model.addAttribute("difficultyPresets", resolver.getDifficultyPresets());
+        return "skills/list";
+    }
+
+    /**
+     * Уровни приходят полями {@code level.<код навыка>} и {@code custom.<id строки>}.
+     */
+    @PostMapping("/skills")
+    public String updateLevels(@PathVariable Long characterId,
+                               @RequestParam Map<String, String> params,
+                               RedirectAttributes redirectAttributes) {
+        return handle(characterId, redirectAttributes, "Навыки сохранены", () -> {
+            Map<String, Integer> levels = new HashMap<>();
+            Map<Long, Integer> customLevels = new HashMap<>();
+            params.forEach((key, value) -> {
+                if (key.startsWith(LEVEL_PREFIX)) {
+                    levels.put(key.substring(LEVEL_PREFIX.length()), parseLevel(value));
+                } else if (key.startsWith(CUSTOM_PREFIX)) {
+                    customLevels.put(Long.valueOf(key.substring(CUSTOM_PREFIX.length())), parseLevel(value));
+                }
+            });
+            skillService.updateLevels(characterId, levels, customLevels);
+        });
+    }
+
+    @PostMapping("/skills/custom")
+    public String addCustom(@PathVariable Long characterId,
+                            @RequestParam String code,
+                            @RequestParam String customName,
+                            @RequestParam(defaultValue = "0") int level,
+                            RedirectAttributes redirectAttributes) {
+        return handle(characterId, redirectAttributes, "Навык добавлен",
+                () -> skillService.addCustom(characterId, code, customName, level));
+    }
+
+    @PostMapping("/skills/custom/{skillId}/delete")
+    public String deleteCustom(@PathVariable Long characterId, @PathVariable Long skillId,
+                               RedirectAttributes redirectAttributes) {
+        return handle(characterId, redirectAttributes, "Навык удалён",
+                () -> skillService.deleteCustom(characterId, skillId));
+    }
+
+    @PostMapping("/role")
+    public String setRole(@PathVariable Long characterId,
+                          @RequestParam(required = false) String role,
+                          RedirectAttributes redirectAttributes) {
+        return handle(characterId, redirectAttributes, "Роль сохранена",
+                () -> skillService.setRole(characterId, role));
+    }
+
+    /**
+     * @param skillId строка навыка со своим названием; иначе навык определяется по {@code code}
+     */
+    @PostMapping("/skills/check")
+    public String check(@PathVariable Long characterId,
+                        @RequestParam(required = false) String code,
+                        @RequestParam(required = false) Long skillId,
+                        @RequestParam(defaultValue = "0") int modifier,
+                        @RequestParam(required = false) Integer difficulty,
+                        RedirectAttributes redirectAttributes) {
+        return handle(characterId, redirectAttributes, null, () -> {
+            SkillCheck check = skillService.check(characterId, code, skillId, modifier, difficulty);
+            redirectAttributes.addFlashAttribute("checkResult", check.result());
+            redirectAttributes.addFlashAttribute("rollLabel", check.label());
+        });
+    }
+
+    private static String handle(Long characterId, RedirectAttributes redirectAttributes, String success, Runnable action) {
+        try {
+            action.run();
+            if (success != null) {
+                redirectAttributes.addFlashAttribute("successMessage", success);
+            }
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        }
+        return "redirect:/character/" + characterId + "/skills";
+    }
+
+    private static int parseLevel(String value) {
+        if (value == null || value.isBlank()) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(value.strip());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Уровень навыка должен быть числом: " + value);
+        }
+    }
+
+    private static String redirectToSheet(Long characterId) {
+        return "redirect:/character/" + characterId;
+    }
+}

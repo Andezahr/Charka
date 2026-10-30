@@ -22,6 +22,10 @@ public class Character {
 
     private LocalDate birthDate;
 
+    /** Код роли/класса из {@code GameSystem.getRoles()}; null — не выбрана */
+    @Column(name = "role_code")
+    private String role;
+
     @ManyToOne
     @JsonBackReference
     private Campaign campaign;
@@ -45,4 +49,8 @@ public class Character {
     @JsonManagedReference
     @OneToMany(mappedBy = "character", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Counter> counters = new ArrayList<>();
+
+    @JsonManagedReference
+    @OneToMany(mappedBy = "character", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CharacterSkill> skills = new ArrayList<>();
 }

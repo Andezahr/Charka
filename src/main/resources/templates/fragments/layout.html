@@ -26,6 +26,8 @@
     <nav class="topnav" th:if="${characterId != null}">
       <a th:href="@{'/character/' + ${characterId}}"
          th:classappend="${active == 'sheet'} ? 'is-active'">Лист</a>
+      <a th:if="${@skillService.hasCatalog(characterId)}" th:href="@{'/character/' + ${characterId} + '/skills'}"
+         th:classappend="${active == 'skills'} ? 'is-active'">Навыки</a>
       <a th:href="@{'/character/' + ${characterId} + '/counters'}"
          th:classappend="${active == 'counters'} ? 'is-active'">Счётчики</a>
       <a th:href="@{'/character/' + ${characterId} + '/notes'}"

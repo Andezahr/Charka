@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Навыки ' + ${character.name})}"></head>
+<body>
+<header th:replace="~{fragments/layout :: topbar(${character.id}, 'skills')}"></header>
+
+<main class="page" data-skills th:with="base=@{'/character/' + ${character.id}}">
+  <div class="page-head">
+    <div>
+      <span class="eyebrow">Навыки</span>
+      <h1 class="page-title" th:text="${character.name}">Имя персонажа</h1>
+      <p class="page-sub" th:if="${sheet.role != null}" th:text="${sheet.role.name}">Соло</p>
+    </div>
+    <div class="page-actions">
+      <button type="button" class="btn" data-skills-edit>Изменить уровни</button>
+    </div>
+  </div>
+
+  <div th:if="${successMessage != null}" class="alert alert-success" role="status">
+    <span class="alert-text" th:text="${successMessage}">Сохранено</span>
+    <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+  </div>
+  <div th:if="${errorMessage != null}" class="alert alert-error" role="alert">
+    <span class="alert-text" th:text="${errorMessage}">Ошибка</span>
+    <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+  </div>
+  <div th:if="${sheet.statsMissing}" class="alert alert-error" role="alert">
+    <span class="alert-text">У персонажа нет счётчика характеристик: итоги считаются только по уровню навыка.</span>
+  </div>
+
+  <div th:replace="~{fragments/dice :: check-result}"></div>
+
+  <section class="card skills-setup">
+    <div class="card-body grid grid-2">
+      <form th:action="${base} + '/role'" method="post" class="field">
+        <label class="label" for="skills-role">Роль</label>
+        <div class="form-row">
+          <select id="skills-role" name="role">
+            <option value="">— не выбрана —</option>
+            <option th:each="r : ${sheet.roles}" th:value="${r.code}" th:text="${r.name}"
+                    th:selected="${sheet.role != null and sheet.role.code == r.code}">Соло</option>
+          </select>
+          <button type="submit" class="btn">Сохранить</button>
+        </div>
+      </form>
+      <form th:action="${base} + '/skills/custom'" method="post" class="field">
+        <span class="label">Свой навык: язык, экспертиза, боевое искусство</span>
+        <div class="form-row">
+          <select name="code" aria-label="Тип навыка">
+            <option th:each="t : ${sheet.customTypes}" th:value="${t.code}" th:text="${t.name}">Язык</option>
+          </select>
+          <input type="text" name="customName" class="grow" placeholder="Название" required maxlength="100"
+                 autocomplete="off" aria-label="Название навыка">
+          <input type="number" name="level" class="narrow" min="0" max="10" value="1" required aria-label="Уровень">
+          <button type="submit" class="btn">＋ Добавить</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <form id="skill-levels" th:action="${base} + '/skills'" method="post"></form>
+
+  <div class="skills-grid">
+    <section th:each="group : ${sheet.groups}" class="card">
+      <div class="card-head">
+        <h2 class="card-title">
+          <span class="dot" th:classappend="${group.special} ? 'pink'"></span>
+          <span th:text="${group.title}">REF</span>
+        </h2>
+        <span th:if="${group.stat != null}" class="badge" th:classappend="${group.stat.reduced} ? 'is-reduced'"
+              th:title="${group.stat.reduced} ? 'Без штрафов: ' + ${group.stat.base} : 'Текущее значение'"
+              th:text="${group.stat.value}">8</span>
+      </div>
+      <div class="skills-rows">
+        <div th:each="row : ${group.rows}" class="skill-row" th:classappend="${row.level == 0} ? 'is-zero'">
+          <div class="skill-name">
+            <span th:text="${row.name}">Пистолеты</span>
+            <span th:if="${group.special}" class="skill-note" th:text="${row.statName}">INT</span>
+            <span th:if="${row.costMultiplier > 1}" class="skill-note" title="Множитель стоимости развития"
+                  th:text="'×' + ${row.costMultiplier}">×2</span>
+          </div>
+          <span class="skill-level" th:text="${row.level}">4</span>
+          <input type="number" class="skill-input" form="skill-levels" min="0" max="10" required
+                 th:name="${row.customId != null} ? 'custom.' + ${row.customId} : 'level.' + ${row.code}"
+                 th:value="${row.level}" th:aria-label="${row.name}">
+          <form th:if="${row.customId != null}" th:action="${base} + '/skills/custom/' + ${row.customId} + '/delete'"
+                method="post" class="inline skill-delete" data-confirm="Удалить навык?">
+            <button type="submit" class="icon-btn danger" title="Удалить навык">×</button>
+          </form>
+          <button type="button" class="btn btn-sm skill-check" data-skill-check
+                  th:data-code="${row.code}" th:data-skill-id="${row.customId}" th:data-name="${row.name}"
+                  th:data-sum="${row.statName} + ' ' + ${row.statValue} + ' + ' + ${row.level} + ' = ' + ${row.total}"
+                  th:title="${row.statName} + ' ' + ${row.statValue} + ' + навык ' + ${row.level}"
+                  th:text="${row.total}">12</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="skills-savebar">
+    <button type="submit" form="skill-levels" class="btn btn-primary">Сохранить уровни</button>
+    <button type="button" class="btn btn-ghost" data-skills-edit>Отмена</button>
+  </div>
+
+  <dialog class="dialog" id="skill-check-dialog">
+    <form th:action="${base} + '/skills/check'" method="post" class="form">
+      <input type="hidden" name="code">
+      <input type="hidden" name="skillId">
+      <div>
+        <h2 class="card-title" data-check-title>Навык</h2>
+        <p class="page-sub" data-check-sum>REF 8 + 4 = 12</p>
+      </div>
+      <label class="field">
+        <span class="label">Сложность</span>
+        <input type="number" name="difficulty" min="0" step="1" placeholder="Без сложности" autocomplete="off">
+      </label>
+      <div class="dice-quick">
+        <button th:each="d : ${difficultyPresets}" type="button" class="btn btn-sm" th:data-dc="${d.value}"
+                th:text="${d.key} + ' ' + ${d.value}">Average 15</button>
+      </div>
+      <label class="field">
+        <span class="label">Доп. модификатор</span>
+        <input type="number" name="modifier" step="1" value="0" required>
+      </label>
+      <div class="form-row dialog-actions">
+        <button type="button" class="btn btn-ghost" data-dialog-close>Отмена</button>
+        <button type="submit" class="btn btn-primary">🎲 Бросить</button>
+      </div>
+    </form>
+  </dialog>
+</main>
+</body>
+</html>

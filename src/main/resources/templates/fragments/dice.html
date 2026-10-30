@@ -4,6 +4,21 @@
      Модель: quickDice, difficultyPresets, recentRolls; flash: rollResult, checkResult, rollLabel, rollError. showAuthor — показывать, кто бросал. -->
 <body>
 
+<!-- Итог проверки с шагами расчёта. Flash: checkResult, rollLabel -->
+<div th:fragment="check-result" th:if="${checkResult != null}" class="dice-result" role="status"
+     th:classappend="${checkResult.success == null} ? '' : (${checkResult.success} ? 'is-success' : 'is-fail')">
+  <div class="dice-total" th:text="${checkResult.total}">17</div>
+  <div class="dice-detail">
+    <div class="row-title">
+      <span th:text="${rollLabel != null ? rollLabel : 'Проверка'}">Проверка</span>
+      <span th:text="'· ' + ${checkResult.outcome()}">· 17 vs 15 — успех</span>
+    </div>
+    <ol class="alert-steps">
+      <li th:each="step : ${checkResult.steps}" th:text="${step}">Бросок d10: 7</li>
+    </ol>
+  </div>
+</div>
+
 <section th:fragment="card(base, showAuthor)" class="card" id="dice">
   <div class="card-head">
     <h2 class="card-title"><span class="dot"></span>Кубики</h2>
@@ -20,19 +35,7 @@
         <div class="row-meta" th:text="${rollResult.details()}">[3, 5] + 3 = 11</div>
       </div>
     </div>
-    <div th:if="${checkResult != null}" class="dice-result" role="status"
-         th:classappend="${checkResult.success == null} ? '' : (${checkResult.success} ? 'is-success' : 'is-fail')">
-      <div class="dice-total" th:text="${checkResult.total}">17</div>
-      <div class="dice-detail">
-        <div class="row-title">
-          <span th:text="${rollLabel != null ? rollLabel : 'Проверка'}">Проверка</span>
-          <span th:text="'· ' + ${checkResult.outcome()}">· 17 vs 15 — успех</span>
-        </div>
-        <ol class="alert-steps">
-          <li th:each="step : ${checkResult.steps}" th:text="${step}">Бросок d10: 7</li>
-        </ol>
-      </div>
-    </div>
+    <div th:replace="~{:: check-result}"></div>
     <div th:if="${rollError != null}" class="alert alert-error" role="alert">
       <span class="alert-text" th:text="${rollError}">Ошибка</span>
       <button type="button" class="alert-close" aria-label="Закрыть">×</button>

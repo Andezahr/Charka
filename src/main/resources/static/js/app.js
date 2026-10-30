@@ -47,6 +47,36 @@ document.addEventListener('DOMContentLoaded', () => {
     sync();
   });
 
+  // Страница навыков: кнопка [data-skills-edit] включает правку уровней. На странице одна форма уровней,
+  // поэтому «Отмена» просто возвращает поля к сохранённым значениям
+  document.querySelectorAll('[data-skills]').forEach(page => {
+    page.querySelectorAll('[data-skills-edit]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (page.classList.toggle('is-editing')) return;
+        page.querySelectorAll('.skill-input').forEach(input => { input.value = input.defaultValue; });
+      });
+    });
+
+    // Проверка навыка: кнопка с итогом открывает <dialog> и подставляет в него навык
+    const dialog = page.querySelector('#skill-check-dialog');
+    if (!dialog) return;
+    page.querySelectorAll('[data-skill-check]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        dialog.querySelector('[name=code]').value = btn.dataset.code;
+        dialog.querySelector('[name=skillId]').value = btn.dataset.skillId || '';
+        dialog.querySelector('[data-check-title]').textContent = btn.dataset.name;
+        dialog.querySelector('[data-check-sum]').textContent = btn.dataset.sum;
+        dialog.showModal();
+      });
+    });
+    dialog.querySelectorAll('[data-dc]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        dialog.querySelector('[name=difficulty]').value = btn.dataset.dc;
+      });
+    });
+    dialog.querySelector('[data-dialog-close]').addEventListener('click', () => dialog.close());
+  });
+
   // Закрытие уведомлений
   document.querySelectorAll('.alert-close').forEach(btn => {
     btn.addEventListener('click', () => btn.closest('.alert').remove());

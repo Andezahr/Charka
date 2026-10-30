@@ -3,8 +3,14 @@ package app.charka.system;
 import app.charka.check.CheckResolver;
 import app.charka.check.GenericCheckResolver;
 import app.charka.model.Campaign;
+import app.charka.model.Character;
+import app.charka.skill.CharacterRole;
+import app.charka.skill.SkillDefinition;
+import app.charka.skill.StatValue;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 /**
  * Игровая система (НРИ): правила, которые различаются между CP2020, D&D и т.п.
@@ -45,6 +51,31 @@ public interface GameSystem {
      */
     default CheckResolver getCheckResolver() {
         return GENERIC_CHECK;
+    }
+
+    /**
+     * Каталог навыков; пусто — у системы нет навыков и вкладка «Навыки» не показывается.
+     */
+    default List<SkillDefinition> getSkillCatalog() {
+        return List.of();
+    }
+
+    /**
+     * Роли/классы персонажей.
+     */
+    default List<CharacterRole> getRoles() {
+        return List.of();
+    }
+
+    default Optional<CharacterRole> findRole(String code) {
+        return getRoles().stream().filter(role -> role.code().equals(code)).findFirst();
+    }
+
+    /**
+     * Текущие статы персонажа по коду — с ними складываются навыки. Вызывать в транзакции (читает счётчики).
+     */
+    default Map<String, StatValue> getCurrentStats(Character character) {
+        return Map.of();
     }
 
     /**

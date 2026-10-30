@@ -29,8 +29,9 @@ public class GenericCheckResolver implements CheckResolver {
 
         List<String> steps = new ArrayList<>();
         steps.add("Бросок d" + SIDES + ": " + roll);
-        if (request.modifier() != 0) {
-            steps.add("Модификатор " + CheckResolver.signed(request.modifier()) + " → " + total);
+        String modifierStep = CheckResolver.modifierStep(request, total);
+        if (modifierStep != null) {
+            steps.add(modifierStep);
         }
         Boolean success = CheckResolver.meets(total, request.difficulty());
         if (success != null) {

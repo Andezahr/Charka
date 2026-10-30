@@ -103,6 +103,12 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
   text-transform: uppercase;
 }
 
+/* На узком экране вкладки персонажа не помещаются рядом с логотипом — уходят на вторую строку */
+@media (max-width: 560px) {
+  .topbar-inner { height: auto; flex-wrap: wrap; gap: 6px 16px; padding: 10px 16px; }
+  .topnav a { padding: 6px 10px; }
+}
+
 .topnav { display: flex; gap: 4px; }
 .topnav a {
   padding: 7px 14px;
@@ -812,3 +818,58 @@ details.cp-more > summary:hover { color: var(--text-soft); }
 .dice-result.is-fail { border-color: rgba(248, 113, 113, 0.45); }
 .dice-result.is-fail .dice-total { color: var(--danger); }
 .dice-result .alert-steps { margin-top: 4px; }
+
+/* ---------- Навыки ---------- */
+
+.skills-setup { margin-bottom: 20px; }
+.skills-grid { columns: 2 420px; column-gap: 20px; }
+.skills-grid > .card { break-inside: avoid; margin-bottom: 20px; }
+.badge.is-reduced { color: var(--danger); background: var(--danger-soft); }
+
+.skills-rows { padding: 6px 8px; }
+.skill-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px;
+  border-radius: 7px;
+}
+.skill-row:hover { background: var(--surface-2); }
+.skill-row.is-zero .skill-name, .skill-row.is-zero .skill-level { color: var(--muted); }
+.skill-name { flex: 1 1 auto; min-width: 0; font-size: 14px; }
+.skill-note { margin-left: 4px; font-size: 12px; color: var(--muted); }
+.skill-level { width: 28px; text-align: center; color: var(--text-soft); }
+.skill-check { min-width: 44px; }
+
+/* Режим правки уровней: поля вместо чисел, проверки скрыты, чтобы не потерять несохранённое */
+.skill-input { display: none; }
+input[type="number"].skill-input { width: 68px; padding: 4px 8px; }
+form.skill-delete { display: none; }
+.skills-savebar {
+  display: none;
+  position: sticky;
+  bottom: 16px;
+  gap: 10px;
+  justify-content: flex-end;
+  padding: 12px 16px;
+  background: var(--surface-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+}
+.is-editing .skill-input { display: block; }
+.is-editing .skill-delete { display: inline-flex; }
+.is-editing .skill-level, .is-editing .skill-check { display: none; }
+.is-editing .skills-savebar { display: flex; }
+
+.dialog {
+  width: min(420px, calc(100vw - 32px));
+  padding: 22px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
+.dialog-actions { justify-content: flex-end; }
