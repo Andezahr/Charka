@@ -131,7 +131,7 @@ class SkillCheckControllerTest {
     @Test
     @DisplayName("список навыков: все группы подряд, уровень и итог")
     void skillOptions() throws Exception {
-        SkillSheet.Row row = new SkillSheet.Row("handgun", null, "Пистолеты", 4, 12, "REF", 8, null, null, false);
+        SkillSheet.Row row = new SkillSheet.Row("handgun", null, "Пистолеты", 4, 12, "REF", 8, null, null, false, 0, null);
         SkillSheet.Group group = new SkillSheet.Group("REF", null, false, List.of(), List.of(row));
         when(skillService.getSheet(1L)).thenReturn(
                 new SkillSheet(List.of(), List.of(), null, List.of(group), false, null, null));

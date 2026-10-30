@@ -97,7 +97,7 @@
           </form>
           <button type="button" class="btn btn-sm skill-check" data-skill-check
                   th:data-code="${row.code}" th:data-skill-id="${row.customId}" th:data-name="${row.name}"
-                  th:data-sum="${row.statName} + ' ' + ${row.statValue} + ' + навык ' + ${row.level} + ' = ' + ${row.total}"
+                  th:data-sum="${row.statName} + ' ' + ${row.statValue} + ' + навык ' + ${row.level} + (${row.bonus != 0} ? ' + бонус ' + ${row.bonus} : '') + ' = ' + ${row.total}"
                   th:aria-label="'Проверить: ' + ${row.name} + ', итог ' + ${row.total}"
                   th:text="'🎲 ' + ${row.total}">🎲 12</button>
           <form th:if="${sheet.pointsName != null}" th:action="${base} + '/skills/improve'" method="post" class="inline skill-improve">
@@ -105,17 +105,20 @@
             <input th:if="${row.customId != null}" type="hidden" name="skillId" th:value="${row.customId}">
             <button type="submit" class="btn btn-sm" th:classappend="${row.affordable} ? 'btn-success'"
                     th:disabled="${!row.affordable}"
-                    th:title="${row.nextCost == null} ? 'Максимальный уровень' : (${row.affordable} ? 'Поднять до уровня ' + ${row.level + 1} : 'Не хватает очков')"
+                    th:title="${row.nextCost == null} ? 'Максимальный уровень' : (${row.blockedReason != null} ? ${row.blockedReason} : (${row.affordable} ? 'Поднять до уровня ' + ${row.level + 1} : 'Не хватает очков'))"
                     th:text="${row.nextCost == null} ? 'макс.' : '▲ ' + ${row.nextCost} + ' ' + ${sheet.pointsName}">▲ 20 IP</button>
           </form>
         </div>
       </div>
       <div th:unless="${#lists.isEmpty(group.customTypes)}" class="skill-add">
-        <div th:each="t : ${group.customTypes}" class="skill-add-item" data-editable>
+        <div th:each="t : ${group.addForms}" class="skill-add-item" data-editable>
           <button type="button" class="btn btn-sm btn-ghost" data-edit-toggle th:text="'＋ ' + ${t.name}">＋ Язык</button>
           <div class="edit-panel">
             <form th:action="${base} + '/skills/custom'" method="post" class="form-row">
-              <input type="hidden" name="code" th:value="${t.code}">
+              <input th:if="${#lists.size(t.options) == 1}" type="hidden" name="code" th:value="${t.options[0].code}">
+              <select th:unless="${#lists.size(t.options) == 1}" name="code" class="skill-add-variant" required th:aria-label="'Разновидность: ' + ${t.name}">
+                <option th:each="o : ${t.options}" th:value="${o.code}" th:text="${o.variant} + ' — ×' + ${o.costMultiplier}">Славянские — ×3</option>
+              </select>
               <input type="text" name="customName" class="grow" placeholder="Название" required maxlength="100"
                      autocomplete="off" th:aria-label="'Название: ' + ${t.name}">
               <input type="number" name="level" class="narrow skill-add-level" min="0" max="10" value="1" required aria-label="Уровень">

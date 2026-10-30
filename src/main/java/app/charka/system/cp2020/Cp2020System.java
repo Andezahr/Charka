@@ -1,8 +1,10 @@
 package app.charka.system.cp2020;
 
+import app.charka.check.CheckRequest;
 import app.charka.check.CheckResolver;
 import app.charka.model.Campaign;
 import app.charka.model.Character;
+import app.charka.model.CharacterSkill;
 import app.charka.model.counters.strategy.CounterContext;
 import app.charka.service.counter.HealthCounterService;
 import app.charka.skill.CharacterRole;
@@ -100,6 +102,11 @@ public class Cp2020System implements GameSystem {
                         stats.put(line.getKey(),
                                 new StatValue(line.getKey(), line.getName(), line.getBase(), line.getEffective()))));
         return stats;
+    }
+
+    @Override
+    public List<CheckRequest.Part> getSkillBonuses(Character character, SkillDefinition definition, CharacterSkill skill) {
+        return Cp2020SkillRules.bonuses(character, definition, skill);
     }
 
     /**

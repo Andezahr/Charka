@@ -1,6 +1,7 @@
 package app.charka.system.cp2020;
 
 import app.charka.model.Character;
+import app.charka.model.CharacterSkill;
 import app.charka.model.counters.Counter;
 import app.charka.skill.SkillDefinition;
 import app.charka.skill.SkillProgression;
@@ -23,7 +24,21 @@ public class Cp2020SkillProgression implements SkillProgression {
 
     @Override
     public int cost(SkillDefinition definition, int level) {
-        return level == 0 ? COST_PER_LEVEL : level * COST_PER_LEVEL * definition.costMultiplier();
+        return cost(definition.costMultiplier(), level);
+    }
+
+    @Override
+    public int cost(Character character, SkillDefinition definition, CharacterSkill skill, int level) {
+        return cost(Cp2020SkillRules.costMultiplier(character, definition, skill), level);
+    }
+
+    @Override
+    public String blockedReason(Character character, SkillDefinition definition) {
+        return Cp2020SkillRules.blockedReason(character, definition).orElse(null);
+    }
+
+    private static int cost(int multiplier, int level) {
+        return level == 0 ? COST_PER_LEVEL : level * COST_PER_LEVEL * multiplier;
     }
 
     @Override

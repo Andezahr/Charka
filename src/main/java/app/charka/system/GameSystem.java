@@ -1,9 +1,11 @@
 package app.charka.system;
 
+import app.charka.check.CheckRequest;
 import app.charka.check.CheckResolver;
 import app.charka.check.GenericCheckResolver;
 import app.charka.model.Campaign;
 import app.charka.model.Character;
+import app.charka.model.CharacterSkill;
 import app.charka.skill.CharacterRole;
 import app.charka.skill.SkillDefinition;
 import app.charka.skill.SkillProgression;
@@ -98,6 +100,15 @@ public interface GameSystem {
      */
     default Map<String, StatValue> getCurrentStats(Character character) {
         return Map.of();
+    }
+
+    /**
+     * Прибавки к проверке навыка сверх стата и уровня — от других навыков и ролей персонажа. Вызывать в транзакции.
+     *
+     * @param skill строка навыка; null, если её нет
+     */
+    default List<CheckRequest.Part> getSkillBonuses(Character character, SkillDefinition definition, CharacterSkill skill) {
+        return List.of();
     }
 
     /**

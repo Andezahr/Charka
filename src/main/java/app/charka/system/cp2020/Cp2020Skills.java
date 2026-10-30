@@ -59,7 +59,19 @@ public final class Cp2020Skills {
             skill("geology", "Геология", INT),
             skill("hide_evade", "Укрытие и уклонение от погони", INT),
             skill("history", "История", INT),
-            custom("language", "Язык", INT, 1),
+            language("germanic", "Германские: английский, немецкий, шведский…", 1),
+            language("romantic", "Романские: французский, испанский, итальянский…", 1),
+            language("semitic", "Семитские: арабский, иврит", 1),
+            language("african", "Африканские: суахили, зулу, банту…", 2),
+            language("baltic", "Балтийские: литовский, эстонский, финский…", 2),
+            language("celtic", "Кельтские: гэльский, валлийский, бретонский", 2),
+            language("farsi", "Фарси", 2),
+            language("greek", "Греческий", 2),
+            language("japanese", "Японский", 2),
+            language("korean", "Корейский", 2),
+            language("pacific", "Тихоокеанские: тагальский, малайский, гавайский…", 2),
+            language("sino_tibetan", "Китайско-тибетские: кантонский, мандарин, тайский…", 3),
+            language("slavic", "Славянские: русский, польский, чешский…", 3),
             skill("library_search", "Поиск информации", INT),
             skill("mathematics", "Математика", INT),
             skill("physics", "Физика", INT),
@@ -149,6 +161,13 @@ public final class Cp2020Skills {
 
     private static SkillDefinition custom(String code, String name, String stat, int cost) {
         return new SkillDefinition(code, name, stat, cost, false, true);
+    }
+
+    /**
+     * Язык семьи: множитель и родство языков зависят от неё (книга, с. 49).
+     */
+    private static SkillDefinition language(String family, String variant, int cost) {
+        return new SkillDefinition("language_" + family, "Язык", INT, cost, false, true, variant);
     }
 
     private static SkillDefinition special(String code, String name, String stat) {

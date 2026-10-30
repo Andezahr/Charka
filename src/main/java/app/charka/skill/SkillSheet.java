@@ -1,6 +1,9 @@
 package app.charka.skill;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Данные страницы навыков.
@@ -37,17 +40,37 @@ public record SkillSheet(List<CharacterRole> heldRoles, List<RoleOption> roleOpt
      */
     public record Group(String title, StatValue stat, boolean special,
                         List<SkillDefinition> customTypes, List<Row> rows) {
+
+        /**
+         * Формы добавления: навыки с одним названием и разными разновидностями — одна форма со списком.
+         */
+        public List<AddForm> getAddForms() {
+            Map<String, List<SkillDefinition>> byName = new LinkedHashMap<>();
+            customTypes.forEach(type -> byName.computeIfAbsent(type.name(), key -> new ArrayList<>()).add(type));
+            return byName.entrySet().stream()
+                    .map(entry -> new AddForm(entry.getKey(), entry.getValue()))
+                    .toList();
+        }
     }
 
     /**
-     * @param customId   id строки {@code CharacterSkill} у навыка со своим названием, иначе null
-     * @param total      текущий стат + уровень
-     * @param roleName   роль, которой принадлежит спецспособность, иначе null
-     * @param nextCost   цена следующего уровня; null — прокачка недоступна или уровень максимальный
-     * @param affordable очков хватает на следующий уровень
+     * @param options разновидности навыка; одна — выбирать нечего
+     */
+    public record AddForm(String name, List<SkillDefinition> options) {
+    }
+
+    /**
+     * @param customId      id строки {@code CharacterSkill} у навыка со своим названием, иначе null
+     * @param total         текущий стат + уровень + бонус
+     * @param roleName      роль, которой принадлежит спецспособность, иначе null
+     * @param nextCost      цена следующего уровня; null — прокачка недоступна или уровень максимальный
+     * @param affordable    следующий уровень можно купить прямо сейчас
+     * @param bonus         прибавка от других навыков и ролей ({@code GameSystem.getSkillBonuses})
+     * @param blockedReason почему навык нельзя повышать, пока не выполнено требование; null — можно
      */
     public record Row(String code, Long customId, String name, int level, int total,
-                      String statName, int statValue, String roleName, Integer nextCost, boolean affordable) {
+                      String statName, int statValue, String roleName, Integer nextCost, boolean affordable,
+                      int bonus, String blockedReason) {
 
         /**
          * Якорь строки: после прокачки страница возвращается к ней.

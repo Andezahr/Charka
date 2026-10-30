@@ -70,15 +70,15 @@ public class SkillService {
             if (definition.custom()) {
                 customTypes.computeIfAbsent(definition.statCode(), key -> new ArrayList<>()).add(definition);
                 customSkills(character, definition.code()).forEach(skill ->
-                        rows.add(row(definition, skill, stats, null, progression, points)));
+                        rows.add(row(character, system, definition, skill, stats, null, points)));
             } else if (!definition.special()) {
-                rows.add(row(definition, plainSkill(character, definition.code()), stats, null, progression, points));
+                rows.add(row(character, system, definition, plainSkill(character, definition.code()), stats, null, points));
             } else {
                 heldRoles.stream()
                         .filter(role -> definition.code().equals(role.specialSkillCode()))
                         .findFirst()
-                        .ifPresent(role -> rows.add(row(definition, plainSkill(character, definition.code()), stats,
-                                role.name(), progression, points)));
+                        .ifPresent(role -> rows.add(row(character, system, definition, plainSkill(character, definition.code()),
+                                stats, role.name(), points)));
             }
         }
 
@@ -149,7 +149,12 @@ public class SkillService {
             throw new IllegalArgumentException("Навык «" + displayName(definition, skill) + "» уже на максимальном уровне");
         }
 
-        int cost = progression.cost(definition, level);
+        String blockedReason = progression.blockedReason(character, definition);
+        if (blockedReason != null) {
+            throw new IllegalArgumentException(blockedReason);
+        }
+
+        int cost = progression.cost(character, definition, skill, level);
         Integer balance = progression.balance(character);
         if (balance == null) {
             throw new IllegalArgumentException("У персонажа нет счётчика очков " + progression.getPointsName());
@@ -285,6 +290,7 @@ public class SkillService {
         List<CheckRequest.Part> parts = new ArrayList<>();
         parts.add(new CheckRequest.Part(statName(definition.statCode(), stat), stat == null ? 0 : stat.value()));
         parts.add(new CheckRequest.Part(name, skill == null ? 0 : skill.getLevel()));
+        parts.addAll(system.getSkillBonuses(character, definition, skill));
         if (modifier != 0) {
             parts.add(new CheckRequest.Part("Мод.", modifier));
         }
@@ -329,16 +335,21 @@ public class SkillService {
         }
     }
 
-    private static SkillSheet.Row row(SkillDefinition definition, CharacterSkill skill, Map<String, StatValue> stats,
-                                      String roleName, SkillProgression progression, Integer points) {
+    private static SkillSheet.Row row(Character character, GameSystem system, SkillDefinition definition, CharacterSkill skill,
+                                      Map<String, StatValue> stats, String roleName, Integer points) {
+        SkillProgression progression = system.getSkillProgression();
         StatValue stat = stats.get(definition.statCode());
         int statValue = stat == null ? 0 : stat.value();
         int level = skill == null ? 0 : skill.getLevel();
-        Integer nextCost = progression == null || level >= MAX_LEVEL ? null : progression.cost(definition, level);
-        boolean affordable = nextCost != null && points != null && points >= nextCost;
+        int bonus = system.getSkillBonuses(character, definition, skill).stream().mapToInt(CheckRequest.Part::value).sum();
+        Integer nextCost = progression == null || level >= MAX_LEVEL
+                ? null
+                : progression.cost(character, definition, skill, level);
+        String blockedReason = progression == null ? null : progression.blockedReason(character, definition);
+        boolean affordable = nextCost != null && blockedReason == null && points != null && points >= nextCost;
         return new SkillSheet.Row(definition.code(), definition.custom() ? skill.getId() : null,
-                displayName(definition, skill), level, statValue + level,
-                statName(definition.statCode(), stat), statValue, roleName, nextCost, affordable);
+                displayName(definition, skill), level, statValue + level + bonus,
+                statName(definition.statCode(), stat), statValue, roleName, nextCost, affordable, bonus, blockedReason);
     }
 
     private static String displayName(SkillDefinition definition, CharacterSkill skill) {

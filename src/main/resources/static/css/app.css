@@ -890,6 +890,7 @@ input[type="search"].skills-search { flex: 1 1 200px; width: auto; }
 /* в прокачке уровень нового навыка всегда 0, поле не нужно */
 .is-improving .skill-add-level { display: none; }
 .skill-add-item:has(.edit-panel.is-open) { flex-basis: 100%; }
+.form-row > .skill-add-variant { flex-basis: 100%; min-width: 0; }
 form.skill-delete { display: none; }
 .is-all form.skill-delete { display: inline-flex; }
 

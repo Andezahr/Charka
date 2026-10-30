@@ -9,7 +9,13 @@ package app.charka.skill;
  * @param costMultiplier множитель стоимости развития
  * @param special        спецспособность роли: показывается только у своей роли
  * @param custom         у персонажа может быть несколько таких навыков со своими названиями (языки, «Эксперт: …»)
+ * @param variant        разновидность навыка со своими правилами: при добавлении навыки с одним {@code name}
+ *                       выбираются из списка по ней (семья языка); null — разновидностей нет
  */
 public record SkillDefinition(String code, String name, String statCode, int costMultiplier,
-                              boolean special, boolean custom) {
+                              boolean special, boolean custom, String variant) {
+
+    public SkillDefinition(String code, String name, String statCode, int costMultiplier, boolean special, boolean custom) {
+        this(code, name, statCode, costMultiplier, special, custom, null);
+    }
 }

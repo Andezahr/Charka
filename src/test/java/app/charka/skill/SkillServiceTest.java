@@ -151,8 +151,8 @@ class SkillServiceTest {
         @DisplayName("навык со своим названием — строка на каждое название, без пустой «базовой»")
         void customRows() {
             withStats(6, 0);
-            addSkill(10L, "language", "Русский", 8);
-            addSkill(11L, "language", "Японский", 2);
+            addSkill(10L, "language_slavic", "Русский", 8);
+            addSkill(11L, "language_japanese", "Японский", 2);
 
             SkillSheet sheet = skillService.getSheet(1L);
 
@@ -160,7 +160,7 @@ class SkillServiceTest {
                     .contains("Язык: Русский", "Язык: Японский").doesNotContain("Язык");
             assertThat(row(sheet, "INT", "Язык: Русский").customId()).isEqualTo(10L);
             assertThat(group(sheet, "INT").customTypes()).extracting(SkillDefinition::code)
-                    .containsExactly("expert", "language");
+                    .contains("expert", "language_slavic", "language_germanic");
             assertThat(group(sheet, "REF").customTypes()).extracting(SkillDefinition::code)
                     .containsExactly("martial_art");
             assertThat(group(sheet, "BODY").customTypes()).isEmpty();
@@ -209,7 +209,7 @@ class SkillServiceTest {
         @Test
         @DisplayName("меняет уровень навыка со своим названием по id; ноль не удаляет")
         void customLevel() {
-            CharacterSkill skill = addSkill(10L, "language", "Русский", 8);
+            CharacterSkill skill = addSkill(10L, "language_slavic", "Русский", 8);
 
             skillService.updateLevels(1L, Map.of(), Map.of(10L, 0));
 
@@ -228,7 +228,7 @@ class SkillServiceTest {
                     .isInstanceOf(IllegalArgumentException.class);
             assertThatThrownBy(() -> skillService.updateLevels(1L, Map.of("nope", 1), Map.of()))
                     .isInstanceOf(IllegalArgumentException.class);
-            assertThatThrownBy(() -> skillService.updateLevels(1L, Map.of("language", 1), Map.of()))
+            assertThatThrownBy(() -> skillService.updateLevels(1L, Map.of("language_slavic", 1), Map.of()))
                     .isInstanceOf(IllegalArgumentException.class);
             assertThat(character.getSkills()).isEmpty();
         }
@@ -258,7 +258,7 @@ class SkillServiceTest {
         @Test
         @DisplayName("добавляется с обрезанным названием")
         void adds() {
-            skillService.addCustom(1L, "language", "  Русский ", 8);
+            skillService.addCustom(1L, "language_slavic", "  Русский ", 8);
 
             CharacterSkill skill = character.getSkills().getFirst();
             assertThat(skill.getCustomName()).isEqualTo("Русский");
@@ -269,11 +269,11 @@ class SkillServiceTest {
         @Test
         @DisplayName("пустое название, повтор и обычный навык — ошибка")
         void rejected() {
-            addSkill(10L, "language", "Русский", 8);
+            addSkill(10L, "language_slavic", "Русский", 8);
 
-            assertThatThrownBy(() -> skillService.addCustom(1L, "language", "  ", 1))
+            assertThatThrownBy(() -> skillService.addCustom(1L, "language_slavic", "  ", 1))
                     .isInstanceOf(IllegalArgumentException.class);
-            assertThatThrownBy(() -> skillService.addCustom(1L, "language", "русский", 1))
+            assertThatThrownBy(() -> skillService.addCustom(1L, "language_slavic", "русский", 1))
                     .isInstanceOf(IllegalArgumentException.class);
             assertThatThrownBy(() -> skillService.addCustom(1L, "handgun", "Глок", 1))
                     .isInstanceOf(IllegalArgumentException.class);
@@ -283,8 +283,8 @@ class SkillServiceTest {
         @Test
         @DisplayName("удаляется только своя строка")
         void deletes() {
-            addSkill(10L, "language", "Русский", 8);
-            addSkill(11L, "language", "Японский", 2);
+            addSkill(10L, "language_slavic", "Русский", 8);
+            addSkill(11L, "language_japanese", "Японский", 2);
 
             skillService.deleteCustom(1L, 10L);
 
@@ -531,6 +531,37 @@ class SkillServiceTest {
         }
 
         @Test
+        @DisplayName("требование не выполнено: на сервере отказ, очки целы; на листе причина вместо покупки")
+        void blockedByRequirement() {
+            assertThatThrownBy(() -> skillService.improve(1L, "physics", null))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Математика");
+            assertThat(ip.getValue()).isEqualTo(100);
+
+            SkillSheet.Row physics = row(skillService.getSheet(1L), "INT", "Физика");
+            assertThat(physics.affordable()).isFalse();
+            assertThat(physics.blockedReason()).contains("Математика");
+        }
+
+        @Test
+        @DisplayName("бонус входит в итог листа и в расчёт проверки")
+        void bonusInSheetAndCheck() {
+            character.getRoles().add("solo");
+            addSkill(10L, "combat_sense", null, 3);
+            addSkill(11L, "awareness", null, 2);
+
+            SkillSheet.Row awareness = row(skillService.getSheet(1L), "INT", "Внимательность");
+            skillService.check(1L, "awareness", null, 0, null);
+
+            assertThat(awareness.bonus()).isEqualTo(3);
+            assertThat(awareness.total()).isEqualTo(5);
+            ArgumentCaptor<CheckRequest> request = ArgumentCaptor.forClass(CheckRequest.class);
+            verify(checkService).checkForCharacter(eq(1L), request.capture());
+            assertThat(request.getValue().modifier()).isEqualTo(5);
+            assertThat(request.getValue().parts()).contains(new CheckRequest.Part("Боевое чутьё", 3));
+        }
+
+        @Test
         @DisplayName("лист без счётчика очков: прокачка помечена как недоступная")
         void sheetWithoutCounter() {
             character.getCounters().clear();
@@ -665,7 +696,7 @@ class SkillServiceTest {
                     .isInstanceOf(IllegalArgumentException.class);
             assertThatThrownBy(() -> skillService.check(1L, "nope", null, 0, null))
                     .isInstanceOf(IllegalArgumentException.class);
-            assertThatThrownBy(() -> skillService.check(1L, "language", null, 0, null))
+            assertThatThrownBy(() -> skillService.check(1L, "language_slavic", null, 0, null))
                     .isInstanceOf(IllegalArgumentException.class);
             verify(checkService, never()).checkForCharacter(any(), any());
         }
