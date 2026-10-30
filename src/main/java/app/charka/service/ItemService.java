@@ -143,10 +143,26 @@ public class ItemService {
                 .orElseThrow(() -> new IllegalArgumentException("Такого предмета нет в справочнике: " + key));
         Item item = new Item();
         item.setName(entry.name());
-        item.setQuantity(quantity);
+        item.setQuantity(quantity * entry.packSize());
         item.setCost(entry.cost());
         item.setDescription(entry.description());
         return create(inventoryId, item, entry.typeCode(), entry.properties());
+    }
+
+    /**
+     * Выполнить действие над предметом по правилам системы кампании.
+     *
+     * @param characterId владелец из адреса; предмет другого персонажа считается ненайденным
+     * @return итог для показа игроку
+     * @throws IllegalArgumentException если действие сейчас невозможно
+     */
+    @Transactional
+    public String performAction(Long characterId, Long itemId, String action, Map<String, String> params) {
+        Item item = findById(itemId);
+        if (!characterId.equals(item.getInventory().getCharacter().getId())) {
+            throw new NotFoundException(String.format(ITEM_NOT_FOUND, itemId));
+        }
+        return systemRegistry.forCharacter(item.getInventory().getCharacter()).performItemAction(item, action, params);
     }
 
     private void applyType(Item item, Inventory inventory, String typeCode, Map<String, String> properties) {

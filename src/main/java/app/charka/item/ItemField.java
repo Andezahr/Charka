@@ -40,6 +40,10 @@ public record ItemField(String key, String label, Kind kind, boolean required, S
         return new ItemField(key, label, Kind.TEXT, false, "", "", null, null, List.of());
     }
 
+    public static ItemField requiredText(String key, String label) {
+        return new ItemField(key, label, Kind.TEXT, true, "", "", null, null, List.of());
+    }
+
     public static ItemField dice(String key, String label) {
         return new ItemField(key, label, Kind.DICE, false, "", "", null, null, List.of());
     }

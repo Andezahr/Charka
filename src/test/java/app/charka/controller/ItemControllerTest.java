@@ -262,6 +262,33 @@ class ItemControllerTest {
         }
 
         @Test
+        @DisplayName("действие: итог во flash для строки предмета, возврат к ней")
+        void action() throws Exception {
+            when(itemService.performAction(eq(CHAR_ID), eq(ITEM_ID), eq("BURST"), any())).thenReturn("выпущено 3");
+
+            mockMvc.perform(post("/character/{c}/inventories/{i}/items/{id}/action/{a}", CHAR_ID, INV_ID, ITEM_ID, "BURST")
+                            .param("amount", "3"))
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(redirectedUrl(REDIRECT_URL + "#item-" + ITEM_ID))
+                    .andExpect(flash().attribute("actionItemId", ITEM_ID))
+                    .andExpect(flash().attribute("actionResult", "выпущено 3"));
+
+            verify(itemService).performAction(CHAR_ID, ITEM_ID, "BURST", java.util.Map.of("amount", "3"));
+        }
+
+        @Test
+        @DisplayName("действие нельзя выполнить — сообщение об ошибке в строке предмета")
+        void actionRejected() throws Exception {
+            when(itemService.performAction(eq(CHAR_ID), eq(ITEM_ID), eq("FIRE"), any()))
+                    .thenThrow(new IllegalArgumentException("Магазин пуст"));
+
+            mockMvc.perform(post("/character/{c}/inventories/{i}/items/{id}/action/{a}", CHAR_ID, INV_ID, ITEM_ID, "FIRE"))
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(flash().attribute("actionItemId", ITEM_ID))
+                    .andExpect(flash().attribute("actionError", "Магазин пуст"));
+        }
+
+        @Test
         @DisplayName("некорректный ввод — возврат на лист с сообщением, а не страница ошибки")
         void badInput() throws Exception {
             doThrow(new IllegalArgumentException("Поле «Тип» обязательно"))

@@ -147,7 +147,7 @@
                     <select name="catalogKey" class="item-type-select" required aria-label="Предмет из справочника">
                       <optgroup th:each="group : ${itemCatalog}" th:label="${group.key}">
                         <option th:each="entry : ${group.value}" th:value="${entry.key}"
-                                th:text="${entry.name} + ' — ' + ${entry.properties['damage']} + (${entry.cost > 0} ? ', ' + ${entry.cost} + ' ' + ${currency.symbol} : '')">Arasaka Minami 10</option>
+                                th:text="${entry.name} + (${entry.properties['damage'] != null} ? ' — ' + ${entry.properties['damage']} : '') + (${entry.cost > 0} ? ', ' + ${entry.cost} + ' ' + ${currency.symbol} : '')">Arasaka Minami 10</option>
                       </optgroup>
                     </select>
                     <input type="number" name="quantity" class="narrow" value="1" min="1" required aria-label="Количество">
@@ -157,7 +157,7 @@
               </div>
 
               <div class="list">
-                <div th:each="item : ${inv.content}" class="row" data-editable th:with="itemType=${itemTypeByCode[item.type]}">
+                <div th:each="item : ${inv.content}" th:id="'item-' + ${item.id}" class="row" data-editable th:with="itemType=${itemTypeByCode[item.type]}">
                   <div class="row-main">
                     <div class="row-title" th:text="${item.name}">Предмет</div>
                     <div class="row-meta">
@@ -169,6 +169,28 @@
                       <span th:each="line : ${itemType.describe(item.properties)}" th:text="${line.text}" th:title="${line.title}">WA 0</span>
                     </div>
                     <div class="row-desc" th:if="${!#strings.isEmpty(item.description)}" th:text="${item.description}">Описание</div>
+                    <div th:if="${actionItemId == item.id and actionResult != null}" class="alert alert-success item-result" role="status">
+                      <span class="alert-text" th:text="${actionResult}">Выпущено 3</span>
+                      <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+                    </div>
+                    <div th:if="${actionItemId == item.id and actionError != null}" class="alert alert-error item-result" role="alert">
+                      <span class="alert-text" th:text="${actionError}">Магазин пуст</span>
+                      <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+                    </div>
+                    <div class="item-actions" th:unless="${#lists.isEmpty(itemActions[item.id])}">
+                      <form th:each="action : ${itemActions[item.id]}"
+                            th:action="@{'/character/' + ${character.id} + '/inventories/' + ${inv.id} + '/items/' + ${item.id} + '/action/' + ${action.code}}"
+                            method="post" class="item-action">
+                        <select th:unless="${#lists.isEmpty(action.sources)}" name="source" required aria-label="Откуда взять патроны">
+                          <option th:each="source : ${action.sources}" th:value="${source.value}" th:text="${source.label}">Патроны</option>
+                        </select>
+                        <input th:if="${action.amount != null}" type="number" name="amount" class="narrow" min="1"
+                               th:value="${action.amount}" th:attr="max=${action.maxAmount}" th:disabled="${action.unavailable != null}"
+                               required aria-label="Сколько патронов">
+                        <button type="submit" class="btn btn-sm" th:disabled="${action.unavailable != null}"
+                                th:title="${action.unavailable}" th:text="${action.label}">Выстрел</button>
+                      </form>
+                    </div>
                   </div>
                   <div class="row-actions">
                     <button type="button" class="icon-btn" data-edit-toggle title="Редактировать / переместить">✎</button>

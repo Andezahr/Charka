@@ -12,11 +12,17 @@ import java.util.Map;
  * @param cost        цена; если в книге диапазон — нижняя граница, диапазон в {@code description}
  * @param description примечание, может быть null
  * @param properties  значения полей типа в том виде, как их вводят в форме
+ * @param packSize    сколько штук в единице продажи: в коробке 50 патронов; количество предмета умножается на него
  */
 public record CatalogItem(String key, String group, String name, String typeCode, int cost, String description,
-                          Map<String, String> properties) {
+                          Map<String, String> properties, int packSize) {
 
     public CatalogItem {
         properties = Map.copyOf(properties);
+    }
+
+    public CatalogItem(String key, String group, String name, String typeCode, int cost, String description,
+                       Map<String, String> properties) {
+        this(key, group, name, typeCode, cost, description, properties, 1);
     }
 }

@@ -3,10 +3,12 @@ package app.charka.system.cp2020;
 import app.charka.check.CheckRequest;
 import app.charka.check.CheckResolver;
 import app.charka.item.CatalogItem;
+import app.charka.item.ItemAction;
 import app.charka.item.ItemTypeDefinition;
 import app.charka.model.Campaign;
 import app.charka.model.Character;
 import app.charka.model.CharacterSkill;
+import app.charka.model.Item;
 import app.charka.model.counters.strategy.CounterContext;
 import app.charka.service.counter.HealthCounterService;
 import app.charka.skill.CharacterRole;
@@ -21,6 +23,7 @@ import org.springframework.stereotype.Component;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 /**
  * Cyberpunk 2020 (Friday Night Firefight).
@@ -39,6 +42,9 @@ public class Cp2020System implements GameSystem {
 
     /** Стратегия без состояния; нужна только чтобы посчитать текущие статы */
     private static final Cp2020StatsStrategy STATS = new Cp2020StatsStrategy();
+
+    private static final List<CatalogItem> ITEM_CATALOG =
+            Stream.concat(Cp2020Weapons.CATALOG.stream(), Cp2020Ammo.CATALOG.stream()).toList();
 
     private final HealthCounterService healthCounterService;
 
@@ -113,7 +119,17 @@ public class Cp2020System implements GameSystem {
 
     @Override
     public List<CatalogItem> getItemCatalog() {
-        return Cp2020Weapons.CATALOG;
+        return ITEM_CATALOG;
+    }
+
+    @Override
+    public List<ItemAction> getItemActions(Item item) {
+        return Cp2020WeaponActions.actions(item);
+    }
+
+    @Override
+    public String performItemAction(Item item, String action, Map<String, String> params) {
+        return Cp2020WeaponActions.perform(item, action, params);
     }
 
     @Override

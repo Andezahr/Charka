@@ -81,6 +81,28 @@ public class ItemController {
                 () -> itemService.update(itemId, itemName, quantity, cost, description, itemType, properties(params)));
     }
 
+    /**
+     * Действие системы над предметом (выстрел, перезарядка). Возвращает к строке предмета, поэтому итог показывается в ней же:
+     * сообщение вверху страницы осталось бы за экраном.
+     */
+    @PostMapping("/{itemId}/action/{action}")
+    public String performAction(
+            @PathVariable Long characterId,
+            @PathVariable Long inventoryId,
+            @PathVariable Long itemId,
+            @PathVariable String action,
+            @RequestParam Map<String, String> params,
+            RedirectAttributes redirectAttributes
+    ) {
+        redirectAttributes.addFlashAttribute("actionItemId", itemId);
+        try {
+            redirectAttributes.addFlashAttribute("actionResult", itemService.performAction(characterId, itemId, action, params));
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("actionError", e.getMessage());
+        }
+        return "redirect:/character/" + characterId + "#item-" + itemId;
+    }
+
     private static Map<String, String> properties(Map<String, String> params) {
         Map<String, String> properties = new HashMap<>();
         params.forEach((key, value) -> {

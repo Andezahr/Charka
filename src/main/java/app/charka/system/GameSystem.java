@@ -4,10 +4,12 @@ import app.charka.check.CheckRequest;
 import app.charka.check.CheckResolver;
 import app.charka.check.GenericCheckResolver;
 import app.charka.item.CatalogItem;
+import app.charka.item.ItemAction;
 import app.charka.item.ItemTypeDefinition;
 import app.charka.model.Campaign;
 import app.charka.model.Character;
 import app.charka.model.CharacterSkill;
+import app.charka.model.Item;
 import app.charka.skill.CharacterRole;
 import app.charka.skill.SkillDefinition;
 import app.charka.skill.SkillProgression;
@@ -120,6 +122,24 @@ public interface GameSystem {
      */
     default List<CatalogItem> getItemCatalog() {
         return List.of();
+    }
+
+    /**
+     * Действия над предметом на листе персонажа; пусто — у предмета их нет. Вызывать в транзакции.
+     */
+    default List<ItemAction> getItemActions(Item item) {
+        return List.of();
+    }
+
+    /**
+     * Выполнить действие над предметом. Вызывать в транзакции.
+     *
+     * @param params параметры формы действия ({@code source}, {@code amount})
+     * @return итог для показа игроку
+     * @throws IllegalArgumentException если действие сейчас невозможно
+     */
+    default String performItemAction(Item item, String action, Map<String, String> params) {
+        throw new IllegalArgumentException("Неизвестное действие с предметом: " + action);
     }
 
     /**

@@ -4,6 +4,7 @@ import app.charka.dice.DiceService;
 import app.charka.item.CatalogItem;
 import app.charka.item.ItemTypeDefinition;
 import app.charka.model.Character;
+import app.charka.model.Item;
 import app.charka.model.Money;
 import app.charka.service.CharacterService;
 import app.charka.service.MoneyService;
@@ -49,6 +50,9 @@ public class CharacterController {
                 .collect(Collectors.toMap(ItemTypeDefinition::code, Function.identity())));
         model.addAttribute("itemCatalog", system.getItemCatalog().stream()
                 .collect(Collectors.groupingBy(CatalogItem::group, LinkedHashMap::new, Collectors.toList())));
+        model.addAttribute("itemActions", character.getInventories().stream()
+                .flatMap(inventory -> inventory.getContent().stream())
+                .collect(Collectors.toMap(Item::getId, system::getItemActions)));
         model.addAttribute("roles", system.rolesOf(character));
         model.addAttribute("quickDice", system.getQuickDice());
         model.addAttribute("difficultyPresets", system.getCheckResolver().getDifficultyPresets());

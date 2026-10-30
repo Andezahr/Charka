@@ -70,25 +70,27 @@ public final class Cp2020Weapons {
             gun(SHOTGUNS, "Arasaka Rapid Assault 12", "SHT", -1, "N", "C", "4D6", "00", 20, 10, "ST", 50, 900),
             gun(SHOTGUNS, "Sternmeyer Stakeout 10", "SHT", -2, "N", "R", "4D6", "00", 10, 2, "ST", 50, 450),
 
-            armorPiercing(gun(HEAVY, "Barrett-Arasaka Light 20mm", "HVY", 0, "N", "R", "4D10", "20/9mm", 10, 1, "VR", 450, 2000)),
+            note(armorPiercing(gun(HEAVY, "Barrett-Arasaka Light 20mm", "HVY", 0, "N", "R", "4D10", "20/9mm", 10, 1, "VR", 450, 2000)),
+                    "Подкалиберный бронебойный снаряд: броня теряет 2 SP за попадание"),
             gun(HEAVY, "Scorpion 16 Missile Launcher", "HVY", -1, "N", "R", "7D10", null, 1, 1, "VR", 1000, 3000),
             gun(HEAVY, "Militech Arms RPG-A", "HVY", -2, "N", "R", "6D10", null, 1, 1, "VR", 750, 1500),
-            note(gun(HEAVY, "Grenade", "HVY", 0, "P", "P", "По типу", null, 1, 1, "VR", null, 30),
+            // одноразовое (граната, взрывчатка, мина): магазина нет, расходуется количеством предмета
+            note(gun(HEAVY, "Grenade", "HVY", 0, "P", "P", "По типу", null, null, 1, "VR", null, 30),
                     THROWN + ". Виды: осколочная 7D6, зажигательная 4D6 на 3 хода, оглушающая, ослепляющая, звуковая, газовая"),
             note(gun(HEAVY, "Grenade Launcher", "HVY", 0, null, "R", "По типу", null, 1, 1, "ST", 225, 150),
                     "Скрытность в книге: L/N. Крепится под ствол штурмовой винтовки или используется с рук; не подходит к Militech RPG-A"),
-            note(gun(HEAVY, "C-6 Plastic Explosive", "HVY", 0, "P", "P", "8D10 за кг", null, 1, 1, "VR", null, 100), "Цена за кг"),
-            gun(HEAVY, "Mine (all types)", "HVY", 0, "J", "P", "4D10", null, 1, 1, "VR", null, 350),
-            gun(HEAVY, "K-A F-253 Flamethrower", "HVY", -2, "N", "R", "2D10+", null, 10, 1, "ST", 50, 1500),
+            note(gun(HEAVY, "C-6 Plastic Explosive", "HVY", 0, "P", "P", "8D10 за кг", null, null, 1, "VR", null, 100), "Цена за кг"),
+            gun(HEAVY, "Mine (all types)", "HVY", 0, "J", "P", "4D10", null, null, 1, "VR", null, 350),
+            gun(HEAVY, "K-A F-253 Flamethrower", "HVY", -2, "N", "R", "2D10+", Cp2020Ammo.NAPALM, 10, 1, "ST", 50, 1500),
 
             gun(EXOTIC, "Techtronica 15 Microwaver", "P", 0, "J", "P", "1D6", null, 10, 2, "VR", 20, 400),
             gun(EXOTIC, "Militech Elect. LaserCannon", "RIF", 0, "N", "R", "1-5D6", null, 10, 2, "UR", 200, 8000),
-            gun(EXOTIC, "Avante P-1135 Needlegun", "P", 0, "P", "P", "Drugs", null, 15, 2, "ST", 40, 200),
+            gun(EXOTIC, "Avante P-1135 Needlegun", "P", 0, "P", "P", "Drugs", Cp2020Ammo.NEEDLES, 15, 2, "ST", 40, 200),
             gun(EXOTIC, "Enertex AKM Power Squirt", "P", -2, "J", "C", "Drugs", null, 50, 1, "VR", 10, 15),
-            gun(EXOTIC, "Nelspot \"Wombat\"", "P", -1, "J", "C", "Drugs", null, 20, 2, "UR", 40, 200),
+            gun(EXOTIC, "Nelspot \"Wombat\"", "P", -1, "J", "C", "Drugs", Cp2020Ammo.PELLETS, 20, 2, "UR", 40, 200),
             gun(EXOTIC, "Miltech Electronics Taser", "P", -1, "J", "C", "Stun", null, 10, 1, "ST", 10, 60),
-            gun(EXOTIC, "EagleTech \"Tomcat\" C-Bow", "EX", 0, "N", "C", "4D6", null, 12, 1, "VR", 150, 150),
-            gun(EXOTIC, "EagleTech \"Stryker\" X-Bow", "EX", -1, "N", "C", "3D6+3", null, 12, 1, "VR", 50, 220),
+            gun(EXOTIC, "EagleTech \"Tomcat\" C-Bow", "EX", 0, "N", "C", "4D6", Cp2020Ammo.ARROWS, 12, 1, "VR", 150, 150),
+            gun(EXOTIC, "EagleTech \"Stryker\" X-Bow", "EX", -1, "N", "C", "3D6+3", Cp2020Ammo.BOLTS, 12, 1, "VR", 50, 220),
 
             gun(MONO, "Kendachi Monoknife", "MELEE", 1, "P", "P", "2D6", null, null, 1, "VR", 1, 200),
             gun(MONO, "Kendachi MonoKatana", "MELEE", 1, "N", "R", "4D6", null, null, 1, "VR", 1, 600),
@@ -137,9 +139,11 @@ public final class Cp2020Weapons {
         put(properties, "concealability", concealability);
         put(properties, "availability", availability);
         put(properties, "damage", damage);
-        put(properties, "caliber", caliber);
-        put(properties, "shots", shots);
-        put(properties, "rof", rof);
+        put(properties, Cp2020ItemTypes.CALIBER, caliber);
+        put(properties, Cp2020ItemTypes.SHOTS, shots);
+        // новое оружие продаётся со снаряжённым магазином; решение наше, книга об этом молчит
+        put(properties, Cp2020ItemTypes.LOADED, shots);
+        put(properties, Cp2020ItemTypes.RATE_OF_FIRE, rof);
         put(properties, "reliability", reliability);
         put(properties, "range", range);
         return new CatalogItem(key(name), group, name, Cp2020ItemTypes.WEAPON, cost, null, properties);
@@ -166,7 +170,7 @@ public final class Cp2020Weapons {
 
     private static CatalogItem armorPiercing(CatalogItem item) {
         Map<String, String> properties = new HashMap<>(item.properties());
-        properties.put("armorPiercing", "1");
+        properties.put(Cp2020ItemTypes.ARMOR_PIERCING, "1");
         return new CatalogItem(item.key(), item.group(), item.name(), item.typeCode(), item.cost(), item.description(), properties);
     }
 

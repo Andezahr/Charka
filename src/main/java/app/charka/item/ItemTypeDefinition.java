@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 /**
  * Тип предмета: какие поля у него есть сверх названия, количества и цены. Список типов даёт {@code GameSystem.getItemTypes()}.
@@ -13,8 +14,9 @@ import java.util.Map;
  * @param code        код, хранится в {@code Item.type}
  * @param displayName название для интерфейса
  * @param fields      поля в порядке показа
+ * @param check       проверка значений вместе (когда одно поле зависит от другого); бросает {@link IllegalArgumentException}
  */
-public record ItemTypeDefinition(String code, String displayName, List<ItemField> fields) {
+public record ItemTypeDefinition(String code, String displayName, List<ItemField> fields, Consumer<Map<String, String>> check) {
 
     public static final String GENERIC_CODE = "GENERIC";
 
@@ -34,6 +36,11 @@ public record ItemTypeDefinition(String code, String displayName, List<ItemField
 
     public ItemTypeDefinition {
         fields = List.copyOf(fields);
+    }
+
+    public ItemTypeDefinition(String code, String displayName, List<ItemField> fields) {
+        this(code, displayName, fields, values -> {
+        });
     }
 
     /**
@@ -60,6 +67,7 @@ public record ItemTypeDefinition(String code, String displayName, List<ItemField
                 case FLAG -> "1";
             });
         }
+        check.accept(result);
         return result;
     }
 

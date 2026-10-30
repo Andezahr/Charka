@@ -10,6 +10,7 @@ import app.charka.repository.ItemRepository;
 import app.charka.service.ItemService;
 import app.charka.system.GameSystemRegistry;
 import app.charka.system.GenericSystem;
+import app.charka.system.cp2020.Cp2020Ammo;
 import app.charka.system.cp2020.Cp2020ItemTypes;
 import app.charka.system.cp2020.Cp2020System;
 import app.charka.system.cp2020.Cp2020Weapons;
@@ -98,6 +99,8 @@ class ItemTypesTest {
 
             assertThat(Cp2020ItemTypes.WEAPON_TYPE.describe(properties)).extracting(ItemTypeDefinition.Line::text)
                     .containsExactly("SMG", "WA 0", "J", "E", "2D6+3", "10mm", "магазин 40", "ROF 20", "VR", "200 м");
+            assertThat(Cp2020ItemTypes.WEAPON_TYPE.describe(Map.of("shots", "40", "ammo", "12"))).extracting(ItemTypeDefinition.Line::text)
+                    .containsExactly("магазин 40", "заряжено 12");
             assertThat(Cp2020ItemTypes.WEAPON_TYPE.describe(properties).getFirst().title())
                     .isEqualTo("Тип: Пистолет-пулемёт");
         }
@@ -136,12 +139,103 @@ class ItemTypesTest {
         }
 
         @Test
-        @DisplayName("бронебойность показывается отметкой AP")
+        @DisplayName("бронебойные заряженные патроны показываются отметкой AP")
         void armorPiercing() {
-            Map<String, String> properties = Cp2020ItemTypes.WEAPON_TYPE.normalize(Map.of("category", "P", "armorPiercing", "1"));
+            Map<String, String> properties = Cp2020ItemTypes.WEAPON_TYPE.normalize(
+                    Map.of("category", "P", "shots", "8", "ammo", "8", "armorPiercing", "1"));
 
             assertThat(Cp2020ItemTypes.WEAPON_TYPE.describe(properties)).extracting(ItemTypeDefinition.Line::text)
-                    .containsExactly("P", "AP");
+                    .containsExactly("P", "магазин 8", "заряжено 8", "AP");
+        }
+
+        @ParameterizedTest(name = "заряжено {0} при магазине {1}")
+        @CsvSource({"9, 8", "1, ''"})
+        @DisplayName("заряжено больше, чем вмещает магазин, — ошибка")
+        void overfilled(String loaded, String shots) {
+            assertThatThrownBy(() -> Cp2020ItemTypes.WEAPON_TYPE.normalize(Map.of("category", "P", "ammo", loaded, "shots", shots)))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("вмещает");
+        }
+
+        @Test
+        @DisplayName("бронебойные без заряда отметить нельзя")
+        void armorPiercingEmpty() {
+            assertThatThrownBy(() -> Cp2020ItemTypes.WEAPON_TYPE.normalize(Map.of("category", "P", "armorPiercing", "1")))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("оружие из справочника продаётся снаряжённым; у одноразового и холодного магазина нет")
+        void catalogLoaded() {
+            assertThat(catalogEntry("arasaka_minami_10").properties()).containsEntry("shots", "40").containsEntry("ammo", "40");
+            assertThat(catalogEntry("grenade").properties()).doesNotContainKeys("shots", "ammo");
+            assertThat(catalogEntry("mine_all_types").properties()).doesNotContainKeys("shots", "ammo");
+            assertThat(catalogEntry("kendachi_monoknife").properties()).doesNotContainKeys("shots", "ammo");
+        }
+
+        @Test
+        @DisplayName("снаряд Barrett-Arasaka бронебойный, остальное оружие из справочника заряжено обычными")
+        void armorPiercingOnlyBarrett() {
+            assertThat(Cp2020Weapons.CATALOG)
+                    .filteredOn(entry -> entry.properties().containsKey("armorPiercing"))
+                    .extracting(CatalogItem::key)
+                    .containsExactly("barrett_arasaka_light_20mm");
+        }
+
+        private CatalogItem catalogEntry(String key) {
+            return Cp2020Weapons.CATALOG.stream().filter(e -> e.key().equals(key)).findFirst().orElseThrow();
+        }
+    }
+
+    @Nested
+    @DisplayName("Боеприпасы CP2020")
+    class AmmoTests {
+
+        @Test
+        @DisplayName("справочник: коды уникальны, каждая строка проходит проверку полей без потерь")
+        void catalogValid() {
+            assertThat(Cp2020Ammo.CATALOG).extracting(CatalogItem::key).doesNotHaveDuplicates();
+            assertThat(Cp2020Ammo.CATALOG).allSatisfy(entry -> {
+                assertThat(entry.typeCode()).isEqualTo(Cp2020ItemTypes.AMMO);
+                assertThat(Cp2020ItemTypes.AMMO_TYPE.normalize(entry.properties())).isEqualTo(entry.properties());
+                assertThat(entry.packSize()).isPositive();
+            });
+        }
+
+        @ParameterizedTest(name = "{0}: {1} шт. за {2}")
+        @CsvSource({"ammo_5mm_100_15, 100, 15", "ammo_9mm_50_15, 50, 15", "ammo_11mm_50_18, 50, 18", "ammo_12mm_50_20, 50, 20",
+                "ammo_5_56_100_40, 100, 40", "ammo_00_12_15, 12, 15", "ammo_20mm, 1, 25", "ammo_arrows, 12, 24", "ammo_bolts, 12, 30",
+                "ammo_pellets, 100, 6", "ammo_needles, 50, 25", "ammo_napalm, 10, 50", "ammo_micro_missiles, 4, 100"})
+        @DisplayName("строки совпадают с таблицей книги (с. 64)")
+        void bookRows(String key, int pack, int cost) {
+            CatalogItem entry = ammo(key);
+
+            assertThat(entry.packSize()).isEqualTo(pack);
+            assertThat(entry.cost()).isEqualTo(cost);
+        }
+
+        @Test
+        @DisplayName("бронебойные — в три раза дороже, латунная гильза — в два")
+        void multipliers() {
+            CatalogItem armorPiercing = ammo("ammo_9mm_50_15_ap");
+
+            assertThat(armorPiercing.cost()).isEqualTo(45);
+            assertThat(armorPiercing.properties()).containsEntry("armorPiercing", "1");
+            assertThat(ammo("ammo_20mm").properties()).containsEntry("armorPiercing", "1");
+            assertThat(ammo("brass_ammo_357_50_15").cost()).isEqualTo(30);
+        }
+
+        @Test
+        @DisplayName("у каждого патрона оружия из справочника есть строка боеприпасов")
+        void everyCaliberHasAmmo() {
+            assertThat(Cp2020Weapons.CATALOG)
+                    .extracting(entry -> entry.properties().get("caliber"))
+                    .filteredOn(java.util.Objects::nonNull)
+                    .isSubsetOf(Cp2020Ammo.CATALOG.stream().map(entry -> entry.properties().get("caliber")).toList());
+        }
+
+        private CatalogItem ammo(String key) {
+            return Cp2020Ammo.CATALOG.stream().filter(e -> e.key().equals(key)).findFirst().orElseThrow();
         }
     }
 
@@ -223,6 +317,29 @@ class ItemTypesTest {
             assertThat(item.getType()).isEqualTo(Cp2020ItemTypes.WEAPON);
             assertThat(item.getProperties()).containsEntry("damage", "2D6+3").containsEntry("rof", "20");
             verify(itemRepository).save(item);
+        }
+
+        @Test
+        @DisplayName("боеприпасы из справочника: количество — патроны в коробках")
+        void ammoFromCatalog() {
+            Item item = itemService.addFromCatalog(1L, "ammo_9mm_50_15", 2);
+
+            assertThat(item.getQuantity()).isEqualTo(100);
+            assertThat(item.getCost()).isEqualTo(15);
+            assertThat(item.getType()).isEqualTo(Cp2020ItemTypes.AMMO);
+            assertThat(item.getProperties()).containsEntry("caliber", "9mm");
+        }
+
+        @Test
+        @DisplayName("действие над предметом другого персонажа — 404-исключение")
+        void actionOfOtherCharacter() {
+            Item weapon = new Item();
+            weapon.setInventory(inventory);
+            inventory.getCharacter().setId(1L);
+            when(itemRepository.findById(5L)).thenReturn(Optional.of(weapon));
+
+            assertThatThrownBy(() -> itemService.performAction(2L, 5L, "FIRE", Map.of()))
+                    .isInstanceOf(NotFoundException.class);
         }
 
         @Test
