@@ -178,9 +178,23 @@ class Cp2020WeaponActionsTest {
         @DisplayName("нечем перезарядить — причина названа с нужным размером")
         void noMagazines() {
             Item gun = weapon(10, 5, 2, "9mm");
-            stack(backpack, "9mm", 50, false);
 
             assertThat(action(gun, "RELOAD").unavailable()).contains("Нет снаряжённых магазинов «9mm» на 10–50");
+        }
+
+        @Test
+        @DisplayName("патроны россыпью заряжают магазин в оружии одним действием")
+        void looseAmmoReloadsInOneAction() {
+            Item gun = weapon(10, 5, 2, "9mm");
+            Item box = stack(backpack, "9mm", 50, false);
+
+            assertThat(action(gun, "RELOAD").unavailable()).isNull();
+            assertThat(action(gun, "RELOAD").sources()).extracting(ItemField.Option::value).contains(String.valueOf(box.getId()));
+
+            perform(gun, "RELOAD", box);
+
+            assertThat(gun.getProperties()).containsEntry("ammo", "10");
+            assertThat(box.getQuantity()).isEqualTo(45);
         }
 
         @Test
@@ -386,7 +400,7 @@ class Cp2020WeaponActionsTest {
             mag.setId(nextId++);
             perform(mag, "LOAD", box);
             assertThat(action(gun, "RELOAD").sources()).extracting(ItemField.Option::value)
-                    .containsExactly(String.valueOf(mag.getId()));
+                    .startsWith(String.valueOf(mag.getId()));
         }
 
         @ParameterizedTest(name = "{0}, {3}: {4} eb")

@@ -107,7 +107,7 @@ class AttackPageTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
-        assertThat(page).contains("Метнуть", "Подорвать на месте", "data-area=\"true\"");
+        assertThat(page).contains("Метнуть", "Подорвать на месте", "data-multi=\"true\"", "data-attack-band");
     }
 
     @Test
@@ -118,7 +118,7 @@ class AttackPageTest {
 
         String page = sheetAfter(throwGrenade(grenade, 5, "THROW"));
 
-        assertThat(page).contains("заряд упал мимо", "Кого задело", "/attack/blast", "name=\"amount\" value=\"14\"");
+        assertThat(page).contains("заряд упал мимо", "Кого задело", "/attack/blast/", "/dismiss").doesNotContain("type=\"hidden\" name=\"amount\"");
     }
 
     @Test

@@ -14,9 +14,10 @@ import java.util.List;
  * @param min      нижняя граница числа, null — без неё
  * @param max      верхняя граница числа, null — без неё
  * @param options  варианты для {@link Kind#ENUM}
+ * @param advanced нужно редко: в форме свёрнуто
  */
 public record ItemField(String key, String label, Kind kind, boolean required, String prefix, String suffix,
-                        Integer min, Integer max, List<Option> options) {
+                        Integer min, Integer max, List<Option> options, boolean advanced) {
 
     public enum Kind {
         INT, TEXT, DICE, ENUM, FLAG
@@ -33,27 +34,31 @@ public record ItemField(String key, String label, Kind kind, boolean required, S
     }
 
     public static ItemField number(String key, String label, String prefix, String suffix, Integer min, Integer max) {
-        return new ItemField(key, label, Kind.INT, false, prefix, suffix, min, max, List.of());
+        return new ItemField(key, label, Kind.INT, false, prefix, suffix, min, max, List.of(), false);
     }
 
     public static ItemField text(String key, String label) {
-        return new ItemField(key, label, Kind.TEXT, false, "", "", null, null, List.of());
+        return new ItemField(key, label, Kind.TEXT, false, "", "", null, null, List.of(), false);
     }
 
     public static ItemField requiredText(String key, String label) {
-        return new ItemField(key, label, Kind.TEXT, true, "", "", null, null, List.of());
+        return new ItemField(key, label, Kind.TEXT, true, "", "", null, null, List.of(), false);
     }
 
     public static ItemField dice(String key, String label) {
-        return new ItemField(key, label, Kind.DICE, false, "", "", null, null, List.of());
+        return new ItemField(key, label, Kind.DICE, false, "", "", null, null, List.of(), false);
     }
 
     public static ItemField choice(String key, String label, boolean required, Option... options) {
-        return new ItemField(key, label, Kind.ENUM, required, "", "", null, null, List.of(options));
+        return new ItemField(key, label, Kind.ENUM, required, "", "", null, null, List.of(options), false);
     }
 
     public static ItemField flag(String key, String label, String shown) {
-        return new ItemField(key, label, Kind.FLAG, false, shown, "", null, null, List.of());
+        return new ItemField(key, label, Kind.FLAG, false, shown, "", null, null, List.of(), false);
+    }
+
+    public ItemField asAdvanced() {
+        return new ItemField(key, label, kind, required, prefix, suffix, min, max, options, true);
     }
 
     public boolean isChoice() {

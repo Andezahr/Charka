@@ -3,6 +3,8 @@ package app.charka.model.counters.strategy.health;
 import lombok.Builder;
 import lombok.Value;
 
+import java.util.Map;
+
 /**
  * Входящий урон. Поля, которые конкретной системе не нужны (зона попадания в D&D), она игнорирует.
  */
@@ -18,7 +20,11 @@ public class DamageRequest {
     /** Сразу бросить проверки, положенные после ранения (в CP2020 — спасбросок от оглушения) */
     @Builder.Default
     boolean autoSave = true;
-    /** На сколько пробитие изнашивает броню, если у системы есть износ */
+    /** Особенности правил системы: ядро их только передаёт */
     @Builder.Default
-    int armorWear = 1;
+    Map<String, Integer> extras = Map.of();
+
+    public int extra(String key, int defaultValue) {
+        return extras.getOrDefault(key, defaultValue);
+    }
 }

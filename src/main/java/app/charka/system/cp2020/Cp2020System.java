@@ -1,6 +1,7 @@
 package app.charka.system.cp2020;
 
 import app.charka.attack.AttackRules;
+import app.charka.attack.AttackSource;
 import app.charka.check.CheckRequest;
 import app.charka.check.CheckResolver;
 import app.charka.item.CatalogItem;
@@ -10,6 +11,7 @@ import app.charka.model.Campaign;
 import app.charka.model.Character;
 import app.charka.model.CharacterSkill;
 import app.charka.model.Item;
+import app.charka.model.counters.Counter;
 import app.charka.model.counters.strategy.CounterContext;
 import app.charka.model.counters.strategy.health.DiceRoller;
 import app.charka.npc.NpcSheet;
@@ -24,6 +26,7 @@ import app.charka.system.GameSystem;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +51,8 @@ public class Cp2020System implements GameSystem {
 
     /** Стратегия без состояния; нужна только чтобы посчитать текущие статы */
     private static final Cp2020StatsStrategy STATS = new Cp2020StatsStrategy();
+
+    private static final Cp2020ArmorStrategy ARMOR = new Cp2020ArmorStrategy();
 
     private static final List<CatalogItem> ITEM_CATALOG =
             Stream.of(Cp2020Weapons.CATALOG, Cp2020Magazines.CATALOG, Cp2020Ammo.CATALOG, Cp2020Armors.CATALOG).flatMap(List::stream).toList();
@@ -151,6 +156,41 @@ public class Cp2020System implements GameSystem {
     @Override
     public List<CheckRequest.Part> getSkillBonuses(Character character, SkillDefinition definition, CharacterSkill skill) {
         return Cp2020SkillRules.bonuses(character, definition, skill);
+    }
+
+    /** Роль, состояние, SP торса и чем вооружён */
+    @Override
+    public List<String> getCharacterBrief(Character character) {
+        List<String> brief = new ArrayList<>(GameSystem.super.getCharacterBrief(character));
+        CounterContext context = new CounterContext(null, character.getCounters());
+        context.sibling(Cp2020HealthStrategy.TYPE).ifPresent(health -> brief.add(healthBrief(health)));
+        context.sibling(Cp2020ArmorStrategy.TYPE).ifPresent(armor -> brief.add("SP торса " + ARMOR.sp(armor, Cp2020Location.TORSO)));
+        character.getInventories().stream()
+                .flatMap(inventory -> inventory.getContent().stream())
+                .filter(item -> ATTACK_RULES.form(AttackSource.of(item), Map.of()) != null)
+                .map(Item::getName)
+                .forEach(brief::add);
+        return brief;
+    }
+
+    private static String healthBrief(Counter health) {
+        if (health.getFlag(Cp2020HealthStrategy.DEAD)) {
+            return "Мёртв";
+        }
+        int damage = health.getValue() == null ? 0 : health.getValue();
+        return damage == 0 ? "Цел" : Cp2020Rules.levelName(Cp2020Rules.woundLevel(damage)) + " · урон " + damage;
+    }
+
+    /** HOMEBREW: копия получает снаряжение как новое: целая броня, рабочее оружие, полный магазин. В книге копий нет */
+    @Override
+    public void prepareItemCopy(Item item) {
+        item.getProperties().keySet().removeIf(key -> key.startsWith("wear_") || key.equals(Cp2020ItemTypes.JAMMED));
+        if (Cp2020ItemTypes.WEAPON.equals(item.getType()) && item.getProperties().containsKey(Cp2020ItemTypes.LOADED)) {
+            String capacity = item.getProperties().getOrDefault(Cp2020ItemTypes.INSERTED, item.getProperties().get(Cp2020ItemTypes.SHOTS));
+            if (capacity != null) {
+                item.getProperties().put(Cp2020ItemTypes.LOADED, capacity);
+            }
+        }
     }
 
     @Override

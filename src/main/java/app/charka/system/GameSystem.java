@@ -170,6 +170,19 @@ public interface GameSystem {
     }
 
     /**
+     * Коротко о персонаже для списка кампании: мастеру не нужно открывать лист. Вызывать в транзакции.
+     */
+    default List<String> getCharacterBrief(Character character) {
+        return rolesOf(character).stream().map(CharacterRole::name).toList();
+    }
+
+    /**
+     * Предмет скопирован новому NPC: что не должно перейти (износ, расход), система убирает здесь.
+     */
+    default void prepareItemCopy(Item item) {
+    }
+
+    /**
      * Шаблоны быстрого создания NPC; пусто — только пустой NPC.
      */
     default List<NpcTemplate> getNpcTemplates() {

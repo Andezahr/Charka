@@ -10,25 +10,51 @@
   </select>
   <th:block th:each="t : ${types}">
     <div th:unless="${#lists.isEmpty(t.fields)}" class="field-grid item-fields" th:attr="data-item-fields=${t.code}" hidden>
-      <th:block th:each="f : ${t.fields}"
+      <th:block th:each="f : ${t.fields.?[!advanced]}"
                 th:with="value=${item != null and item.type == t.code ? item.properties[f.key] : null}">
-        <label th:if="${f.flag}" class="check">
-          <input type="checkbox" th:name="'prop.' + ${f.key}" value="1" th:checked="${value != null}" disabled>
-          <span th:text="${f.label}">Бронебойное</span>
-        </label>
-        <label th:unless="${f.flag}" class="field">
-          <span class="label" th:text="${f.label}">Точность</span>
-          <select th:if="${f.choice}" th:name="'prop.' + ${f.key}" th:required="${f.required}" disabled>
-            <option th:unless="${f.required}" value="">—</option>
-            <option th:each="o : ${f.options}" th:value="${o.value}" th:text="${o.value} + ' — ' + ${o.label}"
-                    th:selected="${value == o.value}">SMG — Пистолет-пулемёт</option>
-          </select>
-          <input th:unless="${f.choice}" th:type="${f.number} ? 'number' : 'text'" th:name="'prop.' + ${f.key}"
-                 th:value="${value}" th:attr="min=${f.min},max=${f.max}" autocomplete="off" disabled>
-        </label>
+        <th:block th:replace="~{fragments/items :: field(${f}, ${value})}"></th:block>
       </th:block>
+      <details class="cp-more item-more" th:unless="${#lists.isEmpty(t.fields.?[advanced])}">
+        <summary>Дополнительно</summary>
+        <div class="field-grid">
+          <th:block th:each="f : ${t.fields.?[advanced]}"
+                    th:with="value=${item != null and item.type == t.code ? item.properties[f.key] : null}">
+            <th:block th:replace="~{fragments/items :: field(${f}, ${value})}"></th:block>
+          </th:block>
+        </div>
+      </details>
     </div>
   </th:block>
 </th:block>
+
+<!-- Одно поле типа предмета -->
+<th:block th:fragment="field(f, value)">
+  <label th:if="${f.flag}" class="check">
+    <input type="checkbox" th:name="'prop.' + ${f.key}" value="1" th:checked="${value != null}" disabled>
+    <span th:text="${f.label}">Бронебойное</span>
+  </label>
+  <label th:unless="${f.flag}" class="field">
+    <span class="label" th:text="${f.label}">Точность</span>
+    <select th:if="${f.choice}" th:name="'prop.' + ${f.key}" th:required="${f.required}" disabled>
+      <option th:unless="${f.required}" value="">—</option>
+      <option th:each="o : ${f.options}" th:value="${o.value}" th:text="${o.value} + ' — ' + ${o.label}"
+              th:selected="${value == o.value}">SMG — Пистолет-пулемёт</option>
+    </select>
+    <input th:unless="${f.choice}" th:type="${f.number} ? 'number' : 'text'" th:name="'prop.' + ${f.key}"
+           th:value="${value}" th:attr="min=${f.min},max=${f.max}" autocomplete="off" disabled>
+  </label>
+</th:block>
+
+<!-- Кнопка действия над предметом -->
+<form th:fragment="action-form(action, url)" th:action="${url}" method="post" class="item-action">
+  <select th:unless="${#lists.isEmpty(action.sources)}" name="source" required aria-label="Откуда взять патроны">
+    <option th:each="source : ${action.sources}" th:value="${source.value}" th:text="${source.label}">Патроны</option>
+  </select>
+  <input th:if="${action.amount != null}" type="number" name="amount" class="narrow" min="1"
+         th:value="${action.amount}" th:attr="max=${action.maxAmount}" th:disabled="${action.unavailable != null}"
+         required aria-label="Сколько патронов">
+  <button type="submit" class="btn btn-sm" th:disabled="${action.unavailable != null}"
+          th:text="${action.label}">Выстрел</button>
+</form>
 </body>
 </html>

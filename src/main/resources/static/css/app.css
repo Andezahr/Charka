@@ -556,8 +556,17 @@ form.inline { display: inline-flex; margin: 0; }
 .char-card-name { font-weight: 600; font-size: 16px; color: var(--text); }
 .char-card-name:hover { color: var(--accent); }
 .char-card .chips { margin-top: 10px; }
-.npc-copy { margin-top: 10px; }
-.form-row.npc-copy input { flex: 0 0 72px; width: 72px; }
+.npc-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.npc-create select { flex: 0 1 auto; }
+.target-picker { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.target-group { flex-basis: 100%; font-size: 12px; color: var(--muted); }
+.attack-bands { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.attack-bands .btn.is-active { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+details.item-more { margin-top: 8px; }
+.attack-dialog .dialog-actions { position: sticky; bottom: 0; padding: 10px 0; background: var(--surface); z-index: 1; }
+.attack-bands input { flex: 0 0 90px; width: 90px; }
+#inventories > .card-body > .item-result { margin-bottom: 12px; }
+details.item-more > .field-grid, details.item-more > .item-actions { margin-top: 8px; }
 
 .avatar {
   display: inline-flex;

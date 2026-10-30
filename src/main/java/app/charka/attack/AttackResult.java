@@ -5,14 +5,14 @@ import java.util.List;
 /**
  * Итог атаки одной цепочкой шагов: попадание, урон, броня и раны цели.
  *
- * @param title    «Minami → Олежа»
- * @param outcome  короткий итог
- * @param hit      попала ли атака
- * @param steps    шаги по порядку
- * @param scattered заряд отклонился и упал мимо цели: кого задело, выбирает мастер; иначе null
- * @param detached итог не показать в строке предмета: предмет израсходован
+ * @param title         «Minami → Олежа»
+ * @param outcome       короткий итог
+ * @param hit           попала ли атака
+ * @param steps         шаги по порядку
+ * @param pendingBlast  заряд упал мимо и ждёт решения мастера: id {@code PendingBlast}; иначе null
+ * @param detached      итог показывается не в строке предмета: предмет израсходован или рядом нужно решение мастера
  */
-public record AttackResult(String title, String outcome, boolean hit, List<String> steps, AreaDamage scattered, boolean detached) {
+public record AttackResult(String title, String outcome, boolean hit, List<String> steps, Long pendingBlast, boolean detached) {
 
     public AttackResult {
         steps = List.copyOf(steps);
@@ -23,6 +23,6 @@ public record AttackResult(String title, String outcome, boolean hit, List<Strin
     }
 
     public AttackResult withoutItemRow() {
-        return new AttackResult(title, outcome, hit, steps, scattered, true);
+        return new AttackResult(title, outcome, hit, steps, pendingBlast, true);
     }
 }

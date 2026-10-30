@@ -100,6 +100,50 @@ class Cp2020AreaWeaponsTest {
         }
 
         @Test
+        @DisplayName("Кнопка говорит, что случится: нож метают, а не бьют им")
+        void actionLabel() {
+            assertThat(rules.form(weapon("knife", 1), STATS).actionLabel()).isEqualTo("Метнуть");
+            assertThat(rules.form(weapon("mine_all_types", 1), STATS).actionLabel()).isEqualTo("Подорвать");
+            assertThat(rules.form(weapon("arasaka_rapid_assault_12", 1), STATS).actionLabel()).isEqualTo("Атаковать");
+        }
+
+        @Test
+        @DisplayName("Несколько пятен предлагают 2, а не все 10: каждое лишнее даёт −2")
+        void patternsDefault() {
+            assertThat(rules.form(weapon("arasaka_rapid_assault_12", 1), STATS).defaultRounds()).isEqualTo(2);
+        }
+
+        @Test
+        @DisplayName("Расстояние полосами таблицы, чтобы не набирать число")
+        void bands() {
+            assertThat(rules.form(weapon("arasaka_rapid_assault_12", 1), STATS).bands())
+                    .extracting(AttackForm.Band::meters).containsExactly(1, 12, 25, 50, 100);
+        }
+
+        @Test
+        @DisplayName("Метателю не предлагают турель и смартган; частое открыто, остальное свёрнуто")
+        void modifiersApply() {
+            List<String> codes = rules.form(weapon("shiriken", 1), STATS).sections().stream()
+                    .flatMap(section -> section.choices().stream())
+                    .flatMap(choice -> choice.options().stream())
+                    .map(option -> option.value())
+                    .toList();
+
+            assertThat(codes).contains("immobile", "aim_1", "ambush").doesNotContain("turret", "smartgun", "hip", "scope_telescopic");
+            assertThat(rules.form(weapon("shiriken", 1), STATS).sections())
+                    .filteredOn(section -> !section.rare()).extracting(AttackForm.Section::name).containsExactly("Часто");
+        }
+
+        @Test
+        @DisplayName("Неподходящий модификатор сервер отклоняет")
+        void modifierRefused() {
+            AttackRequest smart = new AttackRequest(List.of(), null, 5, null, null, Set.of("smartgun"), 0, "SINGLE", 0, 0);
+
+            assertThatThrownBy(() -> rules.toHit(thrower, weapon("shiriken", 1), smart, STATS))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
         @DisplayName("Взрывчатка спрашивает единицы и предлагает одну")
         void units() {
             AttackForm form = rules.form(weapon("c_6_plastic_explosive", 4), STATS);
@@ -193,30 +237,30 @@ class Cp2020AreaWeaponsTest {
         @DisplayName("Осколочная граната: зона 5 м, 7D6 (с. 63, 99)")
         void grenade() {
             Deque<Integer> queue = rolls(1, 2, 3, 4, 5, 6, 1);
-            AreaDamage blast = rules.areaDamage(weapon("grenade_fragmentation", 1), attack("THROW", 5, 0), sides -> queue.removeFirst());
+            AreaDamage blast = Cp2020AreaAttacks.areaDamage(weapon("grenade_fragmentation", 1), attack("THROW", 5, 0), sides -> queue.removeFirst());
 
             assertThat(blast.radius()).isEqualTo(5);
             assertThat(blast.amount()).isEqualTo(22);
-            assertThat(blast.wholeBody()).isFalse();
+            assertThat(blast.data()).containsEntry("wholeBody", "false");
         }
 
         @Test
         @DisplayName("Взрывчатка: зона умножается на единицы, урон не растёт, по всему телу (с. 111)")
         void explosive() {
             Deque<Integer> queue = rolls(1, 1, 1, 1, 1, 1, 1, 1);
-            AreaDamage blast = rules.areaDamage(weapon("c_6_plastic_explosive", 3), attack("PLANT", 0, 3), sides -> queue.removeFirst());
+            AreaDamage blast = Cp2020AreaAttacks.areaDamage(weapon("c_6_plastic_explosive", 3), attack("PLANT", 0, 3), sides -> queue.removeFirst());
 
             assertThat(blast.radius()).isEqualTo(15);
             assertThat(blast.amount()).isEqualTo(8);
-            assertThat(blast.wholeBody()).isTrue();
+            assertThat(blast.data()).containsEntry("wholeBody", "true");
         }
 
         @Test
         @DisplayName("По всему телу: зона не бросается, считается торс")
         void wholeBodyTorso() {
-            AreaDamage blast = new AreaDamage("C-6", "8d10", 30, "NORMAL", true, 1, 5, List.of());
+            AreaDamage blast = new AreaDamage("C-6", "8d10", 30, 5, Map.of("damageType", "NORMAL", "wholeBody", "true"), List.of());
 
-            AttackHit hit = rules.areaHit(blast, sides -> {
+            AttackHit hit = Cp2020AreaAttacks.hit(blast, sides -> {
                 throw new AssertionError("зона не бросается");
             });
 
@@ -227,21 +271,21 @@ class Cp2020AreaWeaponsTest {
         @Test
         @DisplayName("Осколки: зона у каждой цели своя")
         void ownLocation() {
-            AreaDamage blast = new AreaDamage("Граната", "7d6", 20, "NORMAL", false, 1, 5, List.of());
+            AreaDamage blast = new AreaDamage("Граната", "7d6", 20, 5, Map.of("damageType", "NORMAL"), List.of());
 
-            assertThat(rules.areaHit(blast, sides -> 1).damage().getLocation()).isEqualTo("HEAD");
-            assertThat(rules.areaHit(blast, sides -> 3).damage().getLocation()).isEqualTo("TORSO");
+            assertThat(Cp2020AreaAttacks.hit(blast, sides -> 1).damage().getLocation()).isEqualTo("HEAD");
+            assertThat(Cp2020AreaAttacks.hit(blast, sides -> 3).damage().getLocation()).isEqualTo("TORSO");
         }
 
         @Test
         @DisplayName("Ослепляющая не бросает урон: эффект применяет мастер")
         void effectOnly() {
-            AreaDamage blast = rules.areaDamage(weapon("grenade_dazzle", 1), attack("THROW", 5, 0), sides -> {
+            AreaDamage blast = Cp2020AreaAttacks.areaDamage(weapon("grenade_dazzle", 1), attack("THROW", 5, 0), sides -> {
                 throw new AssertionError("урон не бросается");
             });
 
             assertThat(blast.amount()).isNull();
-            AttackHit hit = rules.areaHit(blast, sides -> 1);
+            AttackHit hit = Cp2020AreaAttacks.hit(blast, sides -> 1);
             assertThat(hit.damage()).isNull();
             assertThat(hit.steps()).anyMatch(step -> step.contains("Blind 4"));
         }
@@ -249,15 +293,15 @@ class Cp2020AreaWeaponsTest {
         @Test
         @DisplayName("Отклонение: направление и метры по таблице гранат (с. 99, 108)")
         void scatter() {
-            AreaDamage blast = new AreaDamage("Граната", "7d6", 20, "NORMAL", false, 1, 5, List.of());
+            AreaDamage blast = new AreaDamage("Граната", "7d6", 20, 5, Map.of("damageType", "NORMAL"), List.of());
 
             Deque<Integer> near = rolls(8, 4);
-            assertThat(rules.scatter(blast, sides -> near.removeFirst()))
+            assertThat(Cp2020AreaAttacks.scatter(blast, sides -> near.removeFirst()).steps())
                     .anyMatch(step -> step.contains("за цель") && step.contains("4 м"))
                     .anyMatch(step -> step.contains("всё ещё в зоне"));
 
             Deque<Integer> far = rolls(1, 9);
-            assertThat(rules.scatter(blast, sides -> far.removeFirst()))
+            assertThat(Cp2020AreaAttacks.scatter(blast, sides -> far.removeFirst()).steps())
                     .anyMatch(step -> step.contains("к стрелку"))
                     .anyMatch(step -> step.contains("вне зоны"));
         }
@@ -272,7 +316,7 @@ class Cp2020AreaWeaponsTest {
         @DisplayName("Пятно шире и кубиков меньше с расстоянием")
         void pattern(int distance, int radius, int dice) {
             Deque<Integer> queue = rolls(1, 1, 1, 1);
-            AreaDamage blast = rules.areaDamage(weapon("arasaka_rapid_assault_12", 1), attack("SINGLE", distance, 0), sides -> queue.removeFirst());
+            AreaDamage blast = Cp2020AreaAttacks.areaDamage(weapon("arasaka_rapid_assault_12", 1), attack("SINGLE", distance, 0), sides -> queue.removeFirst());
 
             assertThat(blast.radius()).isEqualTo(radius);
             assertThat(blast.amount()).isEqualTo(dice);
@@ -287,7 +331,7 @@ class Cp2020AreaWeaponsTest {
 
             assertThat(check.parts()).anyMatch(part -> part.value() == -8);
             Deque<Integer> queue = rolls(1, 1, 1, 1);
-            assertThat(rules.areaDamage(caws, attack("PATTERNS", 5, 5), sides -> queue.removeFirst()).radius()).isEqualTo(5);
+            assertThat(Cp2020AreaAttacks.areaDamage(caws, attack("PATTERNS", 5, 5), sides -> queue.removeFirst()).radius()).isEqualTo(5);
         }
 
         @Test

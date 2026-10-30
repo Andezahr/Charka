@@ -9,17 +9,13 @@ import app.charka.model.Item;
 import app.charka.model.counters.Counter;
 import app.charka.model.counters.strategy.CounterStrategyFactory;
 import app.charka.model.counters.strategy.health.DiceRoller;
-import app.charka.model.counters.strategy.health.HealthCounterStrategy;
 import app.charka.repository.CharacterRepository;
-import app.charka.repository.CounterRepository;
-import app.charka.repository.InventoryRepository;
 import app.charka.service.CharacterService;
 import app.charka.service.ItemService;
 import app.charka.service.campaign.CampaignService;
 import app.charka.service.counter.CounterService;
 import app.charka.system.GameSystem;
 import app.charka.system.GameSystemRegistry;
-import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,14 +40,11 @@ public class NpcService {
     private final CampaignService campaignService;
     private final CharacterService characterService;
     private final CharacterRepository characterRepository;
-    private final CounterRepository counterRepository;
     private final CounterService counterService;
     private final CounterStrategyFactory strategyFactory;
-    private final InventoryRepository inventoryRepository;
     private final ItemService itemService;
     private final GameSystemRegistry systemRegistry;
     private final DiceRoller diceRoller;
-    private final EntityManager entityManager;
 
     /**
      * Каждый NPC бросается отдельно, поэтому двое по одному шаблону различаются.
@@ -132,29 +125,22 @@ public class NpcService {
         Character npc = new Character();
         npc.setName(name);
         npc.setNpc(true);
-        Character saved = characterService.createInCampaign(campaignId, npc);
-        // счётчики и инвентарь сохранены отдельно: их нужно увидеть в коллекциях персонажа
-        entityManager.flush();
-        inventoryRepository.findByCharacterId(saved.getId()).forEach(entityManager::refresh);
-        entityManager.refresh(saved);
-        return saved;
+        return characterService.createInCampaign(campaignId, npc);
     }
 
     private void apply(Character npc, NpcSheet sheet) {
         npc.getRoles().addAll(sheet.roles());
         sheet.skills().forEach((code, level) -> addSkill(npc, code, level, null));
-        for (Counter counter : counterRepository.findByCharacterId(npc.getId())) {
+        for (Counter counter : npc.getCounters()) {
             Map<String, Integer> attributes = sheet.attributes().get(counter.getType());
             if (attributes != null) {
                 counterService.updateAttributes(npc.getId(), counter.getId(), attributes);
             }
         }
-        Long inventoryId = inventoryRepository.findByCharacterId(npc.getId()).get(0).getId();
+        Long inventoryId = npc.getInventories().get(0).getId();
         for (NpcSheet.Gear gear : sheet.items()) {
             Item item = itemService.addFromCatalog(inventoryId, gear.catalogKey(), 1);
             if (gear.action() != null) {
-                entityManager.flush();
-                entityManager.refresh(npc);
                 itemService.performAction(npc.getId(), item.getId(), gear.action(), Map.of());
             }
         }
@@ -175,7 +161,7 @@ public class NpcService {
 
     /** Счётчик того же типа у копии уже мог создаться по умолчанию: тогда значения переносятся в него */
     private void copyCounters(Character source, Character copy) {
-        List<Counter> own = new ArrayList<>(counterRepository.findByCharacterId(copy.getId()));
+        List<Counter> own = new ArrayList<>(copy.getCounters());
         for (Counter counter : source.getCounters()) {
             Counter target = own.stream().filter(candidate -> candidate.getType().equals(counter.getType())).findFirst().orElse(null);
             if (target == null) {
@@ -190,26 +176,29 @@ public class NpcService {
             target.setValue(counter.getValue());
             target.getAttributes().clear();
             target.getAttributes().putAll(counter.getAttributes());
-            if (strategyFactory.findStrategy(counter.getType()).orElse(null) instanceof HealthCounterStrategy health) {
-                health.reset(target);
-            }
+            Counter copied = target;
+            strategyFactory.findStrategy(counter.getType()).ifPresent(strategy -> strategy.prepareCopy(copied));
         }
     }
 
     /** Первый инвентарь копии уже создан вместе с ней */
     private void copyInventories(Character source, Character copy) {
-        List<Inventory> own = inventoryRepository.findByCharacterId(copy.getId());
+        GameSystem system = systemRegistry.forCharacter(copy);
         for (int i = 0; i < source.getInventories().size(); i++) {
             Inventory from = source.getInventories().get(i);
-            Inventory to = i < own.size() ? own.get(i) : new Inventory();
-            to.setName(from.getName());
-            if (to.getId() == null) {
-                to.setContent(new ArrayList<>());
+            Inventory to;
+            if (i < copy.getInventories().size()) {
+                to = copy.getInventories().get(i);
+            } else {
+                to = new Inventory();
                 to.setCharacter(copy);
                 copy.getInventories().add(to);
             }
+            to.setName(from.getName());
             for (Item item : from.getContent()) {
-                to.getContent().add(copyItem(item, to));
+                Item copied = copyItem(item, to);
+                system.prepareItemCopy(copied);
+                to.getContent().add(copied);
             }
         }
     }

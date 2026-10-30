@@ -2,6 +2,7 @@ package app.charka.service.impl;
 
 import app.charka.exception.CharacterNotFoundException;
 import app.charka.exception.InventoryNotFoundException;
+import app.charka.model.Character;
 import app.charka.model.Inventory;
 import app.charka.model.Item;
 import app.charka.repository.CharacterRepository;
@@ -46,11 +47,10 @@ public class InventoryServiceImpl implements InventoryService {
      */
     @Override
     public Inventory create(Long characterId, Inventory inventory) {
-        inventory.setCharacter(
-                characterRepository.findById(characterId)
-                .orElseThrow(
-                        CharacterNotFoundException.forId(characterId)
-                ));
+        Character character = characterRepository.findById(characterId)
+                .orElseThrow(CharacterNotFoundException.forId(characterId));
+        inventory.setCharacter(character);
+        character.getInventories().add(inventory);
         return inventoryRepository.save(inventory);
     }
 

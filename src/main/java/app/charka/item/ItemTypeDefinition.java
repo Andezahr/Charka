@@ -89,7 +89,10 @@ public record ItemTypeDefinition(String code, String displayName, List<ItemField
                 continue;
             }
             if (field.isFlag()) {
-                lines.add(new Line(field.prefix(), field.label()));
+                // пустая подпись: флаг и так виден по кнопке действия
+                if (!field.prefix().isEmpty()) {
+                    lines.add(new Line(field.prefix(), field.label()));
+                }
             } else if (field.isChoice()) {
                 lines.add(new Line(value, field.label() + ": " + optionLabel(field, value)));
             } else {

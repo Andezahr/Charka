@@ -2,6 +2,8 @@ package app.charka.controller;
 
 import app.charka.attack.AttackForm;
 import app.charka.attack.AttackRules;
+import app.charka.attack.AttackService;
+import app.charka.attack.AttackSource;
 import app.charka.skill.StatValue;
 import app.charka.dice.DiceService;
 import app.charka.item.CatalogItem;
@@ -20,6 +22,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -36,6 +39,7 @@ public class CharacterController {
     private final MoneyService moneyService;
     private final GameSystemRegistry systemRegistry;
     private final DiceService diceService;
+    private final AttackService attackService;
 
     @GetMapping
     public String characterPage(@PathVariable Long id, Model model) {
@@ -68,7 +72,7 @@ public class CharacterController {
             character.getInventories().stream()
                     .flatMap(inventory -> inventory.getContent().stream())
                     .forEach(item -> {
-                        AttackForm form = attackRules.form(item, currentStats);
+                        AttackForm form = attackRules.form(AttackSource.of(item), currentStats);
                         if (form != null) {
                             attackForms.put(item.getId(), form);
                         }
@@ -77,7 +81,10 @@ public class CharacterController {
             model.addAttribute("attackTargets", character.getCampaign() == null ? List.of()
                     : character.getCampaign().getCharacters().stream()
                     .filter(other -> !other.getId().equals(id))
+                    // сначала другая сторона: это самая вероятная цель, и она будет выбрана сразу
+                    .sorted(Comparator.comparing(other -> other.isNpc() == character.isNpc()))
                     .toList());
+            model.addAttribute("pendingBlasts", attackService.pendingBlasts(id));
         }
         model.addAttribute("roles", system.rolesOf(character));
         model.addAttribute("quickDice", system.getQuickDice());

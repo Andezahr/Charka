@@ -85,17 +85,17 @@ final class Cp2020WeaponActions {
         if (weapon.getProperties().containsKey(Cp2020ItemTypes.JAMMED)) {
             actions.add(ItemAction.simple(UNJAM, "Расклинить", null));
         }
-        actions.add(ItemAction.simple(FIRE, "Списать патрон", blocked));
+        actions.add(ItemAction.simple(FIRE, "Списать патрон", blocked).asSecondary());
         if (rof > 1) {
             int max = Math.min(rof, loaded);
-            actions.add(ItemAction.withAmount(BURST, "Списать патроны", blocked, Math.min(BURST_ROUNDS, max), max));
+            actions.add(ItemAction.withAmount(BURST, "Списать патроны", blocked, Math.min(BURST_ROUNDS, max), max).asSecondary());
         }
         actions.add(usesMagazines(weapon) ? magazineReloadAction(weapon) : directReloadAction(weapon));
         if (usesMagazines(weapon) && hasMagazine(weapon)) {
-            actions.add(ItemAction.simple(EJECT, "Извлечь магазин", null));
+            actions.add(ItemAction.simple(EJECT, "Извлечь магазин", null).asSecondary());
         }
         if (usesMagazines(weapon)) {
-            actions.add(ItemAction.simple(ADD_MAGAZINE, "＋ Магазин", null));
+            actions.add(ItemAction.simple(ADD_MAGAZINE, "＋ Магазин", null).asSecondary());
         }
         return actions;
     }
@@ -127,11 +127,19 @@ final class Cp2020WeaponActions {
         return "Оружие не заряжено";
     }
 
+    /**
+     * Снаряжённый магазин или патроны россыпью в тот магазин, что уже в оружии: одним действием,
+     * без отдельных «добавить магазин» и «снарядить». HOMEBREW: книга (с. 98) знает только «перезарядка — действие», как именно, не делит.
+     */
     private static ItemAction magazineReloadAction(Item weapon) {
-        List<Option> sources = fittingMagazines(weapon)
+        Stream<Option> magazines = fittingMagazines(weapon)
                 .filter(magazine -> number(magazine, Cp2020ItemTypes.LOADED) > 0)
-                .map(magazine -> new Option(String.valueOf(magazine.getId()), magazineLabel(magazine)))
-                .toList();
+                .map(magazine -> new Option(String.valueOf(magazine.getId()), magazineLabel(magazine)));
+        boolean room = hasMagazine(weapon) && number(weapon, Cp2020ItemTypes.LOADED) < capacity(weapon);
+        Stream<Option> loose = room
+                ? stacks(weapon).map(stack -> new Option(String.valueOf(stack.getId()), "В этот магазин: " + stackLabel(stack)))
+                : Stream.empty();
+        List<Option> sources = Stream.concat(magazines, loose).toList();
         int standard = number(weapon, Cp2020ItemTypes.SHOTS);
         String unavailable = sources.isEmpty()
                 ? "Нет снаряжённых магазинов «" + caliber(weapon) + "» на " + standard + "–" + standard * Cp2020MagazineRules.MAX_EXTENSION
@@ -185,7 +193,9 @@ final class Cp2020WeaponActions {
             case UNJAM -> unjam(item);
             case FIRE -> fire(item, 1);
             case BURST -> fire(item, amount(params));
-            case RELOAD -> usesMagazines(item) ? changeMagazine(item, params.get("source")) : loadFromStack(item, params.get("source"));
+            case RELOAD -> usesMagazines(item) && !isStackSource(item, params.get("source"))
+                    ? changeMagazine(item, params.get("source"))
+                    : loadFromStack(item, params.get("source"));
             case EJECT -> eject(item);
             case ADD_MAGAZINE -> addMagazine(item);
             case LOAD -> loadFromStack(item, params.get("source"));
@@ -216,6 +226,10 @@ final class Cp2020WeaponActions {
         }
         setLoaded(weapon, loaded - rounds, isArmorPiercing(weapon));
         return weapon.getName() + ": выпущено " + rounds + ", заряжено " + (loaded - rounds) + " из " + capacity(weapon);
+    }
+
+    private static boolean isStackSource(Item weapon, String sourceId) {
+        return stacks(weapon).anyMatch(stack -> String.valueOf(stack.getId()).equals(sourceId));
     }
 
     /** Магазин из инвентаря уходит в оружие, прежний со всеми патронами — в инвентарь рядом с оружием */

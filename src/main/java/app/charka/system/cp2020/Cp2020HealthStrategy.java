@@ -37,6 +37,8 @@ import static app.charka.system.cp2020.Cp2020Rules.*;
 public class Cp2020HealthStrategy extends AbstractCounterStrategy implements HealthCounterStrategy {
 
     public static final String TYPE = "CP2020_HEALTH";
+    /** Сколько SP снимает пробитие (`DamageRequest.extras`) */
+    public static final String ARMOR_WEAR = "armorWear";
 
     public static final String STUNNED = "stunned";
     public static final String STABILIZED = "stabilized";
@@ -58,6 +60,12 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
     @Override
     public String getCounterType() {
         return TYPE;
+    }
+
+    /** Копия начинает без ран */
+    @Override
+    public void prepareCopy(Counter counter) {
+        reset(counter);
     }
 
     @Override
@@ -180,7 +188,7 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
         }
         if (type != Cp2020DamageType.BYPASS && sp > 0) {
             int worn = sp;
-            for (int i = 0; i < request.getArmorWear(); i++) {
+            for (int i = 0; i < request.extra(ARMOR_WEAR, 1); i++) {
                 worn = armorStrategy.wear(armor, location);
             }
             event.step("Броня пробита и изношена: SP «" + location.getLabel() + "» " + sp + " → " + worn);

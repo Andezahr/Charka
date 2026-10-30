@@ -59,6 +59,7 @@ public class ItemServiceImpl implements ItemService {
                 .orElseThrow(() -> new NotFoundException(
                         "Inventory not found for id=" + inventoryId));
         item.setInventory(inventory);
+        inventory.getContent().add(item);
         return itemRepository.save(item);
     }
 

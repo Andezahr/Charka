@@ -203,7 +203,7 @@ class Cp2020AttackRulesTest {
         @Test
         @DisplayName("Все модификаторы таблицы есть в форме")
         void sections() {
-            assertThat(Cp2020AttackModifiers.sections()).extracting(AttackForm.Section::name).containsExactly("Цель", "Стрелок", "Оружие");
+            assertThat(Cp2020AttackModifiers.sections()).extracting(AttackForm.Section::name).containsExactly("Часто", "Цель", "Стрелок", "Оружие");
         }
     }
 
@@ -236,7 +236,7 @@ class Cp2020AttackRulesTest {
             AttackHit hit = hit(weapon("barrett_arasaka_light_20mm"), request(5, "TORSO"), 1, 1, 1, 1);
 
             assertThat(hit.damage().getDamageType()).isEqualTo("ARMOR_PIERCING");
-            assertThat(hit.damage().getArmorWear()).isEqualTo(2);
+            assertThat(hit.damage().extra("armorWear", 1)).isEqualTo(2);
         }
 
         @ParameterizedTest

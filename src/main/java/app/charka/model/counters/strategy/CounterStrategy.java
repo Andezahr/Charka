@@ -102,6 +102,12 @@ public interface CounterStrategy {
     }
 
     /**
+     * Счётчик скопирован на нового персонажа: что не должно перейти (раны, износ), стратегия убирает здесь.
+     */
+    default void prepareCopy(Counter counter) {
+    }
+
+    /**
      * Данные для карточки (кладутся в CounterResponseDto.view). null — карточке хватает value.
      */
     default Object describe(CounterContext context) {

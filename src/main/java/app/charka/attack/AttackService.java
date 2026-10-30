@@ -1,6 +1,5 @@
 package app.charka.attack;
 
-import app.charka.check.CheckRequest;
 import app.charka.check.CheckResult;
 import app.charka.check.CheckService;
 import app.charka.dice.DiceService;
@@ -8,10 +7,12 @@ import app.charka.exception.CharacterNotFoundException;
 import app.charka.exception.NotFoundException;
 import app.charka.model.Character;
 import app.charka.model.Item;
+import app.charka.model.PendingBlast;
 import app.charka.model.counters.strategy.health.DiceRoller;
 import app.charka.model.counters.strategy.health.HealthEvent;
 import app.charka.repository.CharacterRepository;
 import app.charka.repository.ItemRepository;
+import app.charka.repository.PendingBlastRepository;
 import app.charka.service.counter.HealthCounterService;
 import app.charka.system.GameSystem;
 import app.charka.system.GameSystemRegistry;
@@ -21,22 +22,19 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
- * Атака оружием: проверка на попадание, расход, урон и его применение к цели; всё пишется в лог бросков.
- * Правила даёт система кампании.
+ * Атака: ход один, план и итоги каждой проверки даёт система кампании; урон применяется к цели, всё пишется в лог бросков.
  */
 @Service
 @RequiredArgsConstructor
 public class AttackService {
 
-    private static final String DEFAULT_TARGET = "Цель";
-
     private final CharacterRepository characterRepository;
     private final ItemRepository itemRepository;
+    private final PendingBlastRepository pendingBlastRepository;
     private final GameSystemRegistry systemRegistry;
     private final CheckService checkService;
     private final DiceService diceService;
@@ -49,33 +47,125 @@ public class AttackService {
      */
     @Transactional
     public AttackResult attack(Long characterId, Long itemId, AttackRequest request) {
-        Character attacker = characterRepository.findById(characterId)
-                .orElseThrow(CharacterNotFoundException.forId(characterId));
         Item weapon = itemRepository.findById(itemId)
                 .filter(item -> characterId.equals(item.getInventory().getCharacter().getId()))
                 .orElseThrow(NotFoundException.forId("Item", itemId));
-        GameSystem system = systemRegistry.forCharacter(attacker);
-        AttackRules rules = system.getAttackRules();
-        if (rules == null || rules.form(weapon, system.getCurrentStats(attacker)) == null) {
-            throw new IllegalArgumentException("Этим предметом нельзя атаковать: " + weapon.getName());
-        }
-        List<Character> targets = targets(attacker, request.targetIds());
-        AttackResult result = perform(attacker, weapon, system, rules, targets, request);
-        // израсходованный предмет ушёл из инвентаря: его строки на листе больше нет
-        boolean spentUp = weapon.getInventory().getContent().stream().noneMatch(item -> item == weapon);
-        return spentUp ? result.withoutItemRow() : result;
+        return attack(characterId, AttackSource.of(weapon), request);
     }
 
     /**
-     * Заряд упал мимо цели, мастер выбрал, кого задело на месте падения.
+     * Атака чем угодно, что понимает система: предметом или способностью.
      *
-     * @param characterId кто атаковал
-     * @throws IllegalArgumentException если целей нет или у системы нет такого урона
+     * @throws IllegalArgumentException если атака невозможна
      */
     @Transactional
-    public AttackResult applyBlast(Long characterId, AreaDamage blast, List<Long> targetIds) {
+    public AttackResult attack(Long characterId, AttackSource source, AttackRequest request) {
         Character attacker = characterRepository.findById(characterId)
                 .orElseThrow(CharacterNotFoundException.forId(characterId));
+        GameSystem system = systemRegistry.forCharacter(attacker);
+        AttackRules rules = system.getAttackRules();
+        if (rules == null || rules.form(source, system.getCurrentStats(attacker)) == null) {
+            throw new IllegalArgumentException("Этим нельзя атаковать: " + source.name());
+        }
+        List<Character> targets = targets(attacker, request.targetIds());
+        AttackContext context = new AttackContext(attacker, source, targets, request, system::getCurrentStats);
+        AttackResult result = perform(context, rules);
+        // израсходованный предмет ушёл из инвентаря: его строки на листе больше нет
+        boolean spentUp = source.item() != null && source.item().getInventory().getContent().stream().noneMatch(item -> item == source.item());
+        return spentUp || result.pendingBlast() != null ? result.withoutItemRow() : result;
+    }
+
+    private AttackResult perform(AttackContext context, AttackRules rules) {
+        AttackPlan plan = rules.plan(context, diceRoller);
+        List<String> steps = new ArrayList<>();
+        String spent = rules.spend(context);
+        if (spent != null) {
+            steps.add(spent);
+        }
+
+        AttackOutcome last = null;
+        String lastSummary = null;
+        int hitTargets = 0;
+        if (plan.checks().isEmpty()) {
+            last = rules.outcome(context, plan, null, null, diceRoller);
+            lastSummary = apply(context, last, steps);
+        }
+        for (AttackPlan.PlannedCheck planned : plan.checks()) {
+            if (planned.intro() != null) {
+                steps.add(planned.intro());
+            }
+            CheckResult check = planned.roller() != null
+                    ? checkService.checkForCharacter(planned.roller().getId(), planned.request())
+                    : checkService.checkForCampaign(context.attacker().getCampaign().getId(), planned.request());
+            steps.addAll(check.steps());
+            last = rules.outcome(context, plan, planned, check, diceRoller);
+            String summary = apply(context, last, steps);
+            lastSummary = summary != null ? summary : lastSummary;
+            hitTargets += last.hits().isEmpty() ? 0 : 1;
+        }
+
+        Long pending = pendingBlast(context, last);
+        if (plan.checks().size() > 1 || (last.headline() == null && last.hits().isEmpty())) {
+            return new AttackResult(plan.title(), "Задето целей: " + hitTargets + " из " + plan.checks().size(), hitTargets > 0, steps, pending, false);
+        }
+        int hitCount = last.hits().size();
+        String outcome = last.headline() != null ? last.headline()
+                : hitCount > 1 ? "Попаданий: " + hitCount + ". " + lastSummary : lastSummary;
+        return new AttackResult(plan.title(), outcome, last.hit(), steps, pending, false);
+    }
+
+    /**
+     * @return итог последнего попадания; null — попаданий нет
+     */
+    private String apply(AttackContext context, AttackOutcome outcome, List<String> steps) {
+        steps.addAll(outcome.steps());
+        String summary = null;
+        for (AttackOutcome.TargetedHit targeted : outcome.hits()) {
+            if (context.targets().size() > 1 && targeted.target() != null && context.item() != null) {
+                steps.add(targeted.target().getName() + ":");
+            }
+            steps.addAll(targeted.hit().steps());
+            summary = applyHit(context.attacker(), context.source().name(), targeted.target(), context.targetName(), targeted.hit(), steps);
+        }
+        return summary;
+    }
+
+    /** Заряд упал мимо: ждёт решения мастера на листе, урон уже брошен и остаётся на сервере */
+    private Long pendingBlast(AttackContext context, AttackOutcome outcome) {
+        AreaDamage blast = outcome.scattered();
+        if (blast == null || blast.amount() == null) {
+            return null;
+        }
+        PendingBlast pending = new PendingBlast();
+        pending.setCharacter(context.attacker());
+        pending.setWeapon(blast.weapon());
+        pending.setExpression(blast.expression());
+        pending.setAmount(blast.amount());
+        pending.setRadius(blast.radius());
+        // урон и зона и так в заголовке заряда: здесь только куда он упал
+        pending.setNote(outcome.steps().stream().filter(step -> !blast.steps().contains(step)).collect(Collectors.joining("; ")));
+        pending.getData().putAll(blast.data());
+        outcome.stillCaught().forEach(target -> pending.getStillCaught().add(target.getId()));
+        return pendingBlastRepository.save(pending).getId();
+    }
+
+    /**
+     * Заряды этого персонажа, которые упали мимо и ждут решения.
+     */
+    @Transactional(readOnly = true)
+    public List<PendingBlast> pendingBlasts(Long characterId) {
+        return pendingBlastRepository.findByCharacterIdOrderByIdDesc(characterId);
+    }
+
+    /**
+     * Мастер выбрал, кого задело упавшим зарядом. Заряд применяется один раз.
+     *
+     * @throws IllegalArgumentException если целей нет
+     */
+    @Transactional
+    public AttackResult applyBlast(Long characterId, Long blastId, List<Long> targetIds) {
+        PendingBlast pending = pending(characterId, blastId);
+        Character attacker = pending.getCharacter();
         AttackRules rules = systemRegistry.forCharacter(attacker).getAttackRules();
         if (rules == null) {
             throw new IllegalArgumentException("У этой системы нет атак");
@@ -83,135 +173,32 @@ public class AttackService {
         if (targetIds.isEmpty()) {
             throw new IllegalArgumentException("Выберите, кого задело");
         }
-        if (blast.amount() == null || blast.amount() < 0) {
-            throw new IllegalArgumentException("Нет урона, который можно применить");
-        }
         List<Character> targets = targets(attacker, targetIds);
+        AreaDamage blast = new AreaDamage(pending.getWeapon(), pending.getExpression(), pending.getAmount(), pending.getRadius(), pending.getData(), List.of());
         List<String> steps = new ArrayList<>();
-        applyBlastTo(attacker, blast, rules, targets, null, steps);
-        return new AttackResult(blast.weapon() + " → " + names(targets), "Задето целей: " + targets.size(), true, steps).withoutItemRow();
-    }
-
-    private AttackResult perform(Character attacker, Item weapon, GameSystem system, AttackRules rules,
-                                 List<Character> targets, AttackRequest request) {
-        if (rules.isZoneFire(request)) {
-            return zoneFire(attacker, weapon, system, rules, targets, request);
-        }
-        if (rules.isArea(weapon, request)) {
-            return areaAttack(attacker, weapon, system, rules, targets, request);
-        }
-        if (targets.size() > 1) {
-            throw new IllegalArgumentException("Такой режим огня — только по одной цели");
-        }
-        Character target = targets.isEmpty() ? null : targets.get(0);
-        String targetName = target != null ? target.getName() : targetName(request);
-        String title = weapon.getName() + " → " + targetName;
-
-        CheckRequest toHit = rules.toHit(attacker, weapon, request, system.getCurrentStats(attacker));
-        List<String> steps = new ArrayList<>();
-        steps.add(rules.spend(weapon, request));
-        CheckResult check = checkService.checkForCharacter(attacker.getId(), toHit);
-        steps.addAll(check.steps());
-        if (check.fumble()) {
-            steps.addAll(rules.onFumble(weapon, diceRoller));
-        }
-        if (!Boolean.TRUE.equals(check.success())) {
-            return new AttackResult(title, check.outcome(), false, steps);
-        }
-        List<AttackHit> hits = rules.hits(weapon, request, check, diceRoller);
-        String outcome = applyHits(attacker, weapon.getName(), target, targetName, hits, steps);
-        return new AttackResult(title, outcome == null ? check.outcome() + ", но ни одна пуля не дошла" : outcome, !hits.isEmpty(), steps);
-    }
-
-    /**
-     * Огонь по зоне: патроны расходуются один раз, каждая цель бросает сама.
-     */
-    private AttackResult zoneFire(Character attacker, Item weapon, GameSystem system, AttackRules rules,
-                                  List<Character> targets, AttackRequest request) {
-        List<CheckRequest> saves = new ArrayList<>();
-        for (Character target : targets) {
-            saves.add(rules.zoneSave(target, weapon, request, system.getCurrentStats(target)));
-        }
-        if (targets.isEmpty()) {
-            saves.add(rules.zoneSave(null, weapon, request, Map.of()));
-        }
-        List<String> steps = new ArrayList<>();
-        steps.add(rules.spend(weapon, request));
-        int hitTargets = 0;
-        for (int i = 0; i < saves.size(); i++) {
-            Character target = targets.isEmpty() ? null : targets.get(i);
-            String name = target != null ? target.getName() : targetName(request);
-            CheckResult save = target != null
-                    ? checkService.checkForCharacter(target.getId(), saves.get(i))
-                    : checkService.checkForCampaign(attacker.getCampaign().getId(), saves.get(i));
-            steps.add(name + ": спасбросок");
-            steps.addAll(save.steps());
-            if (!Boolean.TRUE.equals(save.success())) {
-                hitTargets++;
-                applyHits(attacker, weapon.getName(), target, name, rules.zoneHits(weapon, request, diceRoller), steps);
-            }
-        }
-        return new AttackResult(weapon.getName() + " → зона огня", "Попали под огонь: " + hitTargets + " из " + saves.size(), hitTargets > 0, steps);
-    }
-
-    /**
-     * Урон по площади: при попадании задеты выбранные цели, при промахе заряд отклоняется и мастер решает, кого задело.
-     * Заряд на месте подрывается без броска.
-     */
-    private AttackResult areaAttack(Character attacker, Item weapon, GameSystem system, AttackRules rules,
-                                    List<Character> targets, AttackRequest request) {
-        String title = weapon.getName() + " → " + (targets.isEmpty() ? targetName(request) : names(targets));
-        boolean planted = rules.isPlanted(request);
-        CheckRequest toHit = planted ? null : rules.toHit(attacker, weapon, request, system.getCurrentStats(attacker));
-        AreaDamage blast = rules.areaDamage(weapon, request, diceRoller);
-        List<String> steps = new ArrayList<>();
-        steps.add(rules.spend(weapon, request));
-        CheckResult check = planted ? null : checkService.checkForCharacter(attacker.getId(), toHit);
-        if (check != null) {
-            steps.addAll(check.steps());
-            if (check.fumble()) {
-                steps.addAll(rules.onFumble(weapon, diceRoller));
-            }
-        }
-        if (check != null && !Boolean.TRUE.equals(check.success())) {
-            steps.addAll(rules.scatter(blast, diceRoller));
-            steps.addAll(blast.steps());
-            return new AttackResult(title, check.outcome() + ": заряд упал мимо", false, steps,
-                    blast.amount() == null ? null : blast, false);
-        }
-        steps.addAll(blast.steps());
-        applyBlastTo(attacker, blast, rules, targets, targetName(request), steps);
-        return new AttackResult(title, "Зона " + blast.radius() + " м, задето целей: " + Math.max(1, targets.size()), true, steps);
-    }
-
-    /**
-     * @param unlistedName цель без листа, если целей нет
-     */
-    private void applyBlastTo(Character attacker, AreaDamage blast, AttackRules rules, List<Character> targets,
-                              String unlistedName, List<String> steps) {
-        if (targets.isEmpty()) {
-            applyHits(attacker, blast.weapon(), null, unlistedName, List.of(rules.areaHit(blast, diceRoller)), steps);
-        }
         for (Character target : targets) {
             steps.add(target.getName() + ":");
-            applyHits(attacker, blast.weapon(), target, target.getName(), List.of(rules.areaHit(blast, diceRoller)), steps);
+            AttackHit hit = rules.blastHit(blast, diceRoller);
+            steps.addAll(hit.steps());
+            applyHit(attacker, blast.weapon(), target, target.getName(), hit, steps);
         }
-    }
-
-    private static String names(List<Character> targets) {
-        return targets.stream().map(Character::getName).collect(Collectors.joining(", "));
+        pendingBlastRepository.delete(pending);
+        String names = targets.stream().map(Character::getName).collect(Collectors.joining(", "));
+        return new AttackResult(blast.weapon() + " → " + names, "Задето целей: " + targets.size(), true, steps).withoutItemRow();
     }
 
     /**
-     * @return итог для заголовка; null — попаданий нет
+     * Заряд никого не задел: забыть о нём.
      */
-    private String applyHits(Character attacker, String weapon, Character target, String targetName, List<AttackHit> hits, List<String> steps) {
-        String outcome = null;
-        for (AttackHit hit : hits) {
-            steps.addAll(hit.steps());
-            outcome = applyHit(attacker, weapon, target, targetName, hit, steps);
-        }
-        return hits.size() > 1 ? "Попаданий: " + hits.size() + ". " + outcome : outcome;
+    @Transactional
+    public void dismissBlast(Long characterId, Long blastId) {
+        pendingBlastRepository.delete(pending(characterId, blastId));
+    }
+
+    private PendingBlast pending(Long characterId, Long blastId) {
+        return pendingBlastRepository.findById(blastId)
+                .filter(blast -> characterId.equals(blast.getCharacter().getId()))
+                .orElseThrow(NotFoundException.forId("PendingBlast", blastId));
     }
 
     private String applyHit(Character attacker, String weapon, Character target, String targetName, AttackHit hit, List<String> steps) {
@@ -247,9 +234,5 @@ public class AttackService {
             targets.add(target);
         }
         return targets;
-    }
-
-    private static String targetName(AttackRequest request) {
-        return request.targetName() == null || request.targetName().isBlank() ? DEFAULT_TARGET : request.targetName().strip();
     }
 }

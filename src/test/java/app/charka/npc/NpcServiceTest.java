@@ -141,8 +141,29 @@ class NpcServiceTest {
         assertThat(counter(copy, Cp2020HealthStrategy.TYPE).getValue()).isZero();
         assertThat(copy.getCounters()).hasSize(4);
         assertThat(items(copy)).hasSize(2);
+        assertThat(items(copy)).allSatisfy(item -> assertThat(item.getProperties()).doesNotContainKey(Cp2020ItemTypes.JAMMED));
         Character original = characterRepository.findById(source.getId()).orElseThrow();
         assertThat(items(original)).hasSize(2);
+    }
+
+    @Test
+    @DisplayName("Копия получает снаряжение как новое: целая броня, полный магазин, оружие не заклинило")
+    void copyGearIsFresh() {
+        Character source = reload(npcService.create(campaign.getId(), "cop", "Коп", 1, false).get(0));
+        Item weapon = items(source).stream().filter(item -> Cp2020ItemTypes.WEAPON.equals(item.getType())).findFirst().orElseThrow();
+        Item armor = items(source).stream().filter(item -> Cp2020ItemTypes.ARMOR.equals(item.getType())).findFirst().orElseThrow();
+        weapon.getProperties().put(Cp2020ItemTypes.LOADED, "0");
+        weapon.getProperties().put(Cp2020ItemTypes.JAMMED, "1");
+        armor.getProperties().put("wear_TORSO", "5");
+        entityManager.flush();
+
+        Character copy = reload(npcService.copy(source.getId(), 1).get(0));
+
+        Item copiedWeapon = items(copy).stream().filter(item -> Cp2020ItemTypes.WEAPON.equals(item.getType())).findFirst().orElseThrow();
+        Item copiedArmor = items(copy).stream().filter(item -> Cp2020ItemTypes.ARMOR.equals(item.getType())).findFirst().orElseThrow();
+        assertThat(copiedWeapon.getProperties()).containsEntry(Cp2020ItemTypes.LOADED, copiedWeapon.getProperties().get(Cp2020ItemTypes.SHOTS))
+                .doesNotContainKey(Cp2020ItemTypes.JAMMED);
+        assertThat(copiedArmor.getProperties()).containsKey(Cp2020ItemTypes.WORN).doesNotContainKey("wear_TORSO");
     }
 
     @Test
@@ -194,8 +215,8 @@ class NpcServiceTest {
                 .andReturn().getResponse().getContentAsString();
         String home = mockMvc.perform(get("/")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
-        assertThat(campaignPage).contains("Создать NPC", "Корп-охрана", "Ещё таких же");
-        assertThat(npcSheet).contains("Лист NPC", "<optgroup label=\"Игроки\"");
+        assertThat(campaignPage).contains("＋ NPC", "Корп-охрана", "＋ Копия", "Цел", "SP торса");
+        assertThat(npcSheet).contains("Лист NPC", "<span class=\"target-group\">Игроки</span>");
         assertThat(playerSkills).contains("<optgroup label=\"NPC\"");
         assertThat(home).contains("Игрок").doesNotContain("Бандит");
     }

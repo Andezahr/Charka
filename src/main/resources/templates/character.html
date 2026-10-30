@@ -101,7 +101,10 @@
         </div>
         <div class="card-body">
           <th:block th:if="${attackResult != null and attackResult.detached}">
-            <div th:replace="~{fragments/attack :: result(${character.id}, ${attackResult}, ${attackTargets})}"></div>
+            <div th:replace="~{fragments/attack :: result(${attackResult})}"></div>
+          </th:block>
+          <th:block th:each="blast : ${pendingBlasts}">
+            <div th:replace="~{fragments/attack :: pending(${character.id}, ${blast}, ${attackTargets})}"></div>
           </th:block>
           <div th:if="${blastError != null}" class="alert alert-error item-result" role="alert">
             <span class="alert-text" th:text="${blastError}">Выберите, кого задело</span>
@@ -182,7 +185,7 @@
                       <button type="button" class="alert-close" aria-label="Закрыть">×</button>
                     </div>
                     <th:block th:if="${actionItemId == item.id and attackResult != null and !attackResult.detached}">
-                      <div th:replace="~{fragments/attack :: result(${character.id}, ${attackResult}, ${attackTargets})}"></div>
+                      <div th:replace="~{fragments/attack :: result(${attackResult})}"></div>
                     </th:block>
                     <div th:if="${actionItemId == item.id and actionError != null}" class="alert alert-error item-result" role="alert">
                       <span class="alert-text" th:text="${actionError}">Магазин пуст</span>
@@ -190,25 +193,24 @@
                     </div>
                     <div class="item-actions" th:if="${attackForms != null and attackForms[item.id] != null}">
                       <button type="button" class="btn btn-sm btn-primary" th:attr="data-dialog-open='attack-' + ${item.id}"
-                              th:disabled="${attackForms[item.id].unavailable != null}">Атаковать</button>
+                              th:disabled="${attackForms[item.id].unavailable != null}" th:text="${attackForms[item.id].actionLabel}">Атаковать</button>
                       <p th:if="${attackForms[item.id].unavailable != null}" class="item-action-note" th:text="${attackForms[item.id].unavailable}">Магазин пуст</p>
                       <dialog th:replace="~{fragments/attack :: dialog(${character.id}, ${item}, ${attackForms[item.id]}, ${attackTargets})}"></dialog>
                     </div>
                     <div class="item-actions" th:unless="${#lists.isEmpty(itemActions[item.id])}">
-                      <form th:each="action : ${itemActions[item.id]}"
-                            th:action="@{'/character/' + ${character.id} + '/inventories/' + ${inv.id} + '/items/' + ${item.id} + '/action/' + ${action.code}}"
-                            method="post" class="item-action">
-                        <select th:unless="${#lists.isEmpty(action.sources)}" name="source" required aria-label="Откуда взять патроны">
-                          <option th:each="source : ${action.sources}" th:value="${source.value}" th:text="${source.label}">Патроны</option>
-                        </select>
-                        <input th:if="${action.amount != null}" type="number" name="amount" class="narrow" min="1"
-                               th:value="${action.amount}" th:attr="max=${action.maxAmount}" th:disabled="${action.unavailable != null}"
-                               required aria-label="Сколько патронов">
-                        <button type="submit" class="btn btn-sm" th:disabled="${action.unavailable != null}"
-                                th:text="${action.label}">Выстрел</button>
-                      </form>
+                      <th:block th:each="action : ${itemActions[item.id].?[!secondary]}">
+                        <form th:replace="~{fragments/items :: action-form(${action}, @{'/character/' + ${character.id} + '/inventories/' + ${inv.id} + '/items/' + ${item.id} + '/action/' + ${action.code}})}"></form>
+                      </th:block>
+                      <details class="cp-more item-more" th:unless="${#lists.isEmpty(itemActions[item.id].?[secondary])}">
+                        <summary>Ещё</summary>
+                        <div class="item-actions">
+                          <th:block th:each="action : ${itemActions[item.id].?[secondary]}">
+                            <form th:replace="~{fragments/items :: action-form(${action}, @{'/character/' + ${character.id} + '/inventories/' + ${inv.id} + '/items/' + ${item.id} + '/action/' + ${action.code}})}"></form>
+                          </th:block>
+                        </div>
+                      </details>
                       <p th:each="action, state : ${itemActions[item.id]}"
-                         th:if="${action.unavailable != null and (state.first or itemActions[item.id][state.index - 1].unavailable != action.unavailable)}"
+                         th:if="${!action.secondary and action.unavailable != null and (state.first or itemActions[item.id][state.index - 1].unavailable != action.unavailable)}"
                          class="item-action-note" th:text="${action.unavailable}">Магазин пуст</p>
                     </div>
                   </div>

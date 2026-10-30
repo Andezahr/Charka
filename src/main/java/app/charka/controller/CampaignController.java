@@ -14,6 +14,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/campaign/{campaignId}")
@@ -45,6 +46,8 @@ public class CampaignController {
         GameSystem gameSystem = systemRegistry.find(campaign.getSystem()).orElseGet(systemRegistry::getGeneric);
         model.addAttribute("gameSystem", gameSystem);
         model.addAttribute("npcTemplates", gameSystem.getNpcTemplates());
+        model.addAttribute("briefs", campaign.getCharacters().stream()
+                .collect(Collectors.toMap(Character::getId, gameSystem::getCharacterBrief)));
         model.addAttribute("quickDice", gameSystem.getQuickDice());
         model.addAttribute("difficultyPresets", gameSystem.getCheckResolver().getDifficultyPresets());
         model.addAttribute("recentRolls", diceService.recentForCampaign(campaignId, 20));

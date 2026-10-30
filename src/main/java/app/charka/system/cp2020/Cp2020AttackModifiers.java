@@ -3,6 +3,7 @@ package app.charka.system.cp2020;
 import app.charka.attack.AttackForm;
 import app.charka.check.CheckRequest;
 import app.charka.item.ItemField.Option;
+import app.charka.model.Item;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -24,6 +25,12 @@ final class Cp2020AttackModifiers {
     private static final String TARGET = "Цель";
     private static final String SHOOTER = "Стрелок";
     private static final String WEAPON = "Оружие";
+    /** То, что выбирают почти в каждом выстреле: показано сразу, остальное свёрнуто */
+    private static final String COMMON = "Часто";
+
+    /** Прицелы, турель и машина бывают только у стрельбы, не у броска */
+    private static final Set<String> FIREARM_ONLY = Set.of("turret", "vehicle", "laser", "targeting_scope", "smartgun", "smartgoggles", TELESCOPIC, "two_weapons", "hip");
+    private static final Set<String> SHOULDER_ARMS = Set.of("RIF", "SHT", "HVY");
 
     /**
      * @param choice код выбора: варианты с одним кодом взаимоисключающие; у флажка совпадает с {@code code}
@@ -40,18 +47,18 @@ final class Cp2020AttackModifiers {
     }
 
     private static final List<Modifier> ALL = List.of(
-            flag("immobile", TARGET, "Цель неподвижна", 4),
-            variant("moving_10", TARGET, "moving", "Цель движется", "REF больше 10", -3),
-            variant("moving_12", TARGET, "moving", "Цель движется", "REF больше 12", -4),
-            variant("moving_14", TARGET, "moving", "Цель движется", "REF больше 14", -5),
+            flag("immobile", COMMON, "Цель неподвижна", 4),
+            variant("moving_10", COMMON, "moving", "Цель движется", "REF больше 10", -3),
+            variant("moving_12", COMMON, "moving", "Цель движется", "REF больше 12", -4),
+            variant("moving_14", COMMON, "moving", "Цель движется", "REF больше 14", -5),
+            variant("aim_1", COMMON, "aim", "Прицеливание", "1 раунд", 1),
+            variant("aim_2", COMMON, "aim", "Прицеливание", "2 раунда", 2),
+            variant("aim_3", COMMON, "aim", "Прицеливание", "3 раунда", 3),
             flag("silhouetted", TARGET, "Цель на просвет", 2),
             variant("size_large", TARGET, "size", "Размер цели", "Большая", 4),
             variant("size_small", TARGET, "size", "Размер цели", "Маленькая", -4),
             variant("size_tiny", TARGET, "size", "Размер цели", "Крошечная", -6),
 
-            variant("aim_1", SHOOTER, "aim", "Прицеливание", "1 раунд", 1),
-            variant("aim_2", SHOOTER, "aim", "Прицеливание", "2 раунда", 2),
-            variant("aim_3", SHOOTER, "aim", "Прицеливание", "3 раунда", 3),
             flag("fast_draw", SHOOTER, "Быстрое выхватывание", -3),
             flag("ambush", SHOOTER, "Засада", 5),
             flag("blinded", SHOOTER, "Ослеплён светом или пылью", -3),
@@ -80,18 +87,50 @@ final class Cp2020AttackModifiers {
     }
 
     static List<AttackForm.Section> sections() {
+        return sections(code -> true);
+    }
+
+    /**
+     * Только то, что бывает у этого оружия: метателю незачем читать про турель и смартган.
+     * HOMEBREW: таблица книги (с. 99) не делит модификаторы по оружию, кроме «shoulder arm from hip»; остальное решено нами.
+     */
+    static List<AttackForm.Section> sectionsFor(Item weapon) {
+        return sections(code -> applies(code, weapon));
+    }
+
+    private static boolean applies(String code, Item weapon) {
+        if (weapon.getProperties().containsKey(Cp2020ItemTypes.THROWN)) {
+            return !FIREARM_ONLY.contains(code);
+        }
+        String category = weapon.getProperties().get("category");
+        if ("hip".equals(code)) {
+            return SHOULDER_ARMS.contains(category);
+        }
+        return !"two_weapons".equals(code) || !SHOULDER_ARMS.contains(category);
+    }
+
+    /**
+     * @throws IllegalArgumentException модификатор не бывает у этого оружия
+     */
+    static void requireApplicable(Set<String> codes, Item weapon) {
+        if (!codes.stream().allMatch(code -> applies(code, weapon))) {
+            throw new IllegalArgumentException("Этот модификатор не подходит оружию: " + weapon.getName());
+        }
+    }
+
+    private static List<AttackForm.Section> sections(java.util.function.Predicate<String> allowed) {
         Map<String, Map<String, List<Modifier>>> bySection = new LinkedHashMap<>();
-        ALL.forEach(modifier -> bySection.computeIfAbsent(modifier.section(), key -> new LinkedHashMap<>())
+        ALL.stream().filter(modifier -> allowed.test(modifier.code())).forEach(modifier -> bySection.computeIfAbsent(modifier.section(), key -> new LinkedHashMap<>())
                 .computeIfAbsent(modifier.choice(), key -> new ArrayList<>())
                 .add(modifier));
         List<AttackForm.Section> sections = new ArrayList<>();
         bySection.forEach((section, choices) -> {
             List<AttackForm.Choice> list = new ArrayList<>(choices.values().stream().map(Cp2020AttackModifiers::choice).toList());
-            if (section.equals(WEAPON)) {
+            if (section.equals(WEAPON) && allowed.test(TELESCOPIC)) {
                 list.add(new AttackForm.Choice(TELESCOPIC, "Телескопический прицел",
                         List.of(new Option(TELESCOPIC, "Телескопический прицел: средняя +1, предельная +2"))));
             }
-            sections.add(new AttackForm.Section(section, list));
+            sections.add(new AttackForm.Section(section, list, !section.equals(COMMON)));
         });
         return sections;
     }

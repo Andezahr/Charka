@@ -88,6 +88,12 @@ public class Cp2020ArmorStrategy extends AbstractCounterStrategy {
         }
     }
 
+    /** Копия начинает в целой броне */
+    @Override
+    public void prepareCopy(Counter counter) {
+        reset(counter);
+    }
+
     /** Сброс = ремонт */
     @Override
     public void reset(Counter counter) {

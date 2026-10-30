@@ -9,34 +9,76 @@ document.addEventListener('DOMContentLoaded', () => {
     dialog.querySelector('[data-dialog-close]').addEventListener('click', () => dialog.close());
   });
 
-  // Диалог атаки: поля зависят от режима. В зоне огня и при уроне по площади целей несколько, в остальных — одна
+  // Диалог атаки: поля зависят от режима, цели выбираются нажатием. Последние цель и расстояние запоминаются
+  // для этого оружия: повторный выстрел — два нажатия
   document.querySelectorAll('[data-attack]').forEach(dialog => {
     const mode = dialog.querySelector('[data-attack-mode]');
-    if (!mode) return;
-    const target = dialog.querySelector('[data-attack-target]');
+    const form = dialog.querySelector('form');
+    const memoryKey = 'charka.attack.' + dialog.dataset.attack;
+    const targets = [...dialog.querySelectorAll('input[name="target"]')];
+    const unlisted = dialog.querySelector('[data-attack-unlisted]');
+    const nameField = dialog.querySelector('[data-attack-name]');
     const location = dialog.querySelector('[data-attack-location]');
     const distance = dialog.querySelector('[data-attack-distance]');
-    const distanceInput = distance.querySelector('input');
-    const update = () => {
-      const chosen = mode.selectedOptions[0];
-      const zone = chosen.dataset.zone === 'true';
-      const area = chosen.dataset.area === 'true';
-      const planted = chosen.dataset.planted === 'true';
-      dialog.querySelector('[data-attack-rounds]').hidden = chosen.dataset.rounds !== 'true';
-      dialog.querySelector('[data-attack-width]').hidden = !zone;
-      dialog.querySelector('[data-attack-target-label]').textContent = zone || area ? 'Цели в зоне (несколько)' : 'Цель';
-      target.multiple = zone || area;
-      location.disabled = mode.value !== 'SINGLE' || area;
-      if (location.disabled) location.value = '';
-      dialog.querySelector('[data-attack-location-field]').hidden = area;
-      // заряд на месте: броска на попадание и расстояния нет
-      distance.hidden = planted;
-      distanceInput.required = !planted;
-      distanceInput.value = planted ? 0 : (distanceInput.dataset.touched ? distanceInput.value : '');
-      dialog.querySelectorAll('[data-attack-roll]').forEach(part => { part.hidden = planted; });
+    const distanceInput = distance && distance.querySelector('input');
+    let remembered = {};
+    try { remembered = JSON.parse(localStorage.getItem(memoryKey)) || {}; } catch (e) { /* только удобство */ }
+
+    let distanceValue = remembered.distance || '';
+    if (distanceInput) distanceInput.value = distanceValue;
+    const chosen = targets.filter(input => (remembered.targets || []).includes(input.value));
+    (chosen.length ? chosen : targets.slice(0, 1)).forEach(input => { input.checked = true; });
+
+    const syncName = () => { nameField.hidden = !unlisted.checked; };
+    const syncBands = () => {
+      dialog.querySelectorAll('[data-attack-band]').forEach(band => {
+        band.classList.toggle('is-active', distanceInput.value !== '' && band.dataset.attackBand === distanceInput.value);
+      });
     };
-    distanceInput.addEventListener('input', () => { distanceInput.dataset.touched = 'true'; });
+    const update = () => {
+      const option = mode.selectedOptions[0];
+      const multi = option.dataset.multi === 'true';
+      const noRoll = option.dataset.noroll === 'true';
+      dialog.querySelector('[data-attack-rounds]').hidden = option.dataset.rounds !== 'true';
+      dialog.querySelector('[data-attack-width]').hidden = option.dataset.width !== 'true';
+      dialog.querySelector('[data-attack-target-label]').textContent = multi ? 'Цели в зоне' : 'Цель';
+      targets.forEach(input => { input.type = multi ? 'checkbox' : 'radio'; });
+      syncName();
+      if (location) {
+        const canChoose = option.dataset.location === 'true';
+        dialog.querySelector('[data-attack-location-field]').hidden = !canChoose;
+        location.disabled = !canChoose;
+        if (!canChoose) location.value = '';
+      }
+      if (distance) {
+        // заряд на месте: броска на попадание и расстояния нет
+        distance.hidden = noRoll;
+        distanceInput.required = !noRoll;
+        distanceInput.value = noRoll ? 0 : distanceValue;
+        syncBands();
+      }
+      dialog.querySelector('[data-attack-roll]').hidden = noRoll;
+    };
+    if (distance) {
+      distanceInput.addEventListener('input', () => { distanceValue = distanceInput.value; syncBands(); });
+      dialog.querySelectorAll('[data-attack-band]').forEach(band => {
+        band.addEventListener('click', () => {
+          distanceInput.value = band.dataset.attackBand;
+          distanceValue = distanceInput.value;
+          syncBands();
+        });
+      });
+    }
+    targets.forEach(input => input.addEventListener('change', syncName));
     mode.addEventListener('change', update);
+    form.addEventListener('submit', () => {
+      try {
+        localStorage.setItem(memoryKey, JSON.stringify({
+          targets: targets.filter(input => input.checked).map(input => input.value),
+          distance: distanceValue
+        }));
+      } catch (e) { /* только удобство */ }
+    });
     update();
   });
 

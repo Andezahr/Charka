@@ -3,6 +3,8 @@ package app.charka;
 import app.charka.model.*;
 import app.charka.model.Character;
 import app.charka.repository.CampaignRepository;
+import app.charka.service.counter.CounterService;
+import app.charka.system.GameSystemRegistry;
 import app.charka.system.cp2020.Cp2020System;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
@@ -16,9 +18,13 @@ import java.util.*;
 public class DataInitializer implements CommandLineRunner {
 
     private final CampaignRepository campaignRepository;
+    private final CounterService counterService;
+    private final GameSystemRegistry systemRegistry;
 
-    public DataInitializer(CampaignRepository campaignRepository) {
+    public DataInitializer(CampaignRepository campaignRepository, CounterService counterService, GameSystemRegistry systemRegistry) {
         this.campaignRepository = campaignRepository;
+        this.counterService = counterService;
+        this.systemRegistry = systemRegistry;
     }
 
     @Override
@@ -46,7 +52,10 @@ public class DataInitializer implements CommandLineRunner {
 
         campaign.setCharacters(new ArrayList<>(List.of(kolyasick, oleja)));
         // персонажи, инвентари и предметы сохраняются каскадом
-        campaignRepository.save(campaign);
+        Campaign saved = campaignRepository.save(campaign);
+        // счётчики системы сразу: иначе демо-персонажи не могут ни стрелять, ни получать урон
+        List<String> counters = systemRegistry.get(Cp2020System.CODE).getDefaultCounterTypes();
+        saved.getCharacters().forEach(character -> counterService.createDefaults(character.getId(), counters));
     }
 
     private static Inventory createInventory(String name, Character owner, String itemName) {

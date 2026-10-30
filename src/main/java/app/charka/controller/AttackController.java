@@ -1,6 +1,5 @@
 package app.charka.controller;
 
-import app.charka.attack.AreaDamage;
 import app.charka.attack.AttackRequest;
 import app.charka.attack.AttackResult;
 import app.charka.attack.AttackService;
@@ -48,9 +47,6 @@ public class AttackController {
         redirectAttributes.addFlashAttribute("actionItemId", itemId);
         String anchor = "#item-" + itemId;
         try {
-            if (distance == null) {
-                throw new IllegalArgumentException("Укажите расстояние до цели");
-            }
             AttackResult result = attackService.attack(characterId, itemId,
                     new AttackRequest(targets(target), targetName, distance, location, skill, options(params), modifier, mode, rounds, zoneWidth));
             redirectAttributes.addFlashAttribute("attackResult", result);
@@ -64,25 +60,24 @@ public class AttackController {
     }
 
     /**
-     * Заряд упал мимо цели: мастер выбирает, кого задело. Значения — из итога атаки, урон брошен там.
+     * Заряд упал мимо цели: мастер выбирает, кого задело. Урон брошен при атаке и хранится на сервере.
      */
-    @PostMapping("/character/{characterId}/attack/blast")
-    public String blast(@PathVariable Long characterId,
-                        @RequestParam String weapon,
-                        @RequestParam String expression,
-                        @RequestParam int amount,
-                        @RequestParam String damageType,
-                        @RequestParam(defaultValue = "false") boolean wholeBody,
-                        @RequestParam(defaultValue = "1") int armorWear,
-                        @RequestParam int radius,
-                        @RequestParam(required = false) List<Long> target,
-                        RedirectAttributes redirectAttributes) {
+    @PostMapping("/character/{characterId}/attack/blast/{blastId}")
+    public String applyBlast(@PathVariable Long characterId,
+                             @PathVariable Long blastId,
+                             @RequestParam(required = false) List<Long> target,
+                             RedirectAttributes redirectAttributes) {
         try {
-            AreaDamage blast = new AreaDamage(weapon, expression, amount, damageType, wholeBody, armorWear, radius, List.of());
-            redirectAttributes.addFlashAttribute("attackResult", attackService.applyBlast(characterId, blast, targets(target)));
+            redirectAttributes.addFlashAttribute("attackResult", attackService.applyBlast(characterId, blastId, targets(target)));
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("blastError", e.getMessage());
         }
+        return "redirect:/character/" + characterId + "#inventories";
+    }
+
+    @PostMapping("/character/{characterId}/attack/blast/{blastId}/dismiss")
+    public String dismissBlast(@PathVariable Long characterId, @PathVariable Long blastId) {
+        attackService.dismissBlast(characterId, blastId);
         return "redirect:/character/" + characterId + "#inventories";
     }
 
