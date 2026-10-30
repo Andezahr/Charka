@@ -428,12 +428,12 @@ class SkillServiceTest {
         }
 
         @Test
-        @DisplayName("с нуля: создаёт навык уровня 1 и списывает 10 × множитель")
+        @DisplayName("с нуля: создаёт навык уровня 1 и списывает 10 IP при любом множителе")
         void fromZero() {
             SkillImprovement improvement = skillService.improve(1L, "pilot_gyro", null);
 
-            assertThat(improvement).isEqualTo(new SkillImprovement("Пилот: гирокоптер", 1, 30));
-            assertThat(ip.getValue()).isEqualTo(70);
+            assertThat(improvement).isEqualTo(new SkillImprovement("Пилот: гирокоптер", 1, 10));
+            assertThat(ip.getValue()).isEqualTo(90);
             assertThat(character.getSkills().getFirst().getLevel()).isEqualTo(1);
         }
 
@@ -456,7 +456,7 @@ class SkillServiceTest {
 
             SkillImprovement improvement = skillService.improve(1L, null, 10L);
 
-            assertThat(improvement.name()).isEqualTo("Боевое искусство: Карате");
+            assertThat(improvement.name()).isEqualTo("Своё боевое искусство: Карате");
             assertThat(improvement.cost()).isEqualTo(60);
             assertThat(skill.getLevel()).isEqualTo(4);
         }
@@ -654,7 +654,7 @@ class SkillServiceTest {
 
             SkillCheck check = skillService.check(1L, null, 10L, 0, 20);
 
-            assertThat(check.label()).isEqualTo("Боевое искусство: Карате");
+            assertThat(check.label()).isEqualTo("Своё боевое искусство: Карате");
             assertThat(captured().skillCode()).isEqualTo("martial_art");
         }
 

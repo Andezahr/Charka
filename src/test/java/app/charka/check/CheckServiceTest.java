@@ -104,7 +104,7 @@ class CheckServiceTest {
         @Test
         @DisplayName("фамбл проигрывает даже при большем итоге")
         void fumbleLoses() {
-            rolls.addAll(List.of(1, 3, 2));
+            rolls.addAll(List.of(1, 2));
 
             OpposedCheckResult result = checkService.checkOpposed(kolya, new CheckRequest("Пистолеты", 20, null),
                     oleg, null, new CheckRequest("Уклонение", 0, null));
@@ -116,7 +116,7 @@ class CheckServiceTest {
         @Test
         @DisplayName("оба фамбла — победителя нет")
         void bothFumble() {
-            rolls.addAll(List.of(1, 3, 1, 3));
+            rolls.addAll(List.of(1, 1));
 
             OpposedCheckResult result = checkService.checkOpposed(kolya, new CheckRequest("Пистолеты", 5, null),
                     oleg, null, new CheckRequest("Уклонение", 5, null));

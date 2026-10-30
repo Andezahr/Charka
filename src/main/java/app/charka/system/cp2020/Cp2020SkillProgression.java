@@ -9,8 +9,8 @@ import java.util.Comparator;
 import java.util.Optional;
 
 /**
- * Прокачка CP2020: следующий уровень стоит «текущий уровень × 10 × множитель навыка» очков IP,
- * первый уровень — как со второго: 10 × множитель. Спецспособности ролей — по той же формуле.
+ * Прокачка CP2020 (книга, с. 53–54): первый уровень всегда стоит 10 IP, следующие — «текущий уровень × 10 × множитель навыка».
+ * Спецспособности ролей — по той же формуле.
  */
 public class Cp2020SkillProgression implements SkillProgression {
 
@@ -23,7 +23,7 @@ public class Cp2020SkillProgression implements SkillProgression {
 
     @Override
     public int cost(SkillDefinition definition, int level) {
-        return Math.max(level, 1) * COST_PER_LEVEL * definition.costMultiplier();
+        return level == 0 ? COST_PER_LEVEL : level * COST_PER_LEVEL * definition.costMultiplier();
     }
 
     @Override

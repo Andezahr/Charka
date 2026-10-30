@@ -54,12 +54,12 @@ class Cp2020CheckResolverTest {
         }
 
         @Test
-        @DisplayName("взрыв повторяется, пока выпадает 10")
-        void explodesRepeatedly() {
+        @DisplayName("дополнительный кубик один: вторая 10 не взрывается")
+        void explodesOnce() {
             Cp2020Dice.Roll roll = Cp2020Dice.rollCheck(dice(10, 10, 3));
 
-            assertThat(roll.rolls()).containsExactly(10, 10, 3);
-            assertThat(roll.describe()).isEqualTo("10 → +10 → +3 = 23");
+            assertThat(roll.rolls()).containsExactly(10, 10);
+            assertThat(roll.describe()).isEqualTo("10 → +10 = 20");
         }
 
         @Test
@@ -67,14 +67,6 @@ class Cp2020CheckResolverTest {
         void fumble() {
             assertThat(Cp2020Dice.rollCheck(dice(1)).fumble()).isTrue();
             assertThat(Cp2020Dice.rollCheck(dice(10, 1)).fumble()).isFalse();
-        }
-
-        @Test
-        @DisplayName("бесконечные десятки ограничены")
-        void capped() {
-            Cp2020Dice.Roll roll = Cp2020Dice.rollCheck(sides -> 10);
-
-            assertThat(roll.rolls()).hasSize(Cp2020Dice.MAX_EXPLOSIONS + 1);
         }
     }
 
@@ -119,6 +111,14 @@ class Cp2020CheckResolverTest {
             assertThat(result.fumble()).isTrue();
             assertThat(result.success()).isFalse();
             assertThat(result.outcome()).isEqualTo("21 vs 15 — критический провал");
+        }
+
+        @Test
+        @DisplayName("фамбл свободной проверки — без броска по таблице: раздел выбирает мастер")
+        void fumbleWithoutSkill() {
+            CheckResult result = resolver.resolve(new CheckRequest(null, 0, null), dice(1));
+
+            assertThat(result.steps()).last().asString().contains("раздел выбирает мастер");
         }
 
         @Test

@@ -47,11 +47,27 @@ class Cp2020SkillsTest {
         }
 
         @Test
-        @DisplayName("сложные навыки дороже: боевое искусство ×2, гирокоптер ×3")
+        @DisplayName("множители по книге: скрытность ×2, гирокоптер ×3, боевые искусства — по стилю")
         void costMultipliers() {
-            assertThat(cost("martial_art")).isEqualTo(2);
+            assertThat(cost("stealth")).isEqualTo(2);
             assertThat(cost("pilot_gyro")).isEqualTo(3);
             assertThat(cost("handgun")).isEqualTo(1);
+            assertThat(cost("boxing")).isEqualTo(1);
+            assertThat(cost("karate")).isEqualTo(2);
+            assertThat(cost("choi_li_fut")).isEqualTo(3);
+            assertThat(cost("thai_kick_boxing")).isEqualTo(4);
+        }
+
+        @Test
+        @DisplayName("статы спецспособностей по книге: Ресурсы — INT, Авторитет — COOL")
+        void specialStats() {
+            assertThat(stat("resources")).isEqualTo("int");
+            assertThat(stat("authority")).isEqualTo("cool");
+        }
+
+        private String stat(String code) {
+            return Cp2020Skills.CATALOG.stream().filter(s -> s.code().equals(code)).findFirst().orElseThrow()
+                    .statCode();
         }
 
         private int cost(String code) {
@@ -66,18 +82,27 @@ class Cp2020SkillsTest {
 
         @ParameterizedTest(name = "{0} → {1}")
         @CsvSource({
-                "handgun, COMBAT", "martial_art, COMBAT", "athletics, REFLEX", "swimming, REFLEX",
-                "basic_tech, TECH", "first_aid, MEDICAL", "diagnose, MEDICAL", "seduction, SOCIAL",
-                "intimidate, SOCIAL", "awareness, INTELLECT", "unknown, GENERAL"})
+                "handgun, COMBAT", "martial_art, COMBAT", "karate, COMBAT", "athletics, ATHLETICS", "swimming, ATHLETICS",
+                "basic_tech, TECH", "first_aid, TECH", "diagnose, INTELLECT", "seduction, EMPATHY",
+                "intimidate, EMPATHY", "resources, EMPATHY", "awareness, INTELLECT"})
         @DisplayName("таблица зависит от навыка")
         void tableBySkill(String code, Cp2020Fumbles.Table table) {
             assertThat(Cp2020Fumbles.tableFor(code)).isEqualTo(table);
         }
 
         @Test
-        @DisplayName("свободная проверка — общая таблица")
-        void freeCheck() {
-            assertThat(Cp2020Fumbles.tableFor(null)).isEqualTo(Cp2020Fumbles.Table.GENERAL);
+        @DisplayName("свободная проверка и неизвестный навык — раздела нет")
+        void noTable() {
+            assertThat(Cp2020Fumbles.tableFor(null)).isNull();
+            assertThat(Cp2020Fumbles.tableFor("unknown")).isNull();
+        }
+
+        @ParameterizedTest(name = "{0}, d10 = {1}: {2}")
+        @CsvSource({"ATHLETICS, 5, 1 очко", "ATHLETICS, 8, 1d6", "TECH, 7, сложность +5", "TECH, 8, нужна новая",
+                "EMPATHY, 6, −4", "EMPATHY, 7, нападает", "INTELLECT, 7, −2", "INTELLECT, 8, видят все"})
+        @DisplayName("диапазоны остальных разделов — как в книге")
+        void otherRanges(Cp2020Fumbles.Table table, int roll, String expected) {
+            assertThat(table.outcome(roll)).contains(expected);
         }
 
         @ParameterizedTest(name = "d10 = {0}: {1}")

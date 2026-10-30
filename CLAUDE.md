@@ -9,6 +9,8 @@
 
 **Начинай любую работу с [`TODO.md`](TODO.md)**: там приоритизированный план (задачи с ID, «Готово, когда»), целевая архитектура и журнал решений. Взял задачу — отметь `[~]`, закончил — `[x]` с датой и строкой итога; новые задачи и изменения плана вноси туда же.
 
+**Правила CP2020 — `cyberpunk 2020 rulebook_text.pdf` в корне проекта** (в `.gitignore`, не коммитить). Значения правил бери оттуда, а не по памяти. Скан с распознанным текстом, удобнее `pdftotext -layout` в scratchpad; страница PDF = страница книги + 3. Текст распознан с ошибками, а в таблицах номера могут теряться: проверяй смысл.
+
 **`README.md` — витрина репозитория на GitHub.** Обновляй его при каждом крупном изменении: закрыт этап `TODO.md`, новая игровая система или крупная функция, изменились стек, требования, команды запуска/сборки, параметры БД, структура пакетов или число тестов (бейдж). Мелкие правки и рефакторинг README не трогают.
 
 **Мультисистемность — обязательный принцип.** Приложение должно поддерживать разные НРИ (CP2020 сейчас, D&D 5e далее). Для каждой новой вещи реши: это ядро `[CORE]` (кампании, механизм счётчиков, кубики, инвентарь, деньги, время, трекер боя) или правила системы `[CP2020]`/`[DND5E]` (ХП и броня CP2020, статы, навыки, формулы проверок, типы оружия). Правила системы живут в её пакете и доступны только кампаниям этой системы; ядро обращается к ним через интерфейсы/реестры (`GameSystem`, см. раздел 2 `TODO.md`).
@@ -29,7 +31,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 367 тестов, на 2026-10-30 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 379 тестов, на 2026-10-30 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -49,7 +51,7 @@ dice/         DiceExpression (разбор NdM±K), DiceResult, DiceService (б�
 check/        CheckRequest/CheckResult/CheckResolver (GenericCheckResolver: d20), OpposedCheckResult, CheckService (правила системы + лог)
 skill/        SkillDefinition, CharacterRole, StatValue, SkillSheet, SkillCheck, SkillOpponent, SkillProgression (контракт прокачки), SkillImprovement, SkillService (навыки, роли, проверка, прокачка)
 system/        GameSystem, GameSystemRegistry, GenericSystem ("GENERIC"), Currency; cp2020/ — Cp2020System ("CP2020"),
-               стратегии счётчиков, Cp2020Rules, Cp2020Dice (взрывной d10), Cp2020CheckResolver, Cp2020Skills (каталог, роли), Cp2020Fumbles, Cp2020SkillProgression + Cp2020IpStrategy (очки улучшения)
+               стратегии счётчиков, Cp2020Rules, Cp2020Dice (d10: на 10 один дополнительный кубик), Cp2020CheckResolver, Cp2020Skills (каталог, роли), Cp2020Fumbles (таблица книги), Cp2020SkillProgression + Cp2020IpStrategy (очки улучшения)
 dto/counter/   DTO только для счётчиков (единственный модуль, переведённый на DTO)
 exception/     NotFoundException.forId("Entity", id) (NoSuchElementException → 404), наследники CharacterNotFoundException, InventoryNotFoundException;
                GlobalExceptionHandler (страницы → error.html: 404/400/500), ApiExceptionHandler (app.charka.api → text/plain)

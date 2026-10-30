@@ -17,8 +17,8 @@ class Cp2020IpTest {
     private final Cp2020IpStrategy strategy = new Cp2020IpStrategy();
 
     @ParameterizedTest(name = "уровень {0}, множитель {1} → {2} IP")
-    @CsvSource({"0, 1, 10", "1, 1, 10", "2, 1, 20", "4, 1, 40", "9, 1, 90", "0, 3, 30", "3, 2, 60", "9, 3, 270"})
-    @DisplayName("цена: уровень × 10 × множитель, с нуля — как с первого")
+    @CsvSource({"0, 1, 10", "1, 1, 10", "2, 1, 20", "4, 1, 40", "9, 1, 90", "0, 3, 10", "1, 3, 30", "3, 2, 60", "4, 3, 120", "9, 3, 270"})
+    @DisplayName("цена: уровень × 10 × множитель, первый уровень всегда 10 IP")
     void cost(int level, int multiplier, int expected) {
         SkillDefinition definition = new SkillDefinition("x", "X", "ref", multiplier, false, false);
 
