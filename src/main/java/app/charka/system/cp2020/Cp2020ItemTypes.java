@@ -77,7 +77,7 @@ public final class Cp2020ItemTypes {
                     new Option("P", "Плохая: чёрный рынок, армия"),
                     new Option("R", "Редкая: штучное, незаконное")),
             ItemField.text("damage", "Урон"),
-            ItemField.text(CALIBER, "Патрон"),
+            ItemField.suggested(CALIBER, "Патрон", false, "", Cp2020Ammo.CALIBERS),
             ItemField.number(SHOTS, "Магазин", "магазин ", "", 0, null),
             ItemField.number(LOADED, "Заряжено", "заряжено ", "", 0, null).asAdvanced(),
             ItemField.number(INSERTED, "Вставлен магазин на", "вставлен на ", "", 1, null).asAdvanced(),
@@ -99,7 +99,7 @@ public final class Cp2020ItemTypes {
 
     /** Каждая строка — один магазин со своим зарядом */
     public static final ItemTypeDefinition MAGAZINE_TYPE = new ItemTypeDefinition(MAGAZINE, "Магазин", List.of(
-            ItemField.requiredText(CALIBER, "Патрон"),
+            ItemField.suggested(CALIBER, "Патрон", true, "Магазин ", Cp2020Ammo.CALIBERS),
             ItemField.number(SHOTS, "Вместимость", "на ", "", 1, null),
             ItemField.number(LOADED, "Заряжено", "заряжено ", "", 0, null),
             ItemField.flag(ARMOR_PIERCING, "Заряжены бронебойные", "AP")),
@@ -107,7 +107,7 @@ public final class Cp2020ItemTypes {
 
     /** Количество патронов — количество предмета */
     public static final ItemTypeDefinition AMMO_TYPE = new ItemTypeDefinition(AMMO, "Боеприпасы", List.of(
-            ItemField.requiredText(CALIBER, "Патрон"),
+            ItemField.suggested(CALIBER, "Патрон", true, "Патроны ", Cp2020Ammo.CALIBERS),
             ItemField.flag(ARMOR_PIERCING, "Бронебойные", "AP")));
 
     public static String zoneKey(Cp2020Location location) {

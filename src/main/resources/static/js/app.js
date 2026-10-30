@@ -143,6 +143,37 @@ document.addEventListener('DOMContentLoaded', () => {
     sync();
   });
 
+  // Поле с типичными значениями: на сервер уходит текстовое поле за списком, оно видно только при «Другой…».
+  // Если у поля есть data-name-prefix, выбор подставляет название предмета, пока его не ввели руками
+  document.querySelectorAll('select[data-suggest]').forEach(select => {
+    const input = select.nextElementSibling;
+    const name = select.form.elements.itemName;
+    const prefix = select.dataset.namePrefix;
+    let filled = '';
+    const sync = () => {
+      const custom = select.value === '__other';
+      input.hidden = !custom;
+      input.required = custom && select.required;
+    };
+    const fillName = () => {
+      if (!prefix || (name.value && name.value !== filled)) return;
+      filled = input.value ? prefix + input.value : '';
+      name.value = filled;
+    };
+    const known = [...select.options].some(option => option.value === input.value);
+    select.value = known ? input.value : '__other';
+    select.hidden = false;
+    sync();
+    select.addEventListener('change', () => {
+      const custom = select.value === '__other';
+      input.value = custom ? '' : select.value;
+      sync();
+      fillName();
+      if (custom) input.focus();
+    });
+    input.addEventListener('input', fillName);
+  });
+
   // Страница навыков. Видимость строк: изученные и спецспособности ролей; «Все навыки», прокачка, ручная правка
   // и поиск показывают весь каталог. Без JS видно всё, но проверка и правка требуют JS.
   document.querySelectorAll('[data-skills]').forEach(page => {

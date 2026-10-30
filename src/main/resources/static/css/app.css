@@ -841,6 +841,8 @@ details.cp-more > summary:hover { color: var(--text-soft); }
 .item-fields .check { align-self: end; justify-self: start; white-space: nowrap; }
 .item-line .item-type-name { color: var(--accent); }
 .item-catalog { margin: 8px 0; }
+.edit-panel .item-delete { justify-content: flex-end; margin-top: 16px; }
+.field > select[data-suggest] + input { margin-top: 6px; }
 .item-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .item-action { display: flex; gap: 6px; align-items: center; min-width: 0; }
 .item-action select { max-width: 260px; min-width: 0; }

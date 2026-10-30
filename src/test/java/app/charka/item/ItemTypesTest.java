@@ -315,6 +315,20 @@ class ItemTypesTest {
                     .isSubsetOf(Cp2020Ammo.CATALOG.stream().map(entry -> entry.properties().get("caliber")).toList());
         }
 
+        @Test
+        @DisplayName("в списке патронов формы — всё из справочника без повторов, своё значение тоже подходит")
+        void caliberOptions() {
+            assertThat(Cp2020Ammo.CALIBERS).extracting(ItemField.Option::value)
+                    .doesNotHaveDuplicates()
+                    .contains("9mm", "5.56", "00", "Стрелы", ".357")
+                    .containsAll(Cp2020Ammo.CATALOG.stream().map(entry -> entry.properties().get("caliber")).toList());
+            assertThat(Cp2020ItemTypes.AMMO_TYPE.normalize(Map.of("caliber", "4.7 безгильзовый")))
+                    .containsEntry("caliber", "4.7 безгильзовый");
+            assertThatThrownBy(() -> Cp2020ItemTypes.AMMO_TYPE.normalize(Map.of()))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Патрон");
+        }
+
         private CatalogItem ammo(String key) {
             return Cp2020Ammo.CATALOG.stream().filter(e -> e.key().equals(key)).findFirst().orElseThrow();
         }

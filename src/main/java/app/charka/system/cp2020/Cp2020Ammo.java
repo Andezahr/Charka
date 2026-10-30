@@ -1,6 +1,7 @@
 package app.charka.system.cp2020;
 
 import app.charka.item.CatalogItem;
+import app.charka.item.ItemField;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,6 +35,13 @@ public final class Cp2020Ammo {
     private static final String BRASS_NOTE = BOX_NOTE + ". Латунная гильза: ×2 к цене. Класс выбран по урону оружия, в книге соответствия нет";
 
     public static final List<CatalogItem> CATALOG = build();
+
+    /** Все патроны справочника, для выбора в форме предмета */
+    public static final List<ItemField.Option> CALIBERS = CATALOG.stream()
+            .map(entry -> entry.properties().get(Cp2020ItemTypes.CALIBER))
+            .distinct()
+            .map(caliber -> new ItemField.Option(caliber, caliber))
+            .toList();
 
     private Cp2020Ammo() {
     }

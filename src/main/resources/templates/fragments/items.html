@@ -40,6 +40,12 @@
       <option th:each="o : ${f.options}" th:value="${o.value}" th:text="${o.value} + ' — ' + ${o.label}"
               th:selected="${value == o.value}">SMG — Пистолет-пулемёт</option>
     </select>
+    <!-- Список типичных значений; отправляется поле ниже, без JS видно только оно -->
+    <select th:if="${f.suggested}" data-suggest th:required="${f.required}" th:attr="data-name-prefix=${f.namePrefix}" hidden disabled>
+      <option value="" th:text="${f.required} ? 'Выберите…' : '—'">—</option>
+      <option th:each="o : ${f.options}" th:value="${o.value}" th:text="${o.label}">9mm</option>
+      <option value="__other">Другой…</option>
+    </select>
     <input th:unless="${f.choice}" th:type="${f.number} ? 'number' : 'text'" th:name="'prop.' + ${f.key}"
            th:value="${value}" th:attr="min=${f.min},max=${f.max}" autocomplete="off" disabled>
   </label>

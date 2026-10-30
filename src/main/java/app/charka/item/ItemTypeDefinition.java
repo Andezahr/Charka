@@ -1,6 +1,7 @@
 package app.charka.item;
 
 import app.charka.dice.DiceExpression;
+import app.charka.model.Item;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -48,6 +49,15 @@ public record ItemTypeDefinition(String code, String displayName, List<ItemField
     public ItemTypeDefinition(String code, String displayName, List<ItemField> fields) {
         this(code, displayName, fields, values -> {
         });
+    }
+
+    /**
+     * Терять нечего: обычный предмет без цены и описания. Такой удаляется одним нажатием, остальные — из панели правки с подтверждением.
+     */
+    public boolean isDisposable(Item item) {
+        return fields.isEmpty()
+                && (item.getCost() == null || item.getCost() == 0)
+                && (item.getDescription() == null || item.getDescription().isBlank());
     }
 
     /**

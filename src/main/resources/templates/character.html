@@ -167,7 +167,7 @@
               </div>
 
               <div class="list">
-                <div th:each="item : ${inv.content}" th:id="'item-' + ${item.id}" class="row" data-editable th:with="itemType=${itemTypeByCode[item.type]}">
+                <div th:each="item : ${inv.content}" th:id="'item-' + ${item.id}" class="row" data-editable th:with="itemType=${itemTypeByCode[item.type]},disposable=${itemTypeByCode[item.type] != null and itemTypeByCode[item.type].isDisposable(item)}">
                   <div class="row-main">
                     <div class="row-title" th:text="${item.name}">Предмет</div>
                     <div class="row-meta">
@@ -215,8 +215,8 @@
                     </div>
                   </div>
                   <div class="row-actions">
-                    <button type="button" class="icon-btn" data-edit-toggle title="Редактировать / переместить">✎</button>
-                    <form th:action="@{'/character/' + ${character.id} + '/inventories/' + ${inv.id} + '/items/' + ${item.id} + '/delete'}"
+                    <button type="button" class="icon-btn" data-edit-toggle th:title="${disposable} ? 'Редактировать / переместить' : 'Редактировать / переместить / удалить'">✎</button>
+                    <form th:if="${disposable}" th:action="@{'/character/' + ${character.id} + '/inventories/' + ${inv.id} + '/items/' + ${item.id} + '/delete'}"
                           method="post" class="inline">
                       <button type="submit" class="icon-btn danger" title="Удалить">✕</button>
                     </form>
@@ -239,6 +239,10 @@
                                 th:value="${target.id}" th:text="'Переместить в: ' + ${target.name}">Инвентарь</option>
                       </select>
                       <button type="submit" class="btn btn-sm">⇄ Переместить</button>
+                    </form>
+                    <form th:unless="${disposable}" th:action="@{'/character/' + ${character.id} + '/inventories/' + ${inv.id} + '/items/' + ${item.id} + '/delete'}"
+                          method="post" class="form-row item-delete" th:attr="data-confirm='Удалить «' + ${item.name} + '»? Вернуть его будет нельзя.'">
+                      <button type="submit" class="btn btn-sm btn-danger">Удалить предмет</button>
                     </form>
                   </div>
                 </div>
