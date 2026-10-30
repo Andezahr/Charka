@@ -162,12 +162,12 @@ class Cp2020CheckResolverTest {
         }
 
         @Test
-        @DisplayName("сложности книги: Easy 10 … Nearly Impossible 30")
+        @DisplayName("сложности книги: Легко 10 … Почти невозможно 30")
         void presets() {
             assertThat(resolver.getDifficultyPresets()).containsExactly(
-                    java.util.Map.entry("Easy", 10), java.util.Map.entry("Average", 15),
-                    java.util.Map.entry("Difficult", 20), java.util.Map.entry("Very Difficult", 25),
-                    java.util.Map.entry("Nearly Impossible", 30));
+                    java.util.Map.entry("Легко", 10), java.util.Map.entry("Средне", 15),
+                    java.util.Map.entry("Сложно", 20), java.util.Map.entry("Очень сложно", 25),
+                    java.util.Map.entry("Почти невозможно", 30));
         }
     }
 }

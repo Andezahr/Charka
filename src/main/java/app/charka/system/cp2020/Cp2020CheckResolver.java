@@ -19,11 +19,12 @@ public class Cp2020CheckResolver implements CheckResolver {
     private static final Map<String, Integer> PRESETS = new LinkedHashMap<>();
 
     static {
-        PRESETS.put("Easy", 10);
-        PRESETS.put("Average", 15);
-        PRESETS.put("Difficult", 20);
-        PRESETS.put("Very Difficult", 25);
-        PRESETS.put("Nearly Impossible", 30);
+        // Easy, Average, Difficult, Very Difficult, Nearly Impossible
+        PRESETS.put("Легко", 10);
+        PRESETS.put("Средне", 15);
+        PRESETS.put("Сложно", 20);
+        PRESETS.put("Очень сложно", 25);
+        PRESETS.put("Почти невозможно", 30);
     }
 
     @Override

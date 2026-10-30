@@ -1,11 +1,10 @@
 package app.charka.controller;
 
-import app.charka.check.CheckResult;
 import app.charka.exception.CharacterNotFoundException;
 import app.charka.exception.GlobalExceptionHandler;
 import app.charka.model.Character;
 import app.charka.service.CharacterService;
-import app.charka.skill.SkillCheck;
+import app.charka.service.counter.CounterService;
 import app.charka.skill.SkillService;
 import app.charka.system.GameSystemRegistry;
 import app.charka.system.GenericSystem;
@@ -21,8 +20,6 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import java.util.List;
 import java.util.Map;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -34,6 +31,7 @@ class SkillControllerTest {
 
     @Mock private SkillService skillService;
     @Mock private CharacterService characterService;
+    @Mock private CounterService counterService;
 
     private MockMvc mockMvc;
 
@@ -41,7 +39,7 @@ class SkillControllerTest {
     void setUp() {
         GameSystemRegistry registry = new GameSystemRegistry(List.of(new GenericSystem()));
         mockMvc = MockMvcBuilders
-                .standaloneSetup(new SkillController(skillService, characterService, registry))
+                .standaloneSetup(new SkillController(skillService, characterService, counterService, registry))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
     }
@@ -111,27 +109,15 @@ class SkillControllerTest {
     }
 
     @Test
-    @DisplayName("проверка — результат и подпись во flash")
-    void check() throws Exception {
-        CheckResult result = new CheckResult("d10!+12", List.of("Бросок d10: 7"), 19, 15, true, false, false);
-        when(skillService.check(1L, "handgun", null, -1, 15)).thenReturn(new SkillCheck("Пистолеты", result));
+    @DisplayName("создание счётчиков системы — недостающие из системы персонажа")
+    void setupCounters() throws Exception {
+        Character character = new Character();
+        when(characterService.getById(1L)).thenReturn(character);
 
-        mockMvc.perform(post("/character/1/skills/check")
-                        .param("code", "handgun").param("skillId", "")
-                        .param("modifier", "-1").param("difficulty", "15"))
+        mockMvc.perform(post("/character/1/skills/setup"))
                 .andExpect(redirectedUrl("/character/1/skills"))
-                .andExpect(flash().attribute("checkResult", result))
-                .andExpect(flash().attribute("rollLabel", "Пистолеты"));
-    }
+                .andExpect(flash().attributeExists("successMessage"));
 
-    @Test
-    @DisplayName("проверка неизвестного навыка — errorMessage, а не страница ошибки")
-    void checkRejected() throws Exception {
-        when(skillService.check(eq(1L), eq("nope"), any(), eq(0), any()))
-                .thenThrow(new IllegalArgumentException("Неизвестный навык"));
-
-        mockMvc.perform(post("/character/1/skills/check").param("code", "nope"))
-                .andExpect(redirectedUrl("/character/1/skills"))
-                .andExpect(flash().attribute("errorMessage", "Неизвестный навык"));
+        verify(counterService).createDefaults(1L, new GenericSystem().getDefaultCounterTypes());
     }
 }

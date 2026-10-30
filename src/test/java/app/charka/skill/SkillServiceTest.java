@@ -143,8 +143,11 @@ class SkillServiceTest {
             assertThat(group(sheet, "INT").rows()).extracting(SkillSheet.Row::name)
                     .contains("Язык: Русский", "Язык: Японский").doesNotContain("Язык");
             assertThat(row(sheet, "INT", "Язык: Русский").customId()).isEqualTo(10L);
-            assertThat(sheet.customTypes()).extracting(SkillDefinition::code)
-                    .containsExactly("expert", "language", "martial_art");
+            assertThat(group(sheet, "INT").customTypes()).extracting(SkillDefinition::code)
+                    .containsExactly("expert", "language");
+            assertThat(group(sheet, "REF").customTypes()).extracting(SkillDefinition::code)
+                    .containsExactly("martial_art");
+            assertThat(group(sheet, "BODY").customTypes()).isEmpty();
         }
 
         @Test

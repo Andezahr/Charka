@@ -8,8 +8,10 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.nio.charset.StandardCharsets;
 import java.util.NoSuchElementException;
 
 /**
@@ -35,6 +37,11 @@ public class ApiExceptionHandler {
         return text(HttpStatus.BAD_REQUEST.value(), ex.getMessage());
     }
 
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<String> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        return text(HttpStatus.BAD_REQUEST.value(), "Некорректное значение параметра " + ex.getName());
+    }
+
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<String> handleRuntime(RuntimeException ex) {
         log.error("Необработанная ошибка API", ex);
@@ -43,7 +50,7 @@ public class ApiExceptionHandler {
 
     private static ResponseEntity<String> text(int status, String body) {
         return ResponseEntity.status(status)
-                .contentType(MediaType.TEXT_PLAIN)
+                .contentType(new MediaType(MediaType.TEXT_PLAIN, StandardCharsets.UTF_8))
                 .body(body);
     }
 }

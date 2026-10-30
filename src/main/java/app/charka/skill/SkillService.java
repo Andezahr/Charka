@@ -53,13 +53,13 @@ public class SkillService {
 
         List<SkillSheet.Row> specials = new ArrayList<>();
         Map<String, List<SkillSheet.Row>> byStat = new LinkedHashMap<>();
-        List<SkillDefinition> customTypes = new ArrayList<>();
+        Map<String, List<SkillDefinition>> customTypes = new LinkedHashMap<>();
         for (SkillDefinition definition : system.getSkillCatalog()) {
             List<SkillSheet.Row> rows = definition.special()
                     ? specials
                     : byStat.computeIfAbsent(definition.statCode(), key -> new ArrayList<>());
             if (definition.custom()) {
-                customTypes.add(definition);
+                customTypes.computeIfAbsent(definition.statCode(), key -> new ArrayList<>()).add(definition);
                 customSkills(character, definition.code()).forEach(skill ->
                         rows.add(row(definition, skill, stats)));
             } else {
@@ -73,15 +73,16 @@ public class SkillService {
 
         List<SkillSheet.Group> groups = new ArrayList<>();
         if (!specials.isEmpty()) {
-            groups.add(new SkillSheet.Group(SPECIAL_GROUP, null, true, specials));
+            groups.add(new SkillSheet.Group(SPECIAL_GROUP, null, true, List.of(), specials));
         }
         byStat.forEach((statCode, rows) -> {
             if (!rows.isEmpty()) {
                 StatValue stat = stats.get(statCode);
-                groups.add(new SkillSheet.Group(statName(statCode, stat), stat, false, rows));
+                groups.add(new SkillSheet.Group(statName(statCode, stat), stat, false,
+                        customTypes.getOrDefault(statCode, List.of()), rows));
             }
         });
-        return new SkillSheet(role, system.getRoles(), groups, customTypes, stats.isEmpty());
+        return new SkillSheet(role, system.getRoles(), groups, stats.isEmpty());
     }
 
     /**
@@ -204,7 +205,7 @@ public class SkillService {
         int level = skill == null ? 0 : skill.getLevel();
         return new SkillSheet.Row(definition.code(), definition.custom() ? skill.getId() : null,
                 displayName(definition, skill), level, statValue + level,
-                statName(definition.statCode(), stat), statValue, definition.costMultiplier());
+                statName(definition.statCode(), stat), statValue);
     }
 
     private static String displayName(SkillDefinition definition, CharacterSkill skill) {

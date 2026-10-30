@@ -3,7 +3,7 @@ package app.charka.controller;
 import app.charka.check.CheckResolver;
 import app.charka.model.Character;
 import app.charka.service.CharacterService;
-import app.charka.skill.SkillCheck;
+import app.charka.service.counter.CounterService;
 import app.charka.skill.SkillService;
 import app.charka.system.GameSystemRegistry;
 import lombok.RequiredArgsConstructor;
@@ -20,8 +20,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Страница навыков и роль персонажа. Проверка навыка — flash {@code checkResult}/{@code rollLabel},
- * некорректный ввод — {@code errorMessage}.
+ * Страница навыков и роль персонажа. Некорректный ввод — flash {@code errorMessage}.
+ * Проверка навыка — {@code api.SkillCheckController}.
  */
 @Controller
 @RequiredArgsConstructor
@@ -33,6 +33,7 @@ public class SkillController {
 
     private final SkillService skillService;
     private final CharacterService characterService;
+    private final CounterService counterService;
     private final GameSystemRegistry systemRegistry;
 
     @GetMapping("/skills")
@@ -95,28 +96,20 @@ public class SkillController {
     }
 
     /**
-     * @param skillId строка навыка со своим названием; иначе навык определяется по {@code code}
+     * Создаёт недостающие счётчики системы: без статов итоги навыков считаются только по уровню.
      */
-    @PostMapping("/skills/check")
-    public String check(@PathVariable Long characterId,
-                        @RequestParam(required = false) String code,
-                        @RequestParam(required = false) Long skillId,
-                        @RequestParam(defaultValue = "0") int modifier,
-                        @RequestParam(required = false) Integer difficulty,
-                        RedirectAttributes redirectAttributes) {
-        return handle(characterId, redirectAttributes, null, () -> {
-            SkillCheck check = skillService.check(characterId, code, skillId, modifier, difficulty);
-            redirectAttributes.addFlashAttribute("checkResult", check.result());
-            redirectAttributes.addFlashAttribute("rollLabel", check.label());
+    @PostMapping("/skills/setup")
+    public String setupCounters(@PathVariable Long characterId, RedirectAttributes redirectAttributes) {
+        return handle(characterId, redirectAttributes, "Счётчики созданы — задайте значения на вкладке «Счётчики»", () -> {
+            Character character = characterService.getById(characterId);
+            counterService.createDefaults(characterId, systemRegistry.forCharacter(character).getDefaultCounterTypes());
         });
     }
 
     private static String handle(Long characterId, RedirectAttributes redirectAttributes, String success, Runnable action) {
         try {
             action.run();
-            if (success != null) {
-                redirectAttributes.addFlashAttribute("successMessage", success);
-            }
+            redirectAttributes.addFlashAttribute("successMessage", success);
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         }

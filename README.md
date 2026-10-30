@@ -7,7 +7,7 @@
 ![Java](https://img.shields.io/badge/Java-24-orange)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.3-6DB33F)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-336791)
-![Tests](https://img.shields.io/badge/tests-321%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-325%20passing-brightgreen)
 
 ---
 

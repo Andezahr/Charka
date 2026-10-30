@@ -35,6 +35,7 @@
   --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
   --font: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
   --font-display: 'Russo One', 'Inter', 'Segoe UI', sans-serif;
+  --topbar-height: 58px;
 }
 
 * { box-sizing: border-box; }
@@ -105,8 +106,11 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
 
 /* На узком экране вкладки персонажа не помещаются рядом с логотипом — уходят на вторую строку */
 @media (max-width: 560px) {
+  :root { --topbar-height: 90px; }
   .topbar-inner { height: auto; flex-wrap: wrap; gap: 6px 16px; padding: 10px 16px; }
   .topnav a { padding: 6px 10px; }
+  /* статы со штрафом — первыми, чтобы не уезжали за край полосы */
+  .skills-stats .chip.red { order: -1; }
 }
 
 .topnav { display: flex; gap: 4px; }
@@ -346,7 +350,7 @@ a.row:hover .arrow { color: var(--accent); transform: translateX(3px); }
   color: var(--muted);
 }
 
-input[type="text"], input[type="number"], input[type="date"], select, textarea {
+input[type="text"], input[type="number"], input[type="date"], input[type="search"], select, textarea {
   width: 100%;
   min-width: 0;
   padding: 9px 12px;
@@ -821,10 +825,48 @@ details.cp-more > summary:hover { color: var(--text-soft); }
 
 /* ---------- Навыки ---------- */
 
-.skills-setup { margin-bottom: 20px; }
+.skills-head { margin-bottom: 16px; }
+.skills-role { display: flex; align-items: center; gap: 4px; }
+.skills-head .edit-panel { max-width: 380px; }
+
+.skills-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  font-size: 14px;
+  color: var(--text-soft);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+/* Панель статов прилипает под шапкой; на узком экране листается вбок, а не занимает две строки */
+.skills-stats {
+  position: sticky;
+  top: var(--topbar-height);
+  z-index: 5;
+  display: flex;
+  gap: 6px;
+  margin: 0 -24px 14px;
+  padding: 8px 24px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  background: rgba(11, 14, 20, 0.88);
+  backdrop-filter: blur(10px);
+}
+.skills-stats .chip { flex-shrink: 0; font-size: 13px; }
+.skills-stats .chip:hover { border-color: var(--accent); }
+[data-skills-group] { scroll-margin-top: calc(var(--topbar-height) + 56px); }
+
+.skills-toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+input[type="search"].skills-search { flex: 1 1 200px; width: auto; }
+
 .skills-grid { columns: 2 420px; column-gap: 20px; }
 .skills-grid > .card { break-inside: avoid; margin-bottom: 20px; }
-.badge.is-reduced { color: var(--danger); background: var(--danger-soft); }
 
 .skills-rows { padding: 6px 8px; }
 .skill-row {
@@ -835,20 +877,29 @@ details.cp-more > summary:hover { color: var(--text-soft); }
   border-radius: 7px;
 }
 .skill-row:hover { background: var(--surface-2); }
-.skill-row.is-zero .skill-name, .skill-row.is-zero .skill-level { color: var(--muted); }
+.skill-row.is-zero .skill-name { color: var(--muted); }
 .skill-name { flex: 1 1 auto; min-width: 0; font-size: 14px; }
-.skill-note { margin-left: 4px; font-size: 12px; color: var(--muted); }
-.skill-level { width: 28px; text-align: center; color: var(--text-soft); }
-.skill-check { min-width: 44px; }
+.skill-note { margin-left: 6px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.skill-check { flex-shrink: 0; min-width: 62px; }
 
-/* Режим правки уровней: поля вместо чисел, проверки скрыты, чтобы не потерять несохранённое */
-.skill-input { display: none; }
-input[type="number"].skill-input { width: 68px; padding: 4px 8px; }
+/* Добавление и удаление своих навыков перезагружают страницу, поэтому доступны в «Все навыки»,
+   а не в правке уровней, где потерялись бы несохранённые значения */
+.skill-add { display: none; flex-wrap: wrap; gap: 6px; padding: 8px 16px 12px; border-top: 1px solid var(--border); }
+.is-all .skill-add { display: flex; }
+.skill-add-item:has(.edit-panel.is-open) { flex-basis: 100%; }
 form.skill-delete { display: none; }
+.is-all form.skill-delete { display: inline-flex; }
+
+/* Режим правки уровней: поля вместо кнопок проверки */
+.skill-input { display: none; }
+input[type="number"].skill-input { flex: none; width: 68px; padding: 4px 8px; }
+.is-editing .skill-input { display: block; }
+.is-editing .skill-check, .is-editing .skill-level { display: none; }
 .skills-savebar {
   display: none;
   position: sticky;
   bottom: 16px;
+  z-index: 5;
   gap: 10px;
   justify-content: flex-end;
   padding: 12px 16px;
@@ -857,13 +908,16 @@ form.skill-delete { display: none; }
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow);
 }
-.is-editing .skill-input { display: block; }
-.is-editing .skill-delete { display: inline-flex; }
-.is-editing .skill-level, .is-editing .skill-check { display: none; }
 .is-editing .skills-savebar { display: flex; }
+/* Поле, в которое перешли по Tab, не должно оказаться под панелью сохранения или шапкой */
+html:has(.is-editing) {
+  scroll-padding-top: calc(var(--topbar-height) + 56px);
+  scroll-padding-bottom: 90px;
+}
 
 .dialog {
-  width: min(420px, calc(100vw - 32px));
+  width: min(440px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
   padding: 22px;
   color: var(--text);
   background: var(--surface);
@@ -873,3 +927,7 @@ form.skill-delete { display: none; }
 }
 .dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
 .dialog-actions { justify-content: flex-end; }
+.dialog .alert { margin: 0; }
+.dialog .btn.is-active { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+.dialog-more summary { cursor: pointer; }
+.dialog-more input { margin-top: 8px; }

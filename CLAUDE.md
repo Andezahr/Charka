@@ -29,7 +29,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 321 тест, на 2026-10-30 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 325 тестов, на 2026-10-30 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -44,7 +44,7 @@ model/         JPA-сущности (используются напрямую �
 repository/    Spring Data репозитории (по одному на сущность)
 service/       бизнес-логика; campaign/, counter/, notes/ — подпакеты
 controller/    MVC-контроллеры, возвращают имена шаблонов или redirect
-api/           REST: CampaignExportController (единственный JSON-эндпоинт)
+api/           REST: CampaignExportController, SkillCheckController (проверка навыка)
 dice/         DiceExpression (разбор NdM±K), DiceResult, DiceService (броски + лог RollLog)
 check/        CheckRequest/CheckResult/CheckResolver (GenericCheckResolver: d20), CheckService (правила системы + лог)
 skill/        SkillDefinition, CharacterRole, StatValue, SkillSheet, SkillCheck, SkillService (навыки, роль, проверка навыка)
@@ -57,7 +57,9 @@ TODO.txt       список планов автора (см. ниже)
 ```
 
 Шаблоны: `src/main/resources/templates/` — `error.html`, `home.html`, `campaign.html`, `character.html`, `notes.html`, `counters/list.html`, `skills/list.html`; общие куски — `fragments/layout.html` (`head(title)`, `topbar(characterId, active)` с вкладками Лист/Навыки/Счётчики/Заметки; «Навыки» — только если у системы есть каталог), `fragments/dice.html` (`card(action, showAuthor)` — карточка «Кубики», `check-result` — итог проверки).
-Фронт единый: один CSS `static/css/app.css` (тёмная тема, токены в `:root`, шрифты Inter + Russo One с Google Fonts) и один JS `static/js/app.js` — без Bootstrap. JS-соглашения: `[data-edit-toggle]` открывает `.edit-panel` внутри ближайшего `[data-editable]`; `form[data-confirm]` спрашивает подтверждение; `[data-count-to]` — счётчик символов; `.alert-close` закрывает flash-сообщение.
+Фронт единый: один CSS `static/css/app.css` (тёмная тема, токены в `:root`, шрифты Inter + Russo One с Google Fonts) и один JS `static/js/app.js` — без Bootstrap. JS-соглашения: `[data-edit-toggle]` открывает `.edit-panel` внутри ближайшего `[data-editable]`; `form[data-confirm]` спрашивает подтверждение; `[data-count-to]` — счётчик символов; `.alert-close` закрывает flash-сообщение; `[data-skills]` — страница навыков (фильтр, поиск, правка уровней, диалог проверки).
+
+**Убирая что-то с экрана ради разгрузки, записывай в `TODO.md`, где это вернуть** (пример — таблица «Скрыто с экрана навыков» и пометки в задачах G-05, P-01, I-06, C-03, C-07).
 
 ## Доменная модель
 
@@ -117,7 +119,8 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 | POST | `/character/{id}/categories`, `.../{catId}/edit|delete` | категории заметок |
 | GET, POST | `/character/{id}/skills` | страница навыков; POST `level.<код>`, `custom.<id>` → уровни разом |
 | POST | `/character/{id}/skills/custom`, `.../custom/{sid}/delete` | свой навык (язык, эксперт, боевое искусство) |
-| POST | `/character/{id}/skills/check` | `code` или `skillId`, `modifier`, `difficulty?` → проверка навыка |
+| POST | `/character/{id}/skills/setup` | создать недостающие счётчики системы |
+| POST | `/api/characters/{id}/skills/check` | `code` или `skillId`, `modifier`, `difficulty?` → проверка навыка, JSON (диалог, без перезагрузки) |
 | POST | `/character/{id}/role` | `role` → роль персонажа |
 | GET | `/character/{id}/counters` | счётчики |
 | POST | `/character/{id}/counters/create`, `/{cid}/update|set|reset`; DELETE `/{cid}` | счётчики |
