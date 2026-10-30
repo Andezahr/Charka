@@ -265,14 +265,14 @@ class Cp2020AttackRulesTest {
         }
 
         @Test
-        @DisplayName("Урон с делением округляется вверх")
+        @DisplayName("Урон с делением округляется вниз, но не меньше 1")
         void dividedDamage() {
             Item item = weapon("arasaka_minami_10");
             item.getProperties().put("damage", "1D6/3");
 
-            AttackHit hit = hit(item, request(5, "TORSO"), 4);
+            AttackHit hit = hit(item, request(5, "TORSO"), 5);
 
-            assertThat(hit.damage().getAmount()).isEqualTo(2);
+            assertThat(hit.damage().getAmount()).isEqualTo(1);
         }
     }
 }

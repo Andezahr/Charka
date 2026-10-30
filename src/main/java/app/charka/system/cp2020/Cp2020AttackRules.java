@@ -120,8 +120,8 @@ final class Cp2020AttackRules implements AttackRules {
         }
         String notation = expression + (parsed.group(2) != null ? "/" + parsed.group(2) : "");
         if (parsed.group(2) != null) {
-            // HOMEBREW: книга не говорит, как округлять «1D6/3»; вверх, чтобы попадание наносило урон
-            amount = Math.ceilDiv(amount, Integer.parseInt(parsed.group(2)));
+            // Книга (с. 25): деление вниз, значение меньше 1 считается за 1
+            amount = Math.max(1, amount / Integer.parseInt(parsed.group(2)));
         }
         steps.add("Урон " + notation + ": " + String.join(" + ", rolled)
                 + (expression.modifier() != 0 ? " " + (expression.modifier() > 0 ? "+" : "−") + " " + Math.abs(expression.modifier()) : "")
