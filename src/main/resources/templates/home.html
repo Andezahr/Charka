@@ -49,7 +49,7 @@
                 <span th:text="${systemNames[campaign.system] ?: campaign.system}">Система</span>
                 <span th:if="${campaign.currentDate != null}">📅 <span th:text="${campaign.currentDate}">дата</span></span>
                 <span th:if="${campaign.characters != null}">
-                  👥 <span th:text="${#lists.size(campaign.characters)}">0</span> перс.
+                  👥 <span th:text="${#lists.size(campaign.characters.?[!npc])}">0</span> перс.
                 </span>
               </div>
             </div>

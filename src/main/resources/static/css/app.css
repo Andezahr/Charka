@@ -557,7 +557,7 @@ form.inline { display: inline-flex; margin: 0; }
 .char-card-name:hover { color: var(--accent); }
 .char-card .chips { margin-top: 10px; }
 .npc-copy { margin-top: 10px; }
-.npc-copy input { width: 72px; }
+.form-row.npc-copy input { flex: 0 0 72px; width: 72px; }
 
 .avatar {
   display: inline-flex;

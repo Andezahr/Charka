@@ -51,11 +51,12 @@ controller/    MVC-контроллеры, возвращают имена ша�
 api/           REST: CampaignExportController, SkillCheckController (проверка навыка)
 dice/         DiceExpression (разбор NdM±K), DiceResult, DiceService (броски + лог RollLog)
 attack/       AttackRules (контракт системы), AttackForm, AttackRequest, AttackHit, AreaDamage (урон по площади), AttackResult, AttackService (ход атаки, урон цели, лог)
+npc/          NpcTemplate, NpcSheet (что выбросила система), NpcService (создание по шаблону, копии, удаление)
 check/        CheckRequest/CheckResult/CheckResolver (GenericCheckResolver: d20), OpposedCheckResult, CheckService (правила системы + лог)
 item/         ItemTypeDefinition, ItemField (поля типа предмета, проверка ввода, строка предмета), CatalogItem (строка справочника), ItemAction (кнопка действия на листе); типы, справочник и действия отдаёт GameSystem
 skill/        SkillDefinition, CharacterRole, StatValue, SkillSheet, SkillCheck, SkillOpponent, SkillProgression (контракт прокачки), SkillImprovement, SkillService (навыки, роли, проверка, прокачка)
 system/        GameSystem, GameSystemRegistry, GenericSystem ("GENERIC"), Currency; cp2020/ — Cp2020System ("CP2020"),
-               стратегии счётчиков, Cp2020Rules, Cp2020Dice (d10: на 10 один дополнительный кубик), Cp2020CheckResolver, Cp2020Skills (каталог, роли), Cp2020Fumbles (таблица книги), Cp2020SkillRules (языки по семьям, бонусы от других навыков, требования), Cp2020ItemTypes (оружие, магазины, боеприпасы), Cp2020Weapons (справочник оружия книги), Cp2020Ammo (таблица боеприпасов книги), Cp2020Magazines (справочник магазинов), Cp2020MagazineRules (цены, размеры, штрафы магазинов; хоумбрю помечен), Cp2020WeaponActions (выстрел, очередь, смена и снаряжение магазина), Cp2020Armors (справочник брони книги), Cp2020ArmorRules (пропорциональная броня, слои), Cp2020WornArmor (надетая броня), Cp2020ArmorActions (надеть, снять, починить), Cp2020AttackRules (дальняя атака и метание: сложность по дальности, зона, урон, площадь и отклонение), Cp2020AttackModifiers (таблица модификаторов FNFF), Cp2020SkillProgression + Cp2020IpStrategy (очки улучшения)
+               стратегии счётчиков, Cp2020Rules, Cp2020Dice (d10: на 10 один дополнительный кубик), Cp2020CheckResolver, Cp2020Skills (каталог, роли), Cp2020Fumbles (таблица книги), Cp2020SkillRules (языки по семьям, бонусы от других навыков, требования), Cp2020ItemTypes (оружие, магазины, боеприпасы), Cp2020Weapons (справочник оружия книги), Cp2020Ammo (таблица боеприпасов книги), Cp2020Magazines (справочник магазинов), Cp2020MagazineRules (цены, размеры, штрафы магазинов; хоумбрю помечен), Cp2020WeaponActions (выстрел, очередь, смена и снаряжение магазина), Cp2020Armors (справочник брони книги), Cp2020ArmorRules (пропорциональная броня, слои), Cp2020WornArmor (надетая броня), Cp2020ArmorActions (надеть, снять, починить), Cp2020AttackRules (дальняя атака и метание: сложность по дальности, зона, урон, площадь и отклонение), Cp2020AttackModifiers (таблица модификаторов FNFF), Cp2020SkillProgression + Cp2020IpStrategy (очки улучшения), Cp2020Npcs (быстрые NPC, с. 30)
 dto/counter/   DTO только для счётчиков (единственный модуль, переведённый на DTO)
 exception/     NotFoundException.forId("Entity", id) (NoSuchElementException → 404), наследники CharacterNotFoundException, InventoryNotFoundException;
                GlobalExceptionHandler (страницы → error.html: 404/400/500), ApiExceptionHandler (app.charka.api → text/plain)
@@ -73,7 +74,7 @@ TODO.txt       список планов автора (см. ниже)
 Campaign (name, system, startDate, currentDate)   — system: код GameSystem (колонка game_system)
  ├─ RollLog* (character?, expression, details, total, label, gameDate, createdAt) — без коллекции в Campaign, не экспортируется
  ├─ Chronicle* (name, startDate, endDate)     — запись о прошедшем периоде
- └─ Character* (name, birthDate, roles)       — roles: коды из GameSystem.getRoles(), таблица character_role; уровень роли = уровень спецспособности
+ └─ Character* (name, birthDate, npc, roles)  — npc: персонаж мастера; roles: коды из GameSystem.getRoles(), таблица character_role; уровень роли = уровень спецспособности
      ├─ CharacterSkill* (skillCode, level, customName?) — код из каталога системы; уровень 0 у обычного навыка не хранится
      ├─ Wound*     (name, severity, date)
      ├─ Inventory* (name) └─ Item* (name, quantity, cost, description, type, properties) — type: код из GameSystem.getItemTypes()
@@ -112,6 +113,8 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 | GET | `/campaign/{id}` | страница кампании |
 | POST | `/campaign/{id}/characters` | добавить персонажа (инвентарь «Backpack» + счётчики по умолчанию системы) |
 | POST | `/campaign/{id}/chronicles` | `name`, `duration` → промотать время |
+| POST | `/campaign/{id}/npcs` | `template?`, `name?`, `count`, `advanced` → NPC по шаблону системы или пустой |
+| POST | `/character/{id}/npc/copy`, `.../npc/delete` | `count` → копии NPC без ран; удаление только NPC |
 | GET | `/api/campaigns/{id}/download` | экспорт кампании в JSON-файл |
 | POST | `/campaign/{id}/roll`, `/character/{id}/roll` | `expression` или `quick`, `label?` → бросок в лог, результат во flash |
 | POST | `/campaign/{id}/check`, `/character/{id}/check` | `modifier`, `difficulty?`, `label?` → проверка по правилам системы, `checkResult` во flash |
