@@ -14,13 +14,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
- * Навыки и роль персонажа. Какие навыки и роли существуют и как считаются статы — решает система кампании.
+ * Навыки и роли персонажа. Какие навыки и роли существуют, как считаются статы и сколько стоит прокачка — решает
+ * система кампании.
  */
 @Service
 @RequiredArgsConstructor
@@ -28,7 +32,7 @@ public class SkillService {
 
     static final int MAX_LEVEL = 10;
     private static final int MAX_CUSTOM_NAME = 100;
-    private static final String SPECIAL_GROUP = "Спецспособность";
+    private static final String SPECIAL_GROUP = "Спецспособности ролей";
 
     private final CharacterRepository characterRepository;
     private final GameSystemRegistry systemRegistry;
@@ -49,7 +53,9 @@ public class SkillService {
         Character character = getCharacter(characterId);
         GameSystem system = systemRegistry.forCharacter(character);
         Map<String, StatValue> stats = system.getCurrentStats(character);
-        CharacterRole role = system.findRole(character.getRole()).orElse(null);
+        List<CharacterRole> heldRoles = system.rolesOf(character);
+        SkillProgression progression = system.getSkillProgression();
+        Integer points = progression == null ? null : progression.balance(character);
 
         List<SkillSheet.Row> specials = new ArrayList<>();
         Map<String, List<SkillSheet.Row>> byStat = new LinkedHashMap<>();
@@ -61,13 +67,15 @@ public class SkillService {
             if (definition.custom()) {
                 customTypes.computeIfAbsent(definition.statCode(), key -> new ArrayList<>()).add(definition);
                 customSkills(character, definition.code()).forEach(skill ->
-                        rows.add(row(definition, skill, stats)));
+                        rows.add(row(definition, skill, stats, null, progression, points)));
+            } else if (!definition.special()) {
+                rows.add(row(definition, plainSkill(character, definition.code()), stats, null, progression, points));
             } else {
-                CharacterSkill skill = plainSkill(character, definition.code());
-                boolean ownSpecial = role != null && definition.code().equals(role.specialSkillCode());
-                if (!definition.special() || ownSpecial || skill != null) {
-                    rows.add(row(definition, skill, stats));
-                }
+                heldRoles.stream()
+                        .filter(role -> definition.code().equals(role.specialSkillCode()))
+                        .findFirst()
+                        .ifPresent(role -> rows.add(row(definition, plainSkill(character, definition.code()), stats,
+                                role.name(), progression, points)));
             }
         }
 
@@ -82,11 +90,13 @@ public class SkillService {
                         customTypes.getOrDefault(statCode, List.of()), rows));
             }
         });
-        return new SkillSheet(role, system.getRoles(), groups, stats.isEmpty());
+        return new SkillSheet(heldRoles, system.getRoles(), groups, stats.isEmpty(),
+                progression == null ? null : progression.getPointsName(), points);
     }
 
     /**
-     * Меняет уровни разом (форма страницы навыков). Уровень 0 у обычного навыка удаляет его строку.
+     * Меняет уровни разом, без траты очков: создание персонажа, правка мастера.
+     * Уровень 0 у обычного навыка удаляет его строку.
      *
      * @param levels       код навыка → уровень
      * @param customLevels id строки навыка со своим названием → уровень
@@ -96,13 +106,52 @@ public class SkillService {
         Character character = getCharacter(characterId);
         GameSystem system = systemRegistry.forCharacter(character);
         levels.forEach((code, level) -> {
-            SkillDefinition definition = definition(system, code);
-            if (definition.custom()) {
-                throw new IllegalArgumentException("У навыка «" + definition.name() + "» уровень задаётся отдельно для каждого названия");
-            }
-            setPlainLevel(character, code, checkLevel(level));
+            SkillDefinition definition = plainDefinition(character, system, code);
+            setPlainLevel(character, definition.code(), checkLevel(level));
         });
         customLevels.forEach((skillId, level) -> customSkill(character, skillId).setLevel(checkLevel(level)));
+    }
+
+    /**
+     * Повышает навык на один уровень за очки по правилам системы.
+     *
+     * @param code    код обычного навыка; не используется, если задан {@code skillId}
+     * @param skillId id строки навыка со своим названием
+     */
+    @Transactional
+    public SkillImprovement improve(Long characterId, String code, Long skillId) {
+        Character character = getCharacter(characterId);
+        GameSystem system = systemRegistry.forCharacter(character);
+        SkillProgression progression = system.getSkillProgression();
+        if (progression == null) {
+            throw new IllegalArgumentException("В этой системе навыки не развиваются за очки");
+        }
+        CharacterSkill custom = skillId != null ? customSkill(character, skillId) : null;
+        SkillDefinition definition = custom != null
+                ? definition(system, custom.getSkillCode())
+                : plainDefinition(character, system, code);
+        CharacterSkill skill = custom != null ? custom : plainSkill(character, code);
+        int level = skill == null ? 0 : skill.getLevel();
+        if (level >= MAX_LEVEL) {
+            throw new IllegalArgumentException("Навык «" + displayName(definition, skill) + "» уже на максимальном уровне");
+        }
+
+        int cost = progression.cost(definition, level);
+        Integer balance = progression.balance(character);
+        if (balance == null) {
+            throw new IllegalArgumentException("У персонажа нет счётчика очков " + progression.getPointsName());
+        }
+        if (balance < cost) {
+            throw new IllegalArgumentException("Не хватает очков: нужно " + cost + " " + progression.getPointsName()
+                    + ", есть " + balance);
+        }
+        progression.spend(character, cost);
+        if (custom != null) {
+            custom.setLevel(level + 1);
+        } else {
+            setPlainLevel(character, definition.code(), level + 1);
+        }
+        return new SkillImprovement(displayName(definition, skill), level + 1, cost);
     }
 
     /**
@@ -140,18 +189,25 @@ public class SkillService {
     }
 
     /**
-     * @param roleCode код роли системы; пусто — снять роль. Навыки при смене роли не теряются.
+     * Задаёт роли персонажа целиком. Уровень спецспособности снятой роли сохраняется:
+     * способность недоступна, пока роль не вернут.
+     *
+     * @param roleCodes коды ролей системы; пусто — снять все
      */
     @Transactional
-    public void setRole(Long characterId, String roleCode) {
+    public void setRoles(Long characterId, Collection<String> roleCodes) {
         Character character = getCharacter(characterId);
-        if (roleCode == null || roleCode.isBlank()) {
-            character.setRole(null);
-            return;
+        GameSystem system = systemRegistry.forCharacter(character);
+        Set<String> codes = new HashSet<>();
+        if (roleCodes != null) {
+            for (String code : roleCodes) {
+                CharacterRole role = system.findRole(code)
+                        .orElseThrow(() -> new IllegalArgumentException("Неизвестная роль: " + code));
+                codes.add(role.code());
+            }
         }
-        CharacterRole role = systemRegistry.forCharacter(character).findRole(roleCode)
-                .orElseThrow(() -> new IllegalArgumentException("Неизвестная роль: " + roleCode));
-        character.setRole(role.code());
+        character.getRoles().clear();
+        character.getRoles().addAll(codes);
     }
 
     /**
@@ -165,10 +221,9 @@ public class SkillService {
         Character character = getCharacter(characterId);
         GameSystem system = systemRegistry.forCharacter(character);
         CharacterSkill skill = skillId != null ? customSkill(character, skillId) : plainSkill(character, code);
-        SkillDefinition definition = definition(system, skillId != null ? skill.getSkillCode() : code);
-        if (skillId == null && definition.custom()) {
-            throw new IllegalArgumentException("Выберите конкретный навык «" + definition.name() + "»");
-        }
+        SkillDefinition definition = skillId != null
+                ? definition(system, skill.getSkillCode())
+                : plainDefinition(character, system, code);
 
         StatValue stat = system.getCurrentStats(character).get(definition.statCode());
         String name = displayName(definition, skill);
@@ -199,13 +254,16 @@ public class SkillService {
         }
     }
 
-    private static SkillSheet.Row row(SkillDefinition definition, CharacterSkill skill, Map<String, StatValue> stats) {
+    private static SkillSheet.Row row(SkillDefinition definition, CharacterSkill skill, Map<String, StatValue> stats,
+                                      String roleName, SkillProgression progression, Integer points) {
         StatValue stat = stats.get(definition.statCode());
         int statValue = stat == null ? 0 : stat.value();
         int level = skill == null ? 0 : skill.getLevel();
+        Integer nextCost = progression == null || level >= MAX_LEVEL ? null : progression.cost(definition, level);
+        boolean affordable = nextCost != null && points != null && points >= nextCost;
         return new SkillSheet.Row(definition.code(), definition.custom() ? skill.getId() : null,
                 displayName(definition, skill), level, statValue + level,
-                statName(definition.statCode(), stat), statValue);
+                statName(definition.statCode(), stat), statValue, roleName, nextCost, affordable);
     }
 
     private static String displayName(SkillDefinition definition, CharacterSkill skill) {
@@ -216,7 +274,8 @@ public class SkillService {
         return stat == null ? statCode.toUpperCase(Locale.ROOT) : stat.name();
     }
 
-    private static int checkLevel(Integer level) {        if (level == null || level < 0 || level > MAX_LEVEL) {
+    private static int checkLevel(Integer level) {
+        if (level == null || level < 0 || level > MAX_LEVEL) {
             throw new IllegalArgumentException("Уровень навыка должен быть от 0 до " + MAX_LEVEL);
         }
         return level;
@@ -227,6 +286,22 @@ public class SkillService {
                 .filter(definition -> definition.code().equals(code))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Неизвестный навык: " + code));
+    }
+
+    /**
+     * Навык, к которому обращаются по коду: не со своим названием, а спецспособность — только своей роли.
+     */
+    private static SkillDefinition plainDefinition(Character character, GameSystem system, String code) {
+        SkillDefinition definition = definition(system, code);
+        if (definition.custom()) {
+            throw new IllegalArgumentException("Выберите конкретный навык «" + definition.name() + "»");
+        }
+        boolean foreignSpecial = definition.special() && system.rolesOf(character).stream()
+                .noneMatch(role -> code.equals(role.specialSkillCode()));
+        if (foreignSpecial) {
+            throw new IllegalArgumentException("Спецспособность «" + definition.name() + "» доступна только своей роли");
+        }
+        return definition;
     }
 
     private static CharacterSkill plainSkill(Character character, String code) {

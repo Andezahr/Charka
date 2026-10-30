@@ -13,6 +13,7 @@ import app.charka.repository.CharacterRepository;
 import app.charka.system.GameSystemRegistry;
 import app.charka.system.GenericSystem;
 import app.charka.system.cp2020.Cp2020HealthStrategy;
+import app.charka.system.cp2020.Cp2020IpStrategy;
 import app.charka.system.cp2020.Cp2020StatsStrategy;
 import app.charka.system.cp2020.Cp2020System;
 import org.junit.jupiter.api.BeforeEach;
@@ -116,19 +117,32 @@ class SkillServiceTest {
         }
 
         @Test
-        @DisplayName("спецспособность видна только у своей роли; чужая — если уже прокачана")
-        void specialByRole() {
+        @DisplayName("спецспособности видны у всех ролей персонажа, даже на уровне 0, с названием роли")
+        void specialsOfAllRoles() {
             withStats(6, 0);
             assertThat(skillService.getSheet(1L).groups()).extracting(SkillSheet.Group::title)
-                    .doesNotContain("Спецспособность");
+                    .doesNotContain("Спецспособности ролей");
 
-            character.setRole("solo");
-            assertThat(group(skillService.getSheet(1L), "Спецспособность").rows())
-                    .extracting(SkillSheet.Row::code).containsExactly("combat_sense");
+            character.getRoles().addAll(List.of("netrunner", "solo"));
+            SkillSheet sheet = skillService.getSheet(1L);
 
+            assertThat(group(sheet, "Спецспособности ролей").rows())
+                    .extracting(SkillSheet.Row::code, SkillSheet.Row::roleName)
+                    .containsExactlyInAnyOrder(org.assertj.core.groups.Tuple.tuple("combat_sense", "Соло"),
+                            org.assertj.core.groups.Tuple.tuple("interface", "Нетраннер"));
+            assertThat(sheet.heldRoles()).extracting(CharacterRole::code).containsExactly("solo", "netrunner");
+        }
+
+        @Test
+        @DisplayName("спецспособность снятой роли скрыта, хотя уровень сохранён")
+        void specialOfRemovedRole() {
+            withStats(6, 0);
+            character.getRoles().add("solo");
             addSkill(10L, "interface", null, 3);
-            assertThat(group(skillService.getSheet(1L), "Спецспособность").rows())
-                    .extracting(SkillSheet.Row::code).containsExactly("combat_sense", "interface");
+
+            assertThat(group(skillService.getSheet(1L), "Спецспособности ролей").rows())
+                    .extracting(SkillSheet.Row::code).containsExactly("combat_sense");
+            assertThat(character.getSkills()).hasSize(1);
         }
 
         @Test
@@ -202,8 +216,10 @@ class SkillServiceTest {
         }
 
         @Test
-        @DisplayName("уровень вне 0..10, неизвестный навык и навык со своим названием без названия — ошибка")
+        @DisplayName("уровень вне 0..10, неизвестный навык, навык без названия и чужая спецспособность — ошибка")
         void rejected() {
+            assertThatThrownBy(() -> skillService.updateLevels(1L, Map.of("interface", 1), Map.of()))
+                    .isInstanceOf(IllegalArgumentException.class);
             assertThatThrownBy(() -> skillService.updateLevels(1L, Map.of("handgun", 11), Map.of()))
                     .isInstanceOf(IllegalArgumentException.class);
             assertThatThrownBy(() -> skillService.updateLevels(1L, Map.of("handgun", -1), Map.of()))
@@ -280,23 +296,26 @@ class SkillServiceTest {
     class RoleTests {
 
         @Test
-        @DisplayName("ставится по коду системы, пусто — снимает")
+        @DisplayName("задаются целиком: несколько ролей, пусто — снять все")
         void setsAndClears() {
-            skillService.setRole(1L, "solo");
-            assertThat(character.getRole()).isEqualTo("solo");
+            skillService.setRoles(1L, List.of("solo", "netrunner"));
+            assertThat(character.getRoles()).containsExactlyInAnyOrder("solo", "netrunner");
 
-            skillService.setRole(1L, " ");
-            assertThat(character.getRole()).isNull();
+            skillService.setRoles(1L, List.of("cop"));
+            assertThat(character.getRoles()).containsExactly("cop");
+
+            skillService.setRoles(1L, null);
+            assertThat(character.getRoles()).isEmpty();
         }
 
         @Test
-        @DisplayName("неизвестная роль — ошибка, прежняя остаётся")
+        @DisplayName("неизвестная роль — ошибка, прежние остаются")
         void unknownRole() {
-            character.setRole("cop");
+            character.getRoles().add("cop");
 
-            assertThatThrownBy(() -> skillService.setRole(1L, "paladin"))
+            assertThatThrownBy(() -> skillService.setRoles(1L, List.of("solo", "paladin")))
                     .isInstanceOf(IllegalArgumentException.class);
-            assertThat(character.getRole()).isEqualTo("cop");
+            assertThat(character.getRoles()).containsExactly("cop");
         }
 
         @Test
@@ -304,8 +323,138 @@ class SkillServiceTest {
         void unknownCharacter() {
             when(characterRepository.findById(9L)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> skillService.setRole(9L, "solo"))
+            assertThatThrownBy(() -> skillService.setRoles(9L, List.of("solo")))
                     .isInstanceOf(CharacterNotFoundException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("Прокачка")
+    class ImproveTests {
+
+        private Counter ip;
+
+        @BeforeEach
+        void withIp() {
+            ip = new Counter();
+            ip.setId(3L);
+            ip.setType(Cp2020IpStrategy.TYPE);
+            ip.setValue(100);
+            character.getCounters().add(ip);
+        }
+
+        @Test
+        @DisplayName("с нуля: создаёт навык уровня 1 и списывает 10 × множитель")
+        void fromZero() {
+            SkillImprovement improvement = skillService.improve(1L, "pilot_gyro", null);
+
+            assertThat(improvement).isEqualTo(new SkillImprovement("Пилот: гирокоптер", 1, 30));
+            assertThat(ip.getValue()).isEqualTo(70);
+            assertThat(character.getSkills().getFirst().getLevel()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("дальше: цена = уровень × 10 × множитель")
+        void nextLevel() {
+            CharacterSkill skill = addSkill(10L, "handgun", null, 4);
+
+            SkillImprovement improvement = skillService.improve(1L, "handgun", null);
+
+            assertThat(improvement.cost()).isEqualTo(40);
+            assertThat(skill.getLevel()).isEqualTo(5);
+            assertThat(ip.getValue()).isEqualTo(60);
+        }
+
+        @Test
+        @DisplayName("навык со своим названием — по id строки")
+        void custom() {
+            CharacterSkill skill = addSkill(10L, "martial_art", "Карате", 3);
+
+            SkillImprovement improvement = skillService.improve(1L, null, 10L);
+
+            assertThat(improvement.name()).isEqualTo("Боевое искусство: Карате");
+            assertThat(improvement.cost()).isEqualTo(60);
+            assertThat(skill.getLevel()).isEqualTo(4);
+        }
+
+        @Test
+        @DisplayName("спецспособность прокачивается у любой своей роли, у чужой — нет")
+        void specials() {
+            character.getRoles().addAll(List.of("solo", "netrunner"));
+
+            assertThat(skillService.improve(1L, "interface", null).level()).isEqualTo(1);
+            assertThat(skillService.improve(1L, "combat_sense", null).level()).isEqualTo(1);
+            assertThatThrownBy(() -> skillService.improve(1L, "authority", null))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThat(ip.getValue()).isEqualTo(80);
+        }
+
+        @Test
+        @DisplayName("очков ровно на уровень — хватает; меньше — ошибка, ничего не меняется")
+        void balance() {
+            CharacterSkill skill = addSkill(10L, "handgun", null, 4);
+            ip.setValue(40);
+            skillService.improve(1L, "handgun", null);
+            assertThat(ip.getValue()).isZero();
+
+            assertThatThrownBy(() -> skillService.improve(1L, "handgun", null))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("нужно 50 IP, есть 0");
+            assertThat(skill.getLevel()).isEqualTo(5);
+        }
+
+        @Test
+        @DisplayName("уровень 10 — выше нельзя, очки целы")
+        void maxLevel() {
+            addSkill(10L, "handgun", null, 10);
+
+            assertThatThrownBy(() -> skillService.improve(1L, "handgun", null))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThat(ip.getValue()).isEqualTo(100);
+        }
+
+        @Test
+        @DisplayName("нет счётчика очков или системы с прокачкой — ошибка")
+        void unavailable() {
+            character.getCounters().clear();
+            assertThatThrownBy(() -> skillService.improve(1L, "handgun", null))
+                    .isInstanceOf(IllegalArgumentException.class);
+
+            Character generic = characterIn(GenericSystem.CODE);
+            when(characterRepository.findById(2L)).thenReturn(Optional.of(generic));
+            assertThatThrownBy(() -> skillService.improve(2L, "handgun", null))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("лист: очки, цена следующего уровня и доступность")
+        void sheet() {
+            ip.setValue(20);
+            addSkill(10L, "handgun", null, 4);
+            addSkill(11L, "rifle", null, 10);
+
+            SkillSheet sheet = skillService.getSheet(1L);
+
+            assertThat(sheet.points()).isEqualTo(20);
+            assertThat(sheet.pointsName()).isEqualTo("IP");
+            assertThat(sheet.isPointsMissing()).isFalse();
+            SkillSheet.Row handgun = row(sheet, "REF", "Пистолеты");
+            assertThat(handgun.nextCost()).isEqualTo(40);
+            assertThat(handgun.affordable()).isFalse();
+            assertThat(row(sheet, "REF", "Драка").nextCost()).isEqualTo(10);
+            assertThat(row(sheet, "REF", "Драка").affordable()).isTrue();
+            assertThat(row(sheet, "REF", "Винтовки").nextCost()).isNull();
+        }
+
+        @Test
+        @DisplayName("лист без счётчика очков: прокачка помечена как недоступная")
+        void sheetWithoutCounter() {
+            character.getCounters().clear();
+
+            SkillSheet sheet = skillService.getSheet(1L);
+
+            assertThat(sheet.isPointsMissing()).isTrue();
+            assertThat(row(sheet, "REF", "Драка").affordable()).isFalse();
         }
     }
 
@@ -365,8 +514,10 @@ class SkillServiceTest {
         }
 
         @Test
-        @DisplayName("неизвестный навык или тип без названия — ошибка, броска нет")
+        @DisplayName("неизвестный навык, тип без названия и чужая спецспособность — ошибка, броска нет")
         void rejected() {
+            assertThatThrownBy(() -> skillService.check(1L, "interface", null, 0, null))
+                    .isInstanceOf(IllegalArgumentException.class);
             assertThatThrownBy(() -> skillService.check(1L, "nope", null, 0, null))
                     .isInstanceOf(IllegalArgumentException.class);
             assertThatThrownBy(() -> skillService.check(1L, "language", null, 0, null))

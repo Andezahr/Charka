@@ -29,7 +29,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 325 тестов, на 2026-10-30 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 348 тестов, на 2026-10-30 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -47,9 +47,9 @@ controller/    MVC-контроллеры, возвращают имена ша�
 api/           REST: CampaignExportController, SkillCheckController (проверка навыка)
 dice/         DiceExpression (разбор NdM±K), DiceResult, DiceService (броски + лог RollLog)
 check/        CheckRequest/CheckResult/CheckResolver (GenericCheckResolver: d20), CheckService (правила системы + лог)
-skill/        SkillDefinition, CharacterRole, StatValue, SkillSheet, SkillCheck, SkillService (навыки, роль, проверка навыка)
+skill/        SkillDefinition, CharacterRole, StatValue, SkillSheet, SkillCheck, SkillProgression (контракт прокачки), SkillImprovement, SkillService (навыки, роли, проверка, прокачка)
 system/        GameSystem, GameSystemRegistry, GenericSystem ("GENERIC"), Currency; cp2020/ — Cp2020System ("CP2020"),
-               стратегии счётчиков, Cp2020Rules, Cp2020Dice (взрывной d10), Cp2020CheckResolver, Cp2020Skills (каталог, роли), Cp2020Fumbles
+               стратегии счётчиков, Cp2020Rules, Cp2020Dice (взрывной d10), Cp2020CheckResolver, Cp2020Skills (каталог, роли), Cp2020Fumbles, Cp2020SkillProgression + Cp2020IpStrategy (очки улучшения)
 dto/counter/   DTO только для счётчиков (единственный модуль, переведённый на DTO)
 exception/     NotFoundException.forId("Entity", id) (NoSuchElementException → 404), наследники CharacterNotFoundException, InventoryNotFoundException;
                GlobalExceptionHandler (страницы → error.html: 404/400/500), ApiExceptionHandler (app.charka.api → text/plain)
@@ -67,7 +67,7 @@ TODO.txt       список планов автора (см. ниже)
 Campaign (name, system, startDate, currentDate)   — system: код GameSystem (колонка game_system)
  ├─ RollLog* (character?, expression, details, total, label, gameDate, createdAt) — без коллекции в Campaign, не экспортируется
  ├─ Chronicle* (name, startDate, endDate)     — запись о прошедшем периоде
- └─ Character* (name, birthDate, role)        — role: код из GameSystem.getRoles()
+ └─ Character* (name, birthDate, roles)       — roles: коды из GameSystem.getRoles(), таблица character_role; уровень роли = уровень спецспособности
      ├─ CharacterSkill* (skillCode, level, customName?) — код из каталога системы; уровень 0 у обычного навыка не хранится
      ├─ Wound*     (name, severity, date)
      ├─ Inventory* (name) └─ Item* (name, quantity, cost, description)
@@ -121,7 +121,8 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 | POST | `/character/{id}/skills/custom`, `.../custom/{sid}/delete` | свой навык (язык, эксперт, боевое искусство) |
 | POST | `/character/{id}/skills/setup` | создать недостающие счётчики системы |
 | POST | `/api/characters/{id}/skills/check` | `code` или `skillId`, `modifier`, `difficulty?` → проверка навыка, JSON (диалог, без перезагрузки) |
-| POST | `/character/{id}/role` | `role` → роль персонажа |
+| POST | `/character/{id}/roles` | `role` (несколько) → роли персонажа целиком |
+| POST | `/character/{id}/skills/improve` | `code` или `skillId` → следующий уровень за очки системы (CP2020: IP) |
 | GET | `/character/{id}/counters` | счётчики |
 | POST | `/character/{id}/counters/create`, `/{cid}/update|set|reset`; DELETE `/{cid}` | счётчики |
 | POST | `/character/{id}/counters/{cid}/attributes`, `.../{cid}/action/{action}` | правка attributes и особые действия типа (ремонт брони) |

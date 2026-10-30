@@ -7,6 +7,7 @@ import app.charka.model.counters.strategy.CounterContext;
 import app.charka.service.counter.HealthCounterService;
 import app.charka.skill.CharacterRole;
 import app.charka.skill.SkillDefinition;
+import app.charka.skill.SkillProgression;
 import app.charka.skill.StatValue;
 import app.charka.system.Currency;
 import app.charka.system.GameSystem;
@@ -30,6 +31,8 @@ public class Cp2020System implements GameSystem {
 
     private static final CheckResolver CHECK_RESOLVER = new Cp2020CheckResolver();
 
+    private static final SkillProgression SKILL_PROGRESSION = new Cp2020SkillProgression();
+
     /** Стратегия без состояния; нужна только чтобы посчитать текущие статы */
     private static final Cp2020StatsStrategy STATS = new Cp2020StatsStrategy();
 
@@ -52,7 +55,7 @@ public class Cp2020System implements GameSystem {
 
     @Override
     public List<String> getDefaultCounterTypes() {
-        return List.of(Cp2020StatsStrategy.TYPE, Cp2020ArmorStrategy.TYPE, Cp2020HealthStrategy.TYPE);
+        return List.of(Cp2020StatsStrategy.TYPE, Cp2020ArmorStrategy.TYPE, Cp2020HealthStrategy.TYPE, Cp2020IpStrategy.TYPE);
     }
 
     @Override
@@ -73,6 +76,11 @@ public class Cp2020System implements GameSystem {
     @Override
     public List<CharacterRole> getRoles() {
         return Cp2020Skills.ROLES;
+    }
+
+    @Override
+    public SkillProgression getSkillProgression() {
+        return SKILL_PROGRESSION;
     }
 
     /**

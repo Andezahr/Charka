@@ -3,7 +3,7 @@ package app.charka.skill;
 /**
  * Роль/класс персонажа из правил системы.
  *
- * @param code             код, хранится в {@code Character.role}
+ * @param code             код, хранится в {@code Character.roles}
  * @param name             название для интерфейса
  * @param specialSkillCode код спецспособности роли в каталоге навыков, null — нет
  */

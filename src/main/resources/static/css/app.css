@@ -882,15 +882,26 @@ input[type="search"].skills-search { flex: 1 1 200px; width: auto; }
 .skill-note { margin-left: 6px; font-size: 12px; color: var(--muted); white-space: nowrap; }
 .skill-check { flex-shrink: 0; min-width: 62px; }
 
-/* Добавление и удаление своих навыков перезагружают страницу, поэтому доступны в «Все навыки»,
-   а не в правке уровней, где потерялись бы несохранённые значения */
+/* Добавление и удаление своих навыков перезагружают страницу, поэтому доступны в «Все навыки» и прокачке,
+   а не в ручной правке, где потерялись бы несохранённые значения */
 .skill-add { display: none; flex-wrap: wrap; gap: 6px; padding: 8px 16px 12px; border-top: 1px solid var(--border); }
-.is-all .skill-add { display: flex; }
+.can-add .skill-add { display: flex; }
+/* в прокачке уровень нового навыка всегда 0, поле не нужно */
+.is-improving .skill-add-level { display: none; }
 .skill-add-item:has(.edit-panel.is-open) { flex-basis: 100%; }
 form.skill-delete { display: none; }
 .is-all form.skill-delete { display: inline-flex; }
 
-/* Режим правки уровней: поля вместо кнопок проверки */
+/* Режим прокачки: цена вместо кнопки проверки; страница возвращается к строке прокачанного навыка */
+form.skill-improve { display: none; }
+.is-improving form.skill-improve { display: inline-flex; }
+.is-improving .skill-check { display: none; }
+.skill-improve .btn { min-width: 86px; }
+.skill-improve .btn:disabled { opacity: .5; cursor: not-allowed; }
+.skill-row { scroll-margin-top: calc(var(--topbar-height) + 64px); }
+.skill-row:target { background: var(--accent-soft); }
+
+/* Режим ручной правки уровней: поля вместо кнопок проверки */
 .skill-input { display: none; }
 input[type="number"].skill-input { flex: none; width: 68px; padding: 4px 8px; }
 .is-editing .skill-input { display: block; }

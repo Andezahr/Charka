@@ -11,17 +11,19 @@
       <span class="eyebrow">Навыки</span>
       <h1 class="page-title" th:text="${character.name}">Имя персонажа</h1>
       <p class="page-sub skills-role">
-        <span th:text="${sheet.role != null} ? ${sheet.role.name} : 'Роль не выбрана'">Соло</span>
-        <button type="button" class="icon-btn" title="Изменить роль" aria-label="Изменить роль" data-edit-toggle>✎</button>
+        <span th:text="${#lists.isEmpty(sheet.heldRoles)} ? 'Роль не выбрана' : ${#strings.listJoin(sheet.heldRoles.![name], ', ')}">Соло</span>
+        <button type="button" class="icon-btn" title="Изменить роли" aria-label="Изменить роли" data-edit-toggle>✎</button>
       </p>
       <div class="edit-panel">
-        <form th:action="${base} + '/role'" method="post" class="form-row">
-          <select name="role" aria-label="Роль">
-            <option value="">— не выбрана —</option>
-            <option th:each="r : ${sheet.roles}" th:value="${r.code}" th:text="${r.name}"
-                    th:selected="${sheet.role != null and sheet.role.code == r.code}">Соло</option>
-          </select>
-          <button type="submit" class="btn btn-sm btn-primary">Сохранить</button>
+        <form th:action="${base} + '/roles'" method="post" class="form">
+          <div class="checks">
+            <label th:each="r : ${sheet.roles}" class="check">
+              <input type="checkbox" name="role" th:value="${r.code}"
+                     th:checked="${#lists.contains(sheet.heldRoles, r)}">
+              <span th:text="${r.name}">Соло</span>
+            </label>
+          </div>
+          <div><button type="submit" class="btn btn-sm btn-primary">Сохранить</button></div>
         </form>
       </div>
     </div>
@@ -35,13 +37,18 @@
     <span class="alert-text" th:text="${errorMessage}">Ошибка</span>
     <button type="button" class="alert-close" aria-label="Закрыть">×</button>
   </div>
-  <form th:if="${sheet.statsMissing}" th:action="${base} + '/skills/setup'" method="post" class="skills-notice">
-    <span>У персонажа нет характеристик, поэтому итоги считаются только по уровню навыка.</span>
+  <form th:if="${sheet.statsMissing or sheet.pointsMissing}" th:action="${base} + '/skills/setup'" method="post"
+        class="skills-notice">
+    <span th:text="${sheet.statsMissing}
+          ? 'У персонажа нет характеристик, поэтому итоги считаются только по уровню навыка.'
+          : 'У персонажа нет счётчика очков, поэтому прокачка недоступна.'">Нет счётчиков</span>
     <button type="submit" class="btn btn-sm">Создать счётчики системы</button>
   </form>
 
   <!-- Текущие статы; нажатие — переход к группе навыков -->
-  <nav class="skills-stats" th:unless="${sheet.statsMissing}" aria-label="Статы">
+  <nav class="skills-stats" th:unless="${sheet.statsMissing and sheet.points == null}" aria-label="Статы и очки">
+    <a th:if="${sheet.points != null}" class="chip" th:href="@{'/character/' + ${character.id} + '/counters'}"
+       title="Начисляются на вкладке «Счётчики»" th:text="${sheet.pointsName} + ' ' + ${sheet.points}">IP 35</a>
     <th:block th:each="group : ${sheet.groups}">
       <a th:if="${group.stat != null}" class="chip" th:href="'#group-' + ${group.stat.code}" data-skills-jump
          th:classappend="${group.stat.reduced} ? 'red' : 'muted'"
@@ -54,7 +61,8 @@
     <input type="search" class="skills-search" placeholder="Найти навык" aria-label="Найти навык"
            autocomplete="off" data-skills-search>
     <button type="button" class="btn" data-skills-all aria-pressed="false">Все навыки</button>
-    <button type="button" class="btn" data-skills-edit>Изменить уровни</button>
+    <button th:if="${sheet.pointsName != null}" type="button" class="btn" data-skills-improve aria-pressed="false">Прокачка</button>
+    <button type="button" class="btn" data-skills-edit title="Без траты очков: создание персонажа, правка мастера">Править вручную</button>
   </div>
 
   <p class="empty" data-skills-empty hidden></p>
@@ -71,12 +79,12 @@
         </h2>
       </div>
       <div class="skills-rows">
-        <div th:each="row : ${group.rows}" class="skill-row" data-skill-row
+        <div th:each="row : ${group.rows}" class="skill-row" data-skill-row th:id="${row.anchor}"
              th:classappend="${row.level == 0} ? 'is-zero'"
              th:attr="data-always=${group.special}">
           <div class="skill-name">
             <span data-skill-name th:text="${row.name}">Пистолеты</span>
-            <span th:if="${group.special}" class="skill-note" th:text="${row.statName}">INT</span>
+            <span th:if="${group.special}" class="skill-note" th:text="${row.roleName} + ' · ' + ${row.statName}">Соло · INT</span>
             <span th:if="${row.level > 0}" class="skill-note skill-level" title="Уровень навыка"
                   th:text="'ур. ' + ${row.level}">ур. 4</span>
           </div>
@@ -92,6 +100,14 @@
                   th:data-sum="${row.statName} + ' ' + ${row.statValue} + ' + навык ' + ${row.level} + ' = ' + ${row.total}"
                   th:aria-label="'Проверить: ' + ${row.name} + ', итог ' + ${row.total}"
                   th:text="'🎲 ' + ${row.total}">🎲 12</button>
+          <form th:if="${sheet.pointsName != null}" th:action="${base} + '/skills/improve'" method="post" class="inline skill-improve">
+            <input type="hidden" name="code" th:value="${row.code}">
+            <input th:if="${row.customId != null}" type="hidden" name="skillId" th:value="${row.customId}">
+            <button type="submit" class="btn btn-sm" th:classappend="${row.affordable} ? 'btn-success'"
+                    th:disabled="${!row.affordable}"
+                    th:title="${row.nextCost == null} ? 'Максимальный уровень' : (${row.affordable} ? 'Поднять до уровня ' + ${row.level + 1} : 'Не хватает очков')"
+                    th:text="${row.nextCost == null} ? 'макс.' : '▲ ' + ${row.nextCost} + ' ' + ${sheet.pointsName}">▲ 20 IP</button>
+          </form>
         </div>
       </div>
       <div th:unless="${#lists.isEmpty(group.customTypes)}" class="skill-add">
@@ -102,7 +118,7 @@
               <input type="hidden" name="code" th:value="${t.code}">
               <input type="text" name="customName" class="grow" placeholder="Название" required maxlength="100"
                      autocomplete="off" th:aria-label="'Название: ' + ${t.name}">
-              <input type="number" name="level" class="narrow" min="0" max="10" value="1" required aria-label="Уровень">
+              <input type="number" name="level" class="narrow skill-add-level" min="0" max="10" value="1" required aria-label="Уровень">
               <button type="submit" class="btn btn-sm btn-primary">Добавить</button>
             </form>
           </div>

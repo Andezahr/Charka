@@ -11,7 +11,7 @@
         <span class="eyebrow">Лист персонажа</span>
         <h1 class="page-title" th:text="${character.name}">Имя персонажа</h1>
         <p class="page-sub">
-          <span th:if="${role != null}" th:text="${role.name} + ' · '">Соло · </span>
+          <span th:unless="${#lists.isEmpty(roles)}" th:text="${#strings.listJoin(roles.![name], ', ')} + ' · '">Соло · </span>
           <span th:if="${character.campaign != null}">
             Кампания: <a th:href="@{'/campaign/' + ${character.campaign.id}}" th:text="${character.campaign.name}">Кампания</a>
           </span>

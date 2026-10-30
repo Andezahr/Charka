@@ -4,7 +4,9 @@ import app.charka.check.CheckResolver;
 import app.charka.model.Character;
 import app.charka.service.CharacterService;
 import app.charka.service.counter.CounterService;
+import app.charka.skill.SkillImprovement;
 import app.charka.skill.SkillService;
+import app.charka.skill.SkillSheet;
 import app.charka.system.GameSystemRegistry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -87,12 +90,33 @@ public class SkillController {
                 () -> skillService.deleteCustom(characterId, skillId));
     }
 
-    @PostMapping("/role")
-    public String setRole(@PathVariable Long characterId,
-                          @RequestParam(required = false) String role,
+    /**
+     * @param role отмеченные роли; ничего не отмечено — снять все
+     */
+    @PostMapping("/roles")
+    public String setRoles(@PathVariable Long characterId,
+                           @RequestParam(required = false) List<String> role,
+                           RedirectAttributes redirectAttributes) {
+        return handle(characterId, redirectAttributes, "Роли сохранены",
+                () -> skillService.setRoles(characterId, role));
+    }
+
+    /**
+     * Повышение навыка за очки; после него страница возвращается к строке этого навыка.
+     *
+     * @param skillId строка навыка со своим названием; иначе навык определяется по {@code code}
+     */
+    @PostMapping("/skills/improve")
+    public String improve(@PathVariable Long characterId,
+                          @RequestParam(required = false) String code,
+                          @RequestParam(required = false) Long skillId,
                           RedirectAttributes redirectAttributes) {
-        return handle(characterId, redirectAttributes, "Роль сохранена",
-                () -> skillService.setRole(characterId, role));
+        handle(characterId, redirectAttributes, null, () -> {
+            SkillImprovement improvement = skillService.improve(characterId, code, skillId);
+            redirectAttributes.addFlashAttribute("successMessage", improvement.name() + ": уровень "
+                    + improvement.level() + ", потрачено очков: " + improvement.cost());
+        });
+        return "redirect:/character/" + characterId + "/skills#" + SkillSheet.Row.anchor(code, skillId);
     }
 
     /**
@@ -109,7 +133,9 @@ public class SkillController {
     private static String handle(Long characterId, RedirectAttributes redirectAttributes, String success, Runnable action) {
         try {
             action.run();
-            redirectAttributes.addFlashAttribute("successMessage", success);
+            if (success != null) {
+                redirectAttributes.addFlashAttribute("successMessage", success);
+            }
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         }

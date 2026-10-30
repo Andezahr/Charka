@@ -125,7 +125,7 @@ class CharacterServiceTest {
             characterService.createInCampaign(campaignId, testCharacter);
 
             verify(counterService).createDefaults(1L,
-                    List.of("CP2020_STATS", "CP2020_ARMOR", "CP2020_HEALTH"));
+                    List.of("CP2020_STATS", "CP2020_ARMOR", "CP2020_HEALTH", "CP2020_IP"));
         }
 
         @Test

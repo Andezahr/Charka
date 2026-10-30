@@ -5,6 +5,7 @@ import app.charka.exception.GlobalExceptionHandler;
 import app.charka.model.Character;
 import app.charka.service.CharacterService;
 import app.charka.service.counter.CounterService;
+import app.charka.skill.SkillImprovement;
 import app.charka.skill.SkillService;
 import app.charka.system.GameSystemRegistry;
 import app.charka.system.GenericSystem;
@@ -102,10 +103,38 @@ class SkillControllerTest {
                 .andExpect(redirectedUrl("/character/1/skills"));
         verify(skillService).deleteCustom(1L, 10L);
 
-        mockMvc.perform(post("/character/1/role").param("role", "solo"))
+        mockMvc.perform(post("/character/1/roles").param("role", "solo", "netrunner"))
                 .andExpect(redirectedUrl("/character/1/skills"))
                 .andExpect(flash().attributeExists("successMessage"));
-        verify(skillService).setRole(1L, "solo");
+        verify(skillService).setRoles(1L, List.of("solo", "netrunner"));
+    }
+
+    @Test
+    @DisplayName("ни одна роль не отмечена — снять все")
+    void noRoles() throws Exception {
+        mockMvc.perform(post("/character/1/roles"))
+                .andExpect(redirectedUrl("/character/1/skills"));
+        verify(skillService).setRoles(1L, null);
+    }
+
+    @Test
+    @DisplayName("повышение навыка — итог во flash, возврат к строке навыка")
+    void improves() throws Exception {
+        when(skillService.improve(1L, "handgun", null)).thenReturn(new SkillImprovement("Пистолеты", 5, 40));
+
+        mockMvc.perform(post("/character/1/skills/improve").param("code", "handgun"))
+                .andExpect(redirectedUrl("/character/1/skills#skill-handgun"))
+                .andExpect(flash().attribute("successMessage", "Пистолеты: уровень 5, потрачено очков: 40"));
+    }
+
+    @Test
+    @DisplayName("повышение своего навыка и нехватка очков — errorMessage, возврат к строке")
+    void improveRejected() throws Exception {
+        when(skillService.improve(1L, null, 10L)).thenThrow(new IllegalArgumentException("Не хватает очков"));
+
+        mockMvc.perform(post("/character/1/skills/improve").param("skillId", "10"))
+                .andExpect(redirectedUrl("/character/1/skills#skill-custom-10"))
+                .andExpect(flash().attribute("errorMessage", "Не хватает очков"));
     }
 
     @Test

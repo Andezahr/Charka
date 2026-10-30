@@ -39,7 +39,7 @@ public class CharacterController {
         model.addAttribute("moneySum", moneySum);
         GameSystem system = systemRegistry.forCharacter(character);
         model.addAttribute("currency", system.getCurrency());
-        model.addAttribute("role", system.findRole(character.getRole()).orElse(null));
+        model.addAttribute("roles", system.rolesOf(character));
         model.addAttribute("quickDice", system.getQuickDice());
         model.addAttribute("difficultyPresets", system.getCheckResolver().getDifficultyPresets());
         model.addAttribute("recentRolls", diceService.recentForCharacter(id, 5));

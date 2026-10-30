@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
     sync();
   });
 
-  // Страница навыков. Видимость строк: изученные и спецспособность роли; «Все навыки», правка уровней
+  // Страница навыков. Видимость строк: изученные и спецспособности ролей; «Все навыки», прокачка, ручная правка
   // и поиск показывают весь каталог. Без JS видно всё, но проверка и правка требуют JS.
   document.querySelectorAll('[data-skills]').forEach(page => {
     const stored = {
@@ -58,34 +58,48 @@ document.addEventListener('DOMContentLoaded', () => {
     const groups = [...page.querySelectorAll('[data-skills-group]')];
     const search = page.querySelector('[data-skills-search]');
     const allBtn = page.querySelector('[data-skills-all]');
+    const improveBtn = page.querySelector('[data-skills-improve]');
     const empty = page.querySelector('[data-skills-empty]');
     let showAll = stored.get('skills-show-all') === '1';
+    // режим прокачки переживает перезагрузку после каждого повышения
+    let improving = Boolean(improveBtn) && stored.get('skills-improving') === '1';
     let editing = false;
 
     const render = () => {
       const query = search.value.trim().toLowerCase();
       rows.forEach(row => {
         const name = row.querySelector('[data-skill-name]').textContent.toLowerCase();
-        const relevant = showAll || editing || query
+        const relevant = showAll || editing || improving || query
           || !row.classList.contains('is-zero') || row.dataset.always === 'true';
         row.hidden = !relevant || (query && !name.includes(query));
       });
       groups.forEach(group => {
-        // кнопки «＋ Язык» видны только в режиме «Все навыки», группа без строк там не прячется
+        // кнопки «＋ Язык» видны в «Все навыки» и в прокачке, группа без строк там не прячется
         const hasRows = group.querySelector('[data-skill-row]:not([hidden])');
-        group.hidden = !hasRows && !(showAll && !editing && !query);
+        group.hidden = !hasRows && !((showAll || improving) && !editing && !query);
       });
       page.classList.toggle('is-editing', editing);
-      page.classList.toggle('is-all', showAll && !editing && !query);
-      allBtn.hidden = editing;
+      page.classList.toggle('is-improving', improving);
+      page.classList.toggle('is-all', showAll && !editing && !improving && !query);
+      page.classList.toggle('can-add', (showAll || improving) && !editing && !query);
+      // в прокачке новый навык добавляется с нулевым уровнем: уровни покупаются за очки
+      page.querySelectorAll('.skill-add-level').forEach(input => {
+        input.value = improving ? 0 : 1;
+      });
+      allBtn.hidden = editing || improving;
+      if (improveBtn) {
+        improveBtn.hidden = editing;
+        improveBtn.setAttribute('aria-pressed', String(improving));
+        improveBtn.textContent = improving ? 'Закончить прокачку' : 'Прокачка';
+      }
       allBtn.setAttribute('aria-pressed', String(showAll));
       allBtn.textContent = showAll ? 'Только изученные' : 'Все навыки';
-      page.querySelector('.skills-toolbar [data-skills-edit]').hidden = editing;
+      page.querySelector('.skills-toolbar [data-skills-edit]').hidden = editing || improving;
       const nothing = !rows.some(row => !row.hidden);
       empty.hidden = !nothing;
       empty.textContent = query
         ? 'Такого навыка нет.'
-        : 'Изученных навыков пока нет. Откройте «Все навыки» или «Изменить уровни».';
+        : 'Изученных навыков пока нет. Откройте «Все навыки» или «Прокачку».';
     };
 
     search.addEventListener('input', render);
@@ -94,6 +108,13 @@ document.addEventListener('DOMContentLoaded', () => {
       stored.set('skills-show-all', showAll ? '1' : '0');
       render();
     });
+    if (improveBtn) {
+      improveBtn.addEventListener('click', () => {
+        improving = !improving;
+        stored.set('skills-improving', improving ? '1' : '0');
+        render();
+      });
+    }
     page.querySelectorAll('[data-skills-edit]').forEach(btn => {
       btn.addEventListener('click', () => {
         editing = !editing;
@@ -116,6 +137,9 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
     render();
+    // Строка из адреса могла быть скрыта, пока не отработал render
+    const anchored = location.hash && document.getElementById(location.hash.slice(1));
+    if (anchored) anchored.scrollIntoView();
 
     // Проверка навыка: бросок без перезагрузки, результат — прямо в диалоге, место на странице не теряется
     const dialog = page.querySelector('#skill-check-dialog');

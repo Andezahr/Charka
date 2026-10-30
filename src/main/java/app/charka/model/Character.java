@@ -9,7 +9,9 @@ import lombok.Data;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Data
 @Entity
@@ -22,9 +24,11 @@ public class Character {
 
     private LocalDate birthDate;
 
-    /** Код роли/класса из {@code GameSystem.getRoles()}; null — не выбрана */
+    /** Коды ролей/классов из {@code GameSystem.getRoles()}; ролей может быть несколько */
+    @ElementCollection
+    @CollectionTable(name = "character_role", joinColumns = @JoinColumn(name = "character_id"))
     @Column(name = "role_code")
-    private String role;
+    private Set<String> roles = new HashSet<>();
 
     @ManyToOne
     @JsonBackReference

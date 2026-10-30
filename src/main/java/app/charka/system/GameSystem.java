@@ -6,6 +6,7 @@ import app.charka.model.Campaign;
 import app.charka.model.Character;
 import app.charka.skill.CharacterRole;
 import app.charka.skill.SkillDefinition;
+import app.charka.skill.SkillProgression;
 import app.charka.skill.StatValue;
 
 import java.util.List;
@@ -69,6 +70,20 @@ public interface GameSystem {
 
     default Optional<CharacterRole> findRole(String code) {
         return getRoles().stream().filter(role -> role.code().equals(code)).findFirst();
+    }
+
+    /**
+     * Роли персонажа в порядке каталога системы. Вызывать в транзакции.
+     */
+    default List<CharacterRole> rolesOf(Character character) {
+        return getRoles().stream().filter(role -> character.getRoles().contains(role.code())).toList();
+    }
+
+    /**
+     * Прокачка навыков за очки; null — у системы её нет.
+     */
+    default SkillProgression getSkillProgression() {
+        return null;
     }
 
     /**
