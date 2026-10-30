@@ -87,7 +87,7 @@ class Cp2020FireModesTest {
             assertThat(rules.form(minami()).modes()).extracting(AttackForm.Mode::code)
                     .containsExactly("SINGLE", "BURST", "AUTO", "SUPPRESS");
             assertThat(rules.form(weapon("budgetarms_c_13")).modes()).extracting(AttackForm.Mode::code).containsExactly("SINGLE");
-            assertThat(rules.form(weapon("arasaka_rapid_assault_12")).modes()).extracting(AttackForm.Mode::code).containsExactly("SINGLE");
+            assertThat(rules.form(weapon("arasaka_rapid_assault_12")).modes()).extracting(AttackForm.Mode::code).containsExactly("SINGLE", "PATTERNS");
             assertThatThrownBy(() -> rules.toHit(attacker, weapon("budgetarms_c_13"), fire("BURST", 5, 0, 0), STATS))
                     .isInstanceOf(IllegalArgumentException.class);
         }

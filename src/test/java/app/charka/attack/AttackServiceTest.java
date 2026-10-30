@@ -169,6 +169,123 @@ class AttackServiceTest {
         assertThat(result.steps()).anyMatch(step -> step.contains("урон применяет мастер"));
     }
 
+    private Item fromCatalog(String key, int quantity) {
+        Long inventoryId = characterRepository.findById(shooter.getId()).orElseThrow().getInventories().get(0).getId();
+        Item item = itemService.addFromCatalog(inventoryId, key, quantity);
+        entityManager.flush();
+        entityManager.clear();
+        return item;
+    }
+
+    @Test
+    @DisplayName("Брошенная граната попала: задеты выбранные цели, последняя граната ушла из инвентаря")
+    void grenadeHits() {
+        Item grenade = fromCatalog("grenade_fragmentation", 1);
+        // 7D6 по 3 = 21; бросок 9; зона: торс. Урон 21 − SP 14 = 7
+        when(dice.roll(anyInt())).thenReturn(3, 3, 3, 3, 3, 3, 3, 9, 3);
+
+        AttackResult result = attackService.attack(shooter.getId(), grenade.getId(),
+                new AttackRequest(List.of(victim.getId()), null, 5, null, null, Set.of(), 0, "THROW", 0, 0));
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(result.hit()).isTrue();
+        assertThat(result.detached()).isTrue();
+        assertThat(result.scattered()).isNull();
+        assertThat(result.outcome()).contains("Зона 5 м");
+        assertThat(counter(victim, Cp2020HealthStrategy.TYPE).getValue()).isPositive();
+        assertThat(itemRepository.findById(grenade.getId())).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Промах: заряд отклонился, никого не задело, пока мастер не выберет")
+    void grenadeScatters() {
+        Item grenade = fromCatalog("grenade_fragmentation", 2);
+        // 7D6 по 3; бросок 2 — мимо; отклонение 8, 4 м; при применении зона: торс
+        when(dice.roll(anyInt())).thenReturn(3, 3, 3, 3, 3, 3, 3, 2, 8, 4, 3);
+
+        AttackResult result = attackService.attack(shooter.getId(), grenade.getId(),
+                new AttackRequest(List.of(victim.getId()), null, 5, null, null, Set.of(), 0, "THROW", 0, 0));
+
+        assertThat(result.hit()).isFalse();
+        assertThat(result.detached()).isFalse();
+        assertThat(result.scattered().amount()).isEqualTo(21);
+        assertThat(result.steps()).anyMatch(step -> step.startsWith("Отклонение"));
+        assertThat(counter(victim, Cp2020HealthStrategy.TYPE).getValue()).isZero();
+
+        AttackResult applied = attackService.applyBlast(shooter.getId(), result.scattered(), List.of(victim.getId()));
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(applied.detached()).isTrue();
+        assertThat(applied.outcome()).contains("Задето целей: 1");
+        assertThat(counter(victim, Cp2020HealthStrategy.TYPE).getValue()).isPositive();
+        assertThat(itemRepository.findById(grenade.getId()).orElseThrow().getQuantity()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("Применить взрыв можно только к выбранным целям той же кампании")
+    void blastNeedsTargets() {
+        AreaDamage blast = new AreaDamage("Граната", "7d6", 21, "NORMAL", false, 1, 5, List.of());
+
+        assertThatThrownBy(() -> attackService.applyBlast(shooter.getId(), blast, List.of()))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("кого задело");
+        assertThatThrownBy(() -> attackService.applyBlast(shooter.getId(), blast, List.of(shooter.getId())))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("Мина подрывается без броска на попадание")
+    void minePlanted() {
+        Item mine = fromCatalog("mine_all_types", 2);
+        when(dice.roll(anyInt())).thenReturn(5, 5, 5, 5, 3);
+
+        AttackResult result = attackService.attack(shooter.getId(), mine.getId(),
+                new AttackRequest(List.of(victim.getId()), null, 0, null, null, Set.of(), 0, "PLANT", 0, 0));
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(result.hit()).isTrue();
+        assertThat(result.steps()).noneMatch(step -> step.contains("Сложность"));
+        assertThat(counter(victim, Cp2020HealthStrategy.TYPE).getValue()).isPositive();
+        assertThat(itemRepository.findById(mine.getId()).orElseThrow().getQuantity()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("Метательное бьёт как обычная атака и расходуется")
+    void shurikenThrown() {
+        Item shiriken = fromCatalog("shiriken", 3);
+        when(dice.roll(anyInt())).thenReturn(9, 3, 6);
+
+        AttackResult result = attackService.attack(shooter.getId(), shiriken.getId(),
+                new AttackRequest(List.of(victim.getId()), null, 3, null, null, Set.of("immobile"), 0, "SINGLE", 0, 0));
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(result.detached()).isFalse();
+        assertThat(result.steps()).anyMatch(step -> step.contains("Атлетика"));
+        assertThat(itemRepository.findById(shiriken.getId()).orElseThrow().getQuantity()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("Дробовик задевает всех выбранных в пятне, патрон один")
+    void shotgunPattern() {
+        Long inventoryId = characterRepository.findById(shooter.getId()).orElseThrow().getInventories().get(0).getId();
+        Item shotgun = itemService.addFromCatalog(inventoryId, "arasaka_rapid_assault_12", 1);
+        entityManager.flush();
+        entityManager.clear();
+        when(dice.roll(anyInt())).thenReturn(6, 6, 6, 6, 9, 3);
+
+        AttackResult result = attackService.attack(shooter.getId(), shotgun.getId(),
+                new AttackRequest(List.of(victim.getId()), null, 5, null, null, Set.of("immobile"), 0, "SINGLE", 0, 0));
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(result.outcome()).contains("Зона 1 м");
+        assertThat(counter(victim, Cp2020HealthStrategy.TYPE).getValue()).isPositive();
+        assertThat(itemRepository.findById(shotgun.getId()).orElseThrow().getProperties()).containsEntry("ammo", "19");
+    }
+
     @Test
     @DisplayName("Нельзя стрелять в себя, в чужую кампанию и чужим оружием")
     void refused() {

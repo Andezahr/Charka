@@ -1,5 +1,6 @@
 package app.charka.system.cp2020;
 
+import app.charka.attack.AreaDamage;
 import app.charka.attack.AttackForm;
 import app.charka.attack.AttackHit;
 import app.charka.attack.AttackRequest;
@@ -24,7 +25,8 @@ import java.util.regex.Pattern;
 
 /**
  * Дальняя атака (FNFF, с. 99, 105–106): REF + навык оружия + WA + модификаторы + 1d10 против сложности по дальности.
- * Попадание: зона 1d10 или выбранная, урон оружия. Режимы огня: одиночный, очередь, автоогонь, подавляющий. Ближний бой — C-06, метание и взрывчатка — I-09.
+ * Попадание: зона 1d10 или выбранная, урон оружия. Режимы огня: одиночный, очередь, автоогонь, подавляющий. Ближний бой — C-06.
+ * Метание (с. 99, 108, 109; навык Athletics) и урон по площади (с. 99, 108–111): задет всякий в зоне, при промахе заряд отклоняется по таблице гранат.
  */
 final class Cp2020AttackRules implements AttackRules {
 
@@ -38,50 +40,65 @@ final class Cp2020AttackRules implements AttackRules {
     static final String BURST = "BURST";
     static final String AUTO = "AUTO";
     static final String SUPPRESS = "SUPPRESS";
+    static final String PATTERNS = "PATTERNS";
+    static final String THROW = "THROW";
+    static final String PLANT = "PLANT";
 
     private static final int POINT_BLANK_METERS = 1;
     private static final int BURST_ROUNDS = 3;
     private static final int BURST_BONUS = 3;
     private static final int ROUNDS_PER_STEP = 10;
     private static final String ATHLETICS = "athletics";
+    private static final int GRENADE_METERS_PER_BODY = 10;
+    private static final int THROWN_METERS_PER_BODY = 3;
+    private static final int METERS_LOST_PER_EXTRA_KG = 10;
+    private static final int EXTRA_PATTERN_PENALTY = -2;
 
     /** Урон с делением: «1D6/3» */
     private static final Pattern DAMAGE = Pattern.compile("^(\\d*[dD]\\d+(?:[+-]\\d+)?)(?:/(\\d+))?$");
 
     private static final List<String> EXOTIC_SKILLS = List.of("archery", "handgun", "submachinegun", "rifle", "heavy_weapons");
 
+    /** Форма без статов атакующего: для оружия, дальность которого от них не зависит */
+    AttackForm form(Item weapon) {
+        return form(weapon, Map.of());
+    }
+
     @Override
-    public AttackForm form(Item weapon) {
-        if (!Cp2020ItemTypes.WEAPON.equals(weapon.getType()) || "MELEE".equals(category(weapon)) || number(weapon, Cp2020ItemTypes.SHOTS) < 1) {
+    public AttackForm form(Item weapon, Map<String, StatValue> stats) {
+        if (!Cp2020ItemTypes.WEAPON.equals(weapon.getType())) {
             return null;
         }
-        Integer range = range(weapon);
-        String unavailable = range == null
-                ? "У оружия не указана дальность: задайте её в правке предмета"
-                : Cp2020WeaponActions.fireBlockedReason(weapon);
+        boolean firearm = !"MELEE".equals(category(weapon)) && number(weapon, Cp2020ItemTypes.SHOTS) >= 1;
+        if (!firearm && !isConsumable(weapon)) {
+            return null;
+        }
+        Integer range = isThrown(weapon) ? throwRange(weapon, 1, stats) : range(weapon);
+        String unavailable = unavailable(weapon, range);
         List<Option> locations = Arrays.stream(Cp2020Location.values())
                 .map(location -> new Option(location.name(), location.getLabel()))
                 .toList();
         return new AttackForm(weapon.getProperties().get("damage"), range, unavailable, modes(weapon), maxRounds(weapon),
+                isExplosive(weapon) ? 1 : maxRounds(weapon), roundsLabel(weapon),
                 skillCodes(weapon).stream().map(code -> new Option(code, skillName(code))).toList(),
                 locations, Cp2020AttackModifiers.sections());
     }
 
     @Override
     public CheckRequest toHit(Character attacker, Item weapon, AttackRequest request, Map<String, StatValue> stats) {
-        AttackForm form = form(weapon);
+        AttackForm form = form(weapon, stats);
         if (form.unavailable() != null) {
             throw new IllegalArgumentException(form.unavailable());
         }
         requireMode(weapon, request);
-        int hitNumber = hitNumber(request.distance(), form.range());
+        int hitNumber = hitNumber(request.distance(), rangeFor(weapon, request, form, stats));
         String skillCode = request.skillCode() == null || request.skillCode().isBlank()
                 ? skillCodes(weapon).get(0)
                 : request.skillCode();
         if (!skillCodes(weapon).contains(skillCode)) {
             throw new IllegalArgumentException("Этот навык не подходит оружию: " + skillCode);
         }
-        if (request.hasChosenLocation() && !SINGLE.equals(mode(request))) {
+        if (request.hasChosenLocation() && (!SINGLE.equals(mode(request)) || isArea(weapon, request))) {
             // HOMEBREW: книга пишет о случайной зоне у каждого попадания и не говорит о прицельной очереди
             throw new IllegalArgumentException("Зону можно выбрать только у одиночного выстрела");
         }
@@ -109,6 +126,9 @@ final class Cp2020AttackRules implements AttackRules {
 
     @Override
     public String spend(Item weapon, AttackRequest request) {
+        if (isConsumable(weapon)) {
+            return Cp2020WeaponActions.consume(weapon, units(weapon, request));
+        }
         return Cp2020WeaponActions.fireRounds(weapon, roundsFired(request));
     }
 
@@ -183,6 +203,96 @@ final class Cp2020AttackRules implements AttackRules {
         return manyHits(weapon, request, List.of("Под огонь: d6 = " + roll + " пуль"), roll, dice);
     }
 
+    @Override
+    public boolean isArea(Item weapon, AttackRequest request) {
+        return weapon.getProperties().containsKey(Cp2020ItemTypes.AREA) || "SHT".equals(category(weapon));
+    }
+
+    @Override
+    public boolean isPlanted(AttackRequest request) {
+        return PLANT.equals(mode(request));
+    }
+
+    @Override
+    public AreaDamage areaDamage(Item weapon, AttackRequest request, DiceRoller dice) {
+        requireMode(weapon, request);
+        int radius = radius(weapon, request);
+        List<String> steps = new ArrayList<>();
+        steps.add("Зона поражения: " + radius + " м");
+        RolledDamage rolled = rollDamage(weapon, request, steps, dice);
+        String expression = rolled != null ? rolled.notation() : weapon.getProperties().getOrDefault("damage", "эффект");
+        return new AreaDamage(weapon.getName(), expression, rolled == null ? null : rolled.amount(), damageType(weapon),
+                isExplosive(weapon), armorWear(weapon), radius, steps);
+    }
+
+    /**
+     * Таблица гранат (с. 99, 108): 1D10 — направление, ещё 1D10 — метров от цели.
+     */
+    @Override
+    public List<String> scatter(AreaDamage blast, DiceRoller dice) {
+        int direction = dice.d10();
+        int meters = dice.d10();
+        List<String> steps = new ArrayList<>();
+        steps.add("Отклонение: d10 = " + direction + " (" + direction(direction) + "), d10 = " + meters + " м");
+        steps.add(meters <= blast.radius() ? "Цель всё ещё в зоне " + blast.radius() + " м" : "Цель вне зоны " + blast.radius() + " м");
+        return steps;
+    }
+
+    @Override
+    public AttackHit areaHit(AreaDamage blast, DiceRoller dice) {
+        List<String> steps = new ArrayList<>();
+        if (blast.amount() == null) {
+            steps.add("Эффект «" + blast.expression() + "»: применяет мастер");
+            return new AttackHit("зона", null, steps, null);
+        }
+        Cp2020Location location;
+        if (blast.wholeBody()) {
+            // HOMEBREW: книга (с. 111) пишет «по всему телу», но не говорит о броне; считаем как торс, без ×2 в голову
+            location = Cp2020Location.TORSO;
+            steps.add("По всему телу: броня торса");
+        } else {
+            int roll = dice.d10();
+            location = Cp2020Location.fromRoll(roll);
+            steps.add("Бросок зоны: d10 = " + roll);
+        }
+        DamageRequest damage = DamageRequest.builder()
+                .amount(blast.amount())
+                .location(location.name())
+                .damageType(blast.damageType())
+                .armorWear(Math.max(1, blast.armorWear()))
+                .build();
+        return new AttackHit(location.getLabel(), blast.expression(), steps, damage);
+    }
+
+    /** Схема направлений (с. 99): 1 ближе всех к стрелку, снизу вверх ряды 2 3 4, 5 цель 6, 7 8 9, вверху 10 */
+    private static String direction(int roll) {
+        return switch (roll) {
+            case 1 -> "к стрелку";
+            case 2 -> "к стрелку, левее";
+            case 3 -> "ближе к стрелку";
+            case 4 -> "к стрелку, правее";
+            case 5 -> "левее цели";
+            case 6 -> "правее цели";
+            case 7 -> "за цель, левее";
+            case 8 -> "за цель";
+            case 9 -> "за цель, правее";
+            default -> "далеко за цель";
+        };
+    }
+
+    /**
+     * Зона взрывчатки умножается на число единиц (с. 111); пятно дробовика зависит от дальности (с. 109),
+     * а пятна автодробовика ложатся через метр (с. 109).
+     */
+    private static int radius(Item weapon, AttackRequest request) {
+        if (weapon.getProperties().containsKey(Cp2020ItemTypes.AREA)) {
+            return number(weapon, Cp2020ItemTypes.AREA) * units(weapon, request);
+        }
+        int hitNumber = hitNumber(request.distance(), range(weapon));
+        int pattern = hitNumber <= CLOSE ? 1 : hitNumber == MEDIUM ? 2 : 3;
+        return PATTERNS.equals(mode(request)) ? pattern + request.rounds() - 1 : pattern;
+    }
+
     /** Каждое попадание со своей зоной и своим уроном; первому достаются шаги о числе попаданий */
     private List<AttackHit> manyHits(Item weapon, AttackRequest request, List<String> intro, int count, DiceRoller dice) {
         List<AttackHit> hits = new ArrayList<>();
@@ -209,11 +319,31 @@ final class Cp2020AttackRules implements AttackRules {
             steps.add("Бросок зоны: d10 = " + roll);
         }
 
+        RolledDamage rolled = rollDamage(weapon, request, steps, dice);
+        if (rolled == null) {
+            return new AttackHit(location.getLabel(), null, steps, null);
+        }
+        DamageRequest damageRequest = DamageRequest.builder()
+                .amount(rolled.amount())
+                .location(location.name())
+                .damageType(damageType(weapon))
+                .armorWear(armorWear(weapon))
+                .build();
+        return new AttackHit(location.getLabel(), rolled.notation(), steps, damageRequest);
+    }
+
+    private record RolledDamage(String notation, int amount) {
+    }
+
+    /**
+     * @return null — урон не бросить, в шагах объяснение
+     */
+    private static RolledDamage rollDamage(Item weapon, AttackRequest request, List<String> steps, DiceRoller dice) {
         String damage = weapon.getProperties().get("damage");
         Matcher parsed = damage == null ? null : DAMAGE.matcher(damage.strip());
         if (parsed == null || !parsed.matches()) {
             steps.add("Урон оружия «" + (damage == null ? "не указан" : damage) + "» не бросить: определяет мастер");
-            return new AttackHit(location.getLabel(), null, steps, null);
+            return null;
         }
         DiceExpression expression = forRange(weapon, DiceExpression.parse(parsed.group(1)), request.distance());
         int amount = expression.modifier();
@@ -231,25 +361,115 @@ final class Cp2020AttackRules implements AttackRules {
         steps.add("Урон " + notation + ": " + String.join(" + ", rolled)
                 + (expression.modifier() != 0 ? " " + (expression.modifier() > 0 ? "+" : "−") + " " + Math.abs(expression.modifier()) : "")
                 + " = " + amount);
+        return new RolledDamage(notation, amount);
+    }
 
-        boolean armorPiercing = weapon.getProperties().containsKey(Cp2020ItemTypes.ARMOR_PIERCING);
-        DamageRequest damageRequest = DamageRequest.builder()
-                .amount(amount)
-                .location(location.name())
-                .damageType(armorPiercing ? Cp2020DamageType.ARMOR_PIERCING.name() : Cp2020DamageType.NORMAL.name())
-                .armorWear(Math.max(1, number(weapon, Cp2020ItemTypes.ARMOR_WEAR)))
-                .build();
-        return new AttackHit(location.getLabel(), notation, steps, damageRequest);
+    private static String damageType(Item weapon) {
+        return weapon.getProperties().containsKey(Cp2020ItemTypes.ARMOR_PIERCING)
+                ? Cp2020DamageType.ARMOR_PIERCING.name()
+                : Cp2020DamageType.NORMAL.name();
+    }
+
+    private static int armorWear(Item weapon) {
+        return Math.max(1, number(weapon, Cp2020ItemTypes.ARMOR_WEAR));
     }
 
     private static List<AttackForm.Mode> modes(Item weapon) {
-        if (!isAutomatic(weapon)) {
-            return List.of(new AttackForm.Mode(SINGLE, "Одиночный", false, false));
+        if (isConsumable(weapon)) {
+            return consumableModes(weapon);
         }
-        return List.of(new AttackForm.Mode(SINGLE, "Одиночный", false, false),
-                new AttackForm.Mode(BURST, "Очередь из 3", false, false),
-                new AttackForm.Mode(AUTO, "Автоогонь", true, false),
-                new AttackForm.Mode(SUPPRESS, "Подавляющий огонь", true, true));
+        if ("SHT".equals(category(weapon))) {
+            // автодробовик: атак до ROF, с. 109
+            return number(weapon, Cp2020ItemTypes.RATE_OF_FIRE) >= BURST_ROUNDS
+                    ? List.of(new AttackForm.Mode(SINGLE, "Одно пятно", false, false, true, false),
+                            new AttackForm.Mode(PATTERNS, "Несколько пятен", true, false, true, false))
+                    : List.of(new AttackForm.Mode(SINGLE, "Одно пятно", false, false, true, false));
+        }
+        if (!isAutomatic(weapon)) {
+            return List.of(new AttackForm.Mode(SINGLE, "Одиночный", false, false, false, false));
+        }
+        return List.of(new AttackForm.Mode(SINGLE, "Одиночный", false, false, false, false),
+                new AttackForm.Mode(BURST, "Очередь из 3", false, false, false, false),
+                new AttackForm.Mode(AUTO, "Автоогонь", true, false, false, false),
+                new AttackForm.Mode(SUPPRESS, "Подавляющий огонь", true, true, false, false));
+    }
+
+    private static List<AttackForm.Mode> consumableModes(Item weapon) {
+        boolean area = weapon.getProperties().containsKey(Cp2020ItemTypes.AREA);
+        boolean explosive = isExplosive(weapon);
+        List<AttackForm.Mode> modes = new ArrayList<>();
+        if (isThrown(weapon)) {
+            modes.add(area ? new AttackForm.Mode(THROW, "Метнуть", explosive, false, true, false)
+                    : new AttackForm.Mode(SINGLE, "Метнуть", false, false, false, false));
+        }
+        if (area && weapon.getProperties().containsKey(Cp2020ItemTypes.PLANTED)) {
+            modes.add(new AttackForm.Mode(PLANT, "Подорвать на месте", explosive, false, true, true));
+        }
+        return modes;
+    }
+
+    private static String unavailable(Item weapon, Integer range) {
+        if (isConsumable(weapon)) {
+            if (modes(weapon).isEmpty()) {
+                return "Задайте зону поражения в правке предмета";
+            }
+            return isThrown(weapon) && range == null && !weapon.getProperties().containsKey(Cp2020ItemTypes.PLANTED)
+                    ? "Дальность зависит от BODY, а счётчика характеристик нет"
+                    : null;
+        }
+        return range == null ? "У оружия не указана дальность: задайте её в правке предмета" : Cp2020WeaponActions.fireBlockedReason(weapon);
+    }
+
+    /** Дальность этой атаки: у метательного зависит от BODY и веса заряда */
+    private static int rangeFor(Item weapon, AttackRequest request, AttackForm form, Map<String, StatValue> stats) {
+        if (!isThrown(weapon)) {
+            return form.range();
+        }
+        Integer range = throwRange(weapon, units(weapon, request), stats);
+        if (range == null) {
+            throw new IllegalArgumentException("Дальность зависит от BODY, а счётчика характеристик нет");
+        }
+        if (range <= 0) {
+            throw new IllegalArgumentException("Столько не докинуть: " + units(weapon, request) + " кг");
+        }
+        return range;
+    }
+
+    /**
+     * Гранаты и взрывчатка: 10 м × BODY, −10 м за кг сверх первого; прочее метательное: BODY × 3 м (с. 99, 108, 109).
+     *
+     * @return null — BODY неизвестен
+     */
+    private static Integer throwRange(Item weapon, int units, Map<String, StatValue> stats) {
+        StatValue body = stats.get(Cp2020StatsStrategy.BODY);
+        if (body == null) {
+            return null;
+        }
+        return weapon.getProperties().containsKey(Cp2020ItemTypes.AREA)
+                ? body.value() * GRENADE_METERS_PER_BODY - (units - 1) * METERS_LOST_PER_EXTRA_KG
+                : body.value() * THROWN_METERS_PER_BODY;
+    }
+
+    private static boolean isThrown(Item weapon) {
+        return weapon.getProperties().containsKey(Cp2020ItemTypes.THROWN);
+    }
+
+    private static boolean isExplosive(Item weapon) {
+        return weapon.getProperties().containsKey(Cp2020ItemTypes.EXPLOSIVE);
+    }
+
+    /** Расходуется количеством предмета, а не патронами */
+    private static boolean isConsumable(Item weapon) {
+        return isThrown(weapon) || weapon.getProperties().containsKey(Cp2020ItemTypes.PLANTED);
+    }
+
+    /** Сколько единиц уходит за раз: взрывчатка по выбору, остальное по одной */
+    private static int units(Item weapon, AttackRequest request) {
+        return isExplosive(weapon) ? request.rounds() : 1;
+    }
+
+    private static int quantity(Item item) {
+        return item.getQuantity() == null ? 0 : item.getQuantity();
     }
 
     private static void requireMode(Item weapon, AttackRequest request) {
@@ -257,7 +477,14 @@ final class Cp2020AttackRules implements AttackRules {
         if (modes(weapon).stream().noneMatch(known -> known.code().equals(mode))) {
             throw new IllegalArgumentException("У этого оружия нет такого режима огня");
         }
-        if (AUTO.equals(mode) || SUPPRESS.equals(mode)) {
+        if (isConsumable(weapon)) {
+            int units = units(weapon, request);
+            if (units < 1 || units > quantity(weapon)) {
+                throw new IllegalArgumentException("Можно израсходовать от 1 до " + quantity(weapon));
+            }
+            return;
+        }
+        if (AUTO.equals(mode) || SUPPRESS.equals(mode) || PATTERNS.equals(mode)) {
             int rof = number(weapon, Cp2020ItemTypes.RATE_OF_FIRE);
             if (request.rounds() < 1 || request.rounds() > rof) {
                 throw new IllegalArgumentException("Патронов за раунд — от 1 до " + rof + " (ROF)");
@@ -277,6 +504,9 @@ final class Cp2020AttackRules implements AttackRules {
                 yield tens == 0 ? List.of()
                         : List.of(new CheckRequest.Part("Автоогонь, " + request.rounds() + " патр.", hitNumber <= CLOSE ? tens : -tens));
             }
+            // по примеру книги (с. 109): 5 выстрелов из CAWS — один бросок с −8
+            case PATTERNS -> request.rounds() < 2 ? List.of()
+                    : List.of(new CheckRequest.Part("Пятен: " + request.rounds(), (request.rounds() - 1) * EXTRA_PATTERN_PENALTY));
             default -> List.of();
         };
     }
@@ -284,7 +514,7 @@ final class Cp2020AttackRules implements AttackRules {
     private static int roundsFired(AttackRequest request) {
         return switch (mode(request)) {
             case BURST -> BURST_ROUNDS;
-            case AUTO, SUPPRESS -> request.rounds();
+            case AUTO, SUPPRESS, PATTERNS -> request.rounds();
             default -> 1;
         };
     }
@@ -295,14 +525,24 @@ final class Cp2020AttackRules implements AttackRules {
 
     /**
      * HOMEBREW: книга не делит оружие на автоматическое и нет; считаем таким то, что выпускает очередь из 3 за раунд.
-     * Автоматические дробовики стреляют пятнами (с. 109), это I-09.
+     * Автоматические дробовики стреляют пятнами (с. 109), см. {@link #modes}.
      */
     static boolean isAutomatic(Item weapon) {
         return number(weapon, Cp2020ItemTypes.RATE_OF_FIRE) >= BURST_ROUNDS && !"SHT".equals(category(weapon));
     }
 
     private static int maxRounds(Item weapon) {
+        if (isConsumable(weapon)) {
+            return quantity(weapon);
+        }
         return Math.min(number(weapon, Cp2020ItemTypes.RATE_OF_FIRE), number(weapon, Cp2020ItemTypes.LOADED));
+    }
+
+    private static String roundsLabel(Item weapon) {
+        if (isExplosive(weapon)) {
+            return "Единиц, кг";
+        }
+        return "SHT".equals(category(weapon)) ? "Пятен" : "Патронов";
     }
 
     /**
@@ -351,6 +591,10 @@ final class Cp2020AttackRules implements AttackRules {
 
     /** Книга: дробовик — навык Rifle. Экзотическое оружие по навыкам не делится, поэтому выбор */
     private static List<String> skillCodes(Item weapon) {
+        if (isThrown(weapon)) {
+            // книга называет навык Throwing, в списке навыков его нет: это Athletics
+            return List.of(ATHLETICS);
+        }
         return switch (String.valueOf(category(weapon))) {
             case "P" -> List.of("handgun");
             case "SMG" -> List.of("submachinegun");

@@ -94,12 +94,19 @@
       </section>
 
       <!-- ИНВЕНТАРИ -->
-      <section class="card">
+      <section class="card" id="inventories">
         <div class="card-head">
           <h2 class="card-title"><span class="dot yellow"></span>Инвентари</h2>
           <span class="badge" th:text="${#lists.size(character.inventories)}">0</span>
         </div>
         <div class="card-body">
+          <th:block th:if="${attackResult != null and attackResult.detached}">
+            <div th:replace="~{fragments/attack :: result(${character.id}, ${attackResult}, ${attackTargets})}"></div>
+          </th:block>
+          <div th:if="${blastError != null}" class="alert alert-error item-result" role="alert">
+            <span class="alert-text" th:text="${blastError}">Выберите, кого задело</span>
+            <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+          </div>
           <form th:action="@{'/character/' + ${character.id} + '/inventories'}" method="post" class="form-row">
             <input type="text" name="name" class="grow" placeholder="Название нового инвентаря" required autocomplete="off">
             <button type="submit" class="btn btn-primary">＋ Добавить</button>
@@ -174,14 +181,9 @@
                       <span class="alert-text" th:text="${actionResult}">Выпущено 3</span>
                       <button type="button" class="alert-close" aria-label="Закрыть">×</button>
                     </div>
-                    <div th:if="${actionItemId == item.id and attackResult != null}" class="alert item-result" role="status"
-                         th:classappend="${attackResult.hit} ? 'alert-success' : 'alert-error'">
-                      <div class="alert-text">
-                        <strong th:text="${attackResult.title} + ': ' + ${attackResult.outcome}">Minami → Олежа: попадание</strong>
-                        <ol class="attack-steps"><li th:each="step : ${attackResult.steps}" th:text="${step}">Бросок d10: 7</li></ol>
-                      </div>
-                      <button type="button" class="alert-close" aria-label="Закрыть">×</button>
-                    </div>
+                    <th:block th:if="${actionItemId == item.id and attackResult != null and !attackResult.detached}">
+                      <div th:replace="~{fragments/attack :: result(${character.id}, ${attackResult}, ${attackTargets})}"></div>
+                    </th:block>
                     <div th:if="${actionItemId == item.id and actionError != null}" class="alert alert-error item-result" role="alert">
                       <span class="alert-text" th:text="${actionError}">Магазин пуст</span>
                       <button type="button" class="alert-close" aria-label="Закрыть">×</button>

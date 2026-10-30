@@ -1,6 +1,8 @@
 package app.charka.controller;
 
+import app.charka.attack.AreaDamage;
 import app.charka.attack.AttackRequest;
+import app.charka.attack.AttackResult;
 import app.charka.attack.AttackService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -44,16 +46,44 @@ public class AttackController {
                          @RequestParam Map<String, String> params,
                          RedirectAttributes redirectAttributes) {
         redirectAttributes.addFlashAttribute("actionItemId", itemId);
+        String anchor = "#item-" + itemId;
         try {
             if (distance == null) {
                 throw new IllegalArgumentException("Укажите расстояние до цели");
             }
-            redirectAttributes.addFlashAttribute("attackResult", attackService.attack(characterId, itemId,
-                    new AttackRequest(targets(target), targetName, distance, location, skill, options(params), modifier, mode, rounds, zoneWidth)));
+            AttackResult result = attackService.attack(characterId, itemId,
+                    new AttackRequest(targets(target), targetName, distance, location, skill, options(params), modifier, mode, rounds, zoneWidth));
+            redirectAttributes.addFlashAttribute("attackResult", result);
+            if (result.detached()) {
+                anchor = "#inventories";
+            }
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("actionError", e.getMessage());
         }
-        return "redirect:/character/" + characterId + "#item-" + itemId;
+        return "redirect:/character/" + characterId + anchor;
+    }
+
+    /**
+     * Заряд упал мимо цели: мастер выбирает, кого задело. Значения — из итога атаки, урон брошен там.
+     */
+    @PostMapping("/character/{characterId}/attack/blast")
+    public String blast(@PathVariable Long characterId,
+                        @RequestParam String weapon,
+                        @RequestParam String expression,
+                        @RequestParam int amount,
+                        @RequestParam String damageType,
+                        @RequestParam(defaultValue = "false") boolean wholeBody,
+                        @RequestParam(defaultValue = "1") int armorWear,
+                        @RequestParam int radius,
+                        @RequestParam(required = false) List<Long> target,
+                        RedirectAttributes redirectAttributes) {
+        try {
+            AreaDamage blast = new AreaDamage(weapon, expression, amount, damageType, wholeBody, armorWear, radius, List.of());
+            redirectAttributes.addFlashAttribute("attackResult", attackService.applyBlast(characterId, blast, targets(target)));
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("blastError", e.getMessage());
+        }
+        return "redirect:/character/" + characterId + "#inventories";
     }
 
     /** Пустой пункт «Без листа» приходит как null */

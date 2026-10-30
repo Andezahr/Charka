@@ -164,10 +164,9 @@ class Cp2020AttackRulesTest {
     class Form {
 
         @Test
-        @DisplayName("Холодным и одноразовым так не атакуют")
+        @DisplayName("Холодным, которое не метают, так не атакуют")
         void noForm() {
-            assertThat(rules.form(weapon("knife"))).isNull();
-            assertThat(rules.form(weapon("grenade"))).isNull();
+            assertThat(rules.form(weapon("sword"))).isNull();
         }
 
         @Test

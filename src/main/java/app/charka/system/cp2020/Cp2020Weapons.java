@@ -75,12 +75,20 @@ public final class Cp2020Weapons {
             gun(HEAVY, "Scorpion 16 Missile Launcher", "HVY", -1, "N", "R", "7D10", null, 1, 1, "VR", 1000, 3000),
             gun(HEAVY, "Militech Arms RPG-A", "HVY", -2, "N", "R", "6D10", null, 1, 1, "VR", 750, 1500),
             // одноразовое (граната, взрывчатка, мина): магазина нет, расходуется количеством предмета
-            note(gun(HEAVY, "Grenade", "HVY", 0, "P", "P", "По типу", null, null, 1, "VR", null, 30),
-                    THROWN + ". Виды: осколочная 7D6, зажигательная 4D6 на 3 хода, оглушающая, ослепляющая, звуковая, газовая"),
+            grenade("Fragmentation", "7D6", null),
+            grenade("Incendiary", "4D6", "Горит 3 хода: 4D6 в каждый"),
+            grenade("Stun", "Stun −5", "Спасбросок от оглушения с −5"),
+            grenade("Dazzle", "Blind 4", "Слепота на 4 хода"),
+            grenade("Sonic", "Deaf 4", "Глухота на 4 хода"),
+            grenade("Gas", "Газ", "Эффект по таблице газов, с. 110. Броня не защищает, фильтры защищают"),
             note(gun(HEAVY, "Grenade Launcher", "HVY", 0, null, "R", "По типу", null, 1, 1, "ST", 225, 150),
                     "Скрытность в книге: L/N. Крепится под ствол штурмовой винтовки или используется с рук; не подходит к Militech RPG-A"),
-            note(gun(HEAVY, "C-6 Plastic Explosive", "HVY", 0, "P", "P", "8D10 за кг", null, null, 1, "VR", null, 100), "Цена за кг"),
-            gun(HEAVY, "Mine (all types)", "HVY", 0, "J", "P", "4D10", null, null, 1, "VR", null, 350),
+            // HOMEBREW: на с. 63 урон «8D10 per kg», на с. 111 от числа единиц зависит только зона; взята с. 111
+            note(withFlag(withFlag(withFlag(withProperty(gun(HEAVY, "C-6 Plastic Explosive", "HVY", 0, "P", "P", "8D10", null, null, 1, "VR", null, 100),
+                    Cp2020ItemTypes.AREA, "5"), Cp2020ItemTypes.THROWN), Cp2020ItemTypes.PLANTED), Cp2020ItemTypes.EXPLOSIVE),
+                    "Цена за кг. Количество — кг"),
+            note(withFlag(withProperty(gun(HEAVY, "Mine (all types)", "HVY", 0, "J", "P", "4D10", null, null, 1, "VR", null, 350),
+                    Cp2020ItemTypes.AREA, "2"), Cp2020ItemTypes.PLANTED), "У клеймора другая зона: 6 м по линии от центра, задайте в правке предмета"),
             // HOMEBREW: оружие без магазина (огнемёт, лук, арбалет, револьверы, Winchester) заряжается патронами прямо из запаса
             directLoad(gun(HEAVY, "K-A F-253 Flamethrower", "HVY", -2, "N", "R", "2D10+", Cp2020Ammo.NAPALM, 10, 1, "ST", 50, 1500)),
 
@@ -98,12 +106,12 @@ public final class Cp2020Weapons {
             gun(MONO, "SPM-1 Battleglove", "MELEE", -2, "N", "P", "3D6/2D6", null, null, 1, "VR", 1, 900),
 
             melee("Club", 0, "L", "1D6", 1, 0),
-            note(melee("Knife", 0, "P", "1D6", 1, 1), "Цена по книге: 1–20"),
+            note(withFlag(melee("Knife", 0, "P", "1D6", 1, 1), Cp2020ItemTypes.THROWN), "Цена по книге: 1–20"),
             note(melee("Sword", 0, "N", "2D6+2", 1, 20), "Цена по книге: 20–200"),
             melee("Axe", -1, "N", "2D6+3", 1, 20),
             melee("Nunchaku/Tonfa", 0, "L", "3D6", 1, 15),
             melee("Naginata", 0, "N", "3D6", 2, 100, "P"),
-            note(melee("Shiriken", 0, "P", "1D6/3", null, 2), THROWN + ". Цена по книге: 2–3"),
+            note(withFlag(melee("Shiriken", 0, "P", "1D6/3", null, 2), Cp2020ItemTypes.THROWN), THROWN + ". Цена по книге: 2–3"),
             melee("Switchblade", 0, "P", "1D6/2", 1, 15),
             melee("Brass Knuckles", 0, "P", "1D6+2", 1, 10),
             melee("Sledgehammer", -1, "N", "4D6", 1, 20),
@@ -148,6 +156,13 @@ public final class Cp2020Weapons {
         put(properties, "reliability", reliability);
         put(properties, "range", range);
         return new CatalogItem(key(name), group, name, Cp2020ItemTypes.WEAPON, cost, null, properties, 1, shots != null);
+    }
+
+    /** Граната: дальность от BODY, зона 5 м (с. 99); виды и эффекты — с. 63 */
+    private static CatalogItem grenade(String kind, String damage, String description) {
+        CatalogItem grenade = gun(HEAVY, "Grenade: " + kind, "HVY", 0, "P", "P", damage, null, null, 1, "VR", null, 30);
+        CatalogItem armed = withFlag(withFlag(withProperty(grenade, Cp2020ItemTypes.AREA, "5"), Cp2020ItemTypes.THROWN), Cp2020ItemTypes.PLANTED);
+        return note(armed, description == null ? THROWN : THROWN + ". " + description);
     }
 
     private static CatalogItem old(String name, String category, int accuracy, String concealability, String availability,

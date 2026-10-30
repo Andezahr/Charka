@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Атака оружием: проверка на попадание, расход, урон и его применение к цели; всё пишется в лог бросков.
@@ -55,12 +56,49 @@ public class AttackService {
                 .orElseThrow(NotFoundException.forId("Item", itemId));
         GameSystem system = systemRegistry.forCharacter(attacker);
         AttackRules rules = system.getAttackRules();
-        if (rules == null || rules.form(weapon) == null) {
+        if (rules == null || rules.form(weapon, system.getCurrentStats(attacker)) == null) {
             throw new IllegalArgumentException("Этим предметом нельзя атаковать: " + weapon.getName());
         }
-        List<Character> targets = targets(attacker, request);
+        List<Character> targets = targets(attacker, request.targetIds());
+        AttackResult result = perform(attacker, weapon, system, rules, targets, request);
+        // израсходованный предмет ушёл из инвентаря: его строки на листе больше нет
+        boolean spentUp = weapon.getInventory().getContent().stream().noneMatch(item -> item == weapon);
+        return spentUp ? result.withoutItemRow() : result;
+    }
+
+    /**
+     * Заряд упал мимо цели, мастер выбрал, кого задело на месте падения.
+     *
+     * @param characterId кто атаковал
+     * @throws IllegalArgumentException если целей нет или у системы нет такого урона
+     */
+    @Transactional
+    public AttackResult applyBlast(Long characterId, AreaDamage blast, List<Long> targetIds) {
+        Character attacker = characterRepository.findById(characterId)
+                .orElseThrow(CharacterNotFoundException.forId(characterId));
+        AttackRules rules = systemRegistry.forCharacter(attacker).getAttackRules();
+        if (rules == null) {
+            throw new IllegalArgumentException("У этой системы нет атак");
+        }
+        if (targetIds.isEmpty()) {
+            throw new IllegalArgumentException("Выберите, кого задело");
+        }
+        if (blast.amount() == null || blast.amount() < 0) {
+            throw new IllegalArgumentException("Нет урона, который можно применить");
+        }
+        List<Character> targets = targets(attacker, targetIds);
+        List<String> steps = new ArrayList<>();
+        applyBlastTo(attacker, blast, rules, targets, null, steps);
+        return new AttackResult(blast.weapon() + " → " + names(targets), "Задето целей: " + targets.size(), true, steps).withoutItemRow();
+    }
+
+    private AttackResult perform(Character attacker, Item weapon, GameSystem system, AttackRules rules,
+                                 List<Character> targets, AttackRequest request) {
         if (rules.isZoneFire(request)) {
             return zoneFire(attacker, weapon, system, rules, targets, request);
+        }
+        if (rules.isArea(weapon, request)) {
+            return areaAttack(attacker, weapon, system, rules, targets, request);
         }
         if (targets.size() > 1) {
             throw new IllegalArgumentException("Такой режим огня — только по одной цели");
@@ -81,7 +119,7 @@ public class AttackService {
             return new AttackResult(title, check.outcome(), false, steps);
         }
         List<AttackHit> hits = rules.hits(weapon, request, check, diceRoller);
-        String outcome = applyHits(attacker, weapon, target, targetName, hits, steps);
+        String outcome = applyHits(attacker, weapon.getName(), target, targetName, hits, steps);
         return new AttackResult(title, outcome == null ? check.outcome() + ", но ни одна пуля не дошла" : outcome, !hits.isEmpty(), steps);
     }
 
@@ -110,16 +148,64 @@ public class AttackService {
             steps.addAll(save.steps());
             if (!Boolean.TRUE.equals(save.success())) {
                 hitTargets++;
-                applyHits(attacker, weapon, target, name, rules.zoneHits(weapon, request, diceRoller), steps);
+                applyHits(attacker, weapon.getName(), target, name, rules.zoneHits(weapon, request, diceRoller), steps);
             }
         }
         return new AttackResult(weapon.getName() + " → зона огня", "Попали под огонь: " + hitTargets + " из " + saves.size(), hitTargets > 0, steps);
     }
 
     /**
+     * Урон по площади: при попадании задеты выбранные цели, при промахе заряд отклоняется и мастер решает, кого задело.
+     * Заряд на месте подрывается без броска.
+     */
+    private AttackResult areaAttack(Character attacker, Item weapon, GameSystem system, AttackRules rules,
+                                    List<Character> targets, AttackRequest request) {
+        String title = weapon.getName() + " → " + (targets.isEmpty() ? targetName(request) : names(targets));
+        boolean planted = rules.isPlanted(request);
+        CheckRequest toHit = planted ? null : rules.toHit(attacker, weapon, request, system.getCurrentStats(attacker));
+        AreaDamage blast = rules.areaDamage(weapon, request, diceRoller);
+        List<String> steps = new ArrayList<>();
+        steps.add(rules.spend(weapon, request));
+        CheckResult check = planted ? null : checkService.checkForCharacter(attacker.getId(), toHit);
+        if (check != null) {
+            steps.addAll(check.steps());
+            if (check.fumble()) {
+                steps.addAll(rules.onFumble(weapon, diceRoller));
+            }
+        }
+        if (check != null && !Boolean.TRUE.equals(check.success())) {
+            steps.addAll(rules.scatter(blast, diceRoller));
+            steps.addAll(blast.steps());
+            return new AttackResult(title, check.outcome() + ": заряд упал мимо", false, steps,
+                    blast.amount() == null ? null : blast, false);
+        }
+        steps.addAll(blast.steps());
+        applyBlastTo(attacker, blast, rules, targets, targetName(request), steps);
+        return new AttackResult(title, "Зона " + blast.radius() + " м, задето целей: " + Math.max(1, targets.size()), true, steps);
+    }
+
+    /**
+     * @param unlistedName цель без листа, если целей нет
+     */
+    private void applyBlastTo(Character attacker, AreaDamage blast, AttackRules rules, List<Character> targets,
+                              String unlistedName, List<String> steps) {
+        if (targets.isEmpty()) {
+            applyHits(attacker, blast.weapon(), null, unlistedName, List.of(rules.areaHit(blast, diceRoller)), steps);
+        }
+        for (Character target : targets) {
+            steps.add(target.getName() + ":");
+            applyHits(attacker, blast.weapon(), target, target.getName(), List.of(rules.areaHit(blast, diceRoller)), steps);
+        }
+    }
+
+    private static String names(List<Character> targets) {
+        return targets.stream().map(Character::getName).collect(Collectors.joining(", "));
+    }
+
+    /**
      * @return итог для заголовка; null — попаданий нет
      */
-    private String applyHits(Character attacker, Item weapon, Character target, String targetName, List<AttackHit> hits, List<String> steps) {
+    private String applyHits(Character attacker, String weapon, Character target, String targetName, List<AttackHit> hits, List<String> steps) {
         String outcome = null;
         for (AttackHit hit : hits) {
             steps.addAll(hit.steps());
@@ -128,13 +214,13 @@ public class AttackService {
         return hits.size() > 1 ? "Попаданий: " + hits.size() + ". " + outcome : outcome;
     }
 
-    private String applyHit(Character attacker, Item weapon, Character target, String targetName, AttackHit hit, List<String> steps) {
+    private String applyHit(Character attacker, String weapon, Character target, String targetName, AttackHit hit, List<String> steps) {
         if (hit.damage() == null) {
             return "Попадание: " + hit.where() + ", урон определяет мастер";
         }
         int amount = hit.damage().getAmount();
         diceService.log(attacker.getCampaign(), attacker, hit.expression(), String.join("; ", hit.steps()), amount,
-                "Урон: " + weapon.getName() + " → " + targetName);
+                "Урон: " + weapon + " → " + targetName);
         Optional<HealthEvent> event = target == null
                 ? Optional.empty()
                 : healthCounterService.applyDamage(target.getId(), hit.damage());
@@ -146,9 +232,9 @@ public class AttackService {
         return event.get().getSummary();
     }
 
-    private List<Character> targets(Character attacker, AttackRequest request) {
+    private List<Character> targets(Character attacker, List<Long> targetIds) {
         List<Character> targets = new ArrayList<>();
-        for (Long id : request.targetIds()) {
+        for (Long id : targetIds) {
             Character target = characterRepository.findById(id).orElseThrow(CharacterNotFoundException.forId(id));
             if (target.getId().equals(attacker.getId())) {
                 throw new IllegalArgumentException("Нельзя атаковать самого себя");

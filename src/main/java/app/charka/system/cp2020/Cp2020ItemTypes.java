@@ -31,6 +31,14 @@ public final class Cp2020ItemTypes {
     public static final String INSERTED = "insertedMagazine";
     /** Сколько SP снимает попадание, если больше обычного 1 (Barrett-Arasaka, с. 63) */
     public static final String ARMOR_WEAR = "armorWear";
+    /** Метается; количество предмета — сколько осталось */
+    public static final String THROWN = "thrown";
+    /** Подрывается на месте, без броска на попадание */
+    public static final String PLANTED = "planted";
+    /** Зона поражения, м (с. 99); есть — урон по площади */
+    public static final String AREA = "area";
+    /** Взрывчатка (с. 111): зона умножается на число единиц, урон по всему телу. Единица — количество предмета */
+    public static final String EXPLOSIVE = "explosive";
     /** Оружие заклинило; состояние, не поле формы */
     public static final String JAMMED = "jammed";
 
@@ -81,7 +89,11 @@ public final class Cp2020ItemTypes {
             ItemField.number("range", "Дальность, м", "", " м", 0, null),
             ItemField.flag(ARMOR_PIERCING, "Заряжены бронебойные", "AP"),
             ItemField.flag(DIRECT_LOAD, "Заряжается без магазина", "без магазина"),
-            ItemField.number(ARMOR_WEAR, "SP брони за попадание", "снимает SP ", "", 2, 10)),
+            ItemField.number(ARMOR_WEAR, "SP брони за попадание", "снимает SP ", "", 2, 10),
+            ItemField.flag(THROWN, "Метается", "метательное"),
+            ItemField.flag(PLANTED, "Подрывается на месте", "подрыв"),
+            ItemField.number(AREA, "Зона поражения, м", "зона ", " м", 1, null),
+            ItemField.flag(EXPLOSIVE, "Взрывчатка: зона на единицу, по всему телу", "взрывчатка")),
             Cp2020ItemTypes::checkWeapon,
             List.of(JAMMED));
 

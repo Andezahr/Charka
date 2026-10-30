@@ -2,6 +2,7 @@ package app.charka.controller;
 
 import app.charka.attack.AttackForm;
 import app.charka.attack.AttackRules;
+import app.charka.skill.StatValue;
 import app.charka.dice.DiceService;
 import app.charka.item.CatalogItem;
 import app.charka.item.ItemTypeDefinition;
@@ -63,10 +64,11 @@ public class CharacterController {
         AttackRules attackRules = system.getAttackRules();
         if (attackRules != null) {
             Map<Long, AttackForm> attackForms = new HashMap<>();
+            Map<String, StatValue> currentStats = system.getCurrentStats(character);
             character.getInventories().stream()
                     .flatMap(inventory -> inventory.getContent().stream())
                     .forEach(item -> {
-                        AttackForm form = attackRules.form(item);
+                        AttackForm form = attackRules.form(item, currentStats);
                         if (form != null) {
                             attackForms.put(item.getId(), form);
                         }

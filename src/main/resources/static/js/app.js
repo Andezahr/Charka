@@ -9,22 +9,33 @@ document.addEventListener('DOMContentLoaded', () => {
     dialog.querySelector('[data-dialog-close]').addEventListener('click', () => dialog.close());
   });
 
-  // Диалог атаки: поля зависят от режима огня. В зоне огня целей несколько, в остальных — одна
+  // Диалог атаки: поля зависят от режима. В зоне огня и при уроне по площади целей несколько, в остальных — одна
   document.querySelectorAll('[data-attack]').forEach(dialog => {
     const mode = dialog.querySelector('[data-attack-mode]');
     if (!mode) return;
     const target = dialog.querySelector('[data-attack-target]');
     const location = dialog.querySelector('[data-attack-location]');
+    const distance = dialog.querySelector('[data-attack-distance]');
+    const distanceInput = distance.querySelector('input');
     const update = () => {
       const chosen = mode.selectedOptions[0];
       const zone = chosen.dataset.zone === 'true';
+      const area = chosen.dataset.area === 'true';
+      const planted = chosen.dataset.planted === 'true';
       dialog.querySelector('[data-attack-rounds]').hidden = chosen.dataset.rounds !== 'true';
       dialog.querySelector('[data-attack-width]').hidden = !zone;
-      dialog.querySelector('[data-attack-target-label]').textContent = zone ? 'Цели в зоне (несколько)' : 'Цель';
-      target.multiple = zone;
-      location.disabled = mode.value !== 'SINGLE';
+      dialog.querySelector('[data-attack-target-label]').textContent = zone || area ? 'Цели в зоне (несколько)' : 'Цель';
+      target.multiple = zone || area;
+      location.disabled = mode.value !== 'SINGLE' || area;
       if (location.disabled) location.value = '';
+      dialog.querySelector('[data-attack-location-field]').hidden = area;
+      // заряд на месте: броска на попадание и расстояния нет
+      distance.hidden = planted;
+      distanceInput.required = !planted;
+      distanceInput.value = planted ? 0 : (distanceInput.dataset.touched ? distanceInput.value : '');
+      dialog.querySelectorAll('[data-attack-roll]').forEach(part => { part.hidden = planted; });
     };
+    distanceInput.addEventListener('input', () => { distanceInput.dataset.touched = 'true'; });
     mode.addEventListener('change', update);
     update();
   });

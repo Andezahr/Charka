@@ -33,7 +33,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 637 тестов, на 2026-10-30 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 671 тестов, на 2026-10-30 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -50,12 +50,12 @@ service/       бизнес-логика; campaign/, counter/, notes/ — под
 controller/    MVC-контроллеры, возвращают имена шаблонов или redirect
 api/           REST: CampaignExportController, SkillCheckController (проверка навыка)
 dice/         DiceExpression (разбор NdM±K), DiceResult, DiceService (броски + лог RollLog)
-attack/       AttackRules (контракт системы), AttackForm, AttackRequest, AttackHit, AttackResult, AttackService (ход атаки, урон цели, лог)
+attack/       AttackRules (контракт системы), AttackForm, AttackRequest, AttackHit, AreaDamage (урон по площади), AttackResult, AttackService (ход атаки, урон цели, лог)
 check/        CheckRequest/CheckResult/CheckResolver (GenericCheckResolver: d20), OpposedCheckResult, CheckService (правила системы + лог)
 item/         ItemTypeDefinition, ItemField (поля типа предмета, проверка ввода, строка предмета), CatalogItem (строка справочника), ItemAction (кнопка действия на листе); типы, справочник и действия отдаёт GameSystem
 skill/        SkillDefinition, CharacterRole, StatValue, SkillSheet, SkillCheck, SkillOpponent, SkillProgression (контракт прокачки), SkillImprovement, SkillService (навыки, роли, проверка, прокачка)
 system/        GameSystem, GameSystemRegistry, GenericSystem ("GENERIC"), Currency; cp2020/ — Cp2020System ("CP2020"),
-               стратегии счётчиков, Cp2020Rules, Cp2020Dice (d10: на 10 один дополнительный кубик), Cp2020CheckResolver, Cp2020Skills (каталог, роли), Cp2020Fumbles (таблица книги), Cp2020SkillRules (языки по семьям, бонусы от других навыков, требования), Cp2020ItemTypes (оружие, магазины, боеприпасы), Cp2020Weapons (справочник оружия книги), Cp2020Ammo (таблица боеприпасов книги), Cp2020Magazines (справочник магазинов), Cp2020MagazineRules (цены, размеры, штрафы магазинов; хоумбрю помечен), Cp2020WeaponActions (выстрел, очередь, смена и снаряжение магазина), Cp2020Armors (справочник брони книги), Cp2020ArmorRules (пропорциональная броня, слои), Cp2020WornArmor (надетая броня), Cp2020ArmorActions (надеть, снять, починить), Cp2020AttackRules (дальняя атака: сложность по дальности, зона, урон), Cp2020AttackModifiers (таблица модификаторов FNFF), Cp2020SkillProgression + Cp2020IpStrategy (очки улучшения)
+               стратегии счётчиков, Cp2020Rules, Cp2020Dice (d10: на 10 один дополнительный кубик), Cp2020CheckResolver, Cp2020Skills (каталог, роли), Cp2020Fumbles (таблица книги), Cp2020SkillRules (языки по семьям, бонусы от других навыков, требования), Cp2020ItemTypes (оружие, магазины, боеприпасы), Cp2020Weapons (справочник оружия книги), Cp2020Ammo (таблица боеприпасов книги), Cp2020Magazines (справочник магазинов), Cp2020MagazineRules (цены, размеры, штрафы магазинов; хоумбрю помечен), Cp2020WeaponActions (выстрел, очередь, смена и снаряжение магазина), Cp2020Armors (справочник брони книги), Cp2020ArmorRules (пропорциональная броня, слои), Cp2020WornArmor (надетая броня), Cp2020ArmorActions (надеть, снять, починить), Cp2020AttackRules (дальняя атака и метание: сложность по дальности, зона, урон, площадь и отклонение), Cp2020AttackModifiers (таблица модификаторов FNFF), Cp2020SkillProgression + Cp2020IpStrategy (очки улучшения)
 dto/counter/   DTO только для счётчиков (единственный модуль, переведённый на DTO)
 exception/     NotFoundException.forId("Entity", id) (NoSuchElementException → 404), наследники CharacterNotFoundException, InventoryNotFoundException;
                GlobalExceptionHandler (страницы → error.html: 404/400/500), ApiExceptionHandler (app.charka.api → text/plain)
@@ -119,7 +119,8 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 | POST | `/character/{id}/wounds`, `.../wounds/{wid}/delete` | раны |
 | POST | `/character/{id}/inventories`, `.../{invId}/edit`, `.../{invId}/delete` | инвентари |
 | POST | `/character/{id}/inventories/{invId}/items` (+ `/{itemId}/edit|delete|move`) | предметы; `itemType`, `prop.<ключ>` — тип и его поля; `/catalog` (`catalogKey`, `quantity`) — из справочника системы; `/{itemId}/action/{action}` (`source`, `amount`) — действие системы (CP2020: `FIRE`, `BURST`, `RELOAD`, `EJECT`, `ADD_MAGAZINE`, `LOAD`, `UNLOAD`, `UNJAM`, у брони `WEAR`, `TAKE_OFF`, `REPAIR`), итог во flash для строки предмета |
-| POST | `/character/{id}/items/{itemId}/attack` | `target` (в зоне огня несколько) или `targetName`, `distance`, `location?`, `skill?`, `modifier`, `mode`, `rounds`, `zoneWidth`, `option.<выбор>` → атака оружием, итог во flash `attackResult` в строке предмета |
+| POST | `/character/{id}/items/{itemId}/attack` | `target` (в зоне огня несколько) или `targetName`, `distance`, `location?`, `skill?`, `modifier`, `mode`, `rounds`, `zoneWidth`, `option.<выбор>` → атака оружием, итог во flash `attackResult` в строке предмета (предмет израсходован — в начале блока инвентарей) |
+| POST | `/character/{id}/attack/blast` | `weapon`, `expression`, `amount`, `damageType`, `wholeBody`, `armorWear`, `radius`, `target` (несколько) → заряд упал мимо, урон выбранным целям |
 | POST | `/character/{id}/money`, `.../money/{mid}/delete` | деньги |
 | GET | `/character/{id}/notes/` | заметки (фильтр `?categoryId=`) |
 | POST | `/character/{id}/notes`, `.../{noteId}/edit|delete`; GET `.../{noteId}/edit` | заметки |

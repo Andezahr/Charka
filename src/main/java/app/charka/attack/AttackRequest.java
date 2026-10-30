@@ -6,7 +6,7 @@ import java.util.Set;
 /**
  * Параметры атаки из формы.
  *
- * @param targetIds  цели с листом из той же кампании: при обычной атаке не больше одной, в зоне огня сколько вошло; пусто — цель без листа
+ * @param targetIds  цели с листом из той же кампании: при обычной атаке не больше одной, в зоне сколько вошло; пусто — цель без листа
  * @param targetName имя цели без листа
  * @param distance   расстояние до цели, м
  * @param location   код выбранной зоны; пусто — случайная
@@ -14,7 +14,7 @@ import java.util.Set;
  * @param options    коды выбранных модификаторов
  * @param modifier   прочий модификатор; в зоне огня — итог цели без листа
  * @param mode       код режима огня; пусто — одиночный выстрел
- * @param rounds     сколько патронов выпустить, если режим это спрашивает
+ * @param rounds     сколько патронов выпустить или единиц израсходовать, если режим это спрашивает
  * @param zoneWidth  ширина зоны огня, м
  */
 public record AttackRequest(List<Long> targetIds, String targetName, int distance, String location, String skillCode,

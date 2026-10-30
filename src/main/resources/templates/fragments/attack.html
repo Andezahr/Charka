@@ -13,16 +13,16 @@
     </div>
 
     <div class="field-grid">
-      <label class="field" th:if="${#lists.size(form.modes) > 1}">
-        <span class="label">Режим огня</span>
+      <label class="field" th:hidden="${#lists.size(form.modes) < 2}">
+        <span class="label">Режим</span>
         <select name="mode" data-attack-mode>
           <option th:each="m : ${form.modes}" th:value="${m.code}" th:text="${m.label}"
-                  th:attr="data-rounds=${m.rounds},data-zone=${m.zone}">Одиночный</option>
+                  th:attr="data-rounds=${m.rounds},data-zone=${m.zone},data-area=${m.area},data-planted=${m.planted}">Одиночный</option>
         </select>
       </label>
       <label class="field" data-attack-rounds hidden>
-        <span class="label">Патронов</span>
-        <input type="number" name="rounds" min="1" th:attr="max=${form.maxRounds}" th:value="${form.maxRounds}">
+        <span class="label" th:text="${form.roundsLabel}">Патронов</span>
+        <input type="number" name="rounds" min="1" th:attr="max=${form.maxRounds}" th:value="${form.defaultRounds}">
       </label>
       <label class="field" data-attack-width hidden>
         <span class="label">Ширина зоны, м</span>
@@ -39,11 +39,11 @@
         <span class="label">Имя цели без листа</span>
         <input type="text" name="targetName" maxlength="100" autocomplete="off">
       </label>
-      <label class="field">
+      <label class="field" data-attack-distance>
         <span class="label">Расстояние, м</span>
         <input type="number" name="distance" min="0" required>
       </label>
-      <label class="field">
+      <label class="field" data-attack-location-field>
         <span class="label">Зона (выбор −4)</span>
         <select name="location" data-attack-location>
           <option value="">Случайная</option>
@@ -58,7 +58,7 @@
       </label>
     </div>
 
-    <fieldset th:each="section : ${form.sections}" class="attack-section">
+    <fieldset th:each="section : ${form.sections}" class="attack-section" data-attack-roll>
       <legend th:text="${section.name}">Цель</legend>
       <div class="attack-options">
         <th:block th:each="choice : ${section.choices}">
@@ -77,16 +77,43 @@
       </div>
     </fieldset>
 
-    <label class="field">
+    <label class="field" data-attack-roll>
       <span class="label">Прочий модификатор</span>
       <input type="number" name="modifier" value="0">
     </label>
 
     <div class="form-row dialog-actions">
       <button type="button" class="btn btn-ghost" data-dialog-close>Закрыть</button>
-      <button type="submit" class="btn btn-primary">🎲 Выстрелить</button>
+      <button type="submit" class="btn btn-primary">🎲 Атаковать</button>
     </div>
   </form>
 </dialog>
+
+<!-- Итог атаки. Если заряд упал мимо, мастер выбирает здесь, кого задело: позиций на листе нет. -->
+<div th:fragment="result(characterId, result, targets)" class="alert item-result" role="status"
+     th:classappend="${result.hit} ? 'alert-success' : 'alert-error'">
+  <div class="alert-text">
+    <strong th:text="${result.title} + ': ' + ${result.outcome}">Minami → Олежа: попадание</strong>
+    <ol class="attack-steps"><li th:each="step : ${result.steps}" th:text="${step}">Бросок d10: 7</li></ol>
+    <form th:if="${result.scattered != null and !#lists.isEmpty(targets)}" class="form-row" method="post"
+          th:action="@{'/character/' + ${characterId} + '/attack/blast'}">
+      <input type="hidden" name="weapon" th:value="${result.scattered.weapon}">
+      <input type="hidden" name="expression" th:value="${result.scattered.expression}">
+      <input type="hidden" name="amount" th:value="${result.scattered.amount}">
+      <input type="hidden" name="damageType" th:value="${result.scattered.damageType}">
+      <input type="hidden" name="wholeBody" th:value="${result.scattered.wholeBody}">
+      <input type="hidden" name="armorWear" th:value="${result.scattered.armorWear}">
+      <input type="hidden" name="radius" th:value="${result.scattered.radius}">
+      <label class="field grow">
+        <span class="label" th:text="'Кого задело (урон ' + ${result.scattered.amount} + ', зона ' + ${result.scattered.radius} + ' м)'">Кого задело</span>
+        <select name="target" multiple required>
+          <option th:each="t : ${targets}" th:value="${t.id}" th:text="${t.name}">Олежа</option>
+        </select>
+      </label>
+      <button type="submit" class="btn btn-sm btn-primary">Применить урон</button>
+    </form>
+  </div>
+  <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+</div>
 </body>
 </html>

@@ -16,9 +16,10 @@ import java.util.Map;
 public interface AttackRules {
 
     /**
+     * @param stats текущие статы атакующего: от них зависит дальность метания
      * @return форма атаки; null — этим предметом так не атакуют
      */
-    AttackForm form(Item weapon);
+    AttackForm form(Item weapon, Map<String, StatValue> stats);
 
     /**
      * Проверка на попадание.
@@ -73,5 +74,44 @@ public interface AttackRules {
      */
     default List<AttackHit> zoneHits(Item weapon, AttackRequest request, DiceRoller dice) {
         return List.of();
+    }
+
+    /**
+     * Урон по площади: задет всякий в зоне, при промахе заряд отклоняется.
+     */
+    default boolean isArea(Item weapon, AttackRequest request) {
+        return false;
+    }
+
+    /**
+     * Заряд подрывается на месте, без броска на попадание.
+     */
+    default boolean isPlanted(AttackRequest request) {
+        return false;
+    }
+
+    /**
+     * Бросок урона по площади; вызывается до расхода.
+     *
+     * @throws IllegalArgumentException если такая атака невозможна
+     */
+    default AreaDamage areaDamage(Item weapon, AttackRequest request, DiceRoller dice) {
+        throw new IllegalArgumentException("У этого оружия нет урона по площади");
+    }
+
+    /**
+     * Куда отклонился заряд при промахе.
+     *
+     * @return шаги расчёта
+     */
+    default List<String> scatter(AreaDamage blast, DiceRoller dice) {
+        return List.of();
+    }
+
+    /**
+     * Попадание заряда по одной цели в зоне.
+     */
+    default AttackHit areaHit(AreaDamage blast, DiceRoller dice) {
+        throw new IllegalArgumentException("У этого оружия нет урона по площади");
     }
 }

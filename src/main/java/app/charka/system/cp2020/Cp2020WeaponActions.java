@@ -105,6 +105,13 @@ final class Cp2020WeaponActions {
         return fire(weapon, rounds);
     }
 
+    /** Расход метательного и заряда: количеством предмета, последний уходит из инвентаря */
+    static String consume(Item weapon, int units) {
+        int left = quantity(weapon) - units;
+        takeFromStack(weapon, units);
+        return weapon.getName() + ": израсходовано " + units + ", осталось " + left;
+    }
+
     /** Почему из оружия сейчас нельзя стрелять; null — можно */
     static String fireBlockedReason(Item weapon) {
         if (weapon.getProperties().containsKey(Cp2020ItemTypes.JAMMED)) {
