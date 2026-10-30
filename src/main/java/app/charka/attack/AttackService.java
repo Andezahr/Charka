@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -57,24 +58,74 @@ public class AttackService {
         if (rules == null || rules.form(weapon) == null) {
             throw new IllegalArgumentException("Этим предметом нельзя атаковать: " + weapon.getName());
         }
-        Character target = target(attacker, request);
+        List<Character> targets = targets(attacker, request);
+        if (rules.isZoneFire(request)) {
+            return zoneFire(attacker, weapon, system, rules, targets, request);
+        }
+        if (targets.size() > 1) {
+            throw new IllegalArgumentException("Такой режим огня — только по одной цели");
+        }
+        Character target = targets.isEmpty() ? null : targets.get(0);
         String targetName = target != null ? target.getName() : targetName(request);
         String title = weapon.getName() + " → " + targetName;
 
         CheckRequest toHit = rules.toHit(attacker, weapon, request, system.getCurrentStats(attacker));
         List<String> steps = new ArrayList<>();
-        steps.add(rules.spend(weapon));
-        CheckResult check = checkService.checkForCharacter(characterId, toHit);
+        steps.add(rules.spend(weapon, request));
+        CheckResult check = checkService.checkForCharacter(attacker.getId(), toHit);
         steps.addAll(check.steps());
+        if (check.fumble()) {
+            steps.addAll(rules.onFumble(weapon, diceRoller));
+        }
         if (!Boolean.TRUE.equals(check.success())) {
             return new AttackResult(title, check.outcome(), false, steps);
         }
-        String outcome = check.outcome();
-        for (AttackHit hit : rules.hits(weapon, request, diceRoller)) {
+        List<AttackHit> hits = rules.hits(weapon, request, check, diceRoller);
+        String outcome = applyHits(attacker, weapon, target, targetName, hits, steps);
+        return new AttackResult(title, outcome == null ? check.outcome() + ", но ни одна пуля не дошла" : outcome, !hits.isEmpty(), steps);
+    }
+
+    /**
+     * Огонь по зоне: патроны расходуются один раз, каждая цель бросает сама.
+     */
+    private AttackResult zoneFire(Character attacker, Item weapon, GameSystem system, AttackRules rules,
+                                  List<Character> targets, AttackRequest request) {
+        List<CheckRequest> saves = new ArrayList<>();
+        for (Character target : targets) {
+            saves.add(rules.zoneSave(target, weapon, request, system.getCurrentStats(target)));
+        }
+        if (targets.isEmpty()) {
+            saves.add(rules.zoneSave(null, weapon, request, Map.of()));
+        }
+        List<String> steps = new ArrayList<>();
+        steps.add(rules.spend(weapon, request));
+        int hitTargets = 0;
+        for (int i = 0; i < saves.size(); i++) {
+            Character target = targets.isEmpty() ? null : targets.get(i);
+            String name = target != null ? target.getName() : targetName(request);
+            CheckResult save = target != null
+                    ? checkService.checkForCharacter(target.getId(), saves.get(i))
+                    : checkService.checkForCampaign(attacker.getCampaign().getId(), saves.get(i));
+            steps.add(name + ": спасбросок");
+            steps.addAll(save.steps());
+            if (!Boolean.TRUE.equals(save.success())) {
+                hitTargets++;
+                applyHits(attacker, weapon, target, name, rules.zoneHits(weapon, request, diceRoller), steps);
+            }
+        }
+        return new AttackResult(weapon.getName() + " → зона огня", "Попали под огонь: " + hitTargets + " из " + saves.size(), hitTargets > 0, steps);
+    }
+
+    /**
+     * @return итог для заголовка; null — попаданий нет
+     */
+    private String applyHits(Character attacker, Item weapon, Character target, String targetName, List<AttackHit> hits, List<String> steps) {
+        String outcome = null;
+        for (AttackHit hit : hits) {
             steps.addAll(hit.steps());
             outcome = applyHit(attacker, weapon, target, targetName, hit, steps);
         }
-        return new AttackResult(title, outcome, true, steps);
+        return hits.size() > 1 ? "Попаданий: " + hits.size() + ". " + outcome : outcome;
     }
 
     private String applyHit(Character attacker, Item weapon, Character target, String targetName, AttackHit hit, List<String> steps) {
@@ -95,21 +146,21 @@ public class AttackService {
         return event.get().getSummary();
     }
 
-    private Character target(Character attacker, AttackRequest request) {
-        if (request.targetId() == null) {
-            return null;
+    private List<Character> targets(Character attacker, AttackRequest request) {
+        List<Character> targets = new ArrayList<>();
+        for (Long id : request.targetIds()) {
+            Character target = characterRepository.findById(id).orElseThrow(CharacterNotFoundException.forId(id));
+            if (target.getId().equals(attacker.getId())) {
+                throw new IllegalArgumentException("Нельзя атаковать самого себя");
+            }
+            boolean sameCampaign = attacker.getCampaign() != null && target.getCampaign() != null
+                    && attacker.getCampaign().getId().equals(target.getCampaign().getId());
+            if (!sameCampaign) {
+                throw new IllegalArgumentException("Цель должна быть из той же кампании");
+            }
+            targets.add(target);
         }
-        Character target = characterRepository.findById(request.targetId())
-                .orElseThrow(CharacterNotFoundException.forId(request.targetId()));
-        if (target.getId().equals(attacker.getId())) {
-            throw new IllegalArgumentException("Нельзя атаковать самого себя");
-        }
-        boolean sameCampaign = attacker.getCampaign() != null && target.getCampaign() != null
-                && attacker.getCampaign().getId().equals(target.getCampaign().getId());
-        if (!sameCampaign) {
-            throw new IllegalArgumentException("Цель должна быть из той же кампании");
-        }
-        return target;
+        return targets;
     }
 
     private static String targetName(AttackRequest request) {

@@ -31,6 +31,8 @@ public final class Cp2020ItemTypes {
     public static final String INSERTED = "insertedMagazine";
     /** Сколько SP снимает попадание, если больше обычного 1 (Barrett-Arasaka, с. 63) */
     public static final String ARMOR_WEAR = "armorWear";
+    /** Оружие заклинило; состояние, не поле формы */
+    public static final String JAMMED = "jammed";
 
     public static final String ARMOR = "CP2020_ARMOR";
     public static final String ARMOR_SP = "sp";
@@ -80,7 +82,8 @@ public final class Cp2020ItemTypes {
             ItemField.flag(ARMOR_PIERCING, "Заряжены бронебойные", "AP"),
             ItemField.flag(DIRECT_LOAD, "Заряжается без магазина", "без магазина"),
             ItemField.number(ARMOR_WEAR, "SP брони за попадание", "снимает SP ", "", 2, 10)),
-            Cp2020ItemTypes::checkWeapon);
+            Cp2020ItemTypes::checkWeapon,
+            List.of(JAMMED));
 
     /** Каждая строка — один магазин со своим зарядом */
     public static final ItemTypeDefinition MAGAZINE_TYPE = new ItemTypeDefinition(MAGAZINE, "Магазин", List.of(

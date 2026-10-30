@@ -4,6 +4,7 @@ import app.charka.attack.AttackForm;
 import app.charka.attack.AttackHit;
 import app.charka.attack.AttackRequest;
 import app.charka.check.CheckRequest;
+import app.charka.check.CheckResult;
 import app.charka.item.CatalogItem;
 import app.charka.model.Character;
 import app.charka.model.CharacterSkill;
@@ -32,6 +33,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class Cp2020AttackRulesTest {
 
     private static final Map<String, StatValue> STATS = Map.of("ref", new StatValue("ref", "REF", 8, 7));
+
+    private static final CheckResult SUCCESS = new CheckResult("", List.of(), 20, 15, true, false, false);
 
     private final Cp2020AttackRules rules = new Cp2020AttackRules();
 
@@ -69,7 +72,7 @@ class Cp2020AttackRulesTest {
 
     private AttackHit hit(Item weapon, AttackRequest request, Integer... values) {
         Deque<Integer> queue = rolls(values);
-        return rules.hits(weapon, request, sides -> queue.removeFirst()).get(0);
+        return rules.hits(weapon, request, SUCCESS, sides -> queue.removeFirst()).get(0);
     }
 
     @Nested
@@ -108,7 +111,7 @@ class Cp2020AttackRulesTest {
 
             assertThat(check.modifier()).isEqualTo(7 + 4 + 0);
             assertThat(check.difficulty()).isEqualTo(25);
-            assertThat(check.skillCode()).isEqualTo("submachinegun");
+            assertThat(check.parts()).extracting(CheckRequest.Part::name).contains("Пистолеты-пулемёты");
         }
 
         @Test
@@ -193,7 +196,7 @@ class Cp2020AttackRulesTest {
         void spend() {
             Item minami = weapon("arasaka_minami_10");
 
-            rules.spend(minami);
+            rules.spend(minami, request(5, null));
 
             assertThat(minami.getProperties()).containsEntry(Cp2020ItemTypes.LOADED, "39");
         }
@@ -244,7 +247,7 @@ class Cp2020AttackRulesTest {
             List<Integer> counted = new ArrayList<>();
             Item shotgun = weapon("arasaka_rapid_assault_12");
 
-            rules.hits(shotgun, request(distance, "TORSO"), sides -> {
+            rules.hits(shotgun, request(distance, "TORSO"), SUCCESS, sides -> {
                 counted.add(sides);
                 return 1;
             });

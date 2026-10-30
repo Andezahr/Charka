@@ -2,7 +2,7 @@
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <body>
 <!-- Диалог атаки оружием; что спрашивать, задаёт AttackForm системы. Модификаторы открыты сразу: в атаке они главное содержимое. -->
-<dialog th:fragment="dialog(characterId, item, form, targets)" class="dialog attack-dialog" th:id="'attack-' + ${item.id}">
+<dialog th:fragment="dialog(characterId, item, form, targets)" class="dialog attack-dialog" th:id="'attack-' + ${item.id}" data-attack>
   <form th:action="@{'/character/' + ${characterId} + '/items/' + ${item.id} + '/attack'}" method="post" class="form">
     <div>
       <h2 class="card-title" th:text="'Атака: ' + ${item.name}">Атака: Minami</h2>
@@ -13,9 +13,24 @@
     </div>
 
     <div class="field-grid">
+      <label class="field" th:if="${#lists.size(form.modes) > 1}">
+        <span class="label">Режим огня</span>
+        <select name="mode" data-attack-mode>
+          <option th:each="m : ${form.modes}" th:value="${m.code}" th:text="${m.label}"
+                  th:attr="data-rounds=${m.rounds},data-zone=${m.zone}">Одиночный</option>
+        </select>
+      </label>
+      <label class="field" data-attack-rounds hidden>
+        <span class="label">Патронов</span>
+        <input type="number" name="rounds" min="1" th:attr="max=${form.maxRounds}" th:value="${form.maxRounds}">
+      </label>
+      <label class="field" data-attack-width hidden>
+        <span class="label">Ширина зоны, м</span>
+        <input type="number" name="zoneWidth" min="2" value="2">
+      </label>
       <label class="field">
-        <span class="label">Цель</span>
-        <select name="target">
+        <span class="label" data-attack-target-label>Цель</span>
+        <select name="target" data-attack-target>
           <option th:each="t : ${targets}" th:value="${t.id}" th:text="${t.name}">Олежа</option>
           <option value="">Без листа</option>
         </select>
@@ -30,7 +45,7 @@
       </label>
       <label class="field">
         <span class="label">Зона (выбор −4)</span>
-        <select name="location">
+        <select name="location" data-attack-location>
           <option value="">Случайная</option>
           <option th:each="l : ${form.locations}" th:value="${l.value}" th:text="${l.label}">Торс</option>
         </select>

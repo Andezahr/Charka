@@ -10,7 +10,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -30,12 +32,15 @@ public class AttackController {
     @PostMapping("/character/{characterId}/items/{itemId}/attack")
     public String attack(@PathVariable Long characterId,
                          @PathVariable Long itemId,
-                         @RequestParam(required = false) Long target,
+                         @RequestParam(required = false) List<Long> target,
                          @RequestParam(required = false) String targetName,
                          @RequestParam(required = false) Integer distance,
                          @RequestParam(required = false) String location,
                          @RequestParam(required = false) String skill,
                          @RequestParam(defaultValue = "0") int modifier,
+                         @RequestParam(required = false) String mode,
+                         @RequestParam(defaultValue = "0") int rounds,
+                         @RequestParam(defaultValue = "0") int zoneWidth,
                          @RequestParam Map<String, String> params,
                          RedirectAttributes redirectAttributes) {
         redirectAttributes.addFlashAttribute("actionItemId", itemId);
@@ -44,11 +49,16 @@ public class AttackController {
                 throw new IllegalArgumentException("Укажите расстояние до цели");
             }
             redirectAttributes.addFlashAttribute("attackResult", attackService.attack(characterId, itemId,
-                    new AttackRequest(target, targetName, distance, location, skill, options(params), modifier)));
+                    new AttackRequest(targets(target), targetName, distance, location, skill, options(params), modifier, mode, rounds, zoneWidth)));
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("actionError", e.getMessage());
         }
         return "redirect:/character/" + characterId + "#item-" + itemId;
+    }
+
+    /** Пустой пункт «Без листа» приходит как null */
+    private static List<Long> targets(List<Long> target) {
+        return target == null ? List.of() : target.stream().filter(Objects::nonNull).toList();
     }
 
     private static Set<String> options(Map<String, String> params) {

@@ -19,6 +19,8 @@ final class Cp2020AttackModifiers {
     static final int AIMED_SHOT = -4;
     static final String TELESCOPIC = "scope_telescopic";
 
+    private static final Set<String> AIMING = Set.of("aim_1", "aim_2", "aim_3", "laser", "targeting_scope", "smartgun", "smartgoggles", TELESCOPIC);
+
     private static final String TARGET = "Цель";
     private static final String SHOOTER = "Стрелок";
     private static final String WEAPON = "Оружие";
@@ -100,6 +102,11 @@ final class Cp2020AttackModifiers {
                 variants.stream().map(modifier -> new Option(modifier.code(), modifier.text())).toList());
     }
 
+    /** Прицел или прицеливание: их запрещают быстрое выхватывание (с. 97) и автоогонь (с. 106) */
+    static boolean hasAiming(Set<String> codes) {
+        return codes.stream().anyMatch(AIMING::contains);
+    }
+
     /**
      * Слагаемые проверки по выбранным кодам.
      *
@@ -114,6 +121,9 @@ final class Cp2020AttackModifiers {
         }
         if (chosen.stream().map(Modifier::choice).distinct().count() != chosen.size()) {
             throw new IllegalArgumentException("Из одного выбора можно взять только один модификатор");
+        }
+        if (codes.contains("fast_draw") && hasAiming(codes)) {
+            throw new IllegalArgumentException("При быстром выхватывании нельзя прицел и прицеливание");
         }
         List<CheckRequest.Part> parts = new ArrayList<>();
         chosen.forEach(modifier -> parts.add(new CheckRequest.Part(modifier.partName(), modifier.value())));

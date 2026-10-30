@@ -399,6 +399,11 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
         return body - Math.max(0, mortalLevel(woundLevel(damage)));
     }
 
+    @Override
+    public boolean isDead(CounterContext context) {
+        return isDead(context.getCounter());
+    }
+
     private boolean isDead(Counter counter) {
         return counter.getFlag(DEAD) || (counter.getValue() != null && counter.getValue() > MAX_DAMAGE);
     }

@@ -26,6 +26,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -111,6 +112,35 @@ class AttackServiceTest {
         assertThat(jacket.getProperties()).containsEntry("wear_TORSO", "1");
         assertThat(itemRepository.findById(minami.getId()).orElseThrow().getProperties()).containsEntry("ammo", "39");
         assertThat(counter(victim, Cp2020ArmorStrategy.TYPE)).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Очередь не падает, если цель умерла на одной из пуль")
+    void targetDiesMidBurst() {
+        counter(victim, Cp2020HealthStrategy.TYPE).getAttributes().put(Cp2020HealthStrategy.DEAD, 1);
+        entityManager.flush();
+        when(dice.roll(anyInt())).thenReturn(9, 6, 6);
+
+        AttackResult result = attackService.attack(shooter.getId(), minami.getId(),
+                new AttackRequest(List.of(victim.getId()), null, 5, null, null, Set.of("immobile"), 0, "AUTO", 20, 0));
+
+        assertThat(result.steps()).contains("Цель уже мертва");
+        assertThat(result.outcome()).contains("Цель уже мертва");
+    }
+
+    @Test
+    @DisplayName("Подавляющий огонь: каждая цель бросает сама, патроны списаны один раз")
+    void zoneFire() {
+        when(dice.roll(anyInt())).thenReturn(9);
+
+        AttackResult result = attackService.attack(shooter.getId(), minami.getId(),
+                new AttackRequest(List.of(victim.getId()), null, 20, null, null, Set.of(), 0, "SUPPRESS", 20, 2));
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(result.title()).endsWith("зона огня");
+        assertThat(result.steps()).anyMatch(step -> step.startsWith("Цель: спасбросок"));
+        assertThat(itemRepository.findById(minami.getId()).orElseThrow().getProperties()).containsEntry("ammo", "20");
     }
 
     @Test

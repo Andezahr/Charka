@@ -9,6 +9,26 @@ document.addEventListener('DOMContentLoaded', () => {
     dialog.querySelector('[data-dialog-close]').addEventListener('click', () => dialog.close());
   });
 
+  // Диалог атаки: поля зависят от режима огня. В зоне огня целей несколько, в остальных — одна
+  document.querySelectorAll('[data-attack]').forEach(dialog => {
+    const mode = dialog.querySelector('[data-attack-mode]');
+    if (!mode) return;
+    const target = dialog.querySelector('[data-attack-target]');
+    const location = dialog.querySelector('[data-attack-location]');
+    const update = () => {
+      const chosen = mode.selectedOptions[0];
+      const zone = chosen.dataset.zone === 'true';
+      dialog.querySelector('[data-attack-rounds]').hidden = chosen.dataset.rounds !== 'true';
+      dialog.querySelector('[data-attack-width]').hidden = !zone;
+      dialog.querySelector('[data-attack-target-label]').textContent = zone ? 'Цели в зоне (несколько)' : 'Цель';
+      target.multiple = zone;
+      location.disabled = mode.value !== 'SINGLE';
+      if (location.disabled) location.value = '';
+    };
+    mode.addEventListener('change', update);
+    update();
+  });
+
   // Кнопка ✎ открывает/закрывает ближайшую inline-форму редактирования:
   // ищем ближайший [data-editable] и его прямого потомка .edit-panel
   document.querySelectorAll('[data-edit-toggle]').forEach(btn => {

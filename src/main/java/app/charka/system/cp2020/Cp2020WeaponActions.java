@@ -15,10 +15,11 @@ import java.util.stream.Stream;
  * Боепитание: выстрел и очередь, смена магазина в оружии, снаряжение магазина патронами. Книга (с. 60): стандартный магазин — «# Shots», за раунд не больше ROF.
  * Оружие заряжается магазином; оружие без магазина (револьвер, лук, см. {@code directLoad}) — патронами прямо из запаса.
  * HOMEBREW: патроны разных видов не смешиваются, при снаряжении остаток другого вида возвращается в запас.
- * Попадание и урон — I-05, режимы огня — I-07; пока очередь только расходует патроны.
+ * Попадание, урон и режимы огня — {@link Cp2020AttackRules}; здесь ручное списание патронов и заклинивание.
  */
 final class Cp2020WeaponActions {
 
+    static final String UNJAM = "UNJAM";
     static final String FIRE = "FIRE";
     static final String BURST = "BURST";
     static final String RELOAD = "RELOAD";
@@ -78,13 +79,16 @@ final class Cp2020WeaponActions {
         }
         int loaded = number(weapon, Cp2020ItemTypes.LOADED);
         int rof = number(weapon, Cp2020ItemTypes.RATE_OF_FIRE);
-        String empty = loaded == 0 ? emptyReason(weapon) : null;
+        String blocked = fireBlockedReason(weapon);
 
         List<ItemAction> actions = new ArrayList<>();
-        actions.add(ItemAction.simple(FIRE, "Выстрел", empty));
+        if (weapon.getProperties().containsKey(Cp2020ItemTypes.JAMMED)) {
+            actions.add(ItemAction.simple(UNJAM, "Расклинить", null));
+        }
+        actions.add(ItemAction.simple(FIRE, "Списать патрон", blocked));
         if (rof > 1) {
             int max = Math.min(rof, loaded);
-            actions.add(ItemAction.withAmount(BURST, "Очередь", empty, Math.min(BURST_ROUNDS, max), max));
+            actions.add(ItemAction.withAmount(BURST, "Списать патроны", blocked, Math.min(BURST_ROUNDS, max), max));
         }
         actions.add(usesMagazines(weapon) ? magazineReloadAction(weapon) : directReloadAction(weapon));
         if (usesMagazines(weapon) && hasMagazine(weapon)) {
@@ -96,9 +100,17 @@ final class Cp2020WeaponActions {
         return actions;
     }
 
-    /** Один выстрел атаки: {@link Cp2020AttackRules} */
-    static String fireOne(Item weapon) {
-        return fire(weapon, 1);
+    /** Расход атаки: {@link Cp2020AttackRules} */
+    static String fireRounds(Item weapon, int rounds) {
+        return fire(weapon, rounds);
+    }
+
+    /** Почему из оружия сейчас нельзя стрелять; null — можно */
+    static String fireBlockedReason(Item weapon) {
+        if (weapon.getProperties().containsKey(Cp2020ItemTypes.JAMMED)) {
+            return "Оружие заклинило: расклинить — 1D6 раундов";
+        }
+        return number(weapon, Cp2020ItemTypes.LOADED) == 0 ? emptyReason(weapon) : null;
     }
 
     static String emptyReason(Item weapon) {
@@ -163,6 +175,7 @@ final class Cp2020WeaponActions {
             throw new IllegalArgumentException("Неизвестное действие с предметом: " + action);
         }
         return switch (action) {
+            case UNJAM -> unjam(item);
             case FIRE -> fire(item, 1);
             case BURST -> fire(item, amount(params));
             case RELOAD -> usesMagazines(item) ? changeMagazine(item, params.get("source")) : loadFromStack(item, params.get("source"));
@@ -173,7 +186,16 @@ final class Cp2020WeaponActions {
         };
     }
 
+    /** Сколько раундов это заняло, бросает мастер: учёт раундов появится в трекере (C-02) */
+    private static String unjam(Item weapon) {
+        weapon.getProperties().remove(Cp2020ItemTypes.JAMMED);
+        return weapon.getName() + ": расклинено, это занимает 1D6 раундов";
+    }
+
     private static String fire(Item weapon, int rounds) {
+        if (weapon.getProperties().containsKey(Cp2020ItemTypes.JAMMED)) {
+            throw new IllegalArgumentException(fireBlockedReason(weapon));
+        }
         int loaded = number(weapon, Cp2020ItemTypes.LOADED);
         int rof = Math.max(1, number(weapon, Cp2020ItemTypes.RATE_OF_FIRE));
         if (rounds < 1) {

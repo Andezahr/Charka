@@ -18,6 +18,9 @@ import app.charka.model.counters.strategy.CounterStrategy;
  */
 public interface HealthCounterStrategy extends CounterStrategy {
 
+    /** Цель уже мертва: новый урон к ней не применяется */
+    boolean isDead(CounterContext context);
+
     /** Нанести урон по правилам системы (броня, зоны, модификаторы) */
     HealthEvent applyDamage(CounterContext context, DamageRequest request);
 

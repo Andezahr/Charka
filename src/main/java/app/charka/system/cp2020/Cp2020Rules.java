@@ -81,6 +81,18 @@ public final class Cp2020Rules {
         return Math.max(woundLevel, 0);
     }
 
+    /** Наименьшая ширина зоны подавляющего огня, м (с. 107) */
+    public static final int MIN_FIRE_ZONE_WIDTH = 2;
+
+    /** Заклинивает при d10 не выше этого числа (с. 106): VR 3, ST 5, UR 8 */
+    public static int jamLimit(String reliability) {
+        return switch (reliability) {
+            case "VR" -> 3;
+            case "UR" -> 8;
+            default -> 5;
+        };
+    }
+
     /** REF: -2 при серьёзном ранении, /2 при критическом, /3 при смертельном (с округлением вверх) */
     public static int effectiveRef(int ref, int woundLevel) {
         if (woundLevel == 1) return Math.max(ref - 2, 0);

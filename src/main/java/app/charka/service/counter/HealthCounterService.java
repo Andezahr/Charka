@@ -56,7 +56,11 @@ public class HealthCounterService {
         List<Counter> siblings = counterRepository.findByCharacterId(characterId);
         for (Counter counter : siblings) {
             if (strategyFactory.findStrategy(counter.getType()).orElse(null) instanceof HealthCounterStrategy health) {
-                HealthEvent event = health.applyDamage(new CounterContext(counter, siblings), request);
+                CounterContext context = new CounterContext(counter, siblings);
+                if (health.isDead(context)) {
+                    return Optional.of(new HealthEvent().step("Цель уже мертва").summary("Цель уже мертва"));
+                }
+                HealthEvent event = health.applyDamage(context, request);
                 counterRepository.saveAll(siblings);
                 return Optional.of(event);
             }

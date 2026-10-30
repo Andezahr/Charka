@@ -10,12 +10,23 @@ import java.util.List;
  * @param damage      урон оружия для заголовка диалога
  * @param range       дальность, м; null — не указана
  * @param unavailable почему сейчас нельзя атаковать; null — можно
+ * @param modes       режимы огня; если вариант один, выбирать нечего
+ * @param maxRounds   сколько патронов можно выпустить за раз
  * @param skills      навык атаки; если вариант один, выбирать нечего
  * @param locations   зоны для прицельного выстрела
  * @param sections    модификаторы по разделам
  */
-public record AttackForm(String damage, Integer range, String unavailable, List<Option> skills,
+public record AttackForm(String damage, Integer range, String unavailable, List<Mode> modes, int maxRounds, List<Option> skills,
                          List<Option> locations, List<Section> sections) {
+
+    /**
+     * @param code   код режима
+     * @param label  подпись
+     * @param rounds режим спрашивает число патронов
+     * @param zone   режим ведётся по зоне: цель не одна, спрашивается ширина
+     */
+    public record Mode(String code, String label, boolean rounds, boolean zone) {
+    }
 
     /**
      * @param name    название раздела
