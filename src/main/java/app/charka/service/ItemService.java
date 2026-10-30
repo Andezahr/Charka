@@ -141,12 +141,18 @@ public class ItemService {
                 .filter(candidate -> candidate.key().equals(key))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Такого предмета нет в справочнике: " + key));
-        Item item = new Item();
-        item.setName(entry.name());
-        item.setQuantity(quantity * entry.packSize());
-        item.setCost(entry.cost());
-        item.setDescription(entry.description());
-        return create(inventoryId, item, entry.typeCode(), entry.properties());
+        int rows = entry.individual() ? quantity : 1;
+        int perRow = entry.individual() ? 1 : quantity * entry.packSize();
+        Item item = null;
+        for (int row = 0; row < rows; row++) {
+            item = new Item();
+            item.setName(entry.name());
+            item.setQuantity(perRow);
+            item.setCost(entry.cost());
+            item.setDescription(entry.description());
+            item = create(inventoryId, item, entry.typeCode(), entry.properties());
+        }
+        return item;
     }
 
     /**

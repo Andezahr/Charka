@@ -13,16 +13,17 @@ import java.util.Map;
  * @param description примечание, может быть null
  * @param properties  значения полей типа в том виде, как их вводят в форме
  * @param packSize    сколько штук в единице продажи: в коробке 50 патронов; количество предмета умножается на него
+ * @param individual  у каждой штуки своё состояние (заряд), поэтому каждая — отдельной строкой инвентаря
  */
 public record CatalogItem(String key, String group, String name, String typeCode, int cost, String description,
-                          Map<String, String> properties, int packSize) {
+                          Map<String, String> properties, int packSize, boolean individual) {
 
     public CatalogItem {
         properties = Map.copyOf(properties);
     }
 
     public CatalogItem(String key, String group, String name, String typeCode, int cost, String description,
-                       Map<String, String> properties) {
-        this(key, group, name, typeCode, cost, description, properties, 1);
+                       Map<String, String> properties, int packSize) {
+        this(key, group, name, typeCode, cost, description, properties, packSize, false);
     }
 }

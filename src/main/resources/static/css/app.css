@@ -836,6 +836,7 @@ details.cp-more > summary:hover { color: var(--text-soft); }
 .item-action input.narrow { width: 64px; }
 .item-action .btn:disabled { opacity: .45; cursor: not-allowed; }
 .item-action-note { flex: 1 1 100%; margin: 0; font-size: 13px; color: var(--text-soft); }
+.item-note { margin: 6px 0 0; font-size: 13px; color: var(--warning); }
 .item-result { margin: 6px 0 0; }
 .inventory .row[id] { scroll-margin-top: calc(var(--topbar-height) + 12px); }
 

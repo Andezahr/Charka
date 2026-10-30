@@ -132,6 +132,13 @@ public interface GameSystem {
     }
 
     /**
+     * Что сейчас важно знать о предмете сверх его полей; показывается в строке предмета.
+     */
+    default List<String> getItemNotes(Item item) {
+        return List.of();
+    }
+
+    /**
      * Выполнить действие над предметом. Вызывать в транзакции.
      *
      * @param params параметры формы действия ({@code source}, {@code amount})

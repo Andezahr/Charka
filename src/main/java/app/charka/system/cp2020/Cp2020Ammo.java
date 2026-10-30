@@ -14,7 +14,7 @@ import java.util.Map;
  */
 public final class Cp2020Ammo {
 
-    /** У этого оружия патрон в книге не напечатан; названия наши, чтобы связать его со строкой таблицы */
+    /** HOMEBREW: у этого оружия патрон в книге не напечатан; названия наши, чтобы связать его со строкой таблицы */
     public static final String ARROWS = "Стрелы";
     public static final String BOLTS = "Болты";
     public static final String PELLETS = "Пульки";
@@ -30,7 +30,7 @@ public final class Cp2020Ammo {
     private static final int BRASS_MULTIPLIER = 2;
 
     private static final String BOX_NOTE = "Цена за коробку";
-    /** Книга: «Brass Cased loads for old guns = 2x cost». Какой строке таблицы соответствует патрон старого оружия, в книге нет: класс выбран по урону */
+    /** Книга: «Brass Cased loads for old guns = 2x cost». HOMEBREW: какой строке таблицы соответствует патрон старого оружия, в книге нет, класс выбран по урону */
     private static final String BRASS_NOTE = BOX_NOTE + ". Латунная гильза: ×2 к цене. Класс выбран по урону оружия, в книге соответствия нет";
 
     public static final List<CatalogItem> CATALOG = build();
@@ -53,7 +53,7 @@ public final class Cp2020Ammo {
         rows.add(other("bolts", "Болты для арбалета (12)", BOLTS, 12, 30, BOX_NOTE));
         rows.add(other("pellets", "Пульки для пневматики (100)", PELLETS, 100, 6, BOX_NOTE + ". С наркотиком или кислотой — ×5 к цене"));
         rows.add(other("needles", "Иглы (50)", NEEDLES, 50, 25, BOX_NOTE));
-        // В книге одна заправка без числа выстрелов; 10 — магазин K-A F-253
+        // HOMEBREW: в книге одна заправка без числа выстрелов; 10 — магазин K-A F-253
         rows.add(other("napalm", "Заправка огнемёта", NAPALM, 10, 50, "Цена за заправку. В книге без числа выстрелов, взят магазин F-253"));
         rows.add(other("micro_missiles", "Микроракеты (4)", MICRO_MISSILES, 4, 100, "Цена за 4"));
 

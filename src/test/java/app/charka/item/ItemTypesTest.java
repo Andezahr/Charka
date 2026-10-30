@@ -12,6 +12,7 @@ import app.charka.system.GameSystemRegistry;
 import app.charka.system.GenericSystem;
 import app.charka.system.cp2020.Cp2020Ammo;
 import app.charka.system.cp2020.Cp2020ItemTypes;
+import app.charka.system.cp2020.Cp2020Magazines;
 import app.charka.system.cp2020.Cp2020System;
 import app.charka.system.cp2020.Cp2020Weapons;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -98,7 +99,7 @@ class ItemTypesTest {
                     "caliber", "10mm", "shots", "40", "rof", "20", "reliability", "VR", "range", "200"));
 
             assertThat(Cp2020ItemTypes.WEAPON_TYPE.describe(properties)).extracting(ItemTypeDefinition.Line::text)
-                    .containsExactly("SMG", "WA 0", "J", "E", "2D6+3", "10mm", "магазин 40", "заряжено 0", "ROF 20", "VR", "200 м");
+                    .containsExactly("SMG", "WA 0", "J", "E", "2D6+3", "10mm", "магазин 40", "ROF 20", "VR", "200 м");
             assertThat(Cp2020ItemTypes.WEAPON_TYPE.describe(Map.of("shots", "40", "ammo", "12"))).extracting(ItemTypeDefinition.Line::text)
                     .containsExactly("магазин 40", "заряжено 12");
             assertThat(Cp2020ItemTypes.WEAPON_TYPE.describe(properties).getFirst().title())
@@ -182,8 +183,87 @@ class ItemTypesTest {
                     .containsExactly("barrett_arasaka_light_20mm");
         }
 
+        @Test
+        @DisplayName("без магазина заряжаются револьверы, лук, арбалет, огнемёт, Winchester; автоматическое оружие — магазином")
+        void directLoad() {
+            assertThat(catalogEntry("llama_commanche").properties()).containsKey("directLoad");
+            assertThat(catalogEntry("eagletech_tomcat_c_bow").properties()).containsKey("directLoad");
+            assertThat(catalogEntry("k_a_f_253_flamethrower").properties()).containsKey("directLoad");
+            assertThat(catalogEntry("winchester_m70").properties()).containsKey("directLoad");
+            assertThat(catalogEntry("arasaka_minami_10").properties()).doesNotContainKey("directLoad");
+            assertThat(catalogEntry("uzi").properties()).doesNotContainKey("directLoad");
+        }
+
+        @Test
+        @DisplayName("вставленный магазин: заряд считается по нему, размер — от стандартного до пяти стандартных")
+        void insertedMagazine() {
+            assertThat(Cp2020ItemTypes.WEAPON_TYPE.normalize(Map.of("category", "SMG", "shots", "40", "insertedMagazine", "200", "ammo", "150")))
+                    .containsEntry("insertedMagazine", "200").containsEntry("ammo", "150");
+            assertThatThrownBy(() -> Cp2020ItemTypes.WEAPON_TYPE.normalize(Map.of("category", "SMG", "shots", "40", "insertedMagazine", "201")))
+                    .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("не подходит");
+            assertThatThrownBy(() -> Cp2020ItemTypes.WEAPON_TYPE.normalize(Map.of("category", "SMG", "shots", "40", "insertedMagazine", "39")))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> Cp2020ItemTypes.WEAPON_TYPE.normalize(Map.of("category", "SMG", "shots", "40", "insertedMagazine", "80", "ammo", "81")))
+                    .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("вмещает");
+        }
+
         private CatalogItem catalogEntry(String key) {
             return Cp2020Weapons.CATALOG.stream().filter(e -> e.key().equals(key)).findFirst().orElseThrow();
+        }
+    }
+
+    @Nested
+    @DisplayName("Магазины CP2020")
+    class MagazineTests {
+
+        @Test
+        @DisplayName("справочник: коды уникальны, каждая строка проходит проверку полей без потерь")
+        void catalogValid() {
+            assertThat(Cp2020Magazines.CATALOG).extracting(CatalogItem::key).doesNotHaveDuplicates();
+            assertThat(Cp2020Magazines.CATALOG).allSatisfy(entry -> {
+                assertThat(entry.typeCode()).isEqualTo(Cp2020ItemTypes.MAGAZINE);
+                assertThat(Cp2020ItemTypes.MAGAZINE_TYPE.normalize(entry.properties())).isEqualTo(entry.properties());
+                assertThat(entry.individual()).isTrue();
+            });
+        }
+
+        @ParameterizedTest(name = "{0}: {1} eb")
+        @CsvSource({"mag_10mm_40_caseless, 20", "mag_10mm_80_caseless, 40", "mag_10mm_200_caseless, 100",
+                "mag_5_56_35_caseless, 18", "mag_9mm_30_cased, 30", "mag_20_9mm_10_heavy, 20"})
+        @DisplayName("цена: безгильзовые 0.5 eb за патрон с округлением вверх, с гильзой 1 eb, тяжёлое 2 eb")
+        void prices(String key, int cost) {
+            assertThat(magazine(key).cost()).isEqualTo(cost);
+        }
+
+        @Test
+        @DisplayName("стандартный магазин помечен как хоумбрю, большой предупреждает о штрафах")
+        void notes() {
+            assertThat(magazine("mag_10mm_40_caseless").description()).contains("Хоумбрю");
+            assertThat(magazine("mag_10mm_80_caseless").description()).contains("Solo of Fortune").doesNotContain("штрафы");
+            assertThat(magazine("mag_10mm_200_caseless").description()).contains("Solo of Fortune", "штрафы");
+        }
+
+        @Test
+        @DisplayName("без магазина заряжаемое оружие магазинов в справочнике не даёт")
+        void noDirectLoadMagazines() {
+            assertThat(Cp2020Magazines.CATALOG).extracting(entry -> entry.properties().get("caliber"))
+                    .doesNotContain("Стрелы", ".44");
+        }
+
+        @Test
+        @DisplayName("магазин: патрон и вместимость обязательны, заряд по умолчанию 0, больше вместимости нельзя")
+        void fields() {
+            assertThat(Cp2020ItemTypes.MAGAZINE_TYPE.normalize(Map.of("caliber", "9mm", "shots", "30"))).containsEntry("ammo", "0");
+            assertThatThrownBy(() -> Cp2020ItemTypes.MAGAZINE_TYPE.normalize(Map.of("caliber", "9mm")))
+                    .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Вместимость");
+            assertThatThrownBy(() -> Cp2020ItemTypes.MAGAZINE_TYPE.normalize(Map.of("shots", "30")))
+                    .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Патрон");
+            assertThatThrownBy(() -> Cp2020ItemTypes.MAGAZINE_TYPE.normalize(Map.of("caliber", "9mm", "shots", "30", "ammo", "31")))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        private CatalogItem magazine(String key) {
+            return Cp2020Magazines.CATALOG.stream().filter(e -> e.key().equals(key)).findFirst().orElseThrow();
         }
     }
 
@@ -309,14 +389,31 @@ class ItemTypesTest {
         @Test
         @DisplayName("из справочника: название, цена, количество, тип и свойства")
         void fromCatalog() {
-            Item item = itemService.addFromCatalog(1L, "arasaka_minami_10", 2);
+            Item item = itemService.addFromCatalog(1L, "arasaka_minami_10", 1);
 
             assertThat(item.getName()).isEqualTo("Arasaka Minami 10");
-            assertThat(item.getQuantity()).isEqualTo(2);
+            assertThat(item.getQuantity()).isEqualTo(1);
             assertThat(item.getCost()).isEqualTo(500);
             assertThat(item.getType()).isEqualTo(Cp2020ItemTypes.WEAPON);
             assertThat(item.getProperties()).containsEntry("damage", "2D6+3").containsEntry("rof", "20");
             verify(itemRepository).save(item);
+        }
+
+        @Test
+        @DisplayName("оружие и магазины из справочника — каждая штука отдельной строкой: у неё свой заряд")
+        void individualRows() {
+            itemService.addFromCatalog(1L, "arasaka_minami_10", 2);
+            itemService.addFromCatalog(1L, "mag_10mm_40_caseless", 3);
+
+            org.mockito.ArgumentCaptor<Item> saved = org.mockito.ArgumentCaptor.forClass(Item.class);
+            verify(itemRepository, org.mockito.Mockito.times(5)).save(saved.capture());
+            assertThat(saved.getAllValues()).extracting(Item::getQuantity).containsOnly(1);
+        }
+
+        @Test
+        @DisplayName("без магазина предмет идёт одной строкой: граната, холодное")
+        void stackedRow() {
+            assertThat(itemService.addFromCatalog(1L, "grenade", 3).getQuantity()).isEqualTo(3);
         }
 
         @Test

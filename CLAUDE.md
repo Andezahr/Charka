@@ -11,6 +11,8 @@
 
 **Правила CP2020 — `cyberpunk 2020 rulebook_text.pdf` в корне проекта** (в `.gitignore`, не коммитить). Значения правил бери оттуда, а не по памяти. Скан с распознанным текстом, удобнее `pdftotext -layout` в scratchpad; страница PDF = страница книги + 3. Текст распознан с ошибками, а в таблицах строки и номера теряются: таблицы читай с изображения страницы. Его показывает браузерная панель: открой файл и задай `location.hash = '#page=64&navpanes=0&toolbar=0&zoom=95,20,40'` с перезагрузкой (x, y — сдвиг), рендер занимает около 9 секунд.
 
+**Домашние правила помечай.** Всё, чего нет в книгах и что решено нами, — комментарий `HOMEBREW` в коде и строка в таблице «Домашние правила» в `TODO.md`: автор хочет потом менять их сам.
+
 **`README.md` — витрина репозитория на GitHub.** Обновляй его при каждом крупном изменении: закрыт этап `TODO.md`, новая игровая система или крупная функция, изменились стек, требования, команды запуска/сборки, параметры БД, структура пакетов или число тестов (бейдж). Мелкие правки и рефакторинг README не трогают.
 
 **Мультисистемность — обязательный принцип.** Приложение должно поддерживать разные НРИ (CP2020 сейчас, D&D 5e далее). Для каждой новой вещи реши: это ядро `[CORE]` (кампании, механизм счётчиков, кубики, инвентарь, деньги, время, трекер боя) или правила системы `[CP2020]`/`[DND5E]` (ХП и броня CP2020, статы, навыки, формулы проверок, типы оружия). Правила системы живут в её пакете и доступны только кампаниям этой системы; ядро обращается к ним через интерфейсы/реестры (`GameSystem`, см. раздел 2 `TODO.md`).
@@ -31,7 +33,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 472 теста, на 2026-10-30 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 509 тестов, на 2026-10-30 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -52,7 +54,7 @@ check/        CheckRequest/CheckResult/CheckResolver (GenericCheckResolver: d20)
 item/         ItemTypeDefinition, ItemField (поля типа предмета, проверка ввода, строка предмета), CatalogItem (строка справочника), ItemAction (кнопка действия на листе); типы, справочник и действия отдаёт GameSystem
 skill/        SkillDefinition, CharacterRole, StatValue, SkillSheet, SkillCheck, SkillOpponent, SkillProgression (контракт прокачки), SkillImprovement, SkillService (навыки, роли, проверка, прокачка)
 system/        GameSystem, GameSystemRegistry, GenericSystem ("GENERIC"), Currency; cp2020/ — Cp2020System ("CP2020"),
-               стратегии счётчиков, Cp2020Rules, Cp2020Dice (d10: на 10 один дополнительный кубик), Cp2020CheckResolver, Cp2020Skills (каталог, роли), Cp2020Fumbles (таблица книги), Cp2020SkillRules (языки по семьям, бонусы от других навыков, требования), Cp2020ItemTypes (оружие, боеприпасы), Cp2020Weapons (справочник оружия книги), Cp2020Ammo (таблица боеприпасов книги), Cp2020WeaponActions (выстрел, очередь, перезарядка), Cp2020SkillProgression + Cp2020IpStrategy (очки улучшения)
+               стратегии счётчиков, Cp2020Rules, Cp2020Dice (d10: на 10 один дополнительный кубик), Cp2020CheckResolver, Cp2020Skills (каталог, роли), Cp2020Fumbles (таблица книги), Cp2020SkillRules (языки по семьям, бонусы от других навыков, требования), Cp2020ItemTypes (оружие, магазины, боеприпасы), Cp2020Weapons (справочник оружия книги), Cp2020Ammo (таблица боеприпасов книги), Cp2020Magazines (справочник магазинов), Cp2020MagazineRules (цены, размеры, штрафы магазинов; хоумбрю помечен), Cp2020WeaponActions (выстрел, очередь, смена и снаряжение магазина), Cp2020SkillProgression + Cp2020IpStrategy (очки улучшения)
 dto/counter/   DTO только для счётчиков (единственный модуль, переведённый на DTO)
 exception/     NotFoundException.forId("Entity", id) (NoSuchElementException → 404), наследники CharacterNotFoundException, InventoryNotFoundException;
                GlobalExceptionHandler (страницы → error.html: 404/400/500), ApiExceptionHandler (app.charka.api → text/plain)
@@ -115,7 +117,7 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 | GET | `/character/{id}` | лист персонажа (раны, инвентари, деньги, кубики) |
 | POST | `/character/{id}/wounds`, `.../wounds/{wid}/delete` | раны |
 | POST | `/character/{id}/inventories`, `.../{invId}/edit`, `.../{invId}/delete` | инвентари |
-| POST | `/character/{id}/inventories/{invId}/items` (+ `/{itemId}/edit|delete|move`) | предметы; `itemType`, `prop.<ключ>` — тип и его поля; `/catalog` (`catalogKey`, `quantity`) — из справочника системы; `/{itemId}/action/{action}` (`source`, `amount`) — действие системы (CP2020: `FIRE`, `BURST`, `RELOAD`), итог во flash для строки предмета |
+| POST | `/character/{id}/inventories/{invId}/items` (+ `/{itemId}/edit|delete|move`) | предметы; `itemType`, `prop.<ключ>` — тип и его поля; `/catalog` (`catalogKey`, `quantity`) — из справочника системы; `/{itemId}/action/{action}` (`source`, `amount`) — действие системы (CP2020: `FIRE`, `BURST`, `RELOAD`, `EJECT`, `LOAD`, `UNLOAD`), итог во flash для строки предмета |
 | POST | `/character/{id}/money`, `.../money/{mid}/delete` | деньги |
 | GET | `/character/{id}/notes/` | заметки (фильтр `?categoryId=`) |
 | POST | `/character/{id}/notes`, `.../{noteId}/edit|delete`; GET `.../{noteId}/edit` | заметки |

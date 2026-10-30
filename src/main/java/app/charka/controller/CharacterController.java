@@ -53,6 +53,9 @@ public class CharacterController {
         model.addAttribute("itemActions", character.getInventories().stream()
                 .flatMap(inventory -> inventory.getContent().stream())
                 .collect(Collectors.toMap(Item::getId, system::getItemActions)));
+        model.addAttribute("itemNotes", character.getInventories().stream()
+                .flatMap(inventory -> inventory.getContent().stream())
+                .collect(Collectors.toMap(Item::getId, system::getItemNotes)));
         model.addAttribute("roles", system.rolesOf(character));
         model.addAttribute("quickDice", system.getQuickDice());
         model.addAttribute("difficultyPresets", system.getCheckResolver().getDifficultyPresets());

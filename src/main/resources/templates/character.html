@@ -169,6 +169,7 @@
                       <span th:each="line : ${itemType.describe(item.properties)}" th:text="${line.text}" th:title="${line.title}">WA 0</span>
                     </div>
                     <div class="row-desc" th:if="${!#strings.isEmpty(item.description)}" th:text="${item.description}">Описание</div>
+                    <p th:each="note : ${itemNotes[item.id]}" class="item-note" th:text="${note}">Большой магазин: надёжность VR → ST</p>
                     <div th:if="${actionItemId == item.id and actionResult != null}" class="alert alert-success item-result" role="status">
                       <span class="alert-text" th:text="${actionResult}">Выпущено 3</span>
                       <button type="button" class="alert-close" aria-label="Закрыть">×</button>
