@@ -74,6 +74,19 @@ public final class Cp2020Magazines {
     }
 
     /**
+     * Пустой стандартный магазин к оружию, та же цена, что в справочнике. Ставка старого оружия определяется по названию из справочника.
+     */
+    static Item standardFor(String weaponName, String caliber, int capacity, String category) {
+        boolean old = Cp2020Weapons.CATALOG.stream()
+                .anyMatch(entry -> entry.name().equals(weaponName) && Cp2020Weapons.OLD.equals(entry.group()));
+        Rate rate = "HVY".equals(category) ? Rate.HEAVY : old ? Rate.CASED : Rate.CASELESS;
+        Item magazine = newMagazine(caliber, capacity, 0, false);
+        magazine.setCost(Cp2020MagazineRules.price(capacity, rate));
+        magazine.setDescription(STANDARD_NOTE);
+        return magazine;
+    }
+
+    /**
      * Магазин, вынутый из оружия.
      */
     static Item newMagazine(String caliber, int capacity, int loaded, boolean armorPiercing) {

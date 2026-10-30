@@ -128,9 +128,9 @@ class Cp2020WeaponActionsTest {
         @Test
         @DisplayName("очередь есть только при ROF больше 1; извлечь можно, пока магазин в оружии")
         void weaponActions() {
-            assertThat(codes(weapon(8, 8, 1, "12mm"))).containsExactly("FIRE", "RELOAD", "EJECT");
-            assertThat(codes(weapon(40, 40, 20, "10mm"))).containsExactly("FIRE", "BURST", "RELOAD", "EJECT");
-            assertThat(codes(weapon(40, null, 20, "10mm"))).containsExactly("FIRE", "BURST", "RELOAD");
+            assertThat(codes(weapon(8, 8, 1, "12mm"))).containsExactly("FIRE", "RELOAD", "EJECT", "ADD_MAGAZINE");
+            assertThat(codes(weapon(40, 40, 20, "10mm"))).containsExactly("FIRE", "BURST", "RELOAD", "EJECT", "ADD_MAGAZINE");
+            assertThat(codes(weapon(40, null, 20, "10mm"))).containsExactly("FIRE", "BURST", "RELOAD", "ADD_MAGAZINE");
         }
 
         @Test
@@ -362,6 +362,46 @@ class Cp2020WeaponActionsTest {
             assertThatThrownBy(() -> Cp2020WeaponActions.perform(gun, "RELOAD", Map.of())).isInstanceOf(IllegalArgumentException.class);
             assertThat(loaded(gun)).isEqualTo(4);
             assertThat(magazinesIn(backpack)).hasSize(4);
+        }
+
+        @Test
+        @DisplayName("＋ Магазин: пустой стандартный магазин этого патрона рядом с оружием, он подходит к нему и снаряжается")
+        void addsStandardMagazine() {
+            Item gun = weapon(40, 10, 20, "10mm");
+            Item box = stack(stash, "10mm", 50, false);
+
+            String message = Cp2020WeaponActions.perform(gun, "ADD_MAGAZINE", Map.of());
+
+            assertThat(message).isEqualTo("Minami: в инвентарь добавлен пустой магазин на 40");
+            assertThat(loaded(gun)).isEqualTo(10);
+            List<Item> added = magazinesIn(backpack);
+            assertThat(added).hasSize(1);
+            Item mag = added.getFirst();
+            assertThat(mag.getName()).isEqualTo("Магазин 10mm на 40");
+            assertThat(mag.getQuantity()).isEqualTo(1);
+            assertThat(mag.getCost()).isEqualTo(20);
+            assertThat(mag.getDescription()).contains("Хоумбрю");
+            assertThat(mag.getProperties()).containsEntry("ammo", "0").containsEntry("shots", "40").containsEntry("caliber", "10mm");
+
+            mag.setId(nextId++);
+            perform(mag, "LOAD", box);
+            assertThat(action(gun, "RELOAD").sources()).extracting(ItemField.Option::value)
+                    .containsExactly(String.valueOf(mag.getId()));
+        }
+
+        @ParameterizedTest(name = "{0}, {3}: {4} eb")
+        @CsvSource({"Arasaka Minami 10, 10mm, 40, SMG, 20", "UZI, 9mm, 30, SMG, 30",
+                "Barrett-Arasaka Light 20mm, 20/9mm, 10, HVY, 20", "Самоделка, 9mm, 35, P, 18"})
+        @DisplayName("цена как в справочнике: безгильзовые, старое оружие, тяжёлое; своё оружие — как безгильзовое")
+        void standardMagazinePrice(String name, String caliber, int capacity, String category, int cost) {
+            assertThat(Cp2020Magazines.standardFor(name, caliber, capacity, category).getCost()).isEqualTo(cost);
+        }
+
+        @Test
+        @DisplayName("＋ Магазин нет у оружия без магазина и без патрона")
+        void noQuickMagazine() {
+            assertThat(codes(revolver(6, 6, ".44"))).doesNotContain("ADD_MAGAZINE");
+            assertThat(codes(weapon(10, 5, 2, null))).doesNotContain("ADD_MAGAZINE");
         }
 
         @Test

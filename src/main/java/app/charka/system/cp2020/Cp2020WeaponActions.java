@@ -23,6 +23,7 @@ final class Cp2020WeaponActions {
     static final String BURST = "BURST";
     static final String RELOAD = "RELOAD";
     static final String EJECT = "EJECT";
+    static final String ADD_MAGAZINE = "ADD_MAGAZINE";
     static final String LOAD = "LOAD";
     static final String UNLOAD = "UNLOAD";
 
@@ -89,6 +90,9 @@ final class Cp2020WeaponActions {
         if (usesMagazines(weapon) && hasMagazine(weapon)) {
             actions.add(ItemAction.simple(EJECT, "Извлечь магазин", null));
         }
+        if (usesMagazines(weapon)) {
+            actions.add(ItemAction.simple(ADD_MAGAZINE, "＋ Магазин", null));
+        }
         return actions;
     }
 
@@ -107,7 +111,7 @@ final class Cp2020WeaponActions {
         int standard = number(weapon, Cp2020ItemTypes.SHOTS);
         String unavailable = sources.isEmpty()
                 ? "Нет снаряжённых магазинов «" + caliber(weapon) + "» на " + standard + "–" + standard * Cp2020MagazineRules.MAX_EXTENSION
-                + ": добавьте их через «Из справочника» и снарядите патронами"
+                + ": добавьте кнопкой «＋ Магазин» и снарядите патронами"
                 : null;
         return ItemAction.withSources(RELOAD, "Перезарядить", unavailable, sources);
     }
@@ -158,6 +162,7 @@ final class Cp2020WeaponActions {
             case BURST -> fire(item, amount(params));
             case RELOAD -> usesMagazines(item) ? changeMagazine(item, params.get("source")) : loadFromStack(item, params.get("source"));
             case EJECT -> eject(item);
+            case ADD_MAGAZINE -> addMagazine(item);
             case LOAD -> loadFromStack(item, params.get("source"));
             default -> unload(item);
         };
@@ -209,6 +214,15 @@ final class Cp2020WeaponActions {
         weapon.getProperties().remove(Cp2020ItemTypes.ARMOR_PIERCING);
         weapon.getProperties().remove(Cp2020ItemTypes.INSERTED);
         return weapon.getName() + ": магазин с " + rounds + " патр. убран в инвентарь";
+    }
+
+    /** Пустой стандартный магазин к этому оружию; деньги не списываются, как и при добавлении из справочника */
+    private static String addMagazine(Item weapon) {
+        Item magazine = Cp2020Magazines.standardFor(weapon.getName(), caliber(weapon), number(weapon, Cp2020ItemTypes.SHOTS),
+                weapon.getProperties().get("category"));
+        magazine.setInventory(weapon.getInventory());
+        weapon.getInventory().getContent().add(magazine);
+        return weapon.getName() + ": в инвентарь добавлен пустой магазин на " + number(weapon, Cp2020ItemTypes.SHOTS);
     }
 
     private static void putMagazineAside(Item weapon) {
