@@ -13,6 +13,7 @@ import app.charka.system.GameSystemRegistry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -173,7 +174,14 @@ public class ItemServiceImpl implements ItemService {
         GameSystem system = systemRegistry.forCharacter(inventory.getCharacter());
         ItemTypeDefinition type = system.findItemType(typeCode)
                 .orElseThrow(() -> new IllegalArgumentException("Тип предмета недоступен в этой системе: " + typeCode));
-        Map<String, String> values = type.normalize(properties);
+        Map<String, String> values = new HashMap<>(type.normalize(properties));
+        if (type.code().equals(item.getType())) {
+            type.stateKeys().forEach(key -> {
+                if (item.getProperties().containsKey(key)) {
+                    values.put(key, item.getProperties().get(key));
+                }
+            });
+        }
         item.setType(type.code());
         item.getProperties().clear();
         item.getProperties().putAll(values);

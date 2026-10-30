@@ -44,7 +44,7 @@ public class Cp2020System implements GameSystem {
     private static final Cp2020StatsStrategy STATS = new Cp2020StatsStrategy();
 
     private static final List<CatalogItem> ITEM_CATALOG =
-            Stream.of(Cp2020Weapons.CATALOG, Cp2020Magazines.CATALOG, Cp2020Ammo.CATALOG).flatMap(List::stream).toList();
+            Stream.of(Cp2020Weapons.CATALOG, Cp2020Magazines.CATALOG, Cp2020Ammo.CATALOG, Cp2020Armors.CATALOG).flatMap(List::stream).toList();
 
     private final HealthCounterService healthCounterService;
 
@@ -124,17 +124,17 @@ public class Cp2020System implements GameSystem {
 
     @Override
     public List<ItemAction> getItemActions(Item item) {
-        return Cp2020WeaponActions.actions(item);
+        return Cp2020WornArmor.isArmor(item) ? Cp2020ArmorActions.actions(item) : Cp2020WeaponActions.actions(item);
     }
 
     @Override
     public List<String> getItemNotes(Item item) {
-        return Cp2020WeaponActions.notes(item);
+        return Cp2020WornArmor.isArmor(item) ? Cp2020ArmorActions.notes(item) : Cp2020WeaponActions.notes(item);
     }
 
     @Override
     public String performItemAction(Item item, String action, Map<String, String> params) {
-        return Cp2020WeaponActions.perform(item, action, params);
+        return Cp2020WornArmor.isArmor(item) ? Cp2020ArmorActions.perform(item, action) : Cp2020WeaponActions.perform(item, action, params);
     }
 
     @Override

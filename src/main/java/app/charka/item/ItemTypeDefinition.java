@@ -15,8 +15,10 @@ import java.util.function.Consumer;
  * @param displayName название для интерфейса
  * @param fields      поля в порядке показа
  * @param check       проверка значений вместе (когда одно поле зависит от другого); бросает {@link IllegalArgumentException}
+ * @param stateKeys   свойства-состояние, которых нет в форме: правка предмета того же типа их сохраняет
  */
-public record ItemTypeDefinition(String code, String displayName, List<ItemField> fields, Consumer<Map<String, String>> check) {
+public record ItemTypeDefinition(String code, String displayName, List<ItemField> fields, Consumer<Map<String, String>> check,
+                                 List<String> stateKeys) {
 
     public static final String GENERIC_CODE = "GENERIC";
 
@@ -36,6 +38,11 @@ public record ItemTypeDefinition(String code, String displayName, List<ItemField
 
     public ItemTypeDefinition {
         fields = List.copyOf(fields);
+        stateKeys = List.copyOf(stateKeys);
+    }
+
+    public ItemTypeDefinition(String code, String displayName, List<ItemField> fields, Consumer<Map<String, String>> check) {
+        this(code, displayName, fields, check, List.of());
     }
 
     public ItemTypeDefinition(String code, String displayName, List<ItemField> fields) {

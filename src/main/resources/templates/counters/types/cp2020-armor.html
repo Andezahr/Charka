@@ -26,6 +26,11 @@
     </div>
   </div>
 
+  <p th:unless="${#lists.isEmpty(v.wornItems)}" class="cp-muted-line"
+     th:text="'Надето: ' + ${#strings.listJoin(v.wornItems, ', ')}">Надето: Лёгкая бронекуртка (SP 14)</p>
+  <p th:if="${v.encumbrance > 0}" class="cp-muted-line" title="Сумма EV надетого и штраф за слои"
+     th:text="'Штраф брони к REF: −' + ${v.encumbrance}">Штраф брони к REF: −1</p>
+
   <div class="cp-footer">
     <form th:if="${v.worn}" th:action="${base} + '/action/REPAIR'" method="post" class="inline"
           title="Вернуть изношенной броне полный SP">
@@ -40,10 +45,10 @@
       <div class="field-grid">
         <label class="field" th:each="a : ${v.locations}">
           <span class="label" th:text="${a.label}">Торс</span>
-          <input type="number" th:name="'attributes[sp_' + ${a.code} + ']'" min="0" max="60" th:value="${a.maxSp}" required>
+          <input type="number" th:name="'attributes[sp_' + ${a.code} + ']'" min="0" max="60" th:value="${a.ownSp}" required>
         </label>
       </div>
-      <p class="hint hint-left">Новое значение — полный SP надетой брони, износ сбрасывается.</p>
+      <p class="hint hint-left">Броня без предмета: считается внутренним слоем, её износ сбрасывается. Предметы брони надевают на листе.</p>
       <button type="submit" class="btn btn-sm btn-primary">Сохранить</button>
     </form>
   </div>

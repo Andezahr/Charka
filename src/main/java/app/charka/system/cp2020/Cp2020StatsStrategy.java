@@ -20,7 +20,7 @@ import static app.charka.system.cp2020.Cp2020Rules.*;
  * ({@code humanityLoss}): человечность = EMP × 10 − потеря, текущий EMP = человечность / 10 (вверх).
  * <p>
  * Текущие значения учитывают штрафы: REF/INT/COOL — от ран (уровень берётся из счётчика здоровья),
- * EMP — от потери человечности. Производные величины (бег, прыжок, переноска, BTM) считаются
+ * REF ещё от брони (из счётчика брони), EMP — от потери человечности. Производные величины (бег, прыжок, переноска, BTM) считаются
  * в {@link #describe(CounterContext)}. Значение самого счётчика не используется.
  */
 @Component
@@ -153,12 +153,14 @@ public class Cp2020StatsStrategy extends AbstractCounterStrategy {
                 .orElse(-1);
         int emp = counter.getAttribute(EMP, DEFAULT_STAT);
         int humanity = humanity(emp, counter.getAttribute(HUMANITY_LOSS, 0));
+        // Книга (с. 67): EV вычитается из REF; порядок со штрафом от ран не указан, сначала EV
+        int encumbrance = context.sibling(Cp2020ArmorStrategy.TYPE).map(Cp2020ArmorStrategy::encumbrance).orElse(0);
 
         List<StatLine> stats = new ArrayList<>();
         STATS.forEach((key, label) -> {
             int base = counter.getAttribute(key, DEFAULT_STAT);
             int effective = switch (key) {
-                case REF -> effectiveRef(base, level);
+                case REF -> effectiveRef(Math.max(base - encumbrance, 0), level);
                 case INT, COOL -> effectiveIntOrCool(base, level);
                 case EMP -> effectiveEmp(humanity);
                 default -> base;

@@ -6,6 +6,11 @@ import app.charka.model.Item;
 import app.charka.model.Inventory;
 import app.charka.repository.ItemRepository;
 import app.charka.repository.InventoryRepository;
+import app.charka.item.ItemTypeDefinition;
+import app.charka.system.GameSystem;
+import app.charka.system.GameSystemRegistry;
+import app.charka.system.cp2020.Cp2020ItemTypes;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -19,6 +24,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
@@ -31,6 +37,8 @@ class ItemServiceTest {
 
     @Mock private ItemRepository itemRepository;
     @Mock private InventoryRepository inventoryRepository;
+    @Mock private GameSystemRegistry systemRegistry;
+    @Mock private GameSystem gameSystem;
     @InjectMocks private ItemServiceImpl itemService;
 
     private static final String NOT_FOUND_MSG = "Item not found for id=%d";
@@ -293,6 +301,48 @@ class ItemServiceTest {
             assertThatThrownBy(() -> itemService.moveToInventory(3L, 9L))
                     .isInstanceOf(NotFoundException.class)
                     .hasMessage("Target inventory not found for id=9");
+        }
+    }
+
+    @Nested
+    @DisplayName("Правка предмета с типом")
+    class UpdateWithTypeTests {
+
+        private Item worn;
+
+        @BeforeEach
+        void setUp() {
+            Inventory inventory = new Inventory();
+            inventory.setCharacter(new app.charka.model.Character());
+            worn = new Item();
+            worn.setId(1L);
+            worn.setInventory(inventory);
+            worn.setType(Cp2020ItemTypes.ARMOR);
+            worn.getProperties().putAll(Map.of("sp", "10", "hardness", "SOFT", "zone_TORSO", "1", "worn", "2", "wear_TORSO", "3"));
+            when(itemRepository.findById(1L)).thenReturn(Optional.of(worn));
+            when(itemRepository.save(worn)).thenReturn(worn);
+            when(systemRegistry.forCharacter(any())).thenReturn(gameSystem);
+        }
+
+        @Test
+        @DisplayName("Состояние типа переживает правку: броня остаётся надетой и изношенной")
+        void stateKept() {
+            when(gameSystem.findItemType(Cp2020ItemTypes.ARMOR)).thenReturn(Optional.of(Cp2020ItemTypes.ARMOR_TYPE));
+
+            itemService.update(1L, "Жилет", 1, 90, null, Cp2020ItemTypes.ARMOR,
+                    Map.of("sp", "14", "hardness", "SOFT", "zone_TORSO", "1"));
+
+            assertThat(worn.getProperties()).containsEntry("sp", "14").containsEntry("worn", "2").containsEntry("wear_TORSO", "3");
+        }
+
+        @Test
+        @DisplayName("Смена типа стирает состояние прежнего")
+        void stateDroppedWithType() {
+            when(gameSystem.findItemType(ItemTypeDefinition.GENERIC_CODE)).thenReturn(Optional.of(ItemTypeDefinition.GENERIC));
+
+            itemService.update(1L, "Жилет", 1, 90, null, ItemTypeDefinition.GENERIC_CODE, Map.of());
+
+            assertThat(worn.getProperties()).isEmpty();
         }
     }
 }

@@ -4,8 +4,10 @@ import app.charka.item.ItemField;
 import app.charka.item.ItemField.Option;
 import app.charka.item.ItemTypeDefinition;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 /**
  * Типы предметов CP2020. Поля оружия — код оружия книги (с. 60; дробовик в кодах и таблицах — SHT): тип, точность, скрытность, доступность,
@@ -27,6 +29,17 @@ public final class Cp2020ItemTypes {
     public static final String DIRECT_LOAD = "directLoad";
     /** Размер вставленного магазина; указан, только если он не стандартный */
     public static final String INSERTED = "insertedMagazine";
+
+    public static final String ARMOR = "CP2020_ARMOR";
+    public static final String ARMOR_SP = "sp";
+    public static final String ENCUMBRANCE = "ev";
+    public static final String HARDNESS = "hardness";
+    public static final String SOFT = "SOFT";
+    public static final String HARD = "HARD";
+    /** Порядок надевания; есть, только пока броня надета */
+    public static final String WORN = "worn";
+    private static final String ZONE_PREFIX = "zone_";
+    private static final String WEAR_PREFIX = "wear_";
 
     /**
      * Урон — текст, а не кубики: в книге у части оружия не только они («1-5D6», «Drugs», «3D6/2D6»).
@@ -79,9 +92,43 @@ public final class Cp2020ItemTypes {
             ItemField.requiredText(CALIBER, "Патрон"),
             ItemField.flag(ARMOR_PIERCING, "Бронебойные", "AP")));
 
-    public static final List<ItemTypeDefinition> ALL = List.of(ItemTypeDefinition.GENERIC, WEAPON_TYPE, MAGAZINE_TYPE, AMMO_TYPE);
+    public static String zoneKey(Cp2020Location location) {
+        return ZONE_PREFIX + location.name();
+    }
+
+    public static String wearKey(Cp2020Location location) {
+        return WEAR_PREFIX + location.name();
+    }
+
+    /**
+     * Броня (с. 67; жёсткая или мягкая — FNFF, с. 101). Надета ли и износ — состояние, а не поля формы: правка предмета их не сбрасывает.
+     */
+    public static final ItemTypeDefinition ARMOR_TYPE = new ItemTypeDefinition(ARMOR, "Броня",
+            Stream.concat(
+                    Stream.of(ItemField.number(ARMOR_SP, "SP", "SP ", "", 0, 60),
+                            ItemField.number(ENCUMBRANCE, "Штраф EV", "EV ", "", 0, 10),
+                            ItemField.choice(HARDNESS, "Жёсткость", true,
+                                    new Option(SOFT, "Мягкая: ткань, кевлар"),
+                                    new Option(HARD, "Жёсткая: металл, керамика, композит"))),
+                    Arrays.stream(Cp2020Location.values())
+                            .map(location -> ItemField.flag(zoneKey(location), location.getLabel(), location.getShortLabel())))
+                    .toList(),
+            Cp2020ItemTypes::checkArmor,
+            Stream.concat(Stream.of(WORN), Arrays.stream(Cp2020Location.values()).map(Cp2020ItemTypes::wearKey)).toList());
+
+    public static final List<ItemTypeDefinition> ALL = List.of(ItemTypeDefinition.GENERIC, WEAPON_TYPE, MAGAZINE_TYPE, AMMO_TYPE, ARMOR_TYPE);
 
     private Cp2020ItemTypes() {
+    }
+
+    private static void checkArmor(Map<String, String> values) {
+        if (!values.containsKey(ARMOR_SP)) {
+            throw new IllegalArgumentException("Поле «SP» обязательно");
+        }
+        boolean coversAny = Arrays.stream(Cp2020Location.values()).anyMatch(location -> values.containsKey(zoneKey(location)));
+        if (!coversAny) {
+            throw new IllegalArgumentException("Отметьте хотя бы одну зону, которую закрывает броня");
+        }
     }
 
     private static void checkWeapon(Map<String, String> values) {

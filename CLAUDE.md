@@ -33,7 +33,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 521 тест, на 2026-10-30 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 565 тестов, на 2026-10-30 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -54,7 +54,7 @@ check/        CheckRequest/CheckResult/CheckResolver (GenericCheckResolver: d20)
 item/         ItemTypeDefinition, ItemField (поля типа предмета, проверка ввода, строка предмета), CatalogItem (строка справочника), ItemAction (кнопка действия на листе); типы, справочник и действия отдаёт GameSystem
 skill/        SkillDefinition, CharacterRole, StatValue, SkillSheet, SkillCheck, SkillOpponent, SkillProgression (контракт прокачки), SkillImprovement, SkillService (навыки, роли, проверка, прокачка)
 system/        GameSystem, GameSystemRegistry, GenericSystem ("GENERIC"), Currency; cp2020/ — Cp2020System ("CP2020"),
-               стратегии счётчиков, Cp2020Rules, Cp2020Dice (d10: на 10 один дополнительный кубик), Cp2020CheckResolver, Cp2020Skills (каталог, роли), Cp2020Fumbles (таблица книги), Cp2020SkillRules (языки по семьям, бонусы от других навыков, требования), Cp2020ItemTypes (оружие, магазины, боеприпасы), Cp2020Weapons (справочник оружия книги), Cp2020Ammo (таблица боеприпасов книги), Cp2020Magazines (справочник магазинов), Cp2020MagazineRules (цены, размеры, штрафы магазинов; хоумбрю помечен), Cp2020WeaponActions (выстрел, очередь, смена и снаряжение магазина), Cp2020SkillProgression + Cp2020IpStrategy (очки улучшения)
+               стратегии счётчиков, Cp2020Rules, Cp2020Dice (d10: на 10 один дополнительный кубик), Cp2020CheckResolver, Cp2020Skills (каталог, роли), Cp2020Fumbles (таблица книги), Cp2020SkillRules (языки по семьям, бонусы от других навыков, требования), Cp2020ItemTypes (оружие, магазины, боеприпасы), Cp2020Weapons (справочник оружия книги), Cp2020Ammo (таблица боеприпасов книги), Cp2020Magazines (справочник магазинов), Cp2020MagazineRules (цены, размеры, штрафы магазинов; хоумбрю помечен), Cp2020WeaponActions (выстрел, очередь, смена и снаряжение магазина), Cp2020Armors (справочник брони книги), Cp2020ArmorRules (пропорциональная броня, слои), Cp2020WornArmor (надетая броня), Cp2020ArmorActions (надеть, снять, починить), Cp2020SkillProgression + Cp2020IpStrategy (очки улучшения)
 dto/counter/   DTO только для счётчиков (единственный модуль, переведённый на DTO)
 exception/     NotFoundException.forId("Entity", id) (NoSuchElementException → 404), наследники CharacterNotFoundException, InventoryNotFoundException;
                GlobalExceptionHandler (страницы → error.html: 404/400/500), ApiExceptionHandler (app.charka.api → text/plain)
@@ -92,8 +92,8 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 
 Стратегии: `SimpleIntegerCounterStrategy` (`"SIMPLE_INTEGER"`, прибавляет input) и связка CP2020 (`system/cp2020/`, доступна только кампаниям CP2020):
 - `strategy/health/HealthCounterStrategy` — точка расширения для систем здоровья (урон, лечение, `healOverTime`, спасброски по коду, стабилизация, `describe` → `HealthView`). `DiceRoller` — кубики (в тестах подменяются).
-- `Cp2020StatsStrategy` (`"CP2020_STATS"`): все 9 статов `int/ref/tech/cool/attr/luck/ma/body/emp` + `humanityLoss`. Текущие значения: REF/INT/COOL со штрафами от ран (уровень из счётчика здоровья), EMP = человечность/10 (человечность = EMP×10 − потеря). Производные (`Cp2020Rules`): бег MA×3 м, прыжок бег/4, переноска BODY×10 кг, подъём BODY×40 кг, BTM, спасбросок = BODY.
-- `Cp2020ArmorStrategy` (`"CP2020_ARMOR"`): `sp_<ЗОНА>` — текущий SP, `max_<ЗОНА>` — полный; `wear()` при пробитии, действие `REPAIR` возвращает полный SP.
+- `Cp2020StatsStrategy` (`"CP2020_STATS"`): все 9 статов `int/ref/tech/cool/attr/luck/ma/body/emp` + `humanityLoss`. Текущие значения: REF/INT/COOL со штрафами от ран (уровень из счётчика здоровья), REF ещё со штрафом брони, EMP = человечность/10 (человечность = EMP×10 − потеря). Производные (`Cp2020Rules`): бег MA×3 м, прыжок бег/4, переноска BODY×10 кг, подъём BODY×40 кг, BTM, спасбросок = BODY.
+- `Cp2020ArmorStrategy` (`"CP2020_ARMOR"`): SP зоны считается из надетых предметов типа «Броня» (`Cp2020WornArmor`, таблица `Cp2020ArmorRules`) и своего слоя счётчика: `sp_<ЗОНА>` — его текущий SP, `max_<ЗОНА>` — полный; `wear()` при пробитии, действие `REPAIR` возвращает полный SP; `encumbrance` — штраф брони к REF.
 - `Cp2020HealthStrategy` (`"CP2020_HEALTH"`, требует stats + armor): value = полученный урон 0..40; attributes: `lost_<ЗОНА>`, флаги `stunned/stabilized/dead/deathSavePending`. Порядок урона: зона → −SP (износ −1 при пробитии; AP — половина SP и урона; BYPASS — без брони) → ×2 в голову → −BTM (мин. 1) → >8 в голову = смерть, >8 в конечность = потеря + спасбросок от смерти → >40 = смерть → авто-спасбросок от оглушения. Таблицы — `Cp2020Rules`.
 - Карточки — `counters/types/cp2020-*.html`, стили — блок `.cp-*` в конце `app.css` (Russo One только у главного числа: в нём нет символов − ≤ →).
 - `HealthCounterService` — операции, не знающие о системе; `healOverTime` вызывается из `CampaignTimelineService.proceedDate` (1 очко/день, умирающие без стабилизации не лечатся).
@@ -117,7 +117,7 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 | GET | `/character/{id}` | лист персонажа (раны, инвентари, деньги, кубики) |
 | POST | `/character/{id}/wounds`, `.../wounds/{wid}/delete` | раны |
 | POST | `/character/{id}/inventories`, `.../{invId}/edit`, `.../{invId}/delete` | инвентари |
-| POST | `/character/{id}/inventories/{invId}/items` (+ `/{itemId}/edit|delete|move`) | предметы; `itemType`, `prop.<ключ>` — тип и его поля; `/catalog` (`catalogKey`, `quantity`) — из справочника системы; `/{itemId}/action/{action}` (`source`, `amount`) — действие системы (CP2020: `FIRE`, `BURST`, `RELOAD`, `EJECT`, `ADD_MAGAZINE`, `LOAD`, `UNLOAD`), итог во flash для строки предмета |
+| POST | `/character/{id}/inventories/{invId}/items` (+ `/{itemId}/edit|delete|move`) | предметы; `itemType`, `prop.<ключ>` — тип и его поля; `/catalog` (`catalogKey`, `quantity`) — из справочника системы; `/{itemId}/action/{action}` (`source`, `amount`) — действие системы (CP2020: `FIRE`, `BURST`, `RELOAD`, `EJECT`, `ADD_MAGAZINE`, `LOAD`, `UNLOAD`, у брони `WEAR`, `TAKE_OFF`, `REPAIR`), итог во flash для строки предмета |
 | POST | `/character/{id}/money`, `.../money/{mid}/delete` | деньги |
 | GET | `/character/{id}/notes/` | заметки (фильтр `?categoryId=`) |
 | POST | `/character/{id}/notes`, `.../{noteId}/edit|delete`; GET `.../{noteId}/edit` | заметки |
