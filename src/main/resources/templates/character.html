@@ -188,8 +188,11 @@
                                th:value="${action.amount}" th:attr="max=${action.maxAmount}" th:disabled="${action.unavailable != null}"
                                required aria-label="Сколько патронов">
                         <button type="submit" class="btn btn-sm" th:disabled="${action.unavailable != null}"
-                                th:title="${action.unavailable}" th:text="${action.label}">Выстрел</button>
+                                th:text="${action.label}">Выстрел</button>
                       </form>
+                      <p th:each="action, state : ${itemActions[item.id]}"
+                         th:if="${action.unavailable != null and (state.first or itemActions[item.id][state.index - 1].unavailable != action.unavailable)}"
+                         class="item-action-note" th:text="${action.unavailable}">Магазин пуст</p>
                     </div>
                   </div>
                   <div class="row-actions">

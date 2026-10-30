@@ -98,7 +98,7 @@ class ItemTypesTest {
                     "caliber", "10mm", "shots", "40", "rof", "20", "reliability", "VR", "range", "200"));
 
             assertThat(Cp2020ItemTypes.WEAPON_TYPE.describe(properties)).extracting(ItemTypeDefinition.Line::text)
-                    .containsExactly("SMG", "WA 0", "J", "E", "2D6+3", "10mm", "магазин 40", "ROF 20", "VR", "200 м");
+                    .containsExactly("SMG", "WA 0", "J", "E", "2D6+3", "10mm", "магазин 40", "заряжено 0", "ROF 20", "VR", "200 м");
             assertThat(Cp2020ItemTypes.WEAPON_TYPE.describe(Map.of("shots", "40", "ammo", "12"))).extracting(ItemTypeDefinition.Line::text)
                     .containsExactly("магазин 40", "заряжено 12");
             assertThat(Cp2020ItemTypes.WEAPON_TYPE.describe(properties).getFirst().title())

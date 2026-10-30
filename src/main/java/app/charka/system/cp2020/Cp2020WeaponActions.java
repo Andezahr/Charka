@@ -61,7 +61,7 @@ final class Cp2020WeaponActions {
                 .map(stack -> new Option(String.valueOf(stack.getId()), sourceLabel(stack)))
                 .toList();
         String unavailable = sources.isEmpty()
-                ? (loaded == shots ? "Магазин полон" : "Нет патронов «" + caliber + "» в инвентарях персонажа")
+                ? (loaded == shots ? "Магазин полон" : "Нет патронов «" + caliber + "» в инвентарях персонажа: добавьте их через «Из справочника»")
                 : null;
         return ItemAction.withSources(RELOAD, "Перезарядить", unavailable, sources);
     }

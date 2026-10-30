@@ -69,7 +69,11 @@ public final class Cp2020ItemTypes {
     private Cp2020ItemTypes() {
     }
 
+    /** Заряд не указан — магазин пуст, и это видно в строке предмета */
     private static void checkMagazine(Map<String, String> values) {
+        if (values.containsKey(SHOTS)) {
+            values.putIfAbsent(LOADED, "0");
+        }
         int loaded = Integer.parseInt(values.getOrDefault(LOADED, "0"));
         int shots = Integer.parseInt(values.getOrDefault(SHOTS, "0"));
         if (loaded > shots) {
