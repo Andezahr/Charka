@@ -2,6 +2,7 @@ package app.charka.skill;
 
 import app.charka.check.CheckRequest;
 import app.charka.check.CheckService;
+import app.charka.check.OpposedCheckResult;
 import app.charka.exception.CharacterNotFoundException;
 import app.charka.exception.NotFoundException;
 import app.charka.model.Character;
@@ -34,6 +35,7 @@ public class SkillService {
     static final int MAX_LEVEL = 10;
     private static final int MAX_CUSTOM_NAME = 100;
     private static final String SPECIAL_GROUP = "Спецспособности ролей";
+    private static final String DEFAULT_OPPONENT_NAME = "Противник";
 
     private final CharacterRepository characterRepository;
     private final GameSystemRegistry systemRegistry;
@@ -242,7 +244,36 @@ public class SkillService {
      */
     @Transactional
     public SkillCheck check(Long characterId, String code, Long skillId, int modifier, Integer difficulty) {
+        CheckRequest request = skillRequest(getCharacter(characterId), code, skillId, modifier, difficulty);
+        return new SkillCheck(request.label(), checkService.checkForCharacter(characterId, request));
+    }
+
+    /**
+     * Противопоставленная проверка навыка: обе стороны бросают, сложности нет, пишется в лог бросков.
+     *
+     * @param code    код обычного навыка инициатора; не используется, если задан {@code skillId}
+     * @param skillId id строки навыка со своим названием
+     */
+    @Transactional
+    public OpposedCheckResult checkOpposed(Long characterId, String code, Long skillId, int modifier, SkillOpponent opponent) {
         Character character = getCharacter(characterId);
+        CheckRequest request = skillRequest(character, code, skillId, modifier, null);
+        if (opponent.characterId() == null) {
+            String name = opponent.name() == null || opponent.name().isBlank()
+                    ? DEFAULT_OPPONENT_NAME
+                    : opponent.name().strip();
+            return checkService.checkOpposed(character, request, null, name,
+                    new CheckRequest(name, opponent.modifier(), null));
+        }
+        if (opponent.skillId() == null && (opponent.code() == null || opponent.code().isBlank())) {
+            throw new IllegalArgumentException("Выберите навык противника");
+        }
+        Character other = getCharacter(opponent.characterId());
+        CheckRequest otherRequest = skillRequest(other, opponent.code(), opponent.skillId(), opponent.modifier(), null);
+        return checkService.checkOpposed(character, request, other, null, otherRequest);
+    }
+
+    private CheckRequest skillRequest(Character character, String code, Long skillId, int modifier, Integer difficulty) {
         GameSystem system = systemRegistry.forCharacter(character);
         CharacterSkill skill = skillId != null ? customSkill(character, skillId) : plainSkill(character, code);
         SkillDefinition definition = skillId != null
@@ -257,8 +288,7 @@ public class SkillService {
         if (modifier != 0) {
             parts.add(new CheckRequest.Part("Мод.", modifier));
         }
-        CheckRequest request = CheckRequest.ofParts(name, parts, difficulty, definition.code());
-        return new SkillCheck(name, checkService.checkForCharacter(characterId, request));
+        return CheckRequest.ofParts(name, parts, difficulty, definition.code());
     }
 
     /**

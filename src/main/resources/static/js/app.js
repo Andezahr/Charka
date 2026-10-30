@@ -165,51 +165,163 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
+    // Режим «Против противника»: сложности нет, навыки выбранного персонажа подгружаются с сервера
+    const opposedResult = dialog.querySelector('[data-opposed-result]');
+    const opposedFields = dialog.querySelector('[data-opposed-fields]');
+    const opponent = dialog.querySelector('[data-opponent]');
+    const opponentSkill = dialog.querySelector('[data-opponent-skill]');
+    let opposed = stored.get('skills-check-mode') === 'opposed';
+    let skillsRequest = 0;
+
+    const hideResults = () => {
+      result.hidden = true;
+      opposedResult.hidden = true;
+      error.hidden = true;
+      submit.textContent = '🎲 Бросить';
+    };
+    const showError = err => {
+      result.hidden = true;
+      opposedResult.hidden = true;
+      error.textContent = err.message || 'Не удалось выполнить проверку';
+      error.hidden = false;
+    };
+    const syncOpponentSkill = () => {
+      const option = opponentSkill.selectedOptions[0];
+      form.elements.opponentCode.value = option ? option.dataset.code : '';
+      form.elements.opponentSkillId.value = option ? option.dataset.skillId || '' : '';
+    };
+    // Сразу предлагаем тот же навык, иначе первый изученный
+    const fillOpponentSkills = skills => {
+      const addGroup = (label, list) => {
+        if (list.length === 0) return;
+        const group = document.createElement('optgroup');
+        group.label = label;
+        list.forEach(skill => {
+          const option = document.createElement('option');
+          option.textContent = `${skill.name} — ${skill.total}`;
+          option.dataset.code = skill.code;
+          if (skill.skillId != null) option.dataset.skillId = skill.skillId;
+          option.selected = !form.elements.skillId.value && !skill.skillId && skill.code === form.elements.code.value;
+          group.append(option);
+        });
+        opponentSkill.append(group);
+      };
+      opponentSkill.replaceChildren();
+      addGroup('Изученные', skills.filter(skill => skill.level > 0));
+      addGroup('Остальные', skills.filter(skill => skill.level === 0));
+      syncOpponentSkill();
+    };
+    const syncOpponent = async () => {
+      const known = opponent.value !== '';
+      dialog.querySelector('[data-opponent-known]').hidden = !known;
+      dialog.querySelector('[data-opponent-free]').hidden = known;
+      dialog.querySelector('[data-opponent-mod-label]').textContent = known ? 'Модификатор противника' : 'Стат + навык противника';
+      const request = ++skillsRequest;
+      opponentSkill.replaceChildren();
+      syncOpponentSkill();
+      if (!known || !opposed) {
+        submit.disabled = false;
+        return;
+      }
+      submit.disabled = true;
+      try {
+        const response = await fetch(opposedFields.dataset.api + opponent.value + '/skills');
+        if (!response.ok) throw new Error(await response.text());
+        const skills = await response.json();
+        if (request === skillsRequest) fillOpponentSkills(skills);
+      } catch (err) {
+        if (request === skillsRequest) showError(err);
+      } finally {
+        if (request === skillsRequest) submit.disabled = false;
+      }
+    };
+    const syncMode = () => {
+      dialog.querySelector('[data-dc-fields]').hidden = opposed;
+      opposedFields.hidden = !opposed;
+      dialog.querySelectorAll('[data-check-mode]').forEach(btn => {
+        btn.classList.toggle('is-active', (btn.dataset.checkMode === 'opposed') === opposed);
+      });
+      syncOpponent();
+    };
+    dialog.querySelectorAll('[data-check-mode]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        opposed = btn.dataset.checkMode === 'opposed';
+        stored.set('skills-check-mode', opposed ? 'opposed' : 'dc');
+        hideResults();
+        syncMode();
+      });
+    });
+    const lastOpponent = stored.get('skills-last-opponent');
+    if (lastOpponent !== null && [...opponent.options].some(option => option.value === lastOpponent)) {
+      opponent.value = lastOpponent;
+    }
+    opponent.addEventListener('change', () => {
+      stored.set('skills-last-opponent', opponent.value);
+      hideResults();
+      syncOpponent();
+    });
+    opponentSkill.addEventListener('change', syncOpponentSkill);
+
     page.querySelectorAll('[data-skill-check]').forEach(btn => {
       btn.addEventListener('click', () => {
         form.elements.code.value = btn.dataset.code;
         form.elements.skillId.value = btn.dataset.skillId || '';
         form.elements.modifier.value = 0;
+        form.elements.opponentModifier.value = 0;
         dialog.querySelector('.dialog-more').open = false;
         dialog.querySelector('[data-check-title]').textContent = btn.dataset.name;
         dialog.querySelector('[data-check-sum]').textContent = btn.dataset.sum;
-        result.hidden = true;
-        error.hidden = true;
-        submit.textContent = '🎲 Бросить';
+        hideResults();
+        syncMode();
         dialog.showModal();
       });
     });
+
+    const renderCheck = (block, check) => {
+      block.querySelector('[data-check-total]').textContent = check.total;
+      block.querySelector('[data-check-steps]').replaceChildren(...check.steps.map(step => {
+        const item = document.createElement('li');
+        item.textContent = step;
+        return item;
+      }));
+      block.classList.toggle('is-success', check.success === true);
+      block.classList.toggle('is-fail', check.success === false);
+    };
 
     form.addEventListener('submit', async e => {
       e.preventDefault();
       submit.disabled = true;
       error.hidden = true;
-      stored.set('skills-last-dc', difficulty.value);
+      if (!opposed) stored.set('skills-last-dc', difficulty.value);
       try {
         const body = new URLSearchParams();
         new FormData(form).forEach((value, key) => { if (value !== '') body.append(key, value); });
-        const response = await fetch(form.action, { method: 'POST', body });
+        const response = await fetch(form.action + (opposed ? '/opposed' : ''), { method: 'POST', body });
         if (!response.ok) throw new Error(await response.text());
         const check = await response.json();
-        dialog.querySelector('[data-check-total]').textContent = check.total;
-        dialog.querySelector('[data-check-outcome]').textContent = check.outcome;
-        const steps = dialog.querySelector('[data-check-steps]');
-        steps.replaceChildren(...check.steps.map(step => {
-          const item = document.createElement('li');
-          item.textContent = step;
-          return item;
-        }));
-        result.classList.toggle('is-success', check.success === true);
-        result.classList.toggle('is-fail', check.success === false);
-        result.hidden = false;
+        if (opposed) {
+          ['initiator', 'opponent'].forEach(name => {
+            const block = opposedResult.querySelector(`[data-side="${name}"]`);
+            block.querySelector('[data-check-title-side]').textContent = check[name].label;
+            renderCheck(block, check[name]);
+          });
+          dialog.querySelector('[data-opposed-verdict]').textContent = check.verdict;
+          opposedResult.hidden = false;
+          result.hidden = true;
+        } else {
+          dialog.querySelector('[data-check-outcome]').textContent = check.outcome;
+          renderCheck(result, check);
+          result.hidden = false;
+          opposedResult.hidden = true;
+        }
         submit.textContent = '🎲 Бросить ещё';
       } catch (err) {
-        result.hidden = true;
-        error.textContent = err.message || 'Не удалось выполнить проверку';
-        error.hidden = false;
+        showError(err);
       } finally {
         submit.disabled = false;
-        submit.focus();
+        // результат выше формы: на низком экране фокус не должен увести его за край
+        submit.focus({ preventScroll: true });
+        dialog.scrollTop = 0;
       }
     });
     dialog.querySelector('[data-dialog-close]').addEventListener('click', () => dialog.close());

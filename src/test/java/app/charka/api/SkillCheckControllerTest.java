@@ -3,8 +3,11 @@ package app.charka.api;
 import app.charka.check.CheckResult;
 import app.charka.exception.ApiExceptionHandler;
 import app.charka.exception.CharacterNotFoundException;
+import app.charka.check.OpposedCheckResult;
 import app.charka.skill.SkillCheck;
+import app.charka.skill.SkillOpponent;
 import app.charka.skill.SkillService;
+import app.charka.skill.SkillSheet;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,6 +24,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -89,6 +93,54 @@ class SkillCheckControllerTest {
 
         mockMvc.perform(post(URL).param("code", "handgun"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("противопоставленная проверка: оба участника, победитель и итог в JSON")
+    void opposed() throws Exception {
+        CheckResult own = new CheckResult("d10!+12", List.of("Бросок d10: 7"), 19, null, null, false, false);
+        CheckResult other = new CheckResult("d10!+12", List.of("Бросок d10: 5"), 17, null, null, false, false);
+        when(skillService.checkOpposed(1L, "handgun", null, 0, new SkillOpponent(2L, "dodge", null, null, -1)))
+                .thenReturn(new OpposedCheckResult(
+                        new OpposedCheckResult.Side("Колясик", "Пистолеты", own),
+                        new OpposedCheckResult.Side("Олежа", "Уклонение", other),
+                        OpposedCheckResult.Winner.INITIATOR, "Победа: Колясик (19 против 17)"));
+
+        mockMvc.perform(post(URL + "/opposed").param("code", "handgun").param("opponentId", "2")
+                        .param("opponentCode", "dodge").param("opponentModifier", "-1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.winner").value("INITIATOR"))
+                .andExpect(jsonPath("$.verdict").value("Победа: Колясик (19 против 17)"))
+                .andExpect(jsonPath("$.initiator.label").value("Колясик · Пистолеты"))
+                .andExpect(jsonPath("$.initiator.success").value(true))
+                .andExpect(jsonPath("$.opponent.total").value(17))
+                .andExpect(jsonPath("$.opponent.success").value(false));
+    }
+
+    @Test
+    @DisplayName("противник из другой кампании — 400 с текстом ошибки")
+    void opposedBadOpponent() throws Exception {
+        when(skillService.checkOpposed(eq(1L), eq("handgun"), any(), eq(0), any()))
+                .thenThrow(new IllegalArgumentException("Противник должен быть из той же кампании"));
+
+        mockMvc.perform(post(URL + "/opposed").param("code", "handgun").param("opponentId", "9"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string("Противник должен быть из той же кампании"));
+    }
+
+    @Test
+    @DisplayName("список навыков: все группы подряд, уровень и итог")
+    void skillOptions() throws Exception {
+        SkillSheet.Row row = new SkillSheet.Row("handgun", null, "Пистолеты", 4, 12, "REF", 8, null, null, false);
+        SkillSheet.Group group = new SkillSheet.Group("REF", null, false, List.of(), List.of(row));
+        when(skillService.getSheet(1L)).thenReturn(
+                new SkillSheet(List.of(), List.of(), null, List.of(group), false, null, null));
+
+        mockMvc.perform(get("/api/characters/1/skills"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].code").value("handgun"))
+                .andExpect(jsonPath("$[0].level").value(4))
+                .andExpect(jsonPath("$[0].total").value(12));
     }
 
     @Test

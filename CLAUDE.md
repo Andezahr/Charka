@@ -29,7 +29,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 353 теста, на 2026-10-30 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 367 тестов, на 2026-10-30 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -46,8 +46,8 @@ service/       бизнес-логика; campaign/, counter/, notes/ — под
 controller/    MVC-контроллеры, возвращают имена шаблонов или redirect
 api/           REST: CampaignExportController, SkillCheckController (проверка навыка)
 dice/         DiceExpression (разбор NdM±K), DiceResult, DiceService (броски + лог RollLog)
-check/        CheckRequest/CheckResult/CheckResolver (GenericCheckResolver: d20), CheckService (правила системы + лог)
-skill/        SkillDefinition, CharacterRole, StatValue, SkillSheet, SkillCheck, SkillProgression (контракт прокачки), SkillImprovement, SkillService (навыки, роли, проверка, прокачка)
+check/        CheckRequest/CheckResult/CheckResolver (GenericCheckResolver: d20), OpposedCheckResult, CheckService (правила системы + лог)
+skill/        SkillDefinition, CharacterRole, StatValue, SkillSheet, SkillCheck, SkillOpponent, SkillProgression (контракт прокачки), SkillImprovement, SkillService (навыки, роли, проверка, прокачка)
 system/        GameSystem, GameSystemRegistry, GenericSystem ("GENERIC"), Currency; cp2020/ — Cp2020System ("CP2020"),
                стратегии счётчиков, Cp2020Rules, Cp2020Dice (взрывной d10), Cp2020CheckResolver, Cp2020Skills (каталог, роли), Cp2020Fumbles, Cp2020SkillProgression + Cp2020IpStrategy (очки улучшения)
 dto/counter/   DTO только для счётчиков (единственный модуль, переведённый на DTO)
@@ -121,6 +121,8 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 | POST | `/character/{id}/skills/custom`, `.../custom/{sid}/delete` | свой навык (язык, эксперт, боевое искусство) |
 | POST | `/character/{id}/skills/setup` | создать недостающие счётчики системы |
 | POST | `/api/characters/{id}/skills/check` | `code` или `skillId`, `modifier`, `difficulty?` → проверка навыка, JSON (диалог, без перезагрузки) |
+| POST | `/api/characters/{id}/skills/check/opposed` | то же + `opponentId`, `opponentCode` или `opponentSkillId`, `opponentModifier` (без `opponentId` — `opponentName` и число) → противопоставленная проверка, JSON |
+| GET | `/api/characters/{id}/skills` | навыки персонажа для выбора в форме, JSON |
 | POST | `/character/{id}/roles` | `role` (несколько) → роли персонажа целиком; новая роль — по правилу системы (CP2020: 4 уровень спецспособности текущей) |
 | POST | `/character/{id}/skills/improve` | `code` или `skillId` → следующий уровень за очки системы (CP2020: IP) |
 | GET | `/character/{id}/counters` | счётчики |

@@ -49,6 +49,11 @@ public class SkillController {
         model.addAttribute("character", character);
         model.addAttribute("sheet", skillService.getSheet(characterId));
         model.addAttribute("difficultyPresets", resolver.getDifficultyPresets());
+        model.addAttribute("opponents", character.getCampaign() == null
+                ? List.of()
+                : characterService.getCampaignCharacters(character.getCampaign()).stream()
+                        .filter(other -> !other.getId().equals(characterId))
+                        .toList());
         return "skills/list";
     }
 

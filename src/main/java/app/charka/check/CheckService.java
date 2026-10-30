@@ -53,6 +53,76 @@ public class CheckService {
         return result;
     }
 
+    /**
+     * Противопоставленная проверка: оба бросают по правилам системы инициатора, у каждого своя запись в логе.
+     *
+     * @param opponent        противник из той же кампании; null — противник без листа (мастер вводит только число)
+     * @param opponentName    имя противника без листа; у противника с листом не используется
+     * @param opponentRequest бросок противника, сложность в обоих запросах не учитывается
+     */
+    @Transactional
+    public OpposedCheckResult checkOpposed(Character initiator, CheckRequest request,
+                                           Character opponent, String opponentName, CheckRequest opponentRequest) {
+        if (opponent != null) {
+            requireSameCampaign(initiator, opponent);
+        }
+        CheckResolver resolver = systemRegistry.forCharacter(initiator).getCheckResolver();
+        CheckResult own = resolver.resolve(withoutDifficulty(request), diceRoller);
+        CheckResult other = resolver.resolve(withoutDifficulty(opponentRequest), diceRoller);
+        OpposedCheckResult result = new OpposedCheckResult(
+                new OpposedCheckResult.Side(initiator.getName(), request.label(), own),
+                new OpposedCheckResult.Side(opponent != null ? opponent.getName() : opponentName, opponent != null ? opponentRequest.label() : null, other),
+                resolver.opposedWinner(own, other), null);
+        result = new OpposedCheckResult(result.initiator(), result.opponent(), result.winner(), verdict(result));
+
+        logOpposed(initiator.getCampaign(), initiator, result.initiator(), result.opponent().name(), result.verdict());
+        // противника без листа пишем как бросок мастера: вне кампании такой записи негде быть
+        if (opponent != null || initiator.getCampaign() != null) {
+            logOpposed(initiator.getCampaign(), opponent, result.opponent(), initiator.getName(), result.verdict());
+        }
+        return result;
+    }
+
+    private static void requireSameCampaign(Character initiator, Character opponent) {
+        if (opponent.getId().equals(initiator.getId())) {
+            throw new IllegalArgumentException("Нельзя проверять персонажа против него самого");
+        }
+        boolean sameCampaign = initiator.getCampaign() != null && opponent.getCampaign() != null
+                && initiator.getCampaign().getId().equals(opponent.getCampaign().getId());
+        if (!sameCampaign) {
+            throw new IllegalArgumentException("Противник должен быть из той же кампании");
+        }
+    }
+
+    private static CheckRequest withoutDifficulty(CheckRequest request) {
+        return new CheckRequest(request.label(), request.modifier(), null, request.parts(), request.skillCode());
+    }
+
+    private static String verdict(OpposedCheckResult result) {
+        OpposedCheckResult.Side initiator = result.initiator();
+        OpposedCheckResult.Side opponent = result.opponent();
+        if (result.winner() == OpposedCheckResult.Winner.NONE) {
+            return "Оба критически провалились — победителя нет";
+        }
+        boolean initiatorWon = result.winner() == OpposedCheckResult.Winner.INITIATOR;
+        OpposedCheckResult.Side winner = initiatorWon ? initiator : opponent;
+        OpposedCheckResult.Side loser = initiatorWon ? opponent : initiator;
+        if (loser.result().fumble()) {
+            return "Критический провал: " + loser.name() + ". Победа: " + winner.name();
+        }
+        if (initiator.result().total() == opponent.result().total()) {
+            return "Равенство " + winner.result().total() + " — победа защищающегося: " + winner.name();
+        }
+        return "Победа: " + winner.name() + " (" + winner.result().total() + " против " + loser.result().total() + ")";
+    }
+
+    private void logOpposed(Campaign campaign, Character character, OpposedCheckResult.Side side,
+                            String against, String verdict) {
+        String details = String.join("; ", side.result().steps()) + "; " + verdict;
+        String label = (side.skill() != null ? side.skill() : side.name()) + " vs " + against;
+        diceService.log(campaign, character, side.result().notation(), details, side.result().total(), label);
+    }
+
     private void log(Campaign campaign, Character character, CheckRequest request, CheckResult result) {
         String expression = result.difficulty() == null
                 ? result.notation()

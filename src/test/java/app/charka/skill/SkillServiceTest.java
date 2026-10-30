@@ -35,6 +35,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -537,6 +539,67 @@ class SkillServiceTest {
 
             assertThat(sheet.isPointsMissing()).isTrue();
             assertThat(row(sheet, "REF", "Драка").affordable()).isFalse();
+        }
+    }
+
+    @Nested
+    @DisplayName("Противопоставленная проверка")
+    class OpposedTests {
+
+        private final ArgumentCaptor<CheckRequest> own = ArgumentCaptor.forClass(CheckRequest.class);
+        private final ArgumentCaptor<CheckRequest> other = ArgumentCaptor.forClass(CheckRequest.class);
+
+        @Test
+        @DisplayName("противник с листом: его стат и навык, а не инициатора")
+        void characterOpponent() {
+            withStats(8, 0);
+            addSkill(10L, "handgun", null, 4);
+            Character opponent = characterIn(Cp2020System.CODE);
+            opponent.setId(2L);
+            CharacterSkill dodge = new CharacterSkill();
+            dodge.setSkillCode("handgun");
+            dodge.setLevel(2);
+            dodge.setCharacter(opponent);
+            opponent.getSkills().add(dodge);
+            when(characterRepository.findById(2L)).thenReturn(Optional.of(opponent));
+
+            skillService.checkOpposed(1L, "handgun", null, 1, new SkillOpponent(2L, "handgun", null, null, -1));
+
+            verify(checkService).checkOpposed(same(character), own.capture(), same(opponent), isNull(), other.capture());
+            assertThat(own.getValue().modifier()).isEqualTo(13); // REF 8 + навык 4 + мод. 1
+            assertThat(own.getValue().difficulty()).isNull();
+            assertThat(other.getValue().modifier()).isEqualTo(1); // статов нет: навык 2 + мод. −1
+        }
+
+        @Test
+        @DisplayName("противник без листа: только имя и число; пустое имя — «Противник»")
+        void freeOpponent() {
+            addSkill(10L, "handgun", null, 4);
+
+            skillService.checkOpposed(1L, "handgun", null, 0, new SkillOpponent(null, null, null, "  ", 12));
+
+            verify(checkService).checkOpposed(same(character), any(), isNull(), eq("Противник"), other.capture());
+            assertThat(other.getValue().modifier()).isEqualTo(12);
+        }
+
+        @Test
+        @DisplayName("противник с листом без навыка — понятная ошибка, броска нет")
+        void opponentSkillRequired() {
+            assertThatThrownBy(() -> skillService.checkOpposed(1L, "handgun", null, 0,
+                    new SkillOpponent(2L, "", null, null, 0)))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("навык противника");
+            verifyNoInteractions(checkService);
+        }
+
+        @Test
+        @DisplayName("неизвестный противник — 404-исключение")
+        void unknownOpponent() {
+            when(characterRepository.findById(9L)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> skillService.checkOpposed(1L, "handgun", null, 0,
+                    new SkillOpponent(9L, "handgun", null, null, 0)))
+                    .isInstanceOf(CharacterNotFoundException.class);
         }
     }
 

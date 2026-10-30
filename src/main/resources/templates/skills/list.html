@@ -147,14 +147,55 @@
           <ol class="alert-steps" data-check-steps></ol>
         </div>
       </div>
+      <div data-opposed-result role="status" hidden>
+        <p class="row-title" data-opposed-verdict>Победа: Олежа (19 против 17)</p>
+        <div th:each="side : ${ {'initiator', 'opponent'} }" class="dice-result" th:attr="data-side=${side}">
+          <div class="dice-total" data-check-total>17</div>
+          <div class="dice-detail">
+            <div class="row-title" data-check-title-side>Олежа · Скрытность</div>
+            <ol class="alert-steps" data-check-steps></ol>
+          </div>
+        </div>
+      </div>
       <p class="alert alert-error" data-check-error role="alert" hidden></p>
-      <label class="field">
-        <span class="label">Сложность</span>
-        <input type="number" name="difficulty" min="0" step="1" placeholder="Без сложности" autocomplete="off">
-      </label>
-      <div class="dice-quick">
-        <button th:each="d : ${difficultyPresets}" type="button" class="btn btn-sm" th:data-dc="${d.value}"
-                th:text="${d.key} + ' ' + ${d.value}">Средне 15</button>
+      <div class="dice-quick" role="group" aria-label="Против чего проверка">
+        <button type="button" class="btn btn-sm" data-check-mode="dc">Сложность</button>
+        <button type="button" class="btn btn-sm" data-check-mode="opposed">Против противника</button>
+      </div>
+      <div class="form" data-dc-fields>
+        <label class="field">
+          <span class="label">Сложность</span>
+          <input type="number" name="difficulty" min="0" step="1" placeholder="Без сложности" autocomplete="off">
+        </label>
+        <div class="dice-quick">
+          <button th:each="d : ${difficultyPresets}" type="button" class="btn btn-sm" th:data-dc="${d.value}"
+                  th:text="${d.key} + ' ' + ${d.value}">Средне 15</button>
+        </div>
+      </div>
+      <!-- Навыки выбранного персонажа подгружает app.js; у противника без листа только имя и число -->
+      <div class="form" data-opposed-fields th:attr="data-api=@{/api/characters/}" hidden>
+        <label class="field">
+          <span class="label">Противник</span>
+          <select name="opponentId" data-opponent>
+            <option th:each="o : ${opponents}" th:value="${o.id}" th:text="${o.name}">Олежа</option>
+            <option value="">Другой, без листа</option>
+          </select>
+        </label>
+        <label class="field" data-opponent-known>
+          <span class="label">Навык противника</span>
+          <select data-opponent-skill></select>
+          <input type="hidden" name="opponentCode">
+          <input type="hidden" name="opponentSkillId">
+        </label>
+        <label class="field" data-opponent-free>
+          <span class="label">Имя</span>
+          <input type="text" name="opponentName" maxlength="100" placeholder="Противник" autocomplete="off">
+        </label>
+        <label class="field">
+          <span class="label" data-opponent-mod-label>Модификатор противника</span>
+          <input type="number" name="opponentModifier" step="1" value="0">
+        </label>
+        <p class="hint hint-left">При равенстве побеждает противник: он защищается.</p>
       </div>
       <details class="dialog-more">
         <summary class="label">Доп. модификатор</summary>

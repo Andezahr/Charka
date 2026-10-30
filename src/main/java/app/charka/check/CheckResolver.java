@@ -21,6 +21,20 @@ public interface CheckResolver {
     }
 
     /**
+     * Победитель противопоставленной проверки: фамбл проигрывает любому другому броску, иначе больший итог.
+     * При равенстве побеждает защищающийся, то есть {@code opponent}.
+     */
+    default OpposedCheckResult.Winner opposedWinner(CheckResult initiator, CheckResult opponent) {
+        if (initiator.fumble() && opponent.fumble()) {
+            return OpposedCheckResult.Winner.NONE;
+        }
+        if (initiator.fumble() != opponent.fumble()) {
+            return initiator.fumble() ? OpposedCheckResult.Winner.OPPONENT : OpposedCheckResult.Winner.INITIATOR;
+        }
+        return initiator.total() > opponent.total() ? OpposedCheckResult.Winner.INITIATOR : OpposedCheckResult.Winner.OPPONENT;
+    }
+
+    /**
      * Успех, если итог не меньше сложности; без сложности — null.
      */
     static Boolean meets(int total, Integer difficulty) {

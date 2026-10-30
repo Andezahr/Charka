@@ -36,6 +36,8 @@ class CheckServiceTest {
 
     /** Последний «бросок» — для каждого кубика одно и то же значение */
     private int nextRoll;
+    /** Известные броски по порядку; пока они есть, {@link #nextRoll} не используется */
+    private final java.util.Deque<Integer> rolls = new java.util.ArrayDeque<>();
     private final List<Integer> sidesAsked = new java.util.ArrayList<>();
 
     private CheckService checkService;
@@ -45,8 +47,119 @@ class CheckServiceTest {
         GameSystemRegistry registry = new GameSystemRegistry(List.of(new GenericSystem(), new Cp2020System(null)));
         checkService = new CheckService(registry, sides -> {
             sidesAsked.add(sides);
-            return nextRoll;
+            return rolls.isEmpty() ? nextRoll : rolls.poll();
         }, diceService, characterRepository, campaignRepository);
+    }
+
+    private static Character member(Long id, String name, Campaign campaign) {
+        Character character = new Character();
+        character.setId(id);
+        character.setName(name);
+        character.setCampaign(campaign);
+        return character;
+    }
+
+    private static Campaign campaign(Long id, String system) {
+        Campaign campaign = new Campaign();
+        campaign.setId(id);
+        campaign.setSystem(system);
+        return campaign;
+    }
+
+    @Nested
+    @DisplayName("Противопоставленная проверка")
+    class OpposedTests {
+
+        private final Campaign campaign = campaign(5L, Cp2020System.CODE);
+        private final Character kolya = member(1L, "Колясик", campaign);
+        private final Character oleg = member(2L, "Олежа", campaign);
+
+        private OpposedCheckResult roll(int own, int other, int ownModifier, int otherModifier) {
+            rolls.addAll(List.of(own, other));
+            return checkService.checkOpposed(kolya, new CheckRequest("Пистолеты", ownModifier, 15),
+                    oleg, null, new CheckRequest("Уклонение", otherModifier, 20));
+        }
+
+        @Test
+        @DisplayName("больший итог побеждает, сложность запросов не учитывается")
+        void higherWins() {
+            OpposedCheckResult result = roll(7, 5, 12, 12);
+
+            assertThat(result.winner()).isEqualTo(OpposedCheckResult.Winner.INITIATOR);
+            assertThat(result.verdict()).isEqualTo("Победа: Колясик (19 против 17)");
+            assertThat(result.initiator().result().difficulty()).isNull();
+            assertThat(result.initiator().result().success()).isNull();
+            assertThat(result.opponent().title()).isEqualTo("Олежа · Уклонение");
+        }
+
+        @Test
+        @DisplayName("при равенстве побеждает защищающийся")
+        void tieGoesToOpponent() {
+            OpposedCheckResult result = roll(5, 7, 12, 10);
+
+            assertThat(result.winner()).isEqualTo(OpposedCheckResult.Winner.OPPONENT);
+            assertThat(result.verdict()).isEqualTo("Равенство 17 — победа защищающегося: Олежа");
+        }
+
+        @Test
+        @DisplayName("фамбл проигрывает даже при большем итоге")
+        void fumbleLoses() {
+            rolls.addAll(List.of(1, 3, 2));
+
+            OpposedCheckResult result = checkService.checkOpposed(kolya, new CheckRequest("Пистолеты", 20, null),
+                    oleg, null, new CheckRequest("Уклонение", 0, null));
+
+            assertThat(result.winner()).isEqualTo(OpposedCheckResult.Winner.OPPONENT);
+            assertThat(result.verdict()).isEqualTo("Критический провал: Колясик. Победа: Олежа");
+        }
+
+        @Test
+        @DisplayName("оба фамбла — победителя нет")
+        void bothFumble() {
+            rolls.addAll(List.of(1, 3, 1, 3));
+
+            OpposedCheckResult result = checkService.checkOpposed(kolya, new CheckRequest("Пистолеты", 5, null),
+                    oleg, null, new CheckRequest("Уклонение", 5, null));
+
+            assertThat(result.winner()).isEqualTo(OpposedCheckResult.Winner.NONE);
+        }
+
+        @Test
+        @DisplayName("в логе запись у каждого участника: подпись с соперником, итог в расшифровке")
+        void loggedForBoth() {
+            roll(7, 5, 12, 12);
+
+            verify(diceService).log(same(campaign), same(kolya), eq("d10!+12"),
+                    eq("Бросок d10: 7; Модификатор +12 → 19; Победа: Колясик (19 против 17)"), eq(19), eq("Пистолеты vs Олежа"));
+            verify(diceService).log(same(campaign), same(oleg), eq("d10!+12"),
+                    eq("Бросок d10: 5; Модификатор +12 → 17; Победа: Колясик (19 против 17)"), eq(17), eq("Уклонение vs Колясик"));
+        }
+
+        @Test
+        @DisplayName("противник без листа — запись мастера с его именем")
+        void freeOpponent() {
+            rolls.addAll(List.of(7, 5));
+
+            OpposedCheckResult result = checkService.checkOpposed(kolya, new CheckRequest("Пистолеты", 12, null),
+                    null, "Бандит", new CheckRequest("Бандит", 8, null));
+
+            assertThat(result.opponent().title()).isEqualTo("Бандит");
+            verify(diceService).log(same(campaign), isNull(), eq("d10!+8"), anyString(), eq(13), eq("Бандит vs Колясик"));
+        }
+
+        @Test
+        @DisplayName("противник из другой кампании или сам персонаж — ошибка, в лог ничего")
+        void wrongOpponent() {
+            Character stranger = member(3L, "Чужой", campaign(6L, Cp2020System.CODE));
+
+            assertThatThrownBy(() -> checkService.checkOpposed(kolya, new CheckRequest("А", 0, null),
+                    stranger, null, new CheckRequest("Б", 0, null)))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> checkService.checkOpposed(kolya, new CheckRequest("А", 0, null),
+                    kolya, null, new CheckRequest("Б", 0, null)))
+                    .isInstanceOf(IllegalArgumentException.class);
+            verifyNoInteractions(diceService);
+        }
     }
 
     private Character characterIn(String system) {
