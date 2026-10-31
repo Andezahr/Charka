@@ -79,7 +79,9 @@ class NpcServiceTest {
     }
 
     private static List<Item> items(Character character) {
-        return character.getInventories().stream().flatMap(inventory -> inventory.getContent().stream()).toList();
+        // кибер бросается случайно: здесь только снаряжение
+        return character.getInventories().stream().flatMap(inventory -> inventory.getContent().stream())
+                .filter(item -> !Cp2020ItemTypes.CYBER.equals(item.getType())).toList();
     }
 
     @Test

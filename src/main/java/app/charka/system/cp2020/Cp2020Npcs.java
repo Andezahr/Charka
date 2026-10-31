@@ -10,6 +10,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import static app.charka.system.cp2020.Cp2020StatsStrategy.*;
 
@@ -28,6 +29,20 @@ final class Cp2020Npcs {
 
     /** Прибавка к броску снаряжения: Соло +3, Кочевник и Коп +2, прочие 0 (с. 30) */
     private static final int SOLO_GEAR_BONUS = 3;
+    private static final int SOLO_CYBER_ROLLS = 6;
+    private static final int OTHER_CYBER_ROLLS = 3;
+    private static final int CYBER_REROLLS = 10;
+    /** Таблица с. 30; базовые модули и процессор идут вместе с тем, что без них не работает */
+    private static final Map<Integer, List<String>> CYBER_ROWS = Map.of(
+            1, List.of("Cyberoptic"),
+            2, List.of("Cyberarm", "Popup Gun"),
+            3, List.of("Cyberaudio"),
+            4, List.of("Big Knucks"),
+            5, List.of("Rippers"),
+            6, List.of("Implanted Fangs (Vampires)"),
+            7, List.of("Slice N' Dice"),
+            8, List.of(Cp2020Cyberware.PROCESSOR, "Kerenzikov +1"),
+            9, List.of(Cp2020Cyberware.PROCESSOR, Cp2020Cyber.SPEEDWARE));
     private static final int COP_GEAR_BONUS = 2;
 
     /**
@@ -99,7 +114,31 @@ final class Cp2020Npcs {
         return new NpcSheet(Set.of(template.role()),
                 Map.of(Cp2020StatsStrategy.TYPE, stats),
                 skills,
-                List.of(new NpcSheet.Gear(gear.armor(), WEAR), new NpcSheet.Gear(gear.weapon(), null)));
+                Stream.concat(Stream.of(new NpcSheet.Gear(gear.armor(), WEAR), new NpcSheet.Gear(gear.weapon(), null)), rollCyber(template, dice).stream()).toList());
+    }
+
+    /**
+     * Кибер (с. 30): 1D10, у Соло 6 раз, у прочих 3, повтор перебрасывается; 10 — ничего.
+     * HOMEBREW: выданному при создании человечность не снижается и хирургии нет: книга о них на этом шаге молчит; нейропроцессор идёт с ускорителем.
+     */
+    private static List<NpcSheet.Gear> rollCyber(Template template, DiceRoller dice) {
+        int times = "solo".equals(template.role()) ? SOLO_CYBER_ROLLS : OTHER_CYBER_ROLLS;
+        Set<Integer> rolled = new java.util.LinkedHashSet<>();
+        for (int i = 0; i < times; i++) {
+            int roll = dice.roll(10);
+            for (int retry = 0; retry < CYBER_REROLLS && roll != 10 && rolled.contains(roll); retry++) {
+                roll = dice.roll(10);
+            }
+            rolled.add(roll);
+        }
+        List<NpcSheet.Gear> gear = new ArrayList<>();
+        rolled.stream().filter(CYBER_ROWS::containsKey).forEach(roll -> CYBER_ROWS.get(roll).forEach(name -> {
+            NpcSheet.Gear part = new NpcSheet.Gear(Cp2020Cyberware.keyOf(name), Cp2020Cyber.GRANT);
+            if (!gear.contains(part)) {
+                gear.add(part);
+            }
+        }));
+        return gear;
     }
 
     /** Лучшие броски — первым статам шаблона: книга велит расставить их самому */

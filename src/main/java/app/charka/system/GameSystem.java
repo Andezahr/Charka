@@ -7,6 +7,7 @@ import app.charka.check.GenericCheckResolver;
 import app.charka.encounter.CombatCard;
 import app.charka.encounter.Initiative;
 import app.charka.encounter.InitiativeDeclaration;
+import app.charka.item.InstalledBlock;
 import app.charka.item.CatalogItem;
 import app.charka.item.ItemAction;
 import app.charka.item.ItemAttachments;
@@ -209,6 +210,20 @@ public interface GameSystem {
      */
     default List<InitiativeDeclaration> getInitiativeDeclarations() {
         return List.of();
+    }
+
+    /**
+     * То же для этого участника: у него может быть своё, например, имплант.
+     */
+    default List<InitiativeDeclaration> getInitiativeDeclarations(Character character) {
+        return getInitiativeDeclarations();
+    }
+
+    /**
+     * Что вживлено в персонажа; null — у системы такого нет.
+     */
+    default InstalledBlock getInstalled(Character character) {
+        return null;
     }
 
     /**

@@ -86,7 +86,7 @@ final class Cp2020ArmorActions {
     }
 
     /** Причина, почему предмет нельзя надеть; null — можно */
-    private static String wearBlockedReason(Item item) {
+    static String wearBlockedReason(Item item) {
         Character owner = owner(item);
         Counter armor = owner.getCounters().stream()
                 .filter(counter -> Cp2020ArmorStrategy.TYPE.equals(counter.getType()))

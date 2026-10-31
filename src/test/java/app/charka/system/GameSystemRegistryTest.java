@@ -19,7 +19,7 @@ class GameSystemRegistryTest {
 
     @BeforeEach
     void setUp() {
-        registry = new GameSystemRegistry(List.of(new GenericSystem(), new Cp2020System(null)));
+        registry = new GameSystemRegistry(List.of(new GenericSystem(), new Cp2020System(null, null)));
     }
 
     @Test

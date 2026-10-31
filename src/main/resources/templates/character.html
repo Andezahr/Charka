@@ -93,6 +93,8 @@
         </div>
       </section>
 
+      <section th:if="${installed != null}" th:replace="~{fragments/items :: installed(${installed}, ${character})}"></section>
+
       <!-- ИНВЕНТАРИ -->
       <section class="card" id="inventories">
         <div class="card-head">
@@ -120,7 +122,7 @@
             <div class="inventory-head" data-editable>
               <div class="inventory-name">
                 🎒 <span th:text="${inv.name}">Инвентарь</span>
-                <span class="badge" th:text="${#lists.size(inv.content)}">0</span>
+                <span class="badge" th:text="${#lists.size(inv.content) - installedCounts.getOrDefault(inv.id, 0L)}">0</span>
               </div>
               <div class="row-actions">
                 <button type="button" class="btn btn-sm btn-primary" th:attr="data-add-item=${inv.id},data-add-item-name=${inv.name}">＋ Добавить</button>

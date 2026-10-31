@@ -35,7 +35,7 @@ class CampaignTimelineServiceTest {
     @BeforeEach
     void setUp() {
         GameSystemRegistry registry = new GameSystemRegistry(
-                List.of(new GenericSystem(), new Cp2020System(healthCounterService)));
+                List.of(new GenericSystem(), new Cp2020System(healthCounterService, null)));
         timelineService = new CampaignTimelineService(chronicleService, campaignService, registry);
     }
 

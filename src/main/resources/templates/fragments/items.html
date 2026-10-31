@@ -206,7 +206,7 @@
 </th:block>
 
 <!-- Кнопка действия над предметом -->
-<form th:fragment="action-form(action, url, back)" th:action="${url}" method="post" class="item-action">
+<form th:fragment="action-form(action, url, back)" th:action="${url}" method="post" class="item-action" th:attr="data-confirm=${action.confirm}">
   <input th:if="${back != null}" type="hidden" name="returnTo" th:value="${back}">
   <input th:if="${returnCampaign != null}" type="hidden" name="returnCampaign" th:value="${returnCampaign}">
   <select th:unless="${#lists.isEmpty(action.sources)}" name="source" required aria-label="Откуда взять патроны">
@@ -218,6 +218,37 @@
   <button type="submit" class="btn btn-sm" th:disabled="${action.unavailable != null}"
           th:text="${action.label}">Выстрел</button>
 </form>
+
+<!-- Вживлённое: одной плотной группой фишек, по нажатию — меню. Строк нет: при десяти имплантах блок занимает две-три строчки -->
+<section th:fragment="installed(block, character)" class="card installed" id="installed">
+  <div class="installed-head">
+    <h2 class="card-title"><span class="dot pink"></span><span th:text="${block.title}">Киберware</span></h2>
+    <span th:if="${block.summary != null}" class="installed-summary" th:text="${block.summary}">Человечность 52/60 · EMP 5</span>
+    <button th:unless="${#lists.isEmpty(character.inventories)}" type="button" class="btn btn-sm"
+            th:attr="data-add-item=${character.inventories[0].id},data-add-item-name=${character.inventories[0].name},data-add-tab-open=${block.addType},data-add-then=${block.addAction},data-add-confirm=${block.addConfirm},data-add-title='Установить: ' + ${block.title}">＋</button>
+  </div>
+  <div th:unless="${#lists.isEmpty(block.rows)}" class="installed-chips">
+    <details th:each="row : ${block.rows}" class="item-chip-menu" data-menu th:id="'item-' + ${row.item.id}">
+      <summary class="item-chip" th:text="${row.chip}">Rippers · 1D6+3</summary>
+      <div class="item-chip-options installed-menu">
+        <p th:each="line : ${row.details}" class="item-note" th:text="${line}">Лезвия в руках</p>
+        <th:block th:each="action : ${row.actions}">
+          <form th:replace="~{fragments/items :: action-form(${action}, @{'/character/' + ${character.id} + '/inventories/' + ${row.item.inventory.id} + '/items/' + ${row.item.id} + '/action/' + ${action.code}}, null)}"></form>
+        </th:block>
+      </div>
+    </details>
+  </div>
+  <th:block th:each="row : ${block.rows}" th:if="${actionItemId == row.item.id}">
+    <div th:if="${actionResult != null}" class="alert alert-success item-result" role="status">
+      <span class="alert-text" th:text="${actionResult}">Установлен</span>
+      <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+    </div>
+    <div th:if="${actionError != null}" class="alert alert-error item-result" role="alert">
+      <span class="alert-text" th:text="${actionError}">Сначала установите</span>
+      <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+    </div>
+  </th:block>
+</section>
 
 <!-- Окно «Добавить» одно на страницу: инвентарь подставляет кнопка, которая его открыла ([data-add-item] в app.js).
      У каждого типа предмета своя вкладка; если тип один, вкладок нет. -->
@@ -235,6 +266,7 @@
        th:with="groups=${itemCatalog[t.code]},suggested=${suggestedCatalog[t.code]}">
     <form th:if="${groups != null}" method="post" data-add-form="catalog" class="add-catalog">
       <input type="hidden" name="anchor" data-add-anchor>
+      <input type="hidden" name="thenAction" data-add-then>
       <div class="form-row">
         <input type="search" class="grow" placeholder="Поиск" autocomplete="off" aria-label="Поиск по справочнику" data-add-search>
         <input type="number" name="quantity" class="narrow" value="1" min="1" required aria-label="Количество" title="Сколько добавить">

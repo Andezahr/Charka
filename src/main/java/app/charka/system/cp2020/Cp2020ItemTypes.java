@@ -58,6 +58,21 @@ public final class Cp2020ItemTypes {
     /** Оружие заклинило; состояние, не поле формы */
     public static final String JAMMED = "jammed";
 
+    public static final String CYBER = "CP2020_CYBER";
+    public static final String SURGERY = "surgery";
+    /** Потеря человечности за установку, как в таблице: «2D6», «1D6/2», «0.5» */
+    public static final String HUMANITY_COST = "humanityCost";
+    /** Сколько потеряно на самом деле; состояние, не поле формы */
+    public static final String HUMANITY_LOST = "humanityLost";
+    /** Нужен установленный базовый модуль: названия через «|» */
+    public static final String REQUIRES = "requires";
+    public static final String BODY_BONUS = "bodyBonus";
+    public static final String INITIATIVE = "initiative";
+    public static final String STRENGTH = "strength";
+    public static final String SPEEDWARE = "speedware";
+    /** Слой брони без штрафа к REF (Skinweave, с. 101) */
+    public static final String NO_LAYER_PENALTY = "noLayerPenalty";
+
     public static final String ARMOR = "CP2020_ARMOR";
     public static final String ARMOR_SP = "sp";
     public static final String ENCUMBRANCE = "ev";
@@ -161,7 +176,37 @@ public final class Cp2020ItemTypes {
             Cp2020ItemTypes::checkArmor,
             Stream.concat(Stream.of(WORN), Arrays.stream(Cp2020Location.values()).map(Cp2020ItemTypes::wearKey)).toList());
 
-    public static final List<ItemTypeDefinition> ALL = List.of(WEAPON_TYPE, ARMOR_TYPE, ItemTypeDefinition.GENERIC, MAGAZINE_TYPE, AMMO_TYPE);
+    /**
+     * Киберware (с. 76–79). Что нужно за столом, задают поля «Дополнительно»; надет ли и что потеряно — состояние.
+     */
+    public static final ItemTypeDefinition CYBER_TYPE = new ItemTypeDefinition(CYBER, "Киберware",
+            Stream.concat(
+                    Stream.of(ItemField.choice(SURGERY, "Хирургия", true,
+                                    new Option("N", "Negligible: 1 час, 1 урон"),
+                                    new Option("M", "Minor: 2 часа, 1D6+1"),
+                                    new Option("MA", "Major: 4 часа, 2D6+1"),
+                                    new Option("CR", "Critical: 6 часов, 3D6+1")),
+                            ItemField.text(HUMANITY_COST, "Потеря человечности"),
+                            ItemField.text(REQUIRES, "Нужен модуль").asAdvanced(),
+                            ItemField.number(BODY_BONUS, "К BODY", "BODY +", "", 1, 10).asAdvanced(),
+                            ItemField.number(INITIATIVE, "К инициативе", "иниц. +", "", 1, 10).asAdvanced(),
+                            ItemField.number(STRENGTH, "Сила рамы", "сила ", "", 1, 30).asAdvanced(),
+                            ItemField.flag(SPEEDWARE, "Включается в бою: +3 к инициативе", "").asAdvanced(),
+                            ItemField.text("damage", "Урон в ближнем бою").asAdvanced(),
+                            ItemField.choice(EDGE, "Лезвие", false, new Option("BLADE", "Клинок"), new Option("MONO", "Моно-лезвие")).asAdvanced(),
+                            ItemField.flag(ARMOR_PIERCING, "Бронебойное", "AP").asAdvanced(),
+                            ItemField.number(ARMOR_SP, "SP", "SP ", "", 0, 60).asAdvanced(),
+                            ItemField.number(ENCUMBRANCE, "Штраф EV", "EV ", "", 0, 10).asAdvanced(),
+                            ItemField.choice(HARDNESS, "Жёсткость", false, new Option(SOFT, "Мягкая"), new Option(HARD, "Жёсткая")).asAdvanced(),
+                            ItemField.flag(NO_LAYER_PENALTY, "Слой без штрафа к REF", "").asAdvanced()),
+                    Arrays.stream(Cp2020Location.values())
+                            .map(location -> ItemField.flag(zoneKey(location), location.getLabel(), location.getShortLabel()).asAdvanced()))
+                    .toList(),
+            values -> {
+            },
+            Stream.concat(Stream.of(WORN, HUMANITY_LOST), Arrays.stream(Cp2020Location.values()).map(Cp2020ItemTypes::wearKey)).toList()).inSection("Киберware");
+
+    public static final List<ItemTypeDefinition> ALL = List.of(WEAPON_TYPE, ARMOR_TYPE, ItemTypeDefinition.GENERIC, MAGAZINE_TYPE, AMMO_TYPE, CYBER_TYPE);
 
     private Cp2020ItemTypes() {
     }

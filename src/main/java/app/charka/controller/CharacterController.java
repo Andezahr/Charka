@@ -7,6 +7,7 @@ import app.charka.attack.AttackSource;
 import app.charka.skill.StatValue;
 import app.charka.dice.DiceService;
 import app.charka.item.CatalogItem;
+import app.charka.item.InstalledBlock;
 import app.charka.item.ItemAttachments;
 import app.charka.item.ItemSection;
 import app.charka.item.ItemTypeDefinition;
@@ -30,6 +31,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -73,12 +75,19 @@ public class CharacterController {
         model.addAttribute("itemSummaries", character.getInventories().stream()
                 .flatMap(inventory -> inventory.getContent().stream())
                 .collect(Collectors.toMap(Item::getId, system::getItemSummary)));
+        InstalledBlock installed = system.getInstalled(character);
+        model.addAttribute("installed", installed);
+        Set<Long> installedIds = installed == null ? Set.of()
+                : installed.rows().stream().map(row -> row.item().getId()).collect(Collectors.toSet());
+        // вживлённое не лежит в рюкзаке: в числе предметов инвентаря его нет
+        model.addAttribute("installedCounts", installed == null ? Map.of()
+                : installed.rows().stream().collect(Collectors.groupingBy(row -> row.item().getInventory().getId(), Collectors.counting())));
         Map<Long, ItemAttachments> attachments = character.getInventories().stream()
                 .flatMap(inventory -> inventory.getContent().stream())
                 .collect(Collectors.toMap(Item::getId, system::getItemAttachments));
         model.addAttribute("itemAttachments", attachments);
         model.addAttribute("inventorySections", character.getInventories().stream()
-                .collect(Collectors.toMap(Inventory::getId, inventory -> ItemSection.of(inventory, system.getItemTypes(), attachments))));
+                .collect(Collectors.toMap(Inventory::getId, inventory -> ItemSection.of(inventory, system.getItemTypes(), attachments, installedIds))));
         AttackRules attackRules = system.getAttackRules();
         if (attackRules != null) {
             Map<Long, AttackForm> attackForms = new HashMap<>();

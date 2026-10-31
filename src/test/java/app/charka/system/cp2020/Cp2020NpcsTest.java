@@ -47,7 +47,7 @@ class Cp2020NpcsTest {
     void stats() {
         // первый стат: 6 + 6 = 12 — переброс, затем 5 + 5 = 10; семь раз 2 + 2; последний 1 + 1; кубик снаряжения
         Deque<Integer> queue = new ArrayDeque<>(List.of(6, 6, 5, 5, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1));
-        Map<String, Integer> stats = Cp2020Npcs.roll("bandit", false, sides -> queue.removeFirst())
+        Map<String, Integer> stats = Cp2020Npcs.roll("bandit", false, sides -> queue.isEmpty() ? 10 : queue.removeFirst())
                 .attributes().get(Cp2020StatsStrategy.TYPE);
 
         assertThat(stats).hasSize(9).containsEntry("ref", 10).containsEntry("attr", 2);
@@ -64,9 +64,29 @@ class Cp2020NpcsTest {
     @DisplayName("Снаряжение: один бросок на броню и оружие с прибавкой роли, не выше 10-й строки")
     void gear(String template, int roll, String armor, String weapon) {
         Deque<Integer> queue = rolls(1, roll);
-        NpcSheet sheet = Cp2020Npcs.roll(template, false, sides -> queue.removeFirst());
+        NpcSheet sheet = Cp2020Npcs.roll(template, false, sides -> queue.isEmpty() ? 10 : queue.removeFirst());
 
         assertThat(sheet.items()).containsExactly(new NpcSheet.Gear(armor, "WEAR"), new NpcSheet.Gear(weapon, null));
+    }
+
+    @Test
+    @DisplayName("Кибер (с. 30): у Соло 6 бросков, у прочих 3, повтор перебрасывается, с модулем и процессором")
+    void cyber() {
+        // статы, снаряжение, затем Rippers, повтор Rippers → Kerenzikov, 10 — ничего
+        Deque<Integer> queue = rolls(1, 1, 5, 5, 8, 10);
+        NpcSheet cop = Cp2020Npcs.roll("cop", false, sides -> queue.isEmpty() ? 10 : queue.removeFirst());
+
+        assertThat(cop.items()).extracting(NpcSheet.Gear::catalogKey)
+                .contains("cyber_rippers", "cyber_neural_processor", "cyber_kerenzikov_1");
+        assertThat(cop.items().stream().filter(gear -> gear.catalogKey().startsWith("cyber_")))
+                .allMatch(gear -> "GRANT".equals(gear.action()));
+
+        int[] calls = {0};
+        Cp2020Npcs.roll("merc", false, sides -> {
+            calls[0]++;
+            return 3;
+        });
+        assertThat(calls[0]).isGreaterThan(18 + 1 + 6);
     }
 
     @Test
@@ -74,9 +94,9 @@ class Cp2020NpcsTest {
     void gearInCatalog() {
         for (int roll = 1; roll <= 10; roll++) {
             Deque<Integer> queue = rolls(1, roll);
-            NpcSheet sheet = Cp2020Npcs.roll("bandit", false, sides -> queue.removeFirst());
+            NpcSheet sheet = Cp2020Npcs.roll("bandit", false, sides -> queue.isEmpty() ? 10 : queue.removeFirst());
             assertThat(sheet.items()).allSatisfy(gear -> assertThat(
-                    java.util.stream.Stream.concat(Cp2020Weapons.CATALOG.stream(), Cp2020Armors.CATALOG.stream()))
+                    java.util.stream.Stream.of(Cp2020Weapons.CATALOG, Cp2020Armors.CATALOG, Cp2020Cyberware.CATALOG).flatMap(List::stream))
                     .anyMatch(row -> row.key().equals(gear.catalogKey())));
         }
     }
@@ -85,11 +105,11 @@ class Cp2020NpcsTest {
     @DisplayName("Обычный NPC: только пакет; продвинутый: ещё 2D10 на 5 других навыков")
     void advanced() {
         Deque<Integer> plain = rolls(1, 5);
-        assertThat(Cp2020Npcs.roll("booster", false, sides -> plain.removeFirst()).skills()).hasSize(10);
+        assertThat(Cp2020Npcs.roll("booster", false, sides -> plain.isEmpty() ? 10 : plain.removeFirst()).skills()).hasSize(10);
 
         // после статов 2D10 навыков (7 + 6 = 13), потом снаряжение
         Deque<Integer> queue = rolls(1, 7, 6, 5);
-        Map<String, Integer> skills = Cp2020Npcs.roll("booster", true, sides -> queue.removeFirst()).skills();
+        Map<String, Integer> skills = Cp2020Npcs.roll("booster", true, sides -> queue.isEmpty() ? 10 : queue.removeFirst()).skills();
 
         assertThat(skills).hasSize(15).containsEntry("motorcycle", 3).containsEntry("hide_evade", 2);
     }

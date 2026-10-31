@@ -41,6 +41,8 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
     public static final String ARMOR_WEAR = "armorWear";
 
     public static final String STUNNED = "stunned";
+    /** Больше 0 — BTM не вычитается: урон операции */
+    public static final String NO_BTM = "noBtm";
     /** SP укрытия цели: {@link Cp2020Cover} */
     public static final String COVER_SP = "coverSp";
     /** Больше 0 — цель бросает спасбросок от яда, успех вдвое снижает урон */
@@ -239,7 +241,7 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
         }
 
         // 3. Телосложение
-        int btm = btm(body(context));
+        int btm = request.extra(NO_BTM, 0) > 0 ? 0 : btm(body(context));
         int afterBtm = damage - btm;
         damage = Math.max(1, afterBtm);
         event.step("BTM −" + btm + " → " + damage + (afterBtm < 1 ? " (минимум 1)" : ""));

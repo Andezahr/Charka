@@ -6,6 +6,8 @@ import app.charka.check.CheckRequest;
 import app.charka.check.CheckResolver;
 import app.charka.encounter.CombatCard;
 import app.charka.encounter.InitiativeDeclaration;
+import app.charka.item.InstalledBlock;
+import app.charka.model.counters.strategy.health.DiceRoller;
 import app.charka.encounter.Initiative;
 import app.charka.item.CatalogItem;
 import app.charka.item.ItemAction;
@@ -61,9 +63,10 @@ public class Cp2020System implements GameSystem {
     private static final Cp2020ArmorStrategy ARMOR = new Cp2020ArmorStrategy();
 
     private static final List<CatalogItem> ITEM_CATALOG =
-            Stream.of(Cp2020Weapons.CATALOG, Cp2020Magazines.CATALOG, Cp2020Ammo.CATALOG, Cp2020Armors.CATALOG).flatMap(List::stream).toList();
+            Stream.of(Cp2020Weapons.CATALOG, Cp2020Magazines.CATALOG, Cp2020Ammo.CATALOG, Cp2020Armors.CATALOG, Cp2020Cyberware.CATALOG).flatMap(List::stream).toList();
 
     private final HealthCounterService healthCounterService;
+    private final DiceRoller dice;
 
     @Override
     public String getCode() {
@@ -141,6 +144,9 @@ public class Cp2020System implements GameSystem {
 
     @Override
     public List<ItemAction> getItemActions(Item item) {
+        if (Cp2020Cyber.isCyber(item)) {
+            return Cp2020Cyber.actions(item);
+        }
         return Cp2020WornArmor.isArmor(item) ? Cp2020ArmorActions.actions(item) : Cp2020WeaponActions.actions(item);
     }
 
@@ -167,6 +173,9 @@ public class Cp2020System implements GameSystem {
 
     @Override
     public String performItemAction(Item item, String action, Map<String, String> params) {
+        if (Cp2020Cyber.isCyber(item)) {
+            return Cp2020Cyber.perform(item, action, dice, healthCounterService);
+        }
         return Cp2020WornArmor.isArmor(item) ? Cp2020ArmorActions.perform(item, action) : Cp2020WeaponActions.perform(item, action, params);
     }
 
@@ -219,6 +228,21 @@ public class Cp2020System implements GameSystem {
     @Override
     public List<InitiativeDeclaration> getInitiativeDeclarations() {
         return List.of(new InitiativeDeclaration("FAST_DRAW", "Выхватывает", 3, "fast_draw"));
+    }
+
+    /** Sandevistan (с. 76): команда, раунд ожидания, затем +3 на 5 раундов */
+    @Override
+    public List<InitiativeDeclaration> getInitiativeDeclarations(Character character) {
+        List<InitiativeDeclaration> declarations = new ArrayList<>(getInitiativeDeclarations());
+        if (Cp2020Cyber.hasSpeedware(character)) {
+            declarations.add(new InitiativeDeclaration("SPEEDWARE", Cp2020Cyber.SPEEDWARE, 3, null, 5));
+        }
+        return declarations;
+    }
+
+    @Override
+    public InstalledBlock getInstalled(Character character) {
+        return Cp2020Cyber.block(character);
     }
 
     @Override

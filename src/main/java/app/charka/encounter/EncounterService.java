@@ -46,6 +46,7 @@ import java.util.stream.Collectors;
 public class EncounterService {
 
     private static final String CUSTOM_SKILL = "custom:";
+    private static final String INITIATIVE_BONUS = "initiativeBonus";
 
     private final EncounterRepository encounterRepository;
     private final CampaignRepository campaignRepository;
@@ -143,7 +144,7 @@ public class EncounterService {
         List<Character> fighters = ordered(encounter).stream().map(EncounterParticipant::getCharacter).toList();
         List<EncounterView.Row> rows = ordered(encounter).stream().map(participant -> {
             Character character = participant.getCharacter();
-            return new EncounterView.Row(participant, character, declaration(participant, system), system.getInitiativeDeclarations(), checks(character, system),
+            return new EncounterView.Row(participant, character, declaration(participant, system), available(participant, system), checks(character, system),
                     system.getCombatCard(character), participant == current,
                     weapons(character, system), targets(character, fighters, system), attackService.pendingBlasts(character.getId()),
                     List.copyOf(participant.getEffects()), abilities(character, system));
@@ -176,8 +177,19 @@ public class EncounterService {
         return weapons;
     }
 
+    /** Уже включённое не предлагается ещё раз */
+    private static List<InitiativeDeclaration> available(EncounterParticipant participant, GameSystem system) {
+        return system.getInitiativeDeclarations(participant.getCharacter()).stream()
+                .filter(declaration -> participant.getEffects().stream().noneMatch(effect -> effect.getLabel().equals(effectLabel(declaration))))
+                .toList();
+    }
+
+    private static String effectLabel(InitiativeDeclaration declaration) {
+        return declaration.label() + " +" + declaration.bonus();
+    }
+
     private static InitiativeDeclaration declaration(EncounterParticipant participant, GameSystem system) {
-        return system.getInitiativeDeclarations().stream()
+        return system.getInitiativeDeclarations(participant.getCharacter()).stream()
                 .filter(declaration -> declaration.code().equals(participant.getDeclaration()))
                 .findFirst().orElse(null);
     }
@@ -323,12 +335,22 @@ public class EncounterService {
     public void declare(Long campaignId, Long participantId, String code) {
         EncounterParticipant participant = participant(campaignId, participantId);
         Encounter encounter = participant.getEncounter();
-        InitiativeDeclaration declaration = system(encounter.getCampaign()).getInitiativeDeclarations().stream()
+        InitiativeDeclaration declaration = available(participant, system(encounter.getCampaign())).stream()
                 .filter(known -> known.code().equals(code))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Такого объявления нет: " + code));
         if (encounter.getParticipants().stream().anyMatch(EncounterParticipant::isDone)) {
             throw new IllegalArgumentException("Это объявляют в начале раунда, пока никто не походил");
+        }
+        if (declaration.rounds() > 0) {
+            // на этот раунд ничего не меняет: прибавка начнётся со следующего броска инициативы, раунд + срок
+            CombatEffect effect = new CombatEffect();
+            effect.setParticipant(participant);
+            effect.setLabel(effectLabel(declaration));
+            effect.setRoundsLeft(declaration.rounds() + 1);
+            effect.getData().put(INITIATIVE_BONUS, String.valueOf(declaration.bonus()));
+            participant.getEffects().add(effect);
+            return;
         }
         if (participant.getDeclaration() != null) {
             throw new IllegalArgumentException("Уже объявлено в этом раунде");
@@ -500,8 +522,11 @@ public class EncounterService {
 
     private void roll(EncounterParticipant participant, GameSystem system, RoundDice dice) {
         Initiative initiative = system.rollInitiative(participant.getCharacter(), dice.of(participant.getCharacter()));
-        participant.setInitiative(initiative.total());
-        participant.setInitiativeDetails(initiative.details());
+        int bonus = participant.getEffects().stream()
+                .mapToInt(effect -> Integer.parseInt(effect.getData().getOrDefault(INITIATIVE_BONUS, "0")))
+                .sum();
+        participant.setInitiative(initiative.total() + bonus);
+        participant.setInitiativeDetails(initiative.details() + (bonus != 0 ? " + эффекты " + bonus : ""));
     }
 
     /**

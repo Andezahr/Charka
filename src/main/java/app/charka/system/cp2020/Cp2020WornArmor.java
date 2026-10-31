@@ -39,8 +39,9 @@ final class Cp2020WornArmor {
         return Cp2020ItemTypes.ARMOR.equals(item.getType());
     }
 
+    /** Надета; киберware с SP — тоже слой (с. 101) */
     static boolean isWorn(Item item) {
-        return isArmor(item) && item.getProperties().containsKey(Cp2020ItemTypes.WORN);
+        return (isArmor(item) || (Cp2020Cyber.isCyber(item) && sp(item) > 0)) && item.getProperties().containsKey(Cp2020ItemTypes.WORN);
     }
 
     static boolean covers(Item item, Cp2020Location location) {

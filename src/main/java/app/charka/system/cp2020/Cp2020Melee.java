@@ -320,9 +320,11 @@ final class Cp2020Melee {
     /** Прибавка от BODY и уровня боевого искусства; что прибавлено, идёт в расчёт */
     private static int damageBonus(AttackContext context, List<String> steps) {
         StatValue body = context.stats(context.attacker()).get(Cp2020StatsStrategy.BODY);
-        int bonus = body == null ? 0 : Cp2020Rules.meleeDamageBonus(body.value());
+        // Linear Frame (с. 76–79): сила вместо BODY, если она больше
+        int power = Math.max(body == null ? 0 : body.value(), Cp2020Cyber.strength(context.attacker()));
+        int bonus = power == 0 ? 0 : Cp2020Rules.meleeDamageBonus(power);
         if (bonus != 0) {
-            steps.add("Телосложение BODY " + body.value() + ": " + (bonus > 0 ? "+" : "") + bonus);
+            steps.add("Сила " + power + ": " + (bonus > 0 ? "+" : "") + bonus);
         }
         String skill = chosenSkill(context.attacker(), context.request(), context.item() == null ? BRAWL_SKILLS : WEAPON_SKILLS, move(context.request()));
         if (Cp2020MartialArts.isStyle(skill)) {

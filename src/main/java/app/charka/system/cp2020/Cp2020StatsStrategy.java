@@ -163,6 +163,7 @@ public class Cp2020StatsStrategy extends AbstractCounterStrategy {
                 case REF -> effectiveRef(Math.max(base - encumbrance, 0), level);
                 case INT, COOL -> effectiveIntOrCool(base, level);
                 case EMP -> effectiveEmp(humanity);
+                case BODY -> body(counter);
                 default -> base;
             };
             stats.add(new StatLine(key, label, base, effective));
@@ -185,7 +186,7 @@ public class Cp2020StatsStrategy extends AbstractCounterStrategy {
     }
 
     public static int body(Counter stats) {
-        return stats.getAttribute(BODY, DEFAULT_STAT);
+        return Cp2020Cyber.bodyBonus(stats.getCharacter()) + stats.getAttribute(BODY, DEFAULT_STAT);
     }
 
     private static int checkStat(String key, int value) {

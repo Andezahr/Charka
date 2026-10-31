@@ -1135,3 +1135,14 @@ html:has(.is-editing) {
 .encounter-report { margin: 0; }
 .encounter-group { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-top: 0; }
 .encounter-group .label { width: 100%; }
+
+/* Вживлённое: блок фишек над инвентарями */
+.installed { display: flex; flex-direction: column; gap: 8px; padding: 10px 14px; overflow: visible; }
+.installed-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.installed-head .btn { margin-left: auto; }
+.installed-summary { color: var(--text-soft); font-size: 13px; }
+/* Меню на всю ширину блока, под своей фишкой: у правого края оно не вылезает за экран */
+.installed-chips { position: relative; display: flex; flex-wrap: wrap; gap: 4px; }
+.installed .item-chip-menu { position: static; }
+.installed-menu { top: auto; left: 0; right: 0; margin-top: 4px; }
+.installed-menu .item-note { margin: 0; color: var(--text-soft); white-space: normal; }

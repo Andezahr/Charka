@@ -33,6 +33,7 @@ final class Cp2020ItemSheet {
             case Cp2020ItemTypes.ARMOR -> armorSummary(item);
             case Cp2020ItemTypes.MAGAZINE -> new ItemSummary(charge(item), caliberUnlessNamed(item));
             case Cp2020ItemTypes.AMMO -> new ItemSummary(null, caliberUnlessNamed(item));
+            case Cp2020ItemTypes.CYBER -> new ItemSummary(null, List.of("−" + item.getProperties().getOrDefault(Cp2020ItemTypes.HUMANITY_COST, "0") + " человечности"));
             default -> null;
         };
     }

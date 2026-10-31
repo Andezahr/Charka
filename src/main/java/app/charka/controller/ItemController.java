@@ -60,10 +60,22 @@ public class ItemController {
             @RequestParam String catalogKey,
             @RequestParam(defaultValue = "1") int quantity,
             @RequestParam(required = false) String anchor,
+            @RequestParam(required = false) String thenAction,
             RedirectAttributes redirectAttributes
     ) {
-        return handle(characterId, anchor, redirectAttributes,
-                () -> itemService.addFromCatalog(inventoryId, catalogKey, quantity));
+        if (thenAction == null || thenAction.isBlank()) {
+            return handle(characterId, anchor, redirectAttributes,
+                    () -> itemService.addFromCatalog(inventoryId, catalogKey, quantity));
+        }
+        // сразу действие над новым предметом: киберware выбирают, чтобы установить
+        Item added = itemService.addFromCatalog(inventoryId, catalogKey, 1);
+        redirectAttributes.addFlashAttribute("actionItemId", added.getId());
+        try {
+            redirectAttributes.addFlashAttribute("actionResult", itemService.performAction(characterId, added.getId(), thenAction, Map.of()));
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("actionError", e.getMessage());
+        }
+        return "redirect:/character/" + characterId + "#item-" + added.getId();
     }
 
     @PostMapping("/{itemId}/edit")

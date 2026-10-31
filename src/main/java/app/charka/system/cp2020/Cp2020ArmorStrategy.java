@@ -223,7 +223,8 @@ public class Cp2020ArmorStrategy extends AbstractCounterStrategy {
     public static int encumbrance(Counter armor) {
         List<Item> worn = Cp2020WornArmor.worn(armor.getCharacter());
         int layers = Arrays.stream(Cp2020Location.values())
-                .mapToInt(location -> Cp2020WornArmor.layers(armor.getCharacter(), location).size() + (ownMaxSp(armor, location) > 0 ? 1 : 0))
+                .mapToInt(location -> (int) Cp2020WornArmor.layers(armor.getCharacter(), location).stream()
+                        .filter(item -> !item.getProperties().containsKey(Cp2020ItemTypes.NO_LAYER_PENALTY)).count() + (ownMaxSp(armor, location) > 0 ? 1 : 0))
                 .max()
                 .orElse(0);
         return worn.stream().mapToInt(Cp2020WornArmor::encumbrance).sum() + Cp2020ArmorRules.layerPenalty(layers);

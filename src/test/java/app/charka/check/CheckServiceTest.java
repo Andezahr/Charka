@@ -44,7 +44,7 @@ class CheckServiceTest {
 
     @BeforeEach
     void setUp() {
-        GameSystemRegistry registry = new GameSystemRegistry(List.of(new GenericSystem(), new Cp2020System(null)));
+        GameSystemRegistry registry = new GameSystemRegistry(List.of(new GenericSystem(), new Cp2020System(null, null)));
         checkService = new CheckService(registry, sides -> {
             sidesAsked.add(sides);
             return rolls.isEmpty() ? nextRoll : rolls.poll();

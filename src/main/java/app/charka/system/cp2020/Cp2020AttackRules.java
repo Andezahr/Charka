@@ -189,6 +189,9 @@ final class Cp2020AttackRules implements AttackRules {
     }
 
     AttackForm form(Item weapon, Map<String, StatValue> stats) {
+        if (Cp2020Cyber.isReadyWeapon(weapon)) {
+            return Cp2020Melee.weaponForm(weapon);
+        }
         if (!Cp2020ItemTypes.WEAPON.equals(weapon.getType())) {
             return null;
         }

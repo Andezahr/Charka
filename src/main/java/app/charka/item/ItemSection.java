@@ -28,7 +28,14 @@ public record ItemSection(String title, List<Item> items) {
      * @param attachments что показывается вместе с каждым предметом, по id предмета
      */
     public static List<ItemSection> of(Inventory inventory, List<ItemTypeDefinition> types, Map<Long, ItemAttachments> attachments) {
-        Set<Long> shownUnderOther = new HashSet<>();
+        return of(inventory, types, attachments, Set.of());
+    }
+
+    /**
+     * @param shownElsewhere предметы, у которых своё место на листе: вживлённое не лежит в рюкзаке
+     */
+    public static List<ItemSection> of(Inventory inventory, List<ItemTypeDefinition> types, Map<Long, ItemAttachments> attachments, Set<Long> shownElsewhere) {
+        Set<Long> shownUnderOther = new HashSet<>(shownElsewhere);
         inventory.getContent().forEach(item -> attachments.getOrDefault(item.getId(), ItemAttachments.NONE).itemsIn(inventory)
                 .forEach(attached -> shownUnderOther.add(attached.getId())));
 
