@@ -39,6 +39,14 @@ public final class Cp2020ItemTypes {
     public static final String AREA = "area";
     /** Взрывчатка (с. 111): зона умножается на число единиц, урон по всему телу. Единица — количество предмета */
     public static final String EXPLOSIVE = "explosive";
+    /** Заряжены пули к дробовику (с. 109): урон по калибру, одна цель */
+    public static final String SLUG = "slug";
+    /** Калибр дробовика: 10, 12 или 20 */
+    public static final String GAUGE = "gauge";
+    /** Лезвие холодного оружия: {@link Cp2020DamageType#BLADE} или MONO */
+    public static final String EDGE = "edge";
+    /** Броня с отметкой √ (с. 99): клинок считает её SP за половину */
+    public static final String EDGE_WEAK = "edgeWeak";
     /** Гранатомёт: заряд — граната из инвентаря, её урон, зона и эффект переходят на оружие */
     public static final String LAUNCHER = "launcher";
     /** Какая граната заряжена; состояние, не поле формы */
@@ -105,6 +113,9 @@ public final class Cp2020ItemTypes {
             ItemField.number(AREA, "Зона поражения, м", "зона ", " м", 1, null).asAdvanced(),
             ItemField.flag(EXPLOSIVE, "Взрывчатка: зона на единицу, по всему телу", "").asAdvanced(),
             ItemField.flag(LAUNCHER, "Гранатомёт: заряд — граната", "").asAdvanced(),
+            ItemField.flag(SLUG, "Заряжены пули", "пули").asAdvanced(),
+            ItemField.choice(GAUGE, "Калибр дробовика", false, new Option("10", "10"), new Option("12", "12"), new Option("20", "20")).asAdvanced(),
+            ItemField.choice(EDGE, "Лезвие", false, new Option("BLADE", "Клинок"), new Option("MONO", "Моно-лезвие")).asAdvanced(),
             ItemField.text(UNIT, "Единица взрывчатки").asAdvanced(),
             ItemField.choice(EFFECT, "Особый эффект", false, Cp2020Effects.OPTIONS.toArray(new Option[0])).asAdvanced()),
             Cp2020ItemTypes::checkWeapon,
@@ -115,13 +126,15 @@ public final class Cp2020ItemTypes {
             ItemField.suggested(CALIBER, "Патрон", true, "Магазин ", Cp2020Ammo.CALIBERS),
             ItemField.number(SHOTS, "Вместимость", "на ", "", 1, null),
             ItemField.number(LOADED, "Заряжено", "заряжено ", "", 0, null),
-            ItemField.flag(ARMOR_PIERCING, "Заряжены бронебойные", "AP")),
+            ItemField.flag(ARMOR_PIERCING, "Заряжены бронебойные", "AP"),
+            ItemField.flag(SLUG, "Заряжены пули", "пули")),
             Cp2020ItemTypes::checkMagazine).inSection(AMMO_SECTION);
 
     /** Количество патронов — количество предмета */
     public static final ItemTypeDefinition AMMO_TYPE = new ItemTypeDefinition(AMMO, "Боеприпасы", List.of(
             ItemField.suggested(CALIBER, "Патрон", true, "Патроны ", Cp2020Ammo.CALIBERS),
-            ItemField.flag(ARMOR_PIERCING, "Бронебойные", "AP"))).inSection(AMMO_SECTION).withStacking();
+            ItemField.flag(ARMOR_PIERCING, "Бронебойные", "AP"),
+            ItemField.flag(SLUG, "Пули к дробовику", "пули"))).inSection(AMMO_SECTION).withStacking();
 
     public static String zoneKey(Cp2020Location location) {
         return ZONE_PREFIX + location.name();
@@ -140,7 +153,8 @@ public final class Cp2020ItemTypes {
                             ItemField.number(ENCUMBRANCE, "Штраф EV", "EV ", "", 0, 10),
                             ItemField.choice(HARDNESS, "Жёсткость", true,
                                     new Option(SOFT, "Мягкая: ткань, кевлар"),
-                                    new Option(HARD, "Жёсткая: металл, керамика, композит"))),
+                                    new Option(HARD, "Жёсткая: металл, керамика, композит")),
+                            ItemField.flag(EDGE_WEAK, "Клинок считает SP за половину", "√")),
                     Arrays.stream(Cp2020Location.values())
                             .map(location -> ItemField.flag(zoneKey(location), location.getLabel(), location.getShortLabel())))
                     .toList(),

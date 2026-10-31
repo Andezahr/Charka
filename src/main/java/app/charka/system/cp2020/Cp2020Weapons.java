@@ -70,8 +70,8 @@ public final class Cp2020Weapons {
             gun(RIFLES, "Sternmeyer CG-13", "RIF", 1, "N", "P", "5D6", "5.56", 90, 48, "VR", null, 700),
             gun(RIFLES, "Fabrica De Armes M-2012", "RIF", 2, "N", "P", "6D6+2", "7.62", 30, 4, "VR", null, 1400),
 
-            gun(SHOTGUNS, "Arasaka Rapid Assault 12", "SHT", -1, "N", "C", "4D6", "00", 20, 10, "ST", 50, 900),
-            gun(SHOTGUNS, "Sternmeyer Stakeout 10", "SHT", -2, "N", "R", "4D6", "00", 10, 2, "ST", 50, 450),
+            withProperty(gun(SHOTGUNS, "Arasaka Rapid Assault 12", "SHT", -1, "N", "C", "4D6", "00", 20, 10, "ST", 50, 900), Cp2020ItemTypes.GAUGE, "12"),
+            withProperty(gun(SHOTGUNS, "Sternmeyer Stakeout 10", "SHT", -2, "N", "R", "4D6", "00", 10, 2, "ST", 50, 450), Cp2020ItemTypes.GAUGE, "10"),
 
             note(armorWear(armorPiercing(gun(HEAVY, "Barrett-Arasaka Light 20mm", "HVY", 0, "N", "R", "4D10", "20/9mm", 10, 1, "VR", 450, 2000)), 2),
                     "Подкалиберный бронебойный снаряд: броня теряет 2 SP за попадание"),
@@ -124,21 +124,22 @@ public final class Cp2020Weapons {
             directLoad(gun(EXOTIC, "EagleTech \"Tomcat\" C-Bow", "EX", 0, "N", "C", "4D6", Cp2020Ammo.ARROWS, 12, 1, "VR", 150, 150)),
             directLoad(gun(EXOTIC, "EagleTech \"Stryker\" X-Bow", "EX", -1, "N", "C", "3D6+3", Cp2020Ammo.BOLTS, 12, 1, "VR", 50, 220)),
 
-            gun(MONO, "Kendachi Monoknife", "MELEE", 1, "P", "P", "2D6", null, null, 1, "VR", 1, 200),
-            gun(MONO, "Kendachi MonoKatana", "MELEE", 1, "N", "R", "4D6", null, null, 1, "VR", 1, 600),
+            withProperty(gun(MONO, "Kendachi Monoknife", "MELEE", 1, "P", "P", "2D6", null, null, 1, "VR", 1, 200), Cp2020ItemTypes.EDGE, "MONO"),
+            withProperty(gun(MONO, "Kendachi MonoKatana", "MELEE", 1, "N", "R", "4D6", null, null, 1, "VR", 1, 600), Cp2020ItemTypes.EDGE, "MONO"),
             gun(MONO, "SPM-1 Battleglove", "MELEE", -2, "N", "P", "3D6/2D6", null, null, 1, "VR", 1, 900),
 
             melee("Club", 0, "L", "1D6", 1, 0),
-            note(withFlag(melee("Knife", 0, "P", "1D6", 1, 1), Cp2020ItemTypes.THROWN), "Цена по книге: 1–20"),
-            note(melee("Sword", 0, "N", "2D6+2", 1, 20), "Цена по книге: 20–200"),
-            melee("Axe", -1, "N", "2D6+3", 1, 20),
+            // HOMEBREW: книга (с. 99) пишет «edged weapons», не перечисляя; клинками считаем всё с заточенным лезвием
+            blade(note(withFlag(melee("Knife", 0, "P", "1D6", 1, 1), Cp2020ItemTypes.THROWN), "Цена по книге: 1–20")),
+            blade(note(melee("Sword", 0, "N", "2D6+2", 1, 20), "Цена по книге: 20–200")),
+            blade(melee("Axe", -1, "N", "2D6+3", 1, 20)),
             melee("Nunchaku/Tonfa", 0, "L", "3D6", 1, 15),
-            melee("Naginata", 0, "N", "3D6", 2, 100, "P"),
-            note(withFlag(melee("Shiriken", 0, "P", "1D6/3", null, 2), Cp2020ItemTypes.THROWN), THROWN + ". Цена по книге: 2–3"),
-            melee("Switchblade", 0, "P", "1D6/2", 1, 15),
+            blade(melee("Naginata", 0, "N", "3D6", 2, 100, "P")),
+            blade(note(withFlag(melee("Shiriken", 0, "P", "1D6/3", null, 2), Cp2020ItemTypes.THROWN), THROWN + ". Цена по книге: 2–3")),
+            blade(melee("Switchblade", 0, "P", "1D6/2", 1, 15)),
             melee("Brass Knuckles", 0, "P", "1D6+2", 1, 10),
             melee("Sledgehammer", -1, "N", "4D6", 1, 20),
-            melee("Chainsaw", -3, "N", "4D6", 2, 80),
+            blade(melee("Chainsaw", -3, "N", "4D6", 2, 80)),
 
             directLoad(old("S&W Combat Magnum", "P", 1, "J", "C", "2D6+3", ".357", 6, 2, "VR")),
             directLoad(old("Llama Commanche", "P", 0, "J", "C", "4D6", ".44", 6, 1, "ST")),
@@ -157,7 +158,8 @@ public final class Cp2020Weapons {
             old("M-16A & M-16A2", "RIF", 2, "N", "C", "4D6", "5.56", 30, 25, "UR"),
             old("Styer Aug", "RIF", 2, "N", "C", "4D6", "5.56", 30, 20, "VR"),
             directLoad(old("Winchester M70", "RIF", 3, "N", "C", "5D6+1", "30-06", 5, 1, "VR")),
-            old("CAWS", "SHT", 0, "N", "R", "4D6", "00", 10, 10, "ST"));
+            // HOMEBREW: калибр CAWS в книге не указан, как у большинства — 12
+            withProperty(old("CAWS", "SHT", 0, "N", "R", "4D6", "00", 10, 10, "ST"), Cp2020ItemTypes.GAUGE, "12"));
 
     private Cp2020Weapons() {
     }
@@ -224,6 +226,10 @@ public final class Cp2020Weapons {
     private static CatalogItem note(CatalogItem item, String description) {
         return new CatalogItem(item.key(), item.group(), item.name(), item.typeCode(), item.cost(), description,
                 item.properties(), item.packSize(), item.individual());
+    }
+
+    private static CatalogItem blade(CatalogItem item) {
+        return withProperty(item, Cp2020ItemTypes.EDGE, "BLADE");
     }
 
     private static CatalogItem armorPiercing(CatalogItem item) {

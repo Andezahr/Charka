@@ -25,20 +25,27 @@ public final class Cp2020Armors {
 
     public static final List<CatalogItem> CATALOG = List.of(
             // HOMEBREW: в таблице FNFF (с. 101) обычной одежды нет, считаем мягкой; цена в книге «Varies»
-            armor("cloth", "Одежда, кожа", 0, 0, 0, SOFT, TORSO_ARMS, MAYBE_LEGS + ". Цена разная"),
+            edgeWeak(armor("cloth", "Одежда, кожа", 0, 0, 0, SOFT, TORSO_ARMS, MAYBE_LEGS + ". Цена разная")),
             armor("heavy_leather", "Тяжёлая кожа", 4, 0, 50, SOFT, TORSO_ARMS, MAYBE_LEGS),
-            armor("kevlar_vest", "Кевларовая футболка, жилет", 10, 0, 90, SOFT, TORSO, null),
+            edgeWeak(armor("kevlar_vest", "Кевларовая футболка, жилет", 10, 0, 90, SOFT, TORSO, null)),
             armor("steel_helmet", "Стальной шлем", 14, 0, 20, HARD, HEAD, null),
-            armor("light_jacket", "Лёгкая бронекуртка", 14, 0, 150, SOFT, TORSO_ARMS, null),
+            edgeWeak(armor("light_jacket", "Лёгкая бронекуртка", 14, 0, 150, SOFT, TORSO_ARMS, null)),
             armor("medium_jacket", "Средняя бронекуртка", 18, 1, 200, SOFT, TORSO_ARMS, null),
-            armor("flak_vest", "Бронежилет Flak", 20, 1, 200, HARD, TORSO, null),
-            armor("flak_pants", "Брюки Flak", 20, 1, 200, HARD, LEGS, null),
+            edgeWeak(armor("flak_vest", "Бронежилет Flak", 20, 1, 200, HARD, TORSO, null)),
+            edgeWeak(armor("flak_pants", "Брюки Flak", 20, 1, 200, HARD, LEGS, null)),
             armor("nylon_helmet", "Нейлоновый шлем", 20, 0, 100, HARD, HEAD, null),
             armor("heavy_jacket", "Тяжёлая бронекуртка", 20, 2, 250, SOFT, TORSO_ARMS, null),
             armor("door_gunner_vest", "Жилет бортстрелка", 25, 3, 250, HARD, TORSO, null),
             armor("metalgear", "MetalGear", 25, 2, 600, HARD, WHOLE_BODY, null));
 
     private Cp2020Armors() {
+    }
+
+    /** Отметка √ в таблице с. 99 */
+    private static CatalogItem edgeWeak(CatalogItem item) {
+        Map<String, String> properties = new HashMap<>(item.properties());
+        properties.put(Cp2020ItemTypes.EDGE_WEAK, "1");
+        return new CatalogItem(item.key(), item.group(), item.name(), item.typeCode(), item.cost(), item.description(), properties, item.packSize(), item.individual());
     }
 
     private static CatalogItem armor(String key, String name, int sp, int encumbrance, int cost, String hardness,

@@ -55,9 +55,10 @@ function initPage() {
       }
       if (distance) {
         // заряд на месте: броска на попадание и расстояния нет
-        distance.hidden = noRoll;
-        distanceInput.required = !noRoll;
-        distanceInput.value = noRoll ? 0 : distanceValue;
+        const noDistance = noRoll || option.dataset.nodistance === 'true';
+        distance.hidden = noDistance;
+        distanceInput.required = !noDistance;
+        distanceInput.value = noDistance ? 0 : distanceValue;
         syncBands();
       }
       dialog.querySelector('[data-attack-roll]').hidden = noRoll;

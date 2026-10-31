@@ -100,9 +100,11 @@ class Cp2020AreaWeaponsTest {
         }
 
         @Test
-        @DisplayName("Кнопка говорит, что случится: нож метают, а не бьют им")
+        @DisplayName("Кнопка говорит, что случится: сюрикен метают, ножом сначала бьют")
         void actionLabel() {
-            assertThat(rules.form(weapon("knife", 1), STATS).actionLabel()).isEqualTo("Метнуть");
+            assertThat(rules.form(weapon("knife", 1), STATS).actionLabel()).isEqualTo("Атаковать");
+            assertThat(rules.form(weapon("knife", 1), STATS).modes()).extracting(AttackForm.Mode::code).containsExactly("MELEE", "SINGLE");
+            assertThat(rules.form(weapon("shiriken", 1), STATS).actionLabel()).isEqualTo("Метнуть");
             assertThat(rules.form(weapon("mine_all_types", 1), STATS).actionLabel()).isEqualTo("Подорвать");
             assertThat(rules.form(weapon("arasaka_rapid_assault_12", 1), STATS).actionLabel()).isEqualTo("Атаковать");
         }

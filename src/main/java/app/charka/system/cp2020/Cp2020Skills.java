@@ -99,6 +99,7 @@ public final class Cp2020Skills {
             skill("choi_li_fut", "Чой Ли Фут", REF, 3),
             skill("judo", "Дзюдо", REF, 1),
             skill("karate", "Карате", REF, 2),
+            skill("savate", "Сават", REF, 2),
             skill("tae_kwon_do", "Тхэквондо", REF, 3),
             skill("thai_kick_boxing", "Тайский бокс", REF, 4),
             skill("wrestling", "Борьба", REF, 1),

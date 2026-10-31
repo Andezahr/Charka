@@ -76,8 +76,24 @@ public class AttackService {
         AttackContext context = new AttackContext(attacker, source, targets, request, system::getCurrentStats);
         AttackResult result = perform(context, rules);
         // израсходованный предмет ушёл из инвентаря: его строки на листе больше нет
-        boolean spentUp = source.item() != null && source.item().getInventory().getContent().stream().noneMatch(item -> item == source.item());
+        boolean spentUp = source.item() == null || source.item().getInventory().getContent().stream().noneMatch(item -> item == source.item());
         return spentUp || result.pendingBlast() != null ? result.withoutItemRow() : result;
+    }
+
+    /**
+     * Атака способностью по её коду: кулаками.
+     *
+     * @throws IllegalArgumentException если такой способности у системы нет
+     */
+    @Transactional
+    public AttackResult attackWithAbility(Long characterId, String code, AttackRequest request) {
+        Character attacker = characterRepository.findById(characterId)
+                .orElseThrow(CharacterNotFoundException.forId(characterId));
+        AttackRules rules = systemRegistry.forCharacter(attacker).getAttackRules();
+        List<AttackSource> abilities = rules == null ? List.of() : rules.abilities(attacker);
+        AttackSource source = abilities.stream().filter(ability -> code.equals(ability.ability())).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Нет такой атаки: " + code));
+        return attack(characterId, source, request);
     }
 
     private AttackResult perform(AttackContext context, AttackRules rules) {

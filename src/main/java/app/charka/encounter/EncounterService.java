@@ -122,7 +122,7 @@ public class EncounterService {
             Character character = participant.getCharacter();
             return new EncounterView.Row(participant, character, system.getCombatCard(character), participant == current,
                     weapons(character, system), targets(character, fighters, system), attackService.pendingBlasts(character.getId()),
-                    List.copyOf(participant.getEffects()));
+                    List.copyOf(participant.getEffects()), abilities(character, system));
         }).toList();
         Set<Long> inFight = fighters.stream().map(Character::getId).collect(Collectors.toSet());
         List<Character> addable = encounter.getCampaign().getCharacters().stream()
@@ -149,6 +149,18 @@ public class EncounterService {
             }
         }));
         return weapons;
+    }
+
+    private List<EncounterView.Ability> abilities(Character character, GameSystem system) {
+        AttackRules rules = system.getAttackRules();
+        if (rules == null) {
+            return List.of();
+        }
+        Map<String, StatValue> stats = system.getCurrentStats(character);
+        return rules.abilities(character).stream()
+                .map(source -> new EncounterView.Ability(source.ability() + "-" + character.getId(),
+                        "/character/" + character.getId() + "/attack/ability/" + source.ability(), source.name(), rules.form(source, stats)))
+                .toList();
     }
 
     /** Сначала другая сторона: это самая вероятная цель, и она будет выбрана сразу */

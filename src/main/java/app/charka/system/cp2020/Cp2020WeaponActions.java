@@ -196,7 +196,7 @@ final class Cp2020WeaponActions {
         } else {
             launcher.getProperties().remove(Cp2020ItemTypes.EFFECT);
         }
-        setLoaded(launcher, 1, false);
+        setLoaded(launcher, 1, launcher);
         takeFromStack(grenade, 1);
         return launcher.getName() + ": заряжено — " + grenade.getName();
     }
@@ -205,7 +205,7 @@ final class Cp2020WeaponActions {
         String name = launcher.getProperties().get(Cp2020ItemTypes.CHARGE);
         returnCharge(launcher);
         clearCharge(launcher);
-        setLoaded(launcher, 0, false);
+        setLoaded(launcher, 0, launcher);
         return launcher.getName() + ": разряжен, " + name + " в инвентаре";
     }
 
@@ -270,9 +270,8 @@ final class Cp2020WeaponActions {
     private static ItemAction loadFromStackAction(String code, String label, Item holder) {
         int capacity = capacity(holder);
         int loaded = number(holder, Cp2020ItemTypes.LOADED);
-        boolean loadedAp = isArmorPiercing(holder);
         List<Option> sources = stacks(holder)
-                .filter(stack -> loaded < capacity || isArmorPiercing(stack) != loadedAp)
+                .filter(stack -> loaded < capacity || !sameLoad(stack, holder))
                 .map(stack -> new Option(String.valueOf(stack.getId()), stackLabel(stack)))
                 .toList();
         String unavailable = sources.isEmpty()
@@ -325,7 +324,7 @@ final class Cp2020WeaponActions {
         if (rounds > loaded) {
             throw new IllegalArgumentException(loaded == 0 ? emptyReason(weapon) : "В магазине только " + loaded);
         }
-        setLoaded(weapon, loaded - rounds, isArmorPiercing(weapon));
+        setLoaded(weapon, loaded - rounds, weapon);
         if (isLauncher(weapon)) {
             clearCharge(weapon);
         }
@@ -355,8 +354,8 @@ final class Cp2020WeaponActions {
         }
         removeFromInventory(magazine);
         setInserted(weapon, capacity);
-        setLoaded(weapon, rounds, armorPiercing);
-        return weapon.getName() + ": заряжено " + rounds + " из " + capacity + (armorPiercing ? " AP" : "") + previous;
+        setLoaded(weapon, rounds, magazine);
+        return weapon.getName() + ": заряжено " + rounds + " из " + capacity + kindLabel(magazine) + previous;
     }
 
     private static String eject(Item weapon) {
@@ -364,6 +363,7 @@ final class Cp2020WeaponActions {
         putMagazineAside(weapon);
         weapon.getProperties().remove(Cp2020ItemTypes.LOADED);
         weapon.getProperties().remove(Cp2020ItemTypes.ARMOR_PIERCING);
+        weapon.getProperties().remove(Cp2020ItemTypes.SLUG);
         weapon.getProperties().remove(Cp2020ItemTypes.INSERTED);
         return weapon.getName() + ": магазин с " + rounds + " патр. убран в инвентарь";
     }
@@ -379,7 +379,7 @@ final class Cp2020WeaponActions {
 
     private static void putMagazineAside(Item weapon) {
         Item magazine = Cp2020Magazines.newMagazine(caliber(weapon), capacity(weapon),
-                number(weapon, Cp2020ItemTypes.LOADED), isArmorPiercing(weapon));
+                number(weapon, Cp2020ItemTypes.LOADED), isArmorPiercing(weapon), isSlug(weapon));
         magazine.setInventory(weapon.getInventory());
         weapon.getInventory().getContent().add(magazine);
     }
@@ -401,10 +401,9 @@ final class Cp2020WeaponActions {
                 .orElseThrow(() -> new IllegalArgumentException("Выберите запас патронов того же калибра"));
         int capacity = capacity(holder);
         int loaded = number(holder, Cp2020ItemTypes.LOADED);
-        boolean armorPiercing = isArmorPiercing(stack);
 
         int returned = 0;
-        if (loaded > 0 && isArmorPiercing(holder) != armorPiercing) {
+        if (loaded > 0 && !sameLoad(holder, stack)) {
             returned = loaded;
             returnToStock(holder, returned);
             loaded = 0;
@@ -414,9 +413,9 @@ final class Cp2020WeaponActions {
             throw new IllegalArgumentException("Заряжено полностью");
         }
         takeFromStack(stack, taken);
-        setLoaded(holder, loaded + taken, armorPiercing);
+        setLoaded(holder, loaded + taken, stack);
 
-        return holder.getName() + ": заряжено " + (loaded + taken) + " из " + capacity + (armorPiercing ? " AP" : "")
+        return holder.getName() + ": заряжено " + (loaded + taken) + " из " + capacity + kindLabel(stack)
                 + ", из запаса взято " + taken
                 + (returned > 0 ? ", в запас возвращено " + returned : "");
     }
@@ -445,7 +444,7 @@ final class Cp2020WeaponActions {
     private static String unload(Item magazine) {
         int rounds = number(magazine, Cp2020ItemTypes.LOADED);
         returnToStock(magazine, rounds);
-        setLoaded(magazine, 0, false);
+        setLoaded(magazine, 0, magazine);
         return magazine.getName() + ": разряжен, в запас возвращено " + rounds;
     }
 
@@ -454,20 +453,23 @@ final class Cp2020WeaponActions {
         boolean armorPiercing = isArmorPiercing(holder);
         Inventory inventory = holder.getInventory();
         Optional<Item> same = inventory.getContent().stream()
-                .filter(item -> isStackFor(item, caliber(holder)) && isArmorPiercing(item) == armorPiercing)
+                .filter(item -> isStackFor(item, caliber(holder)) && sameLoad(item, holder))
                 .findFirst();
         if (same.isPresent()) {
             same.get().setQuantity(quantity(same.get()) + rounds);
             return;
         }
         Item stack = new Item();
-        stack.setName(Cp2020Ammo.stackName(caliber(holder), armorPiercing));
+        stack.setName(isSlug(holder) ? Cp2020Ammo.slugStackName(caliber(holder)) : Cp2020Ammo.stackName(caliber(holder), armorPiercing));
         stack.setQuantity(rounds);
         stack.setCost(0);
         stack.setType(Cp2020ItemTypes.AMMO);
         stack.getProperties().put(Cp2020ItemTypes.CALIBER, caliber(holder));
         if (armorPiercing) {
             stack.getProperties().put(Cp2020ItemTypes.ARMOR_PIERCING, "1");
+        }
+        if (isSlug(holder)) {
+            stack.getProperties().put(Cp2020ItemTypes.SLUG, "1");
         }
         stack.setInventory(inventory);
         inventory.getContent().add(stack);
@@ -487,13 +489,30 @@ final class Cp2020WeaponActions {
         item.getInventory().getContent().removeIf(candidate -> candidate == item);
     }
 
-    private static void setLoaded(Item holder, int loaded, boolean armorPiercing) {
+    /** @param source откуда заряд: от него вид патронов; пустой магазин вида не имеет */
+    private static void setLoaded(Item holder, int loaded, Item source) {
+        boolean armorPiercing = isArmorPiercing(source);
+        boolean slug = isSlug(source);
         holder.getProperties().put(Cp2020ItemTypes.LOADED, String.valueOf(loaded));
         if (armorPiercing && loaded > 0) {
             holder.getProperties().put(Cp2020ItemTypes.ARMOR_PIERCING, "1");
         } else {
             holder.getProperties().remove(Cp2020ItemTypes.ARMOR_PIERCING);
         }
+        if (slug && loaded > 0) {
+            holder.getProperties().put(Cp2020ItemTypes.SLUG, "1");
+        } else {
+            holder.getProperties().remove(Cp2020ItemTypes.SLUG);
+        }
+    }
+
+    /** Один вид патронов: разные в одном магазине не смешиваются */
+    private static boolean sameLoad(Item a, Item b) {
+        return isArmorPiercing(a) == isArmorPiercing(b) && isSlug(a) == isSlug(b);
+    }
+
+    private static String kindLabel(Item item) {
+        return isSlug(item) ? " пули" : isArmorPiercing(item) ? " AP" : "";
     }
 
     /** Запасы патронов этого калибра во всех инвентарях владельца; сначала те, что лежат рядом */
@@ -546,12 +565,12 @@ final class Cp2020WeaponActions {
     }
 
     static String stackLabel(Item stack) {
-        return caliber(stack) + (isArmorPiercing(stack) ? " AP" : "") + " × " + stack.getQuantity() + " (" + stack.getInventory().getName() + ")";
+        return caliber(stack) + kindLabel(stack) + " × " + stack.getQuantity() + " (" + stack.getInventory().getName() + ")";
     }
 
     private static String magazineLabel(Item magazine) {
         return number(magazine, Cp2020ItemTypes.LOADED) + " из " + number(magazine, Cp2020ItemTypes.SHOTS)
-                + (isArmorPiercing(magazine) ? " AP" : "") + " (" + magazine.getInventory().getName() + ")";
+                + kindLabel(magazine) + " (" + magazine.getInventory().getName() + ")";
     }
 
     private static int amount(Map<String, String> params) {
@@ -565,6 +584,10 @@ final class Cp2020WeaponActions {
     static String caliber(Item item) {
         String caliber = item.getProperties().get(Cp2020ItemTypes.CALIBER);
         return caliber == null || caliber.isBlank() ? null : caliber.strip();
+    }
+
+    static boolean isSlug(Item item) {
+        return item.getProperties().containsKey(Cp2020ItemTypes.SLUG);
     }
 
     static boolean isArmorPiercing(Item item) {

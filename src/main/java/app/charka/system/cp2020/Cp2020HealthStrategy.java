@@ -183,6 +183,12 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
         }
         int sp = armorStrategy.sp(armor, location);
         int armorSp = sp;
+        if (type == Cp2020DamageType.BLADE || type == Cp2020DamageType.MONO) {
+            armorSp = armorStrategy.edgeSp(armor, location, type == Cp2020DamageType.MONO);
+            if (armorSp != sp) {
+                event.step(type.getLabel() + ": SP " + sp + " считается за " + armorSp);
+            }
+        }
         boolean softAgainstFlame = type == Cp2020DamageType.FLAME && !armorStrategy.isHard(armor, location);
         if (softAgainstFlame && sp > 0) {
             if (sp <= Cp2020Rules.SOFT_ARMOR_FLAME_LIMIT) {
@@ -214,7 +220,7 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
         if (damage <= 0) {
             return event.summary(counter.getName() + ": " + (coverSp > 0 ? "укрытие и броня выдержали" : "броня выдержала") + " (" + location.getLabel() + ", SP " + shielding + ")");
         }
-        if (type == Cp2020DamageType.ARMOR_PIERCING) {
+        if (type == Cp2020DamageType.ARMOR_PIERCING || (type == Cp2020DamageType.SLUG && !armorStrategy.isHard(armor, location))) {
             damage = Math.max(1, damage / 2);
             event.step("Бронебойный: прошедший урон делится пополам → " + damage);
         }

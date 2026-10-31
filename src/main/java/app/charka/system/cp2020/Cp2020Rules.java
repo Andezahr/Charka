@@ -70,6 +70,17 @@ public final class Cp2020Rules {
     /**
      * Body Type Modifier — сколько урона «съедает» телосложение после брони.
      */
+    /** Прибавка к урону в ближнем бою: таблица с. 99, 112 */
+    public static int meleeDamageBonus(int body) {
+        if (body <= 2) return -2;
+        if (body <= 4) return -1;
+        if (body <= 7) return 0;
+        if (body <= 9) return 1;
+        if (body == 10) return 2;
+        if (body <= 12) return 4;
+        return body <= 14 ? 6 : 8;
+    }
+
     public static int btm(int body) {
         if (body <= 2) return 0;
         if (body <= 4) return 1;

@@ -34,8 +34,13 @@ public record AttackForm(String damage, Integer range, String unavailable, List<
      * @param multiTarget    целей может быть несколько
      * @param noRoll         нет броска на попадание и расстояния: заряд на месте
      * @param chooseLocation можно выбрать зону попадания
+     * @param noDistance     бросок есть, а расстояния нет: удар рукой
      */
-    public record Mode(String code, String label, boolean rounds, boolean width, boolean multiTarget, boolean noRoll, boolean chooseLocation) {
+    public record Mode(String code, String label, boolean rounds, boolean width, boolean multiTarget, boolean noRoll, boolean chooseLocation, boolean noDistance) {
+
+        public Mode(String code, String label, boolean rounds, boolean width, boolean multiTarget, boolean noRoll, boolean chooseLocation) {
+            this(code, label, rounds, width, multiTarget, noRoll, chooseLocation, false);
+        }
     }
 
     /**

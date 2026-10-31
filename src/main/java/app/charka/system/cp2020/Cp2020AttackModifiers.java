@@ -31,6 +31,7 @@ final class Cp2020AttackModifiers {
     /** Прицелы, турель и машина бывают только у стрельбы, не у броска */
     private static final Set<String> FIREARM_ONLY = Set.of("turret", "vehicle", "laser", "targeting_scope", "smartgun", "smartgoggles", TELESCOPIC, "two_weapons", "hip");
     private static final Set<String> SHOULDER_ARMS = Set.of("RIF", "SHT", "HVY");
+    private static final Set<String> MELEE_CODES = Set.of("immobile", "ambush", "blinded", "turning", "size_large", "size_small", "size_tiny", Cp2020Melee.DEFENSE);
 
     /**
      * @param choice код выбора: варианты с одним кодом взаимоисключающие; у флажка совпадает с {@code code}
@@ -99,6 +100,9 @@ final class Cp2020AttackModifiers {
     }
 
     private static boolean applies(String code, Item weapon) {
+        if (Cp2020Melee.DEFENSE.equals(code) || Cp2020Melee.isDefense(code)) {
+            return Cp2020Melee.hasMeleeMode(weapon);
+        }
         if (weapon.getProperties().containsKey(Cp2020ItemTypes.THROWN)) {
             return !FIREARM_ONLY.contains(code);
         }
@@ -118,6 +122,11 @@ final class Cp2020AttackModifiers {
         }
     }
 
+    /** В ближнем бою таблица стрельбы почти не нужна: только то, что от оружия не зависит */
+    static List<AttackForm.Section> meleeSections() {
+        return sections(MELEE_CODES::contains);
+    }
+
     private static List<AttackForm.Section> sections(java.util.function.Predicate<String> allowed) {
         Map<String, Map<String, List<Modifier>>> bySection = new LinkedHashMap<>();
         ALL.stream().filter(modifier -> allowed.test(modifier.code())).forEach(modifier -> bySection.computeIfAbsent(modifier.section(), key -> new LinkedHashMap<>())
@@ -126,7 +135,10 @@ final class Cp2020AttackModifiers {
         List<AttackForm.Section> sections = new ArrayList<>();
         bySection.forEach((section, choices) -> {
             List<AttackForm.Choice> list = new ArrayList<>(choices.values().stream().map(Cp2020AttackModifiers::choice).toList());
-            if (section.equals(COMMON)) {
+            if (section.equals(COMMON) && allowed.test(Cp2020Melee.DEFENSE)) {
+                list.add(Cp2020Melee.defenseChoice());
+            }
+            if (section.equals(COMMON) && allowed.test(Cp2020Cover.CHOICE)) {
                 list.add(Cp2020Cover.choice());
             }
             if (section.equals(WEAPON) && allowed.test(TELESCOPIC)) {
@@ -158,7 +170,8 @@ final class Cp2020AttackModifiers {
     static List<CheckRequest.Part> parts(Set<String> codes, int hitNumber) {
         List<Modifier> chosen = ALL.stream().filter(modifier -> codes.contains(modifier.code())).toList();
         long covers = codes.stream().filter(Cp2020Cover::isCover).count();
-        int known = chosen.size() + (codes.contains(TELESCOPIC) ? 1 : 0) + (int) covers;
+        long defenses = codes.stream().filter(Cp2020Melee::isDefense).count();
+        int known = chosen.size() + (codes.contains(TELESCOPIC) ? 1 : 0) + (int) covers + (int) defenses;
         if (known != codes.size()) {
             throw new IllegalArgumentException("Неизвестный модификатор атаки");
         }

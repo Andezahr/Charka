@@ -45,7 +45,7 @@ final class Cp2020ItemSheet {
 
     private static ItemSummary weaponSummary(Item weapon) {
         List<String> lines = new ArrayList<>();
-        String damage = weapon.getProperties().get("damage");
+        String damage = Cp2020AttackRules.damageOf(weapon);
         if (damage != null) {
             lines.add(damage);
         }

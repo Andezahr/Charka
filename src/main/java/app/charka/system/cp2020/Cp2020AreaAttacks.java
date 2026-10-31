@@ -37,7 +37,8 @@ final class Cp2020AreaAttacks {
     }
 
     static boolean isArea(Item weapon) {
-        return weapon.getProperties().containsKey(Cp2020ItemTypes.AREA) || "SHT".equals(Cp2020AttackRules.category(weapon));
+        return weapon.getProperties().containsKey(Cp2020ItemTypes.AREA)
+                || ("SHT".equals(Cp2020AttackRules.category(weapon)) && !Cp2020WeaponActions.isSlug(weapon));
     }
 
     static AreaDamage areaDamage(Item weapon, AttackRequest request, DiceRoller dice) {

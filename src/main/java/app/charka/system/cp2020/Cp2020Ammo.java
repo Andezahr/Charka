@@ -26,6 +26,7 @@ public final class Cp2020Ammo {
     public static final String RPG_ROUNDS = "Заряды РПГ";
 
     private static final String CANNON = "20/9mm";
+    private static final String SHOTGUN_SHELL = "00";
     private static final List<String> OWN_NAMES = List.of(ARROWS, BOLTS, PELLETS, NEEDLES, NAPALM, MICRO_MISSILES, MISSILES, RPG_ROUNDS);
 
     private static final String GROUP = "Боеприпасы";
@@ -61,6 +62,8 @@ public final class Cp2020Ammo {
         bullets(rows, "дробовик", 12, 15, "00");
 
         // Подкалиберный снаряд Barrett-Arasaka (с. 63): бронебойный всегда, отдельной цены ×3 у него нет
+        // HOMEBREW: в таблице Reloads (с. 64) пуль нет; с. 109 — «normal AP ability», цена как у бронебойных ×3
+        rows.add(slug());
         rows.add(row("ammo_20mm", OTHER_GROUP, "20mm Cannon, снаряд", CANNON, true, 1, 25, null));
         rows.add(other("arrows", "Стрелы (12)", ARROWS, 12, 24, BOX_NOTE));
         rows.add(other("bolts", "Болты для арбалета (12)", BOLTS, 12, 30, BOX_NOTE));
@@ -96,6 +99,16 @@ public final class Cp2020Ammo {
             rows.add(row("brass_" + key(caliber, cost, boxSize), BRASS_GROUP, caliber + " (как " + weaponClass + "), коробка " + boxSize,
                     caliber, false, boxSize, cost * BRASS_MULTIPLIER, BRASS_NOTE));
         }
+    }
+
+    private static CatalogItem slug() {
+        return new CatalogItem("ammo_slugs", GROUP, "Пули к дробовику, коробка 12", Cp2020ItemTypes.AMMO, 15 * AP_MULTIPLIER,
+                BOX_NOTE + ". Урон по калибру оружия: 10 — 5D6+3, 12 — 4D6+2, 20 — 3D6+1. Бьют одну цель",
+                Map.of(Cp2020ItemTypes.CALIBER, SHOTGUN_SHELL, Cp2020ItemTypes.SLUG, "1"), 12, false, slugStackName(SHOTGUN_SHELL));
+    }
+
+    static String slugStackName(String caliber) {
+        return "Пули " + caliber;
     }
 
     private static CatalogItem other(String key, String name, String caliber, int pack, int cost, String note) {

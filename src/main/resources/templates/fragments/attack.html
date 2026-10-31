@@ -4,7 +4,7 @@
 <!-- Диалог атаки оружием; что спрашивать, задаёт AttackForm системы. Модификаторы открыты сразу: в атаке они главное содержимое. -->
 <dialog th:fragment="dialog(characterId, item, form, targets)" class="dialog attack-dialog" th:id="'attack-' + ${item.id}"
         th:attr="data-attack=${item.id}">
-  <form th:action="@{'/character/' + ${characterId} + '/items/' + ${item.id} + '/attack'}" method="post" class="form">
+  <form th:action="${attackUrl != null} ? @{${attackUrl}} : @{'/character/' + ${characterId} + '/items/' + ${item.id} + '/attack'}" method="post" class="form">
     <input th:if="${returnCampaign != null}" type="hidden" name="returnCampaign" th:value="${returnCampaign}">
     <div>
       <h2 class="card-title" th:text="${form.actionLabel} + ': ' + ${item.name}">Атаковать: Minami</h2>
@@ -18,7 +18,7 @@
       <span class="label">Режим</span>
       <select name="mode" data-attack-mode>
         <option th:each="m : ${form.modes}" th:value="${m.code}" th:text="${m.label}"
-                th:attr="data-rounds=${m.rounds},data-width=${m.width},data-multi=${m.multiTarget},data-noroll=${m.noRoll},data-location=${m.chooseLocation}">Одиночный</option>
+                th:attr="data-rounds=${m.rounds},data-width=${m.width},data-multi=${m.multiTarget},data-noroll=${m.noRoll},data-location=${m.chooseLocation},data-nodistance=${m.noDistance}">Одиночный</option>
       </select>
     </label>
 

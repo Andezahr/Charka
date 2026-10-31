@@ -61,6 +61,30 @@ public class AttackController {
     }
 
     /**
+     * Атака без предмета: кулаками. Итог показывается над строками боя.
+     */
+    @PostMapping("/character/{characterId}/attack/ability/{code}")
+    public String attackWithAbility(@PathVariable Long characterId,
+                                    @PathVariable String code,
+                                    @RequestParam(required = false) List<Long> target,
+                                    @RequestParam(required = false) String targetName,
+                                    @RequestParam(required = false) String location,
+                                    @RequestParam(required = false) String skill,
+                                    @RequestParam(defaultValue = "0") int modifier,
+                                    @RequestParam(required = false) String mode,
+                                    @RequestParam(required = false) Long returnCampaign,
+                                    @RequestParam Map<String, String> params,
+                                    RedirectAttributes redirectAttributes) {
+        try {
+            redirectAttributes.addFlashAttribute("attackResult", attackService.attackWithAbility(characterId, code,
+                    new AttackRequest(targets(target), targetName, null, location, skill, options(params), modifier, mode, 0, 0)));
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("encounterError", e.getMessage());
+        }
+        return back(characterId, returnCampaign, "#inventories");
+    }
+
+    /**
      * Заряд упал мимо цели: мастер выбирает, кого задело. Урон брошен при атаке и хранится на сервере.
      */
     @PostMapping("/character/{characterId}/attack/blast/{blastId}")

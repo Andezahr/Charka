@@ -3,6 +3,7 @@ package app.charka.attack;
 import app.charka.check.CheckResult;
 import app.charka.dice.DiceExpression;
 import app.charka.dice.DiceResult;
+import app.charka.model.Character;
 import app.charka.model.counters.strategy.health.DamageRequest;
 import app.charka.model.counters.strategy.health.DiceRoller;
 import app.charka.skill.StatValue;
@@ -44,6 +45,13 @@ public interface AttackRules {
      * @param result  её итог; null — в плане проверок нет
      */
     AttackOutcome outcome(AttackContext context, AttackPlan plan, AttackPlan.PlannedCheck planned, CheckResult result, DiceRoller dice);
+
+    /**
+     * Чем персонаж может атаковать без предмета: кулаки, заклинания.
+     */
+    default List<AttackSource> abilities(Character attacker) {
+        return List.of();
+    }
 
     /**
      * Попадание сохранённого заряда по цели, которую выбрал мастер: заряд упал мимо.

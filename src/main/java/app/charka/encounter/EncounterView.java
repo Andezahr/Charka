@@ -26,9 +26,10 @@ public record EncounterView(Encounter encounter, Character current, boolean last
     /**
      * @param targets цели атаки: живые участники, сначала другая сторона
      * @param effects что длится на участнике
+     * @param abilities чем можно бить без предмета
      */
     public record Row(EncounterParticipant participant, Character character, CombatCard card, boolean current,
-                      List<Weapon> weapons, List<Character> targets, List<PendingBlast> blasts, List<CombatEffect> effects) {
+                      List<Weapon> weapons, List<Character> targets, List<PendingBlast> blasts, List<CombatEffect> effects, List<Ability> abilities) {
 
         /** Итог действия с этим предметом показывается в этой строке */
         public boolean hasItem(Long itemId) {
@@ -45,6 +46,16 @@ public record EncounterView(Encounter encounter, Character current, boolean last
      * @param url адрес предмета, от него строятся адреса действий
      */
     public record Weapon(Item item, ItemSummary summary, AttackForm form, List<ItemAction> actions, String url) {
+    }
+
+    /**
+     * Атака без предмета.
+     *
+     * @param id   для диалога на странице: у каждого участника свой
+     * @param url  куда отправить атаку
+     * @param name подпись
+     */
+    public record Ability(String id, String url, String name, AttackForm form) {
     }
 
     /** Кого можно взять в бой при его начале */

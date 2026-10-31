@@ -30,6 +30,17 @@
     </div>
   </div>
 
+  <div th:each="ability : ${row.abilities}" class="encounter-weapon">
+    <div class="item-head">
+      <span class="row-title" th:text="${ability.name}">Рукопашная</span>
+      <span class="item-value" th:text="${ability.form.damage}">1D6/2 + BODY</span>
+    </div>
+    <div class="item-actions" th:with="attackUrl=${ability.url}">
+      <button type="button" class="btn btn-sm btn-primary" th:attr="data-dialog-open='attack-' + ${ability.id}" th:text="${ability.form.actionLabel}">Атаковать</button>
+      <dialog th:replace="~{fragments/attack :: dialog(${row.character.id}, ${ability}, ${ability.form}, ${row.targets})}"></dialog>
+    </div>
+  </div>
+
   <form th:if="${row.card.healthCounterId != null}" th:action="@{${url} + '/damage'}" method="post" class="form-row encounter-damage">
     <input type="number" name="amount" class="narrow" min="0" placeholder="Урон" required aria-label="Урон">
     <select name="location" aria-label="Зона попадания">

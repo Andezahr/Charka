@@ -155,6 +155,26 @@ public class Cp2020ArmorStrategy extends AbstractCounterStrategy {
     }
 
     /**
+     * SP зоны против лезвия: каждый слой считается по-своему, потом слои складываются как обычно. Свой слой счётчика считается мягким и без отметки √.
+     */
+    public int edgeSp(Counter armor, Cp2020Location location, boolean mono) {
+        List<Item> layers = Cp2020WornArmor.layers(armor.getCharacter(), location);
+        List<Integer> adjusted = new ArrayList<>();
+        adjusted.add(mono ? ownMaxSp(armor, location) / 3 : ownMaxSp(armor, location));
+        for (Item item : layers) {
+            int layerSp = Cp2020WornArmor.sp(item);
+            if (mono) {
+                adjusted.add(Cp2020WornArmor.isHard(item) ? layerSp * 2 / 3 : layerSp / 3);
+            } else {
+                adjusted.add(item.getProperties().containsKey(Cp2020ItemTypes.EDGE_WEAK) ? layerSp / 2 : layerSp);
+            }
+        }
+        int worn = ownMaxSp(armor, location) - ownSp(armor, location)
+                + layers.stream().mapToInt(item -> Cp2020WornArmor.wear(item, location)).sum();
+        return Math.max(0, Cp2020ArmorRules.combine(adjusted) - worn);
+    }
+
+    /**
      * Есть ли в зоне жёсткий слой. HOMEBREW: книга (с. 110) не говорит о смешанных слоях; один жёсткий слой — и зона защищена как жёсткая. Свой слой счётчика считается мягким.
      */
     public boolean isHard(Counter armor, Cp2020Location location) {

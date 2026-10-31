@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.function.UnaryOperator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -66,11 +67,22 @@ final class Cp2020AttackRules implements AttackRules {
 
     @Override
     public AttackForm form(AttackSource source, Map<String, StatValue> stats) {
-        return source.item() == null ? null : form(source.item(), stats);
+        if (source.item() == null) {
+            return Cp2020Melee.BRAWL.equals(source.ability()) ? Cp2020Melee.brawlForm() : null;
+        }
+        return form(source.item(), stats);
+    }
+
+    @Override
+    public List<AttackSource> abilities(Character attacker) {
+        return List.of(Cp2020Melee.brawl());
     }
 
     @Override
     public AttackPlan plan(AttackContext context, DiceRoller dice) {
+        if (Cp2020Melee.applies(context)) {
+            return Cp2020Melee.plan(context, dice);
+        }
         Item weapon = context.item();
         AttackRequest request = context.request();
         List<Character> targets = context.targets();
@@ -100,11 +112,17 @@ final class Cp2020AttackRules implements AttackRules {
 
     @Override
     public String spend(AttackContext context) {
+        if (Cp2020Melee.applies(context)) {
+            return null;
+        }
         return spend(context.item(), context.request());
     }
 
     @Override
     public AttackOutcome outcome(AttackContext context, AttackPlan plan, AttackPlan.PlannedCheck planned, CheckResult result, DiceRoller dice) {
+        if (Cp2020Melee.applies(context)) {
+            return Cp2020Melee.outcome(context, result, dice);
+        }
         Item weapon = context.item();
         AttackRequest request = context.request();
         if (isZoneFire(request)) {
@@ -176,14 +194,14 @@ final class Cp2020AttackRules implements AttackRules {
         }
         boolean firearm = !"MELEE".equals(category(weapon)) && number(weapon, Cp2020ItemTypes.SHOTS) >= 1;
         if (!firearm && !isConsumable(weapon)) {
-            return null;
+            return "MELEE".equals(category(weapon)) ? Cp2020Melee.weaponForm(weapon) : null;
         }
         Integer range = isThrown(weapon) ? throwRange(weapon, 1, stats) : range(weapon);
         String unavailable = unavailable(weapon, range);
         List<Option> locations = Arrays.stream(Cp2020Location.values())
                 .map(location -> new Option(location.name(), location.getLabel()))
                 .toList();
-        return new AttackForm(weapon.getProperties().get("damage"), range, unavailable, modes(weapon), maxRounds(weapon),
+        return new AttackForm(damageOf(weapon), range, unavailable, modes(weapon), maxRounds(weapon),
                 defaultRounds(weapon), roundsLabel(weapon),
                 skillCodes(weapon).stream().map(code -> new Option(code, skillName(code))).toList(),
                 "Зона (выбор −4)", locations, "Расстояние, м", bands(range),
@@ -349,13 +367,33 @@ final class Cp2020AttackRules implements AttackRules {
      * @return null — урон не бросить, в шагах объяснение
      */
     static RolledDamage rollDamage(Item weapon, AttackRequest request, List<String> steps, DiceRoller dice) {
-        String damage = weapon.getProperties().get("damage");
+        return rollText(damageOf(weapon), expression -> forRange(weapon, expression, request.distance()), steps, dice);
+    }
+
+    /** Урон оружия; у дробовика с пулями он задан калибром (с. 109) */
+    static String damageOf(Item weapon) {
+        if (!Cp2020WeaponActions.isSlug(weapon)) {
+            return weapon.getProperties().get("damage");
+        }
+        return switch (weapon.getProperties().getOrDefault(Cp2020ItemTypes.GAUGE, "12")) {
+            case "10" -> "5D6+3";
+            case "20" -> "3D6+1";
+            default -> "4D6+2";
+        };
+    }
+
+    /** Бросок урона, записанного текстом */
+    static RolledDamage rollText(String damage, List<String> steps, DiceRoller dice) {
+        return rollText(damage, expression -> expression, steps, dice);
+    }
+
+    private static RolledDamage rollText(String damage, UnaryOperator<DiceExpression> adjust, List<String> steps, DiceRoller dice) {
         Matcher parsed = damage == null ? null : DAMAGE.matcher(damage.strip());
         if (parsed == null || !parsed.matches()) {
             steps.add("Урон оружия «" + (damage == null ? "не указан" : damage) + "» не бросить: определяет мастер");
             return null;
         }
-        DiceExpression expression = forRange(weapon, DiceExpression.parse(parsed.group(1)), request.distance());
+        DiceExpression expression = adjust.apply(DiceExpression.parse(parsed.group(1)));
         int amount = expression.modifier();
         List<String> rolled = new ArrayList<>();
         for (int i = 0; i < expression.count(); i++) {
@@ -375,6 +413,9 @@ final class Cp2020AttackRules implements AttackRules {
     }
 
     static String damageType(Item weapon) {
+        if (Cp2020WeaponActions.isSlug(weapon)) {
+            return Cp2020DamageType.SLUG.name();
+        }
         if (!weapon.getProperties().containsKey(Cp2020ItemTypes.ARMOR_PIERCING)) {
             return Cp2020DamageType.NORMAL.name();
         }
@@ -391,6 +432,10 @@ final class Cp2020AttackRules implements AttackRules {
     private static List<AttackForm.Mode> modes(Item weapon) {
         if (isConsumable(weapon)) {
             return consumableModes(weapon);
+        }
+        if ("SHT".equals(category(weapon)) && Cp2020WeaponActions.isSlug(weapon)) {
+            // пуля летит в одну цель, пятна нет
+            return List.of(new AttackForm.Mode(SINGLE, "Одиночный", false, false, false, false, true));
         }
         if ("SHT".equals(category(weapon))) {
             AttackForm.Mode single = new AttackForm.Mode(SINGLE, "Одно пятно", false, false, true, false, false);
@@ -417,6 +462,10 @@ final class Cp2020AttackRules implements AttackRules {
         boolean area = weapon.getProperties().containsKey(Cp2020ItemTypes.AREA);
         boolean explosive = isExplosive(weapon);
         List<AttackForm.Mode> modes = new ArrayList<>();
+        // нож чаще бьёт, чем летит: удар первым
+        if (Cp2020Melee.hasMeleeMode(weapon)) {
+            modes.add(Cp2020Melee.weaponMode());
+        }
         if (isThrown(weapon)) {
             modes.add(area ? new AttackForm.Mode(THROW, "Метнуть", explosive, false, true, false, false)
                     : new AttackForm.Mode(SINGLE, "Метнуть", false, false, false, false, true));
@@ -429,6 +478,9 @@ final class Cp2020AttackRules implements AttackRules {
 
     /** Кнопка говорит, что случится: брошенный нож уйдёт из рук */
     private static String actionLabel(Item weapon) {
+        if (Cp2020Melee.hasMeleeMode(weapon)) {
+            return "Атаковать";
+        }
         if (isThrown(weapon)) {
             return "Метнуть";
         }
@@ -626,7 +678,7 @@ final class Cp2020AttackRules implements AttackRules {
      * HOMEBREW: у дробовика с другим уроном снимается столько же кубиков, не меньше одного.
      */
     private static DiceExpression forRange(Item weapon, DiceExpression damage, int distance) {
-        if (!"SHT".equals(category(weapon))) {
+        if (!"SHT".equals(category(weapon)) || Cp2020WeaponActions.isSlug(weapon)) {
             return damage;
         }
         int hitNumber = hitNumber(distance, range(weapon));

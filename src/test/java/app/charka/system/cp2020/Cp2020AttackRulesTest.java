@@ -164,9 +164,14 @@ class Cp2020AttackRulesTest {
     class Form {
 
         @Test
-        @DisplayName("Холодным, которое не метают, так не атакуют")
-        void noForm() {
-            assertThat(rules.form(weapon("sword"))).isNull();
+        @DisplayName("Холодное оружие: удар без расстояния и дальности, навык на выбор")
+        void meleeForm() {
+            AttackForm form = rules.form(weapon("sword"));
+
+            assertThat(form.modes()).extracting(AttackForm.Mode::code).containsExactly("MELEE");
+            assertThat(form.modes().get(0).noDistance()).isTrue();
+            assertThat(form.distanceLabel()).isNull();
+            assertThat(form.skills()).extracting(option -> option.value()).containsExactly("", "melee", "fencing");
         }
 
         @Test
