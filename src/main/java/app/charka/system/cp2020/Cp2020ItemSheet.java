@@ -53,6 +53,10 @@ final class Cp2020ItemSheet {
         if (rof > 1) {
             lines.add("ROF " + rof);
         }
+        String charge = weapon.getProperties().get(Cp2020ItemTypes.CHARGE);
+        if (charge != null) {
+            lines.add(charge);
+        }
         String area = weapon.getProperties().get(Cp2020ItemTypes.AREA);
         if (area != null) {
             lines.add("зона " + area + " м");

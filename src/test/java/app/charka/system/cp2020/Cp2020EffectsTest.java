@@ -186,12 +186,40 @@ class Cp2020EffectsTest {
         }
 
         @Test
-        @DisplayName("Газ пока ведёт мастер")
+        @DisplayName("Газ со штрафом пока ведёт мастер: штрафы к статам — P-03")
         void gas() {
-            AttackHit hit = Cp2020AreaAttacks.hit(blast("grenade_gas", "THROW"), sides -> 1);
+            AreaDamage blast = blast("grenade_gas_nausea", "THROW");
+            AttackHit hit = Cp2020AreaAttacks.hit(blast, sides -> 1);
 
+            assertThat(blast.radius()).isEqualTo(3);
             assertThat(hit.hasEffect()).isFalse();
             assertThat(hit.steps()).anyMatch(step -> step.contains("мастер"));
+        }
+
+        @Test
+        @DisplayName("Нервный газ: 8D10 в обход брони со спасброском, ещё раунд в облаке (с. 110)")
+        void deadlyGas() {
+            AreaDamage blast = blast("grenade_gas_nerve", "THROW");
+            AttackHit hit = Cp2020AreaAttacks.hit(blast, sides -> 3);
+
+            assertThat(blast.radius()).isEqualTo(3);
+            assertThat(hit.damage().getLocation()).isEqualTo("TORSO");
+            assertThat(hit.damage().getDamageType()).isEqualTo("BYPASS");
+            assertThat(hit.damage().extra(Cp2020HealthStrategy.POISON_SAVE, 0)).isEqualTo(1);
+            assertThat(hit.effects()).singleElement().satisfies(effect -> {
+                assertThat(effect.rounds()).isEqualTo(1);
+                assertThat(Cp2020AreaAttacks.effectHit("8d10", effect.data(), sides -> 3).damage().extra(Cp2020HealthStrategy.POISON_SAVE, 0)).isEqualTo(1);
+            });
+        }
+
+        @Test
+        @DisplayName("Бронебойная ракета режет только SP (с. 111), пуля — и прошедший урон")
+        void warhead() {
+            Item scorpion = weapon("scorpion_16_missile_launcher", 1);
+            scorpion.getProperties().put(Cp2020ItemTypes.ARMOR_PIERCING, "1");
+
+            assertThat(Cp2020AttackRules.damageType(scorpion)).isEqualTo("ARMOR_PIERCING_WARHEAD");
+            assertThat(Cp2020DamageType.ARMOR_PIERCING_WARHEAD.effectiveSp(20)).isEqualTo(10);
         }
     }
 
@@ -257,6 +285,48 @@ class Cp2020EffectsTest {
 
             assertThat(health.getValue()).isZero();
             assertThat(armorStrategy.sp(armor, Cp2020Location.TORSO)).isEqualTo(18);
+        }
+
+        @Test
+        @DisplayName("Укрытие складывается с бронёй как слой (с. 101): SP 25 и 14 → 28")
+        void cover() {
+            soft(14);
+            DamageRequest shot = DamageRequest.builder().amount(30).location("TORSO").autoSave(false)
+                    .extras(Map.of(Cp2020HealthStrategy.COVER_SP, 25)).build();
+
+            HealthEvent event = strategy.applyDamage(context, shot);
+
+            assertThat(event.getSteps()).anyMatch(step -> step.contains("Укрытие SP 25"));
+            assertThat(health.getValue()).isEqualTo(Math.max(1, 30 - Cp2020ArmorRules.combine(List.of(25, 14)) - 3));
+            assertThat(armorStrategy.sp(armor, Cp2020Location.TORSO)).isEqualTo(13);
+        }
+
+        @Test
+        @DisplayName("Укрытие выдержало: брони нет, износа нет, урона нет")
+        void coverHolds() {
+            DamageRequest shot = DamageRequest.builder().amount(20).location("TORSO").autoSave(false)
+                    .extras(Map.of(Cp2020HealthStrategy.COVER_SP, 25)).build();
+
+            HealthEvent event = strategy.applyDamage(context, shot);
+
+            assertThat(health.getValue()).isZero();
+            assertThat(event.getSummary()).contains("укрытие и броня выдержали");
+        }
+
+        @Test
+        @DisplayName("Газу укрытие и броня не мешают, спасбросок вдвое снижает урон")
+        void poison() {
+            soft(20);
+            DamageRequest gas = DamageRequest.builder().amount(21).location("TORSO").damageType("BYPASS").autoSave(false)
+                    .extras(Map.of(Cp2020HealthStrategy.COVER_SP, 25, Cp2020HealthStrategy.POISON_SAVE, 1)).build();
+
+            stunRoll = 8;
+            strategy.applyDamage(context, gas);
+            assertThat(health.getValue()).isEqualTo(7);
+
+            stunRoll = 9;
+            strategy.applyDamage(context, gas);
+            assertThat(health.getValue()).isEqualTo(7 + 18);
         }
 
         @Test

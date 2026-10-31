@@ -89,7 +89,7 @@
                     <form th:each="effect : ${row.effects}" class="chip red chip-effect" method="post"
                           th:action="@{${base} + '/participants/' + ${row.participant.id} + '/effects/' + ${effect.id} + '/remove'}">
                       <span th:text="${effect.summary}">Горит 1D6 · раундов 2</span>
-                      <button type="submit" class="chip-remove" aria-label="Снять эффект" title="Снять: огонь потушили">×</button>
+                      <button type="submit" class="chip-remove" aria-label="Снять эффект" title="Снять: огонь потушили, цель вышла из облака">×</button>
                     </form>
                   </div>
                 </div>

@@ -126,6 +126,9 @@ final class Cp2020AttackModifiers {
         List<AttackForm.Section> sections = new ArrayList<>();
         bySection.forEach((section, choices) -> {
             List<AttackForm.Choice> list = new ArrayList<>(choices.values().stream().map(Cp2020AttackModifiers::choice).toList());
+            if (section.equals(COMMON)) {
+                list.add(Cp2020Cover.choice());
+            }
             if (section.equals(WEAPON) && allowed.test(TELESCOPIC)) {
                 list.add(new AttackForm.Choice(TELESCOPIC, "Телескопический прицел",
                         List.of(new Option(TELESCOPIC, "Телескопический прицел: средняя +1, предельная +2"))));
@@ -154,9 +157,13 @@ final class Cp2020AttackModifiers {
      */
     static List<CheckRequest.Part> parts(Set<String> codes, int hitNumber) {
         List<Modifier> chosen = ALL.stream().filter(modifier -> codes.contains(modifier.code())).toList();
-        int known = chosen.size() + (codes.contains(TELESCOPIC) ? 1 : 0);
+        long covers = codes.stream().filter(Cp2020Cover::isCover).count();
+        int known = chosen.size() + (codes.contains(TELESCOPIC) ? 1 : 0) + (int) covers;
         if (known != codes.size()) {
             throw new IllegalArgumentException("Неизвестный модификатор атаки");
+        }
+        if (covers > 1) {
+            throw new IllegalArgumentException("Выберите одно укрытие");
         }
         if (chosen.stream().map(Modifier::choice).distinct().count() != chosen.size()) {
             throw new IllegalArgumentException("Из одного выбора можно взять только один модификатор");

@@ -41,6 +41,10 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
     public static final String ARMOR_WEAR = "armorWear";
 
     public static final String STUNNED = "stunned";
+    /** SP укрытия цели: {@link Cp2020Cover} */
+    public static final String COVER_SP = "coverSp";
+    /** Больше 0 — цель бросает спасбросок от яда, успех вдвое снижает урон */
+    public static final String POISON_SAVE = "poisonSave";
     public static final String STABILIZED = "stabilized";
     public static final String DEAD = "dead";
     public static final String DEATH_SAVE_PENDING = "deathSavePending";
@@ -168,12 +172,21 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
         Cp2020Location location = resolveLocation(request.getLocation(), event);
 
         // 1. Броня
+        int amount = request.getAmount();
+        if (request.extra(POISON_SAVE, 0) > 0) {
+            // HOMEBREW: книга (с. 107, 110) говорит «save», не называя числа; взят обычный спасбросок от BODY (с. 25)
+            int roll = dice.d10();
+            int target = body(context);
+            boolean saved = roll <= target;
+            event.step("Спасбросок от яда: d10 = " + roll + ", нужно ≤ " + target + (saved ? " — успех, половина урона" : " — провал"));
+            amount = saved ? Math.max(1, amount / 2) : amount;
+        }
         int sp = armorStrategy.sp(armor, location);
-        int effectiveSp = type.effectiveSp(sp);
+        int armorSp = sp;
         boolean softAgainstFlame = type == Cp2020DamageType.FLAME && !armorStrategy.isHard(armor, location);
         if (softAgainstFlame && sp > 0) {
             if (sp <= Cp2020Rules.SOFT_ARMOR_FLAME_LIMIT) {
-                effectiveSp = 0;
+                armorSp = 0;
                 event.step("Мягкая броня до " + Cp2020Rules.SOFT_ARMOR_FLAME_LIMIT + " SP от огня не защищает");
             }
             int burned = sp;
@@ -182,17 +195,24 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
             }
             event.step("Огонь портит мягкую броню: SP «" + location.getLabel() + "» " + sp + " → " + burned);
         }
-        int damage = request.getAmount() - effectiveSp;
+        // Укрытие складывается с бронёй как слой (с. 101). HOMEBREW: оно не изнашивается, книга молчит
+        int coverSp = type == Cp2020DamageType.BYPASS ? 0 : request.extra(COVER_SP, 0);
+        int shielding = coverSp > 0 ? Cp2020ArmorRules.combine(List.of(coverSp, armorSp)) : armorSp;
+        if (coverSp > 0) {
+            event.step("Укрытие SP " + coverSp + " и броня SP " + armorSp + " → SP " + shielding);
+        }
+        int effectiveSp = type.effectiveSp(shielding);
+        int damage = amount - effectiveSp;
         if (type == Cp2020DamageType.BYPASS) {
-            event.step("В обход брони: урон " + request.getAmount());
+            event.step("В обход брони: урон " + amount);
         } else {
-            String spText = type == Cp2020DamageType.ARMOR_PIERCING
-                    ? "SP " + effectiveSp + " (половина от " + sp + ")"
+            String spText = effectiveSp != shielding
+                    ? "SP " + effectiveSp + " (половина от " + shielding + ")"
                     : "SP " + effectiveSp;
-            event.step("Урон " + request.getAmount() + " − " + spText + " = " + Math.max(damage, 0));
+            event.step("Урон " + amount + " − " + spText + " = " + Math.max(damage, 0));
         }
         if (damage <= 0) {
-            return event.summary(counter.getName() + ": броня выдержала (" + location.getLabel() + ", SP " + sp + ")");
+            return event.summary(counter.getName() + ": " + (coverSp > 0 ? "укрытие и броня выдержали" : "броня выдержала") + " (" + location.getLabel() + ", SP " + shielding + ")");
         }
         if (type == Cp2020DamageType.ARMOR_PIERCING) {
             damage = Math.max(1, damage / 2);

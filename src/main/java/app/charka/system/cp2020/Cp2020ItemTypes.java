@@ -39,6 +39,10 @@ public final class Cp2020ItemTypes {
     public static final String AREA = "area";
     /** Взрывчатка (с. 111): зона умножается на число единиц, урон по всему телу. Единица — количество предмета */
     public static final String EXPLOSIVE = "explosive";
+    /** Гранатомёт: заряд — граната из инвентаря, её урон, зона и эффект переходят на оружие */
+    public static final String LAUNCHER = "launcher";
+    /** Какая граната заряжена; состояние, не поле формы */
+    public static final String CHARGE = "charge";
     /** Единица взрывчатки: кг, шашка, литр */
     public static final String UNIT = "unit";
     /** Что заряд делает сверх урона: {@link Cp2020Effects} */
@@ -100,10 +104,11 @@ public final class Cp2020ItemTypes {
             ItemField.flag(PLANTED, "Подрывается на месте", "").asAdvanced(),
             ItemField.number(AREA, "Зона поражения, м", "зона ", " м", 1, null).asAdvanced(),
             ItemField.flag(EXPLOSIVE, "Взрывчатка: зона на единицу, по всему телу", "").asAdvanced(),
+            ItemField.flag(LAUNCHER, "Гранатомёт: заряд — граната", "").asAdvanced(),
             ItemField.text(UNIT, "Единица взрывчатки").asAdvanced(),
             ItemField.choice(EFFECT, "Особый эффект", false, Cp2020Effects.OPTIONS.toArray(new Option[0])).asAdvanced()),
             Cp2020ItemTypes::checkWeapon,
-            List.of(JAMMED)).inSection("Оружие");
+            List.of(JAMMED, CHARGE)).inSection("Оружие");
 
     /** Каждая строка — один магазин со своим зарядом */
     public static final ItemTypeDefinition MAGAZINE_TYPE = new ItemTypeDefinition(MAGAZINE, "Магазин", List.of(

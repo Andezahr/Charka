@@ -30,6 +30,7 @@ final class Cp2020WeaponActions {
     static final String LOAD_ALL = "LOAD_ALL";
 
     private static final int BURST_ROUNDS = 3;
+    private static final String DAMAGE = "damage";
 
     private Cp2020WeaponActions() {
     }
@@ -92,6 +93,13 @@ final class Cp2020WeaponActions {
             int max = Math.min(rof, loaded);
             actions.add(ItemAction.withAmount(BURST, "Списать патроны", blocked, Math.min(BURST_ROUNDS, max), max).asSecondary());
         }
+        if (isLauncher(weapon)) {
+            actions.add(launcherReloadAction(weapon));
+            if (weapon.getProperties().containsKey(Cp2020ItemTypes.CHARGE)) {
+                actions.add(ItemAction.simple(UNLOAD, "Разрядить", null).asSecondary());
+            }
+            return actions;
+        }
         ItemAction reload = usesMagazines(weapon) ? magazineReloadAction(weapon) : directReloadAction(weapon);
         actions.add(caliber(weapon) != null ? reload.asHidden() : reload);
         if (usesMagazines(weapon) && hasMagazine(weapon)) {
@@ -152,6 +160,91 @@ final class Cp2020WeaponActions {
         return ItemAction.withSources(RELOAD, "Перезарядить", unavailable, sources);
     }
 
+    static boolean isLauncher(Item weapon) {
+        return weapon.getProperties().containsKey(Cp2020ItemTypes.LAUNCHER);
+    }
+
+    /** С. 108: все виды гранат бывают и для запуска. Взрывчатка и мины — нет */
+    private static Stream<Item> grenades(Item launcher) {
+        return carried(launcher).filter(item -> Cp2020ItemTypes.WEAPON.equals(item.getType()) && item != launcher && quantity(item) > 0
+                && item.getProperties().containsKey(Cp2020ItemTypes.AREA)
+                && item.getProperties().containsKey(Cp2020ItemTypes.THROWN)
+                && !item.getProperties().containsKey(Cp2020ItemTypes.EXPLOSIVE));
+    }
+
+    private static ItemAction launcherReloadAction(Item launcher) {
+        List<Option> sources = grenades(launcher)
+                .map(grenade -> new Option(String.valueOf(grenade.getId()), grenade.getName() + " × " + grenade.getQuantity()))
+                .toList();
+        return ItemAction.withSources(RELOAD, "Зарядить", sources.isEmpty() ? "Нет гранат в инвентарях персонажа: добавьте их кнопкой ＋" : null, sources);
+    }
+
+    /** Граната уходит из запаса, её урон, зона и эффект — на оружие; прежний заряд возвращается в инвентарь */
+    private static String loadGrenade(Item launcher, String sourceId) {
+        Item grenade = grenades(launcher)
+                .filter(candidate -> String.valueOf(candidate.getId()).equals(sourceId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Выберите гранату"));
+        if (launcher.getProperties().containsKey(Cp2020ItemTypes.CHARGE)) {
+            returnCharge(launcher);
+        }
+        launcher.getProperties().put(Cp2020ItemTypes.CHARGE, grenade.getName());
+        launcher.getProperties().put(DAMAGE, grenade.getProperties().get(DAMAGE));
+        launcher.getProperties().put(Cp2020ItemTypes.AREA, grenade.getProperties().get(Cp2020ItemTypes.AREA));
+        if (grenade.getProperties().containsKey(Cp2020ItemTypes.EFFECT)) {
+            launcher.getProperties().put(Cp2020ItemTypes.EFFECT, grenade.getProperties().get(Cp2020ItemTypes.EFFECT));
+        } else {
+            launcher.getProperties().remove(Cp2020ItemTypes.EFFECT);
+        }
+        setLoaded(launcher, 1, false);
+        takeFromStack(grenade, 1);
+        return launcher.getName() + ": заряжено — " + grenade.getName();
+    }
+
+    private static String unloadGrenade(Item launcher) {
+        String name = launcher.getProperties().get(Cp2020ItemTypes.CHARGE);
+        returnCharge(launcher);
+        clearCharge(launcher);
+        setLoaded(launcher, 0, false);
+        return launcher.getName() + ": разряжен, " + name + " в инвентаре";
+    }
+
+    /** Граната возвращается к таким же, а если их нет — новой строкой с теми же свойствами */
+    private static void returnCharge(Item launcher) {
+        String name = launcher.getProperties().get(Cp2020ItemTypes.CHARGE);
+        Inventory inventory = launcher.getInventory();
+        Optional<Item> same = inventory.getContent().stream()
+                .filter(item -> name.equals(item.getName()) && item != launcher)
+                .findFirst();
+        if (same.isPresent()) {
+            same.get().setQuantity(quantity(same.get()) + 1);
+            return;
+        }
+        Item grenade = new Item();
+        grenade.setName(name);
+        grenade.setQuantity(1);
+        grenade.setCost(0);
+        grenade.setType(Cp2020ItemTypes.WEAPON);
+        grenade.getProperties().put("category", "HVY");
+        grenade.getProperties().put(DAMAGE, launcher.getProperties().get(DAMAGE));
+        grenade.getProperties().put(Cp2020ItemTypes.AREA, launcher.getProperties().get(Cp2020ItemTypes.AREA));
+        grenade.getProperties().put(Cp2020ItemTypes.THROWN, "1");
+        grenade.getProperties().put(Cp2020ItemTypes.PLANTED, "1");
+        if (launcher.getProperties().containsKey(Cp2020ItemTypes.EFFECT)) {
+            grenade.getProperties().put(Cp2020ItemTypes.EFFECT, launcher.getProperties().get(Cp2020ItemTypes.EFFECT));
+        }
+        grenade.setInventory(inventory);
+        inventory.getContent().add(grenade);
+    }
+
+    /** Заряд ушёл: урон снова зависит от того, что зарядят */
+    private static void clearCharge(Item launcher) {
+        launcher.getProperties().remove(Cp2020ItemTypes.CHARGE);
+        launcher.getProperties().remove(Cp2020ItemTypes.AREA);
+        launcher.getProperties().remove(Cp2020ItemTypes.EFFECT);
+        launcher.getProperties().put(DAMAGE, Cp2020Weapons.BY_CHARGE);
+    }
+
     private static ItemAction directReloadAction(Item weapon) {
         if (caliber(weapon) == null) {
             return ItemAction.simple(RELOAD, "Перезарядить", "У оружия не указан патрон: заряд задаётся в правке предмета");
@@ -200,14 +293,14 @@ final class Cp2020WeaponActions {
             case UNJAM -> unjam(item);
             case FIRE -> fire(item, 1);
             case BURST -> fire(item, amount(params));
-            case RELOAD -> usesMagazines(item) && !isStackSource(item, params.get("source"))
+            case RELOAD -> isLauncher(item) ? loadGrenade(item, params.get("source")) : usesMagazines(item) && !isStackSource(item, params.get("source"))
                     ? changeMagazine(item, params.get("source"))
                     : loadFromStack(item, params.get("source"));
             case EJECT -> eject(item);
             case ADD_MAGAZINE -> addMagazine(item);
             case LOAD -> loadFromStack(item, params.get("source"));
             case LOAD_ALL -> loadEmptyMagazines(item, params.get("source"));
-            default -> unload(item);
+            default -> isLauncher(item) ? unloadGrenade(item) : unload(item);
         };
     }
 
@@ -233,6 +326,9 @@ final class Cp2020WeaponActions {
             throw new IllegalArgumentException(loaded == 0 ? emptyReason(weapon) : "В магазине только " + loaded);
         }
         setLoaded(weapon, loaded - rounds, isArmorPiercing(weapon));
+        if (isLauncher(weapon)) {
+            clearCharge(weapon);
+        }
         return weapon.getName() + ": выпущено " + rounds + ", заряжено " + (loaded - rounds) + " из " + capacity(weapon);
     }
 

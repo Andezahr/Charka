@@ -1,8 +1,10 @@
 package app.charka.encounter;
 
+import app.charka.attack.AttackForm;
 import app.charka.attack.AttackRequest;
 import app.charka.attack.AttackResult;
 import app.charka.attack.AttackService;
+import app.charka.attack.AttackSource;
 import app.charka.model.Campaign;
 import app.charka.model.Character;
 import app.charka.model.CombatEffect;
@@ -12,6 +14,7 @@ import app.charka.repository.CampaignRepository;
 import app.charka.repository.CharacterRepository;
 import app.charka.service.CharacterService;
 import app.charka.service.ItemService;
+import app.charka.system.GameSystemRegistry;
 import app.charka.system.cp2020.Cp2020HealthStrategy;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,6 +49,7 @@ class EncounterEffectsTest {
     @Autowired private CharacterRepository characterRepository;
     @Autowired private CharacterService characterService;
     @Autowired private ItemService itemService;
+    @Autowired private GameSystemRegistry registry;
     @Autowired private EntityManager entityManager;
 
     @MockitoBean(answers = Answers.CALLS_REAL_METHODS) private DiceRoller dice;
@@ -253,6 +257,104 @@ class EncounterEffectsTest {
         flush();
 
         assertThat(row().attackOptions()).containsExactly("blinded");
+    }
+
+    @Test
+    @DisplayName("Гранатомёт: зарядили гранатой, бьёт её уроном и зоной на 225 м, заряд ушёл")
+    void launcher() {
+        Item launcher = item("grenade_launcher");
+        Item grenade = item("grenade_incendiary");
+        flush();
+
+        assertThat(attackForm(launcher).unavailable()).contains("не заряжено");
+
+        itemService.performAction(thrower.getId(), launcher.getId(), "RELOAD", Map.of("source", String.valueOf(grenade.getId())));
+        flush();
+        assertThat(attackForm(launcher).unavailable()).isNull();
+        assertThat(attackForm(launcher).range()).isEqualTo(225);
+        assertThat(thrower().getInventories().get(0).getContent()).noneMatch(item -> item.getName().equals("Grenade: Incendiary"));
+
+        fight();
+        when(dice.roll(anyInt())).thenReturn(1, 1, 1, 1, 9, 1);
+        AttackResult result = attackService.attack(thrower.getId(), launcher.getId(),
+                new AttackRequest(List.of(victim.getId()), null, 1, null, null, Set.of(), 0, "SINGLE", 0, 0));
+        flush();
+
+        assertThat(result.outcome()).contains("Зона 5 м");
+        assertThat(damage()).isPositive();
+        assertThat(row().effects()).extracting(CombatEffect::getLabel).containsExactly("Горит");
+        assertThat(attackForm(launcher).unavailable()).contains("не заряжено");
+    }
+
+    @Test
+    @DisplayName("Разрядить гранатомёт: граната возвращается в инвентарь и снова метается")
+    void launcherUnload() {
+        Item launcher = item("grenade_launcher");
+        Item grenade = item("grenade_fragmentation");
+        flush();
+        itemService.performAction(thrower.getId(), launcher.getId(), "RELOAD", Map.of("source", String.valueOf(grenade.getId())));
+        flush();
+
+        itemService.performAction(thrower.getId(), launcher.getId(), "UNLOAD", Map.of());
+        flush();
+
+        assertThat(thrower().getInventories().get(0).getContent())
+                .filteredOn(item -> item.getName().equals("Grenade: Fragmentation"))
+                .singleElement().satisfies(item -> {
+                    assertThat(item.getQuantity()).isEqualTo(1);
+                    assertThat(item.getProperties()).containsEntry("damage", "7D6").containsEntry("area", "5").containsKey("thrown");
+                });
+        assertThat(attackForm(launcher).unavailable()).contains("не заряжено");
+    }
+
+    @Test
+    @DisplayName("Нервный газ: спасбросок в раунд взрыва и ещё раз в следующем, потом рассеялся")
+    void nerveGas() {
+        fight();
+        Item grenade = item("grenade_gas_nerve");
+        // 8D10 по единице, попадание 9, спасбросок 1 — успех
+        when(dice.roll(anyInt())).thenReturn(1, 1, 1, 1, 1, 1, 1, 1, 9, 1);
+
+        AttackResult result = attackService.attack(thrower.getId(), grenade.getId(),
+                new AttackRequest(List.of(victim.getId()), null, 1, null, null, Set.of("cover_brick"), 0, "THROW", 0, 0));
+        flush();
+
+        assertThat(result.outcome()).contains("Зона 3 м");
+        assertThat(result.steps()).anyMatch(step -> step.contains("Спасбросок от яда")).noneMatch(step -> step.contains("Укрытие"));
+        int afterBlast = damage();
+        assertThat(afterBlast).isPositive();
+        assertThat(row().effects()).extracting(CombatEffect::getLabel).containsExactly("В облаке газа");
+
+        List<String> next = nextRound();
+
+        assertThat(damage()).isGreaterThan(afterBlast);
+        assertThat(next).anyMatch(line -> line.contains("в облаке газа")).anyMatch(line -> line.contains("закончилось"));
+        assertThat(row().effects()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Укрытие выбирается в атаке: кирпич останавливает пулю")
+    void coverStopsBullet() {
+        Item minami = item("arasaka_minami_10");
+        when(dice.roll(anyInt())).thenReturn(10, 1, 3, 1, 1);
+
+        AttackResult result = attackService.attack(thrower.getId(), minami.getId(),
+                new AttackRequest(List.of(victim.getId()), null, 1, null, null, Set.of("cover_brick"), 0, "SINGLE", 0, 0));
+        flush();
+
+        assertThat(result.hit()).isTrue();
+        assertThat(result.outcome()).contains("укрытие и броня выдержали");
+        assertThat(damage()).isZero();
+    }
+
+    private Character thrower() {
+        return characterRepository.findById(thrower.getId()).orElseThrow();
+    }
+
+    private AttackForm attackForm(Item item) {
+        Item loaded = thrower().getInventories().get(0).getContent().stream()
+                .filter(candidate -> candidate.getId().equals(item.getId())).findFirst().orElseThrow();
+        return registry.forCharacter(thrower()).getAttackRules().form(AttackSource.of(loaded), registry.forCharacter(thrower()).getCurrentStats(thrower()));
     }
 
     @Test

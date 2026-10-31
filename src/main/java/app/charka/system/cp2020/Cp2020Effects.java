@@ -18,13 +18,15 @@ final class Cp2020Effects {
     static final String STUN = "STUN";
     static final String DAZZLE = "DAZZLE";
     static final String SONIC = "SONIC";
+    static final String GAS = "GAS";
 
     static final List<Option> OPTIONS = List.of(
             new Option(INCENDIARY, "Зажигательный: 4D6 ещё 2 раунда"),
             new Option(FLAME, "Огнемёт: 1D10, затем 1D6"),
             new Option(STUN, "Оглушающий: спасбросок −5"),
             new Option(DAZZLE, "Ослепляющий: 4 раунда"),
-            new Option(SONIC, "Звуковой: глухота 4 раунда"));
+            new Option(SONIC, "Звуковой: глухота 4 раунда"),
+            new Option(GAS, "Смертельный газ: спасбросок, два раунда"));
 
     /** С. 63: «−5 to Stun» */
     private static final int STUN_GRENADE_SAVE = -5;
@@ -36,8 +38,11 @@ final class Cp2020Effects {
     private Cp2020Effects() {
     }
 
-    /** С огнемётом свои правила брони (с. 110) */
+    /** С огнемётом свои правила брони, от газа броня не защищает (с. 110) */
     static String damageType(String effect, String usual) {
+        if (GAS.equals(effect)) {
+            return Cp2020DamageType.BYPASS.name();
+        }
         return FLAME.equals(effect) ? Cp2020DamageType.FLAME.name() : usual;
     }
 
@@ -51,9 +56,10 @@ final class Cp2020Effects {
     }
 
     /**
+     * @param expression бросок урона самого заряда
      * @param damageData как считать урон следующих раундов
      */
-    static List<LingeringEffect> lingering(String effect, Map<String, String> damageData) {
+    static List<LingeringEffect> lingering(String effect, String expression, Map<String, String> damageData) {
         if (effect == null) {
             return List.of();
         }
@@ -63,6 +69,8 @@ final class Cp2020Effects {
             // С. 110: «2D10 the 1st turn, 1D10 and 1D6 the following two turns»
             case FLAME -> List.of(burn(List.of("1D10", "1D6"), damageData));
             case DAZZLE -> List.of(new LingeringEffect("Ослеплён −3", SENSES_ROUNDS, List.of(), Map.of(), BLINDED_OPTION));
+            // С. 110: на следующий раунд облако ещё здесь, на третий рассеивается. Кто вышел из него, с того эффект снимает мастер
+            case GAS -> List.of(new LingeringEffect("В облаке газа", 1, List.of(expression), damageData, null));
             case SONIC -> List.of(new LingeringEffect("Оглох", SENSES_ROUNDS, List.of(), Map.of(), null));
             default -> List.of();
         };

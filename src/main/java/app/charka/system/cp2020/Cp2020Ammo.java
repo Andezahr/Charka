@@ -72,6 +72,7 @@ public final class Cp2020Ammo {
 
         // HOMEBREW: в таблице Reloads (с. 64) ракет и зарядов РПГ нет, цены наши
         rows.add(other("missile", "Ракета к Scorpion 16", MISSILES, 1, 300, "Цена за штуку. В книге цены нет"));
+        rows.add(row("ammo_missile_ap", OTHER_GROUP, "Ракета к Scorpion 16 AP", MISSILES, true, 1, 300 * AP_MULTIPLIER, "Цена за штуку. SP вдвое меньше, прошедший урон не делится (с. 111)"));
         rows.add(other("rpg", "Заряд РПГ", RPG_ROUNDS, 1, 100, "Цена за штуку. В книге цены нет"));
 
         brass(rows, "лёгкий пистолет", 100, 15, ".25", ".38");
@@ -112,7 +113,7 @@ public final class Cp2020Ammo {
     /** Название запаса в инвентаре: число в нём меняется, поэтому ни коробки, ни класса оружия в названии нет */
     static String stackName(String caliber, boolean armorPiercing) {
         if (OWN_NAMES.contains(caliber)) {
-            return caliber;
+            return caliber + (armorPiercing ? " AP" : "");
         }
         if (CANNON.equals(caliber)) {
             return "Снаряды " + caliber;

@@ -118,7 +118,7 @@ final class Cp2020AttackRules implements AttackRules {
             steps.addAll(onFumble(weapon, dice));
         }
         boolean landed = result == null || Boolean.TRUE.equals(result.success());
-        if (Cp2020AreaAttacks.isArea(weapon)) {
+        if (plan.blast() != null) {
             return landed ? blastLanded(context, plan.blast(), steps, dice) : blastScattered(context, plan.blast(), result, steps, dice);
         }
         if (!landed) {
@@ -337,7 +337,7 @@ final class Cp2020AttackRules implements AttackRules {
                 .amount(rolled.amount())
                 .location(location.name())
                 .damageType(damageType(weapon))
-                .extras(Map.of(Cp2020HealthStrategy.ARMOR_WEAR, armorWear(weapon)))
+                .extras(Map.of(Cp2020HealthStrategy.ARMOR_WEAR, armorWear(weapon), Cp2020HealthStrategy.COVER_SP, Cp2020Cover.sp(request.options())))
                 .build();
         return new AttackHit(location.getLabel(), rolled.notation(), steps, damageRequest);
     }
@@ -375,9 +375,13 @@ final class Cp2020AttackRules implements AttackRules {
     }
 
     static String damageType(Item weapon) {
-        return weapon.getProperties().containsKey(Cp2020ItemTypes.ARMOR_PIERCING)
-                ? Cp2020DamageType.ARMOR_PIERCING.name()
-                : Cp2020DamageType.NORMAL.name();
+        if (!weapon.getProperties().containsKey(Cp2020ItemTypes.ARMOR_PIERCING)) {
+            return Cp2020DamageType.NORMAL.name();
+        }
+        // ракета (с. 111) режет только SP, пуля — ещё и прошедший урон
+        return weapon.getProperties().containsKey(Cp2020ItemTypes.AREA)
+                ? Cp2020DamageType.ARMOR_PIERCING_WARHEAD.name()
+                : Cp2020DamageType.ARMOR_PIERCING.name();
     }
 
     static int armorWear(Item weapon) {

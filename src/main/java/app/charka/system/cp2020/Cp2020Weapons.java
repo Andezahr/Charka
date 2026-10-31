@@ -30,6 +30,9 @@ public final class Cp2020Weapons {
     static final String OLD = "Старое оружие XX века";
 
     private static final String THROWN = "Дальность: бросок";
+    /** Урон гранатомёта без заряда */
+    static final String BY_CHARGE = "По типу";
+    private static final String GAS_NOTE = "Броня не защищает, фильтры защищают";
     /** Книга (с. 66): старое оружие стоит около половины нового такого же типа, окончательно решает мастер */
     private static final String OLD_NOTE = "Цена: около половины нового оружия того же типа, решает мастер. Дальность в книге не указана";
 
@@ -83,9 +86,17 @@ public final class Cp2020Weapons {
             withProperty(grenade("Stun", "Stun −5", "Спасбросок от оглушения с −5"), Cp2020ItemTypes.EFFECT, Cp2020Effects.STUN),
             withProperty(grenade("Dazzle", "Blind 4", "Слепота на 4 хода"), Cp2020ItemTypes.EFFECT, Cp2020Effects.DAZZLE),
             withProperty(grenade("Sonic", "Deaf 4", "Глухота на 4 хода"), Cp2020ItemTypes.EFFECT, Cp2020Effects.SONIC),
-            grenade("Gas", "Газ", "Эффект по таблице газов, с. 110. Броня не защищает, фильтры защищают"),
-            note(gun(HEAVY, "Grenade Launcher", "HVY", 0, null, "R", "По типу", null, 1, 1, "ST", 225, 150),
-                    "Скрытность в книге: L/N. Крепится под ствол штурмовой винтовки или используется с рук; не подходит к Militech RPG-A"),
+            gas("Hallucinogen", "−4 INT", "Галлюциноген: при спасброске −2 INT"),
+            gas("Nausea", "−4 REF", "Тошнота: при спасброске −2 REF"),
+            gas("Teargas", "−2 REF", "Слезоточивый: при спасброске −1 REF"),
+            gas("Sleep", "Сон", "Снотворный: при спасброске сонливость и −2 ко всем статам"),
+            deadlyGas("Biotoxin I", "4D6"),
+            deadlyGas("Biotoxin II", "8D6"),
+            deadlyGas("Nerve", "8D10"),
+            // HOMEBREW: новое оружие продаётся заряженным, но заряд гранатомёта — отдельная граната, поэтому он пуст
+            note(withProperty(withFlag(gun(HEAVY, "Grenade Launcher", "HVY", 0, null, "R", BY_CHARGE, null, 1, 1, "ST", 225, 150),
+                    Cp2020ItemTypes.LAUNCHER), Cp2020ItemTypes.LOADED, "0"),
+                    "Заряд — граната из инвентаря. Скрытность в книге: L/N. Крепится под ствол штурмовой винтовки или используется с рук; не подходит к Militech RPG-A"),
             // HOMEBREW: на с. 63 урон «8D10 per kg», на с. 111 от числа единиц зависит только зона; взята с. 111
             note(withFlag(withFlag(withFlag(withProperty(gun(HEAVY, "C-6 Plastic Explosive", "HVY", 0, "P", "P", "8D10", null, null, 1, "VR", null, 100),
                     Cp2020ItemTypes.AREA, "5"), Cp2020ItemTypes.THROWN), Cp2020ItemTypes.PLANTED), Cp2020ItemTypes.EXPLOSIVE),
@@ -183,6 +194,16 @@ public final class Cp2020Weapons {
         CatalogItem armed = withProperty(withProperty(withFlag(withFlag(item, Cp2020ItemTypes.THROWN), Cp2020ItemTypes.EXPLOSIVE),
                 Cp2020ItemTypes.AREA, String.valueOf(area)), Cp2020ItemTypes.UNIT, unit);
         return note(planted ? withFlag(armed, Cp2020ItemTypes.PLANTED) : armed, description);
+    }
+
+    /** Газ (с. 110): сразу все в 3 м, а не 5 м обычной гранаты */
+    private static CatalogItem gas(String kind, String damage, String description) {
+        return withProperty(grenade("Gas, " + kind, damage, description + ". " + GAS_NOTE + ". Штраф ведёт мастер"), Cp2020ItemTypes.AREA, "3");
+    }
+
+    private static CatalogItem deadlyGas(String kind, String damage) {
+        return withProperty(withProperty(grenade("Gas, " + kind, damage, "При спасброске половина урона. " + GAS_NOTE),
+                Cp2020ItemTypes.AREA, "3"), Cp2020ItemTypes.EFFECT, Cp2020Effects.GAS);
     }
 
     private static CatalogItem old(String name, String category, int accuracy, String concealability, String availability,

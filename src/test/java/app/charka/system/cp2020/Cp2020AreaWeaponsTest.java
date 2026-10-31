@@ -280,14 +280,14 @@ class Cp2020AreaWeaponsTest {
         @Test
         @DisplayName("Газ не бросает урон: эффект применяет мастер")
         void effectOnly() {
-            AreaDamage blast = Cp2020AreaAttacks.areaDamage(weapon("grenade_gas", 1), attack("THROW", 5, 0), sides -> {
+            AreaDamage blast = Cp2020AreaAttacks.areaDamage(weapon("grenade_gas_nausea", 1), attack("THROW", 5, 0), sides -> {
                 throw new AssertionError("урон не бросается");
             });
 
             assertThat(blast.amount()).isNull();
             AttackHit hit = Cp2020AreaAttacks.hit(blast, sides -> 1);
             assertThat(hit.damage()).isNull();
-            assertThat(hit.steps()).anyMatch(step -> step.contains("Газ"));
+            assertThat(hit.steps()).anyMatch(step -> step.contains("мастер"));
         }
 
         @Test
