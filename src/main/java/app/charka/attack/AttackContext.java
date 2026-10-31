@@ -6,6 +6,7 @@ import app.charka.skill.StatValue;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 
 /**
@@ -13,9 +14,10 @@ import java.util.function.Function;
  *
  * @param targets цели с листом: от них зависит сложность там, где её задаёт цель
  * @param statsOf текущие статы любого участника
+ * @param effectsOf что сейчас длится на участнике боя: названия эффектов; вне боя пусто
  */
 public record AttackContext(Character attacker, AttackSource source, List<Character> targets, AttackRequest request,
-                            Function<Character, Map<String, StatValue>> statsOf) {
+                            Function<Character, Map<String, StatValue>> statsOf, Function<Character, Set<String>> effectsOf) {
 
     private static final String DEFAULT_TARGET = "Цель";
 
@@ -25,6 +27,10 @@ public record AttackContext(Character attacker, AttackSource source, List<Charac
 
     public Item item() {
         return source.item();
+    }
+
+    public Set<String> effects(Character character) {
+        return effectsOf.apply(character);
     }
 
     public Map<String, StatValue> stats(Character character) {

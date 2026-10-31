@@ -11,8 +11,13 @@ import java.util.Map;
  * @param damage       броски урона на следующие раунды, по одному на раунд; пусто — урона нет
  * @param data         данные системы для урона: ядро их только хранит
  * @param attackOption какой модификатор атаки предложить этому участнику; null — никакого
+ * @param onAttacker   эффект на том, кто атаковал, а не на цели
  */
-public record LingeringEffect(String label, int rounds, List<String> damage, Map<String, String> data, String attackOption) {
+public record LingeringEffect(String label, int rounds, List<String> damage, Map<String, String> data, String attackOption, boolean onAttacker) {
+
+    public LingeringEffect(String label, int rounds, List<String> damage, Map<String, String> data, String attackOption) {
+        this(label, rounds, damage, data, attackOption, false);
+    }
 
     public LingeringEffect {
         damage = List.copyOf(damage);

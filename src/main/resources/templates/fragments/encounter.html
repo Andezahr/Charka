@@ -53,6 +53,17 @@
     <button type="submit" class="btn btn-sm btn-danger">Нанести</button>
   </form>
 
+  <form th:unless="${#lists.isEmpty(row.checks)}" th:action="@{${url} + '/check'}" method="post" class="form-row encounter-check">
+    <select name="skill" class="grow" aria-label="Навык">
+      <option th:each="c : ${row.checks}" th:value="${c.value}" th:text="${c.label}">Внимательность 8</option>
+    </select>
+    <select name="difficulty" aria-label="Сложность">
+      <option value="">Без сложности</option>
+      <option th:each="d : ${difficultyPresets}" th:value="${d.value}" th:text="${d.key}">Средне</option>
+    </select>
+    <button type="submit" class="btn btn-sm">🎲 Проверка</button>
+  </form>
+
   <div class="encounter-minor">
     <form th:if="${row.current and !row.participant.waiting and !view.lastInRound}" th:action="@{${url} + '/wait'}" method="post">
       <button type="submit" class="btn btn-sm btn-ghost" title="Вступит позже в этом раунде">Подождать</button>

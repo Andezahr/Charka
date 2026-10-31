@@ -18,6 +18,9 @@ import app.charka.repository.CampaignRepository;
 import app.charka.repository.CharacterRepository;
 import app.charka.repository.EncounterRepository;
 import app.charka.service.counter.HealthCounterService;
+import app.charka.skill.SkillCheck;
+import app.charka.skill.SkillService;
+import app.charka.skill.SkillSheet;
 import app.charka.skill.StatValue;
 import app.charka.system.GameSystem;
 import app.charka.system.GameSystemRegistry;
@@ -27,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -41,6 +45,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class EncounterService {
 
+    private static final String CUSTOM_SKILL = "custom:";
+
     private final EncounterRepository encounterRepository;
     private final CampaignRepository campaignRepository;
     private final CharacterRepository characterRepository;
@@ -48,6 +54,7 @@ public class EncounterService {
     private final DiceRoller diceRoller;
     private final HealthCounterService healthCounterService;
     private final AttackService attackService;
+    private final SkillService skillService;
 
     /**
      * Раунд идущего боя кампании; null — боя нет.
@@ -89,6 +96,15 @@ public class EncounterService {
      */
     @Transactional
     public Encounter start(Long campaignId, List<Long> characterIds) {
+        return start(campaignId, characterIds, false, false);
+    }
+
+    /**
+     * @param groupPlayers игроки бросают инициативу одним кубиком
+     * @param groupNpcs    NPC бросают инициативу одним кубиком
+     */
+    @Transactional
+    public Encounter start(Long campaignId, List<Long> characterIds, boolean groupPlayers, boolean groupNpcs) {
         Campaign campaign = campaign(campaignId);
         if (encounterRepository.findByCampaignId(campaignId).isPresent()) {
             throw new IllegalArgumentException("Бой уже идёт");
@@ -99,8 +115,15 @@ public class EncounterService {
         GameSystem system = system(campaign);
         Encounter encounter = new Encounter();
         encounter.setCampaign(campaign);
+        encounter.setGroupPlayers(groupPlayers);
+        encounter.setGroupNpcs(groupNpcs);
+        RoundDice dice = new RoundDice(encounter);
         for (Long characterId : Set.copyOf(characterIds)) {
-            encounter.getParticipants().add(participant(encounter, member(campaign, characterId), system));
+            EncounterParticipant participant = new EncounterParticipant();
+            participant.setEncounter(encounter);
+            participant.setCharacter(member(campaign, characterId));
+            roll(participant, system, dice);
+            encounter.getParticipants().add(participant);
         }
         sortByInitiative(encounter);
         return encounterRepository.save(encounter);
@@ -120,7 +143,8 @@ public class EncounterService {
         List<Character> fighters = ordered(encounter).stream().map(EncounterParticipant::getCharacter).toList();
         List<EncounterView.Row> rows = ordered(encounter).stream().map(participant -> {
             Character character = participant.getCharacter();
-            return new EncounterView.Row(participant, character, system.getCombatCard(character), participant == current,
+            return new EncounterView.Row(participant, character, declaration(participant, system), system.getInitiativeDeclarations(), checks(character, system),
+                    system.getCombatCard(character), participant == current,
                     weapons(character, system), targets(character, fighters, system), attackService.pendingBlasts(character.getId()),
                     List.copyOf(participant.getEffects()), abilities(character, system));
         }).toList();
@@ -130,8 +154,9 @@ public class EncounterService {
                 .filter(character -> !system.getCombatCard(character).out())
                 .sorted(Comparator.comparing(Character::isNpc))
                 .toList();
+        boolean roundFresh = encounter.getParticipants().stream().noneMatch(EncounterParticipant::isDone);
         return new EncounterView(encounter, current == null ? null : current.getCharacter(),
-                nextAfter(encounter, current, system) == null, rows, addable);
+                nextAfter(encounter, current, system) == null, rows, addable, roundFresh);
     }
 
     private List<EncounterView.Weapon> weapons(Character character, GameSystem system) {
@@ -149,6 +174,27 @@ public class EncounterService {
             }
         }));
         return weapons;
+    }
+
+    private static InitiativeDeclaration declaration(EncounterParticipant participant, GameSystem system) {
+        return system.getInitiativeDeclarations().stream()
+                .filter(declaration -> declaration.code().equals(participant.getDeclaration()))
+                .findFirst().orElse(null);
+    }
+
+    /** Сначала то, что система считает нужным в бою; остальное — только изученное */
+    private List<EncounterView.CheckOption> checks(Character character, GameSystem system) {
+        if (!skillService.hasCatalog(character.getId())) {
+            return List.of();
+        }
+        List<String> always = system.getCombatCheckSkills();
+        return skillService.getSheet(character.getId()).groups().stream()
+                .flatMap(group -> group.rows().stream())
+                .filter(row -> row.level() > 0 || always.contains(row.code()))
+                .sorted(Comparator.comparing((SkillSheet.Row row) -> !always.contains(row.code())).thenComparing(SkillSheet.Row::name))
+                .map(row -> new EncounterView.CheckOption(row.customId() != null ? "custom:" + row.customId() : row.code(),
+                        row.name() + " " + row.total()))
+                .toList();
     }
 
     private List<EncounterView.Ability> abilities(Character character, GameSystem system) {
@@ -269,6 +315,45 @@ public class EncounterService {
     }
 
     /**
+     * Участник объявляет в начале раунда то, что меняет его инициативу.
+     *
+     * @throws IllegalArgumentException если раунд уже идёт или уже объявлено
+     */
+    @Transactional
+    public void declare(Long campaignId, Long participantId, String code) {
+        EncounterParticipant participant = participant(campaignId, participantId);
+        Encounter encounter = participant.getEncounter();
+        InitiativeDeclaration declaration = system(encounter.getCampaign()).getInitiativeDeclarations().stream()
+                .filter(known -> known.code().equals(code))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Такого объявления нет: " + code));
+        if (encounter.getParticipants().stream().anyMatch(EncounterParticipant::isDone)) {
+            throw new IllegalArgumentException("Это объявляют в начале раунда, пока никто не походил");
+        }
+        if (participant.getDeclaration() != null) {
+            throw new IllegalArgumentException("Уже объявлено в этом раунде");
+        }
+        participant.setDeclaration(code);
+        participant.setInitiative(participant.getInitiative() + declaration.bonus());
+        participant.setInitiativeDetails(participant.getInitiativeDetails() + " + " + declaration.label() + " " + declaration.bonus());
+        sortByInitiative(encounter);
+    }
+
+    /**
+     * Проверка навыка участника из его строки: итог остаётся там же и в журнале.
+     *
+     * @param skill код навыка или {@code custom:<id>} для навыка со своим названием
+     * @throws IllegalArgumentException если такого навыка нет
+     */
+    @Transactional
+    public SkillCheck check(Long campaignId, Long participantId, String skill, Integer difficulty, int modifier) {
+        Character character = participant(campaignId, participantId).getCharacter();
+        return skill.startsWith(CUSTOM_SKILL)
+                ? skillService.check(character.getId(), null, Long.valueOf(skill.substring(CUSTOM_SKILL.length())), modifier, difficulty)
+                : skillService.check(character.getId(), skill, null, modifier, difficulty);
+    }
+
+    /**
      * Снять эффект с участника: огонь потушили.
      */
     @Transactional
@@ -373,11 +458,13 @@ public class EncounterService {
     /** Новый раунд: все снова ходят; очередь бросается заново, если так велит система */
     private void startRound(Encounter encounter, GameSystem system) {
         encounter.setRound(encounter.getRound() + 1);
+        RoundDice dice = new RoundDice(encounter);
         encounter.getParticipants().forEach(participant -> {
             participant.setDone(false);
             participant.setWaiting(false);
+            participant.setDeclaration(null);
             if (system.rollsInitiativeEachRound()) {
-                roll(participant, system);
+                roll(participant, system, dice);
             }
         });
         if (system.rollsInitiativeEachRound()) {
@@ -407,14 +494,37 @@ public class EncounterService {
         EncounterParticipant participant = new EncounterParticipant();
         participant.setEncounter(encounter);
         participant.setCharacter(character);
-        roll(participant, system);
+        roll(participant, system, new RoundDice(encounter));
         return participant;
     }
 
-    private void roll(EncounterParticipant participant, GameSystem system) {
-        Initiative initiative = system.rollInitiative(participant.getCharacter(), diceRoller);
+    private void roll(EncounterParticipant participant, GameSystem system, RoundDice dice) {
+        Initiative initiative = system.rollInitiative(participant.getCharacter(), dice.of(participant.getCharacter()));
         participant.setInitiative(initiative.total());
         participant.setInitiativeDetails(initiative.details());
+    }
+
+    /**
+     * Кубики одного броска инициативы: сторона с общим кубиком получает его один раз на всех (книга, с. 97).
+     * Правило броска остаётся у системы, ей достаточно подменить кубик.
+     */
+    private final class RoundDice {
+
+        private final Encounter encounter;
+        private final Map<String, Integer> shared = new HashMap<>();
+
+        private RoundDice(Encounter encounter) {
+            this.encounter = encounter;
+        }
+
+        private DiceRoller of(Character character) {
+            boolean grouped = character.isNpc() ? encounter.isGroupNpcs() : encounter.isGroupPlayers();
+            if (!grouped) {
+                return diceRoller;
+            }
+            String side = character.isNpc() ? "npc" : "player";
+            return sides -> shared.computeIfAbsent(side + sides, key -> diceRoller.roll(sides));
+        }
     }
 
     /** HOMEBREW: при равной инициативе игроки ходят раньше NPC. В книге о равенстве ничего нет */

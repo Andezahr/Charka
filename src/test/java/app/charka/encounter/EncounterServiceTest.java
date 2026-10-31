@@ -106,6 +106,70 @@ class EncounterServiceTest {
         encounterService.setInitiative(campaign.getId(), participant(character).getId(), initiative);
     }
 
+    private EncounterView.Row row(Character character) {
+        return view().rows().stream().filter(row -> row.character().getId().equals(character.getId())).findFirst().orElseThrow();
+    }
+
+    @Test
+    @DisplayName("Один кубик на сторону: инициатива NPC отличается только их REF, у игроков кубик свой")
+    void groupInitiative() {
+        Character bandit = npcOf("Бандит 1");
+        Character second = npcOf("Бандит 2");
+        reload();
+        when(dice.roll(anyInt())).thenReturn(7, 2, 9);
+        encounterService.start(campaign.getId(), List.of(anna.getId(), boris.getId(), bandit.getId(), second.getId()), false, true);
+
+        List<String> npcRolls = view().rows().stream().filter(row -> row.character().isNpc())
+                .map(row -> row.participant().getInitiativeDetails().replaceAll(".*d10 (\\d+).*", "$1")).toList();
+
+        assertThat(npcRolls).hasSize(2);
+        assertThat(npcRolls.get(0)).isEqualTo(npcRolls.get(1));
+    }
+
+    private Character npcOf(String name) {
+        Character npc = member(campaign, name);
+        npc.setNpc(true);
+        return npc;
+    }
+
+    @Test
+    @DisplayName("Быстрое выхватывание: +3 и новая очередь, −3 в диалоге, новый раунд сбрасывает; после первого хода поздно")
+    void fastDraw() {
+        start(anna, boris);
+        setInitiative(anna, 15);
+        setInitiative(boris, 14);
+        encounterService.declare(campaign.getId(), participant(boris).getId(), "FAST_DRAW");
+
+        assertThat(order()).containsExactly("Борис", "Анна");
+        assertThat(row(boris).participant().getInitiative()).isEqualTo(17);
+        assertThat(row(boris).attackOptions()).containsExactly("fast_draw");
+        assertThatThrownBy(() -> encounterService.declare(campaign.getId(), participant(boris).getId(), "FAST_DRAW"))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        encounterService.next(campaign.getId());
+        reload();
+        assertThat(view().roundFresh()).isFalse();
+        assertThatThrownBy(() -> encounterService.declare(campaign.getId(), participant(anna).getId(), "FAST_DRAW"))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("в начале раунда");
+
+        encounterService.next(campaign.getId());
+        reload();
+        assertThat(row(boris).declaration()).isNull();
+        assertThat(view().roundFresh()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Проверка из строки: Внимательность первой даже без уровня, бросок в журнале, неизвестный навык отклоняется")
+    void checkFromRow() {
+        skillService.updateLevels(anna.getId(), Map.of("handgun", 3), Map.of());
+        start(anna, boris);
+
+        assertThat(row(anna).checks()).extracting(EncounterView.CheckOption::value).containsExactly("awareness", "handgun");
+        assertThat(encounterService.check(campaign.getId(), participant(anna).getId(), "awareness", 15, 0).result().difficulty()).isEqualTo(15);
+        assertThatThrownBy(() -> encounterService.check(campaign.getId(), participant(anna).getId(), "no_such", null, 0))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
     private EncounterParticipant participant(Character character) {
         return view().rows().stream().filter(row -> row.character().getId().equals(character.getId()))
                 .findFirst().orElseThrow().participant();

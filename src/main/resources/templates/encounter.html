@@ -27,6 +27,11 @@
         <h2 class="card-title"><span class="dot red"></span>Кто участвует</h2>
         <button type="submit" class="btn btn-primary">⚔ Начать бой</button>
       </div>
+      <div class="card-body encounter-group">
+        <span class="label">Один кубик инициативы на всех</span>
+        <label class="check"><input type="checkbox" name="groupPlayers" value="true"><span>Игроки</span></label>
+        <label class="check"><input type="checkbox" name="groupNpcs" value="true"><span>NPC</span></label>
+      </div>
       <div class="card-body list">
         <label th:each="c : ${candidates}" class="row encounter-pick">
           <input type="checkbox" name="character" th:value="${c.character.id}" th:checked="${!c.card.out}">
@@ -86,6 +91,7 @@
                     <span th:each="line : ${row.card.lines}" class="chip" th:text="${line}">SP торса 14</span>
                     <span th:if="${row.participant.done and !row.card.out}" class="chip">Походил</span>
                     <span th:if="${row.participant.waiting}" class="chip">Ждёт</span>
+                    <span th:if="${row.declaration != null}" class="chip pink" th:text="${row.declaration.label} + ' +' + ${row.declaration.bonus}">Выхватывает +3</span>
                     <form th:each="effect : ${row.effects}" class="chip red chip-effect" method="post"
                           th:action="@{${base} + '/participants/' + ${row.participant.id} + '/effects/' + ${effect.id} + '/remove'}">
                       <span th:text="${effect.summary}">Горит 1D6 · раундов 2</span>
@@ -93,6 +99,11 @@
                     </form>
                   </div>
                 </div>
+ <th:block th:if="${view.roundFresh and row.declaration == null and !row.card.out}">
+                  <form th:each="d : ${row.declarations}" th:action="@{${base} + '/participants/' + ${row.participant.id} + '/declare/' + ${d.code}}" method="post">
+                    <button type="submit" class="btn btn-sm btn-ghost" th:text="${d.label} + ' +' + ${d.bonus}" title="Объявляется в начале раунда: к инициативе, но минус к попаданию">Выхватывает +3</button>
+                  </form>
+                </th:block>
                 <form th:if="${row.participant.waiting and !row.current}" th:action="@{${base} + '/participants/' + ${row.participant.id} + '/join'}" method="post">
                   <button type="submit" class="btn btn-sm btn-primary">Вступить</button>
                 </form>

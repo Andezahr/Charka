@@ -102,6 +102,34 @@ class EncounterPageTest {
     }
 
     @Test
+    @DisplayName("начало раунда: кнопка выхватывания и проверка в строке, после объявления отметка")
+    void declareFromPage() throws Exception {
+        fight();
+        String html = page(base);
+        assertThat(html).contains("/declare/FAST_DRAW").contains("/check").contains("Выхватывает +3");
+
+        Long participant = encounterService.view(campaign.getId()).orElseThrow().rows().get(0).participant().getId();
+        mockMvc.perform(post(base + "/participants/" + participant + "/declare/FAST_DRAW")).andExpect(redirectedUrl(base));
+        flushAndClear();
+
+        assertThat(page(base)).contains("chip pink");
+
+        mockMvc.perform(post(base + "/participants/" + participant + "/check").param("skill", "awareness").param("difficulty", "15"))
+                .andExpect(status().is3xxRedirection());
+    }
+
+    @Test
+    @DisplayName("начало боя с общим кубиком идёт с формы")
+    void groupFromForm() throws Exception {
+        flushAndClear();
+        assertThat(page(base)).contains("name=\"groupNpcs\"");
+        mockMvc.perform(post(base + "/start").param("character", shooter.getId().toString()).param("groupPlayers", "true"))
+                .andExpect(redirectedUrl(base));
+        flushAndClear();
+        assertThat(page(base)).contains("Следующий");
+    }
+
+    @Test
     @DisplayName("перезарядка есть в строке участника: фишек в трекере нет; без запаса кнопки нет")
     void reloadInTracker() throws Exception {
         Long inventory = characterRepository.findById(shooter.getId()).orElseThrow().getInventories().get(0).getId();

@@ -27,6 +27,14 @@ public class Encounter {
     @Column(name = "round_number")
     private int round = 1;
 
+    /** Игроки бросают инициативу одним кубиком (книга, с. 97) */
+    @Column(name = "group_players")
+    private boolean groupPlayers;
+
+    /** NPC бросают инициативу одним кубиком */
+    @Column(name = "group_npcs")
+    private boolean groupNpcs;
+
     @OneToMany(mappedBy = "encounter", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("turnOrder ASC")
     private List<EncounterParticipant> participants = new ArrayList<>();

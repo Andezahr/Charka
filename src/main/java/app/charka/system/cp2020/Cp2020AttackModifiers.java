@@ -31,7 +31,7 @@ final class Cp2020AttackModifiers {
     /** Прицелы, турель и машина бывают только у стрельбы, не у броска */
     private static final Set<String> FIREARM_ONLY = Set.of("turret", "vehicle", "laser", "targeting_scope", "smartgun", "smartgoggles", TELESCOPIC, "two_weapons", "hip");
     private static final Set<String> SHOULDER_ARMS = Set.of("RIF", "SHT", "HVY");
-    private static final Set<String> MELEE_CODES = Set.of("immobile", "ambush", "blinded", "turning", "size_large", "size_small", "size_tiny", Cp2020Melee.DEFENSE);
+    private static final Set<String> MELEE_CODES = Set.of("immobile", "ambush", "blinded", "turning", "size_large", "size_small", "size_tiny", "fast_draw", "swept", "swept_foe", Cp2020Melee.DEFENSE);
 
     /**
      * @param choice код выбора: варианты с одним кодом взаимоисключающие; у флажка совпадает с {@code code}
@@ -64,6 +64,9 @@ final class Cp2020AttackModifiers {
             flag("ambush", SHOOTER, "Засада", 5),
             flag("blinded", SHOOTER, "Ослеплён светом или пылью", -3),
             flag("turning", SHOOTER, "Разворот к цели", -2),
+            // С. 111: подсечка, «−2 to next his attack; you gain +2 to your next attack»
+            flag("swept", SHOOTER, "Сбит с ног", -2),
+            flag("swept_foe", SHOOTER, "Противник сбит с ног", 2),
             flag("two_weapons", SHOOTER, "Стрельба с двух рук", -3),
             flag("running", SHOOTER, "Стрельба на бегу", -3),
             flag("hip", SHOOTER, "Длинноствольное от бедра", -2),

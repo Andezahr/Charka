@@ -256,6 +256,91 @@ class MeleeAttackTest {
         assertThat(row.weapons()).extracting(weapon -> weapon.item().getName()).contains("Sword");
     }
 
+    private void fight() {
+        flush();
+        encounterService.start(campaign.getId(), List.of(attacker.getId(), victim.getId()));
+        flush();
+    }
+
+    private AttackRequest move(String mode) {
+        return new AttackRequest(List.of(victim.getId()), null, 0, null, null, Set.of(), 0, mode, 0, 0);
+    }
+
+    private List<String> effects(Character character) {
+        return encounterService.view(campaign.getId()).orElseThrow().rows().stream()
+                .filter(row -> row.character().getId().equals(character.getId())).findFirst().orElseThrow()
+                .effects().stream().map(effect -> effect.getLabel()).toList();
+    }
+
+    /** защита 1, атака 9 — проходит; дальше броски самого приёма */
+    private AttackResult landed(String mode, Integer... rest) {
+        when(dice.roll(anyInt())).thenReturn(1, java.util.stream.Stream.concat(java.util.stream.Stream.of(9), java.util.Arrays.stream(rest)).toArray(Integer[]::new));
+        AttackResult result = attackService.attackWithAbility(attacker.getId(), "BRAWL", move(mode));
+        flush();
+        return result;
+    }
+
+    @Test
+    @DisplayName("Бросок и удушение только из захвата; захват виден на цели; бросок — 1D6 и оглушение с −2 (с. 111)")
+    void grappleChain() {
+        fight();
+        assertThatThrownBy(() -> landed("BODY_THROW", 4)).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("захват");
+        assertThatThrownBy(() -> landed("CHOKE", 4)).isInstanceOf(IllegalArgumentException.class);
+
+        assertThat(landed("GRAPPLE").outcome()).contains("в захвате");
+        assertThat(effects(victim)).containsExactly("В захвате");
+        assertThat(damage()).isZero();
+
+        // 1D6 = 4, BTM −2, спасбросок d10 = 9 при BODY 6 с −2 — провал
+        AttackResult thrown = landed("BODY_THROW", 4, 9);
+        assertThat(thrown.steps()).anyMatch(step -> step.contains("оглушения с -2"));
+        assertThat(damage()).isEqualTo(2);
+
+        landed("CHOKE", 3, 1);
+        assertThat(damage()).isEqualTo(2 + 1);
+    }
+
+    @Test
+    @DisplayName("Удержание держится, пока цель не вырвется; вырваться можно, только если держат")
+    void holdAndEscape() {
+        fight();
+        assertThatThrownBy(() -> landed("HOLD")).isInstanceOf(IllegalArgumentException.class);
+        landed("GRAPPLE");
+        landed("HOLD");
+        assertThat(effects(victim)).contains("В удержании");
+
+        assertThatThrownBy(() -> landed("ESCAPE")).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("не из чего");
+
+        when(dice.roll(anyInt())).thenReturn(1, 9);
+        AttackResult escaped = attackService.attackWithAbility(victim.getId(), "BRAWL",
+                new AttackRequest(List.of(attacker.getId()), null, 0, null, null, Set.of(), 0, "ESCAPE", 0, 0));
+        flush();
+
+        assertThat(escaped.outcome()).contains("Вырвался");
+        assertThat(effects(victim)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Подсечка: −2 цели, +2 себе, оба отмечены в диалоге (с. 111)")
+    void sweep() {
+        fight();
+        landed("SWEEP");
+
+        assertThat(effects(victim)).containsExactly("Сбит с ног −2");
+        assertThat(effects(attacker)).containsExactly("Подсёк +2");
+    }
+
+    @Test
+    @DisplayName("Обезоружить: итог словами, без урона; приём на уровне 0 без ключевой прибавки")
+    void disarm() {
+        fight();
+        AttackResult result = landed("DISARM");
+
+        assertThat(result.outcome()).contains("выбито");
+        assertThat(result.steps()).noneMatch(step -> step.contains("Ключевой приём"));
+        assertThat(damage()).isZero();
+    }
+
     @Test
     @DisplayName("Неизвестная способность и две цели отклоняются")
     void refused() {

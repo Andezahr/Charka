@@ -13,8 +13,9 @@ import java.util.List;
  * @param damage     что применить к цели; null — урон не бросается (например, «Drugs»), решает мастер, если нет эффекта ниже
  * @param save       спасбросок цели от попадания; null — его нет
  * @param effects    что остаётся на цели на следующие раунды
+ * @param clears     какие эффекты снять с самого атакующего: вырвался из захвата
  */
-public record AttackHit(String where, String expression, List<String> steps, DamageRequest damage, HitSave save, List<LingeringEffect> effects) {
+public record AttackHit(String where, String expression, List<String> steps, DamageRequest damage, HitSave save, List<LingeringEffect> effects, List<String> clears) {
 
     /**
      * @param code     код спасброска системы
@@ -26,6 +27,11 @@ public record AttackHit(String where, String expression, List<String> steps, Dam
     public AttackHit {
         steps = List.copyOf(steps);
         effects = List.copyOf(effects);
+        clears = List.copyOf(clears);
+    }
+
+    public AttackHit(String where, String expression, List<String> steps, DamageRequest damage, HitSave save, List<LingeringEffect> effects) {
+        this(where, expression, steps, damage, save, effects, List.of());
     }
 
     public AttackHit(String where, String expression, List<String> steps, DamageRequest damage) {
@@ -34,6 +40,6 @@ public record AttackHit(String where, String expression, List<String> steps, Dam
 
     /** Попадание без урона, но с правилами: мастеру решать нечего */
     public boolean hasEffect() {
-        return save != null || !effects.isEmpty();
+        return save != null || !effects.isEmpty() || !clears.isEmpty();
     }
 }

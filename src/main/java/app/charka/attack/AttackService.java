@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -73,7 +74,7 @@ public class AttackService {
             throw new IllegalArgumentException("Этим нельзя атаковать: " + source.name());
         }
         List<Character> targets = targets(attacker, request.targetIds());
-        AttackContext context = new AttackContext(attacker, source, targets, request, system::getCurrentStats);
+        AttackContext context = new AttackContext(attacker, source, targets, request, system::getCurrentStats, this::effectsOf);
         AttackResult result = perform(context, rules);
         // израсходованный предмет ушёл из инвентаря: его строки на листе больше нет
         boolean spentUp = source.item() == null || source.item().getInventory().getContent().stream().noneMatch(item -> item == source.item());
@@ -250,17 +251,32 @@ public class AttackService {
                 steps.add("Спасбросок с " + hit.save().modifier() + " бросает мастер: у цели нет здоровья на листе");
             }
         }
-        hit.effects().forEach(effect -> applyEffect(target, effect, steps));
+        hit.effects().forEach(effect -> applyEffect(effect.onAttacker() ? attacker : target, effect, steps));
+        if (!hit.clears().isEmpty()) {
+            participantOf(attacker).ifPresent(participant -> participant.getEffects().removeIf(effect -> hit.clears().contains(effect.getLabel())));
+        }
         return summary;
+    }
+
+    private Set<String> effectsOf(Character character) {
+        return participantOf(character)
+                .map(participant -> participant.getEffects().stream().map(CombatEffect::getLabel).collect(Collectors.toSet()))
+                .orElse(Set.of());
+    }
+
+    private Optional<EncounterParticipant> participantOf(Character character) {
+        if (character == null || character.getCampaign() == null) {
+            return Optional.empty();
+        }
+        return encounterRepository.findByCampaignId(character.getCampaign().getId())
+                .flatMap(encounter -> encounter.getParticipants().stream()
+                        .filter(other -> other.getCharacter().getId().equals(character.getId()))
+                        .findFirst());
     }
 
     /** Эффект считает раунды у участника боя; вне боя его ведёт мастер */
     private void applyEffect(Character target, LingeringEffect effect, List<String> steps) {
-        Optional<EncounterParticipant> participant = target == null || target.getCampaign() == null ? Optional.empty()
-                : encounterRepository.findByCampaignId(target.getCampaign().getId())
-                .flatMap(encounter -> encounter.getParticipants().stream()
-                        .filter(other -> other.getCharacter().getId().equals(target.getId()))
-                        .findFirst());
+        Optional<EncounterParticipant> participant = participantOf(target);
         if (participant.isEmpty()) {
             steps.add(effect.describe() + " — вне боя ведёт мастер");
             return;

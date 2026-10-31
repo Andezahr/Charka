@@ -7,6 +7,8 @@ import app.charka.encounter.EncounterView;
 import app.charka.model.Campaign;
 import app.charka.model.counters.strategy.health.HealthEvent;
 import app.charka.service.campaign.CampaignService;
+import app.charka.skill.SkillCheck;
+import app.charka.system.GameSystemRegistry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -34,6 +36,7 @@ public class EncounterController {
     private final EncounterService encounterService;
     private final CampaignService campaignService;
     private final DiceService diceService;
+    private final GameSystemRegistry systemRegistry;
 
     @GetMapping
     public String page(@PathVariable Long campaignId, Model model) {
@@ -45,6 +48,7 @@ public class EncounterController {
         if (view.isPresent()) {
             model.addAttribute("view", view.get());
             model.addAttribute("recentRolls", diceService.recentForCampaign(campaignId, JOURNAL_SIZE));
+            model.addAttribute("difficultyPresets", systemRegistry.get(campaign.getSystem()).getCheckResolver().getDifficultyPresets());
         } else {
             model.addAttribute("candidates", encounterService.candidates(campaignId));
         }
@@ -54,8 +58,10 @@ public class EncounterController {
     @PostMapping("/start")
     public String start(@PathVariable Long campaignId,
                         @RequestParam(required = false) List<Long> character,
+                        @RequestParam(defaultValue = "false") boolean groupPlayers,
+                        @RequestParam(defaultValue = "false") boolean groupNpcs,
                         RedirectAttributes redirectAttributes) {
-        return attempt(campaignId, redirectAttributes, () -> encounterService.start(campaignId, character == null ? List.of() : character));
+        return attempt(campaignId, redirectAttributes, () -> encounterService.start(campaignId, character == null ? List.of() : character, groupPlayers, groupNpcs));
     }
 
     @PostMapping("/next")
@@ -106,6 +112,31 @@ public class EncounterController {
             encounterService.join(campaignId, participantId);
             return null;
         });
+    }
+
+    @PostMapping("/participants/{participantId}/declare/{code}")
+    public String declare(@PathVariable Long campaignId, @PathVariable Long participantId, @PathVariable String code,
+                          RedirectAttributes redirectAttributes) {
+        return attempt(campaignId, redirectAttributes, () -> {
+            encounterService.declare(campaignId, participantId, code);
+            return null;
+        });
+    }
+
+    @PostMapping("/participants/{participantId}/check")
+    public String check(@PathVariable Long campaignId, @PathVariable Long participantId, @RequestParam String skill,
+                        @RequestParam(required = false) Integer difficulty, @RequestParam(defaultValue = "0") int modifier,
+                        RedirectAttributes redirectAttributes) {
+        Long character = encounterService.characterOf(campaignId, participantId);
+        redirectAttributes.addFlashAttribute("resultCharacterId", character);
+        try {
+            SkillCheck check = encounterService.check(campaignId, participantId, skill, difficulty, modifier);
+            redirectAttributes.addFlashAttribute("combatResult", new AttackResult(check.label(), check.result().outcome(),
+                    !Boolean.FALSE.equals(check.result().success()), check.result().steps()));
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("encounterError", e.getMessage());
+        }
+        return redirect(campaignId, character);
     }
 
     @PostMapping("/participants/{participantId}/effects/{effectId}/remove")

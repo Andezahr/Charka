@@ -5,6 +5,7 @@ import app.charka.attack.AttackSource;
 import app.charka.check.CheckRequest;
 import app.charka.check.CheckResolver;
 import app.charka.encounter.CombatCard;
+import app.charka.encounter.InitiativeDeclaration;
 import app.charka.encounter.Initiative;
 import app.charka.item.CatalogItem;
 import app.charka.item.ItemAction;
@@ -214,6 +215,17 @@ public class Cp2020System implements GameSystem {
     }
 
     /** Состояние, броня головы и торса, штрафы и какие спасброски нужны сейчас */
+    /** С. 97: +3 к инициативе, −3 к попаданию, без прицелов; у холодного оружия и боевых искусств — то же */
+    @Override
+    public List<InitiativeDeclaration> getInitiativeDeclarations() {
+        return List.of(new InitiativeDeclaration("FAST_DRAW", "Выхватывает", 3, "fast_draw"));
+    }
+
+    @Override
+    public List<String> getCombatCheckSkills() {
+        return List.of("awareness");
+    }
+
     @Override
     public CombatCard getCombatCard(Character character) {
         CounterContext context = new CounterContext(null, character.getCounters());

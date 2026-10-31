@@ -6,6 +6,7 @@ import app.charka.check.CheckResolver;
 import app.charka.check.GenericCheckResolver;
 import app.charka.encounter.CombatCard;
 import app.charka.encounter.Initiative;
+import app.charka.encounter.InitiativeDeclaration;
 import app.charka.item.CatalogItem;
 import app.charka.item.ItemAction;
 import app.charka.item.ItemAttachments;
@@ -201,6 +202,20 @@ public interface GameSystem {
      */
     default List<String> getCharacterBrief(Character character) {
         return rolesOf(character).stream().map(CharacterRole::name).toList();
+    }
+
+    /**
+     * Что можно объявить в начале раунда боя.
+     */
+    default List<InitiativeDeclaration> getInitiativeDeclarations() {
+        return List.of();
+    }
+
+    /**
+     * Навыки, нужные в бою почти всегда: в проверке из строки участника они первые, даже на уровне 0.
+     */
+    default List<String> getCombatCheckSkills() {
+        return List.of();
     }
 
     /**

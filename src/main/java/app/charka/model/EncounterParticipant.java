@@ -43,6 +43,9 @@ public class EncounterParticipant {
     /** Решил подождать и вступить позже в этом раунде */
     private boolean waiting;
 
+    /** Что объявлено в этом раунде: код из {@code GameSystem.getInitiativeDeclarations}; новый раунд сбрасывает */
+    private String declaration;
+
     @OneToMany(mappedBy = "participant", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id ASC")
     private List<CombatEffect> effects = new ArrayList<>();

@@ -20,6 +20,8 @@ import java.util.Map;
 public class CombatEffect {
 
     private static final String SEPARATOR = ";";
+    /** Столько раундов значит «пока не снимут»: удержание */
+    public static final int UNTIL_REMOVED = 99;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -62,7 +64,9 @@ public class CombatEffect {
      * @return бросок урона этого раунда; null — урона нет
      */
     public String nextRound() {
-        roundsLeft--;
+        if (roundsLeft < UNTIL_REMOVED) {
+            roundsLeft--;
+        }
         List<String> rolls = new ArrayList<>(getDamageRolls());
         if (rolls.isEmpty()) {
             return null;
@@ -79,6 +83,6 @@ public class CombatEffect {
     /** Подпись у участника: сколько осталось и чем грозит */
     public String getSummary() {
         List<String> rolls = getDamageRolls();
-        return label + (rolls.isEmpty() ? "" : " " + rolls.get(0)) + " · раундов " + roundsLeft;
+        return label + (rolls.isEmpty() ? "" : " " + rolls.get(0)) + (roundsLeft >= UNTIL_REMOVED ? "" : " · раундов " + roundsLeft);
     }
 }
