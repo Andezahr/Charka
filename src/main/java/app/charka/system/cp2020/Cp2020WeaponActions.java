@@ -101,7 +101,7 @@ final class Cp2020WeaponActions {
             return actions;
         }
         ItemAction reload = usesMagazines(weapon) ? magazineReloadAction(weapon) : directReloadAction(weapon);
-        actions.add(caliber(weapon) != null ? reload.asHidden() : reload);
+        actions.add(caliber(weapon) != null ? reload.asHidden().forCombat() : reload);
         if (usesMagazines(weapon) && hasMagazine(weapon)) {
             actions.add(ItemAction.simple(EJECT, "Извлечь магазин", null).asSecondary());
         }
@@ -148,8 +148,10 @@ final class Cp2020WeaponActions {
                 .filter(magazine -> number(magazine, Cp2020ItemTypes.LOADED) > 0)
                 .map(magazine -> new Option(String.valueOf(magazine.getId()), magazineLabel(magazine)));
         boolean room = hasMagazine(weapon) && number(weapon, Cp2020ItemTypes.LOADED) < capacity(weapon);
-        Stream<Option> loose = room
-                ? stacks(weapon).map(stack -> new Option(String.valueOf(stack.getId()), "В этот магазин: " + stackLabel(stack)))
+        // полный магазин можно перезарядить только другим видом: пулями вместо дроби
+        Stream<Option> loose = hasMagazine(weapon)
+                ? stacks(weapon).filter(stack -> room || !sameLoad(stack, weapon))
+                .map(stack -> new Option(String.valueOf(stack.getId()), "В этот магазин: " + stackLabel(stack)))
                 : Stream.empty();
         List<Option> sources = Stream.concat(magazines, loose).toList();
         int standard = number(weapon, Cp2020ItemTypes.SHOTS);

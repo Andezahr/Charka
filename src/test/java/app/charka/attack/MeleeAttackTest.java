@@ -13,6 +13,7 @@ import app.charka.repository.CharacterRepository;
 import app.charka.service.CharacterService;
 import app.charka.service.ItemService;
 import app.charka.skill.SkillService;
+import app.charka.system.GameSystemRegistry;
 import app.charka.system.cp2020.Cp2020HealthStrategy;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -49,6 +50,7 @@ class MeleeAttackTest {
     @Autowired private CharacterService characterService;
     @Autowired private ItemService itemService;
     @Autowired private SkillService skillService;
+    @Autowired private GameSystemRegistry systemRegistry;
     @Autowired private EntityManager entityManager;
 
     @MockitoBean(answers = Answers.CALLS_REAL_METHODS) private DiceRoller dice;
@@ -273,6 +275,14 @@ class MeleeAttackTest {
         Item gun = give(attacker, "arasaka_rapid_assault_12");
         Item box = give(attacker, "ammo_slugs");
         flush();
+        Item full = characterRepository.findById(attacker.getId()).orElseThrow().getInventories().get(0).getContent().stream()
+                .filter(item -> item.getId().equals(gun.getId())).findFirst().orElseThrow();
+        // магазин полон дроби, а пули всё равно предлагаются: другим видом его можно сменить
+        assertThat(systemRegistry.forCharacter(full.getInventory().getCharacter()).getItemActions(full))
+                .filteredOn(action -> action.code().equals("RELOAD")).singleElement().satisfies(action -> {
+                    assertThat(action.sources()).extracting(option -> option.value()).contains(String.valueOf(box.getId()));
+                    assertThat(action.isShownInCombat()).isTrue();
+                });
         // Магазин снят, в него идут пули: прежняя дробь уходит в запас
         itemService.performAction(attacker.getId(), gun.getId(), "RELOAD", Map.of("source", String.valueOf(box.getId())));
         flush();

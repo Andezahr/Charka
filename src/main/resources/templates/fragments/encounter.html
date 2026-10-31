@@ -24,7 +24,7 @@
       <button type="button" class="btn btn-sm btn-primary" th:attr="data-dialog-open='attack-' + ${weapon.item.id}"
               th:disabled="${weapon.form.unavailable != null}" th:text="${weapon.form.actionLabel}">Атаковать</button>
       <dialog th:replace="~{fragments/attack :: dialog(${row.character.id}, ${weapon.item}, ${weapon.form}, ${row.targets})}"></dialog>
-      <th:block th:each="action : ${weapon.actions.?[!secondary and !hidden]}">
+      <th:block th:each="action : ${weapon.actions.?[shownInCombat]}">
         <form th:replace="~{fragments/items :: action-form(${action}, @{${weapon.url} + '/action/' + ${action.code}}, null)}"></form>
       </th:block>
     </div>

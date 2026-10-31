@@ -102,6 +102,24 @@ class EncounterPageTest {
     }
 
     @Test
+    @DisplayName("перезарядка есть в строке участника: фишек в трекере нет; без запаса кнопки нет")
+    void reloadInTracker() throws Exception {
+        Long inventory = characterRepository.findById(shooter.getId()).orElseThrow().getInventories().get(0).getId();
+        Item rpg = itemService.addFromCatalog(inventory, "militech_arms_rpg_a", 1);
+        flushAndClear();
+        fight();
+        assertThat(page(base)).doesNotContain("/items/" + rpg.getId() + "/action/RELOAD");
+
+        Item round = itemService.addFromCatalog(inventory, "ammo_rpg", 1);
+        flushAndClear();
+        // РПГ из справочника заряжен: запас предлагается, только когда он пуст
+        mockMvc.perform(post("/character/" + shooter.getId() + "/inventories/" + inventory + "/items/" + rpg.getId() + "/action/FIRE"));
+        flushAndClear();
+
+        assertThat(page(base)).contains("/items/" + rpg.getId() + "/action/RELOAD").contains("value=\"" + round.getId() + "\"");
+    }
+
+    @Test
     @DisplayName("эффект виден у участника, снимается нажатием; в диалоге ослеплённого отмечен штраф")
     void effectChip() throws Exception {
         fight();
