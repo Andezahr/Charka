@@ -349,7 +349,7 @@ class ItemTypesTest {
         @BeforeEach
         void setUp() {
             GameSystemRegistry registry = new GameSystemRegistry(List.of(new GenericSystem(), new Cp2020System(null, null)));
-            itemService = new ItemServiceImpl(itemRepository, inventoryRepository, registry);
+            itemService = new ItemServiceImpl(null, itemRepository, inventoryRepository, registry);
             inventory = inventoryIn(Cp2020System.CODE);
             when(inventoryRepository.findById(1L)).thenReturn(Optional.of(inventory));
             when(itemRepository.save(any())).thenAnswer(call -> call.getArgument(0));

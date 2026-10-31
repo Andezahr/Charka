@@ -1137,7 +1137,7 @@ html:has(.is-editing) {
 .encounter-group .label { width: 100%; }
 
 /* Вживлённое: блок фишек над инвентарями */
-.installed { display: flex; flex-direction: column; gap: 8px; padding: 10px 14px; overflow: visible; }
+.installed { position: relative; display: flex; flex-direction: column; gap: 8px; padding: 10px 14px; overflow: visible; }
 .installed-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .installed-head .btn { margin-left: auto; }
 .installed-summary { color: var(--text-soft); font-size: 13px; }
@@ -1145,4 +1145,8 @@ html:has(.is-editing) {
 .installed-chips { position: relative; display: flex; flex-wrap: wrap; gap: 4px; }
 .installed .item-chip-menu { position: static; }
 .installed-menu { top: auto; left: 0; right: 0; margin-top: 4px; }
+.installed-head .installed-menu { left: 14px; right: 14px; }
+.installed-menu .item-action { display: flex; flex-wrap: wrap; gap: 6px; }
+.installed-menu .item-action select { flex: 1 1 100%; }
+.installed-menu .item-action .btn { width: auto; }
 .installed-menu .item-note { margin: 0; color: var(--text-soft); white-space: normal; }

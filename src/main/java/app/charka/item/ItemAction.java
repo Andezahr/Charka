@@ -35,6 +35,11 @@ public record ItemAction(String code, String label, String unavailable, List<Ite
         return new ItemAction(code, label, unavailable, List.of(), amount, maxAmount, false, false, false, null);
     }
 
+    /** Выбор и число сразу */
+    public static ItemAction withSourcesAndAmount(String code, String label, List<ItemField.Option> sources, int amount, int maxAmount) {
+        return new ItemAction(code, label, null, sources, amount, maxAmount, false, false, false, null);
+    }
+
     public ItemAction asSecondary() {
         return new ItemAction(code, label, unavailable, sources, amount, maxAmount, true, hidden, combat, confirm);
     }

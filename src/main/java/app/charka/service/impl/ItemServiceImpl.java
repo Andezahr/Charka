@@ -22,6 +22,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ItemServiceImpl implements ItemService {
 
+    private final app.charka.repository.CharacterRepository characterRepository;
     private final ItemRepository itemRepository;
     private final InventoryRepository inventoryRepository;
     private final GameSystemRegistry systemRegistry;
@@ -179,6 +180,16 @@ public class ItemServiceImpl implements ItemService {
             throw new NotFoundException(String.format(ITEM_NOT_FOUND, itemId));
         }
         return systemRegistry.forCharacter(item.getInventory().getCharacter()).performItemAction(item, action, params);
+    }
+
+    /**
+     * Действие блока вживлённого по правилам системы кампании.
+     */
+    @Override
+    public String performInstalledAction(Long characterId, String action, Map<String, String> params) {
+        app.charka.model.Character character = characterRepository.findById(characterId)
+                .orElseThrow(app.charka.exception.CharacterNotFoundException.forId(characterId));
+        return systemRegistry.forCharacter(character).performInstalledAction(character, action, params);
     }
 
     /**

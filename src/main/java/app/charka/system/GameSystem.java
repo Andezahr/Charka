@@ -220,6 +220,16 @@ public interface GameSystem {
     }
 
     /**
+     * Действие блока вживлённого: {@link InstalledBlock#actions()}. Вызывать в транзакции.
+     *
+     * @return итог для показа игроку
+     * @throws IllegalArgumentException если действие сейчас невозможно
+     */
+    default String performInstalledAction(Character character, String action, Map<String, String> params) {
+        throw new IllegalArgumentException("Такого действия нет: " + action);
+    }
+
+    /**
      * Что вживлено в персонажа; null — у системы такого нет.
      */
     default InstalledBlock getInstalled(Character character) {

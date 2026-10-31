@@ -195,6 +195,7 @@ public class Cp2020System implements GameSystem {
         List<String> brief = new ArrayList<>(GameSystem.super.getCharacterBrief(character));
         CounterContext context = new CounterContext(null, character.getCounters());
         context.sibling(Cp2020HealthStrategy.TYPE).ifPresent(health -> brief.add(healthBrief(health)));
+        Cp2020Cyber.shortWarning(character).ifPresent(brief::add);
         context.sibling(Cp2020ArmorStrategy.TYPE).ifPresent(armor -> brief.add("SP торса " + ARMOR.sp(armor, Cp2020Location.TORSO)));
         character.getInventories().stream()
                 .flatMap(inventory -> inventory.getContent().stream())
@@ -241,6 +242,11 @@ public class Cp2020System implements GameSystem {
     }
 
     @Override
+    public String performInstalledAction(Character character, String action, Map<String, String> params) {
+        return Cp2020Cyber.therapy(character, action, params);
+    }
+
+    @Override
     public InstalledBlock getInstalled(Character character) {
         return Cp2020Cyber.block(character);
     }
@@ -265,6 +271,7 @@ public class Cp2020System implements GameSystem {
         context.sibling(Cp2020ArmorStrategy.TYPE).ifPresent(armor ->
                 lines.add("SP голова " + ARMOR.sp(armor, Cp2020Location.HEAD) + " · торс " + ARMOR.sp(armor, Cp2020Location.TORSO)));
         lines.add("BTM −" + view.getBtm());
+        Cp2020Cyber.shortWarning(character).ifPresent(lines::add);
         if (view.getPenalty() != null) {
             lines.add(view.getPenalty());
         }

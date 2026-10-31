@@ -37,6 +37,15 @@ public interface ItemService {
     @Transactional
     String performAction(Long characterId, Long itemId, String action, Map<String, String> params);
 
+    /**
+     * Действие блока вживлённого на листе персонажа: терапия.
+     *
+     * @return итог для показа игроку
+     * @throws IllegalArgumentException если действие сейчас невозможно
+     */
+    @Transactional
+    String performInstalledAction(Long characterId, String action, Map<String, String> params);
+
     @Transactional
     void delete(Long id);
 

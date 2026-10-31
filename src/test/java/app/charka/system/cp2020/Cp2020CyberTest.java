@@ -345,6 +345,99 @@ class Cp2020CyberTest {
     }
 
     @Nested
+    @DisplayName("Киберпсихоз и терапия (с. 73–75)")
+    class Psychosis {
+
+        private void lost(int points) {
+            counter(Cp2020StatsStrategy.TYPE).getAttributes().put(Cp2020StatsStrategy.HUMANITY_LOSS, points);
+            flush();
+        }
+
+        @org.junit.jupiter.params.ParameterizedTest
+        @org.junit.jupiter.params.provider.CsvSource({"20,", "35,EMP 3", "45,EMP 2", "55,EMP 1", "60,Киберпсихоз", "90,Киберпсихоз"})
+        @DisplayName("Предупреждение по текущему EMP: 3, 2, 1, а на 0 и ниже персонажа ведёт мастер")
+        void levels(int points, String expected) {
+            lost(points);
+
+            if (expected == null) {
+                assertThat(block().warning()).isNull();
+            } else {
+                assertThat(block().warning()).startsWith(expected);
+            }
+        }
+
+        @Test
+        @DisplayName("Трекер и кампания видят только опасное")
+        void shortWarning() {
+            lost(55);
+            assertThat(Cp2020Cyber.shortWarning(owner())).contains("EMP 1");
+            lost(60);
+            assertThat(registry.forCharacter(owner()).getCombatCard(owner()).lines()).contains("Киберпсих");
+            assertThat(registry.forCharacter(owner()).getCharacterBrief(owner())).contains("Киберпсих");
+        }
+
+        @Test
+        @DisplayName("Установка, опускающая EMP, говорит об этом сразу")
+        void installWarns() {
+            lost(50);
+
+            assertThat(install("Rippers")).contains("EMP 1");
+        }
+
+        @Test
+        @DisplayName("Полная терапия: EMP −3 до 6 за 5 недель, как в примере книги")
+        void fullTherapy() {
+            lost(90);
+            assertThat(block().actionsNote()).contains("5 нед");
+
+            String result = itemService.performInstalledAction(owner.getId(), "THERAPY", Map.of("source", "FULL", "amount", "5"));
+            flush();
+
+            assertThat(result).contains("90 → 0");
+            assertThat(humanityLoss()).isZero();
+            assertThat(block().actions()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("Под наблюдением: 2 очка в неделю, кибер остаётся")
+        void monitored() {
+            install("Rippers");
+            int before = humanityLoss();
+
+            itemService.performInstalledAction(owner.getId(), "THERAPY", Map.of("source", "MONITORED", "amount", "2"));
+            flush();
+
+            assertThat(humanityLoss()).isEqualTo(before - 4);
+            assertThat(block().rows()).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("Плохой ввод отклоняется")
+        void refused() {
+            lost(10);
+            assertThatThrownBy(() -> itemService.performInstalledAction(owner.getId(), "THERAPY", Map.of("source", "FULL", "amount", "0")))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> itemService.performInstalledAction(owner.getId(), "THERAPY", Map.of("source", "X", "amount", "1")))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> itemService.performInstalledAction(owner.getId(), "NOPE", Map.of()))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("На листе: фишка предупреждения и терапия; итог в блоке")
+        void onSheet() throws Exception {
+            lost(45);
+            String html = mockMvc.perform(get("/character/" + owner.getId())).andReturn().getResponse().getContentAsString();
+            assertThat(html).contains("EMP 2: холоден").contains("/installed/THERAPY");
+
+            mockMvc.perform(post("/character/" + owner.getId() + "/installed/THERAPY").param("source", "FULL").param("amount", "1"))
+                    .andExpect(status().is3xxRedirection());
+            flush();
+            assertThat(humanityLoss()).isEqualTo(25);
+        }
+    }
+
+    @Nested
     @DisplayName("Лист")
     class Sheet {
 

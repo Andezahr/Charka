@@ -12,6 +12,7 @@ import app.charka.service.counter.HealthCounterService;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -27,6 +28,19 @@ final class Cp2020Cyber {
     static final String REMOVE = "REMOVE";
     static final String REPAIR = "REPAIR";
     static final String SPEEDWARE = "Speedware";
+
+    /** Что значит низкая эмпатия: книга, с. 73 */
+    private static final int COLD_EMP = 3;
+    private static final int RUDE_EMP = 2;
+    private static final int VICIOUS_EMP = 1;
+
+    /** С отключённым кибером: 2 EMP в неделю (с. 75, пример: EMP −3 до 6 за 5 недель); под наблюдением с работающим — 2 очка потери в неделю (с. 74) */
+    static final String THERAPY = "THERAPY";
+    static final String THERAPY_FULL = "FULL";
+    static final String THERAPY_MONITORED = "MONITORED";
+    private static final int FULL_THERAPY_POINTS = 2 * Cp2020Rules.HUMANITY_PER_EMP;
+    private static final int MONITORED_THERAPY_POINTS = 2;
+    private static final int MAX_THERAPY_WEEKS = 520;
 
     private static final String CONFIRM = "Установить? Потеря человечности и урон хирургии бросаются сразу, снятие их не вернёт.";
 
@@ -127,6 +141,7 @@ final class Cp2020Cyber {
         }
         surgery(item).ifPresent(surgery -> operate(surgery, owner, parts, dice, health));
         markInstalled(item);
+        warning(owner).ifPresent(parts::add);
         return String.join(". ", parts);
     }
 
@@ -223,13 +238,92 @@ final class Cp2020Cyber {
         List<InstalledBlock.Row> rows = installed(character)
                 .map(item -> new InstalledBlock.Row(item, chip(item), details(item), actions(item)))
                 .toList();
-        return new InstalledBlock("Киберware", humanity(character), rows, Cp2020ItemTypes.CYBER, INSTALL, CONFIRM);
+        int empathy = empathy(character).orElse(Integer.MAX_VALUE);
+        int loss = stats(character).map(stats -> stats.getAttribute(Cp2020StatsStrategy.HUMANITY_LOSS, 0)).orElse(0);
+        List<ItemAction> actions = loss > 0 ? List.of(therapyAction(loss)) : List.of();
+        String note = loss > 0 ? "Полная терапия вернёт всё за " + fullTherapyWeeks(loss) + " нед. Время мастер проматывает сам" : null;
+        return new InstalledBlock("Киберware", humanity(character), rows, Cp2020ItemTypes.CYBER, INSTALL, CONFIRM,
+                warning(character).orElse(null), empathy <= RUDE_EMP, actions, note);
+    }
+
+    private static ItemAction therapyAction(int loss) {
+        return ItemAction.withSourcesAndAmount(THERAPY, "Пройти", List.of(
+                new app.charka.item.ItemField.Option(THERAPY_FULL, "Кибер отключён: 2 EMP/нед"),
+                new app.charka.item.ItemField.Option(THERAPY_MONITORED, "Кибер работает: 2 очка/нед")),
+                // чаще всего лечатся до конца: сразу предложен весь срок
+                fullTherapyWeeks(loss), MAX_THERAPY_WEEKS);
+    }
+
+    private static int fullTherapyWeeks(int loss) {
+        return (loss + FULL_THERAPY_POINTS - 1) / FULL_THERAPY_POINTS;
+    }
+
+    /**
+     * Терапия: уменьшает потерю человечности, не ниже нуля.
+     *
+     * @throws IllegalArgumentException если вводить нечего или число не подходит
+     */
+    static String therapy(Character character, String action, Map<String, String> params) {
+        Counter stats = stats(character).orElse(null);
+        if (!THERAPY.equals(action) || stats == null) {
+            throw new IllegalArgumentException("Такого действия нет: " + action);
+        }
+        int weeks;
+        try {
+            weeks = Integer.parseInt(params.getOrDefault("amount", "").strip());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Укажите, сколько недель");
+        }
+        if (weeks < 1 || weeks > MAX_THERAPY_WEEKS) {
+            throw new IllegalArgumentException("Недель — от 1 до " + MAX_THERAPY_WEEKS);
+        }
+        int perWeek = switch (params.getOrDefault("source", "")) {
+            case THERAPY_FULL -> FULL_THERAPY_POINTS;
+            case THERAPY_MONITORED -> MONITORED_THERAPY_POINTS;
+            default -> throw new IllegalArgumentException("Выберите вид терапии");
+        };
+        int before = stats.getAttribute(Cp2020StatsStrategy.HUMANITY_LOSS, 0);
+        int after = Math.max(0, before - weeks * perWeek);
+        stats.getAttributes().put(Cp2020StatsStrategy.HUMANITY_LOSS, after);
+        return "Терапия " + weeks + " нед.: потеря " + before + " → " + after + ". " + humanity(character);
+    }
+
+    private static Optional<Counter> stats(Character character) {
+        return character.getCounters().stream()
+                .filter(counter -> Cp2020StatsStrategy.TYPE.equals(counter.getType()))
+                .findFirst();
+    }
+
+    /** Текущая эмпатия; пусто — у персонажа нет статов */
+    private static Optional<Integer> empathy(Character character) {
+        return stats(character).map(stats -> Cp2020Rules.effectiveEmp(Cp2020Rules.humanity(
+                stats.getAttribute(Cp2020StatsStrategy.EMP, Cp2020StatsStrategy.DEFAULT_STAT),
+                stats.getAttribute(Cp2020StatsStrategy.HUMANITY_LOSS, 0))));
+    }
+
+    /** С. 73: что это значит за столом */
+    static Optional<String> warning(Character character) {
+        return empathy(character).map(empathy -> {
+            if (empathy <= 0) {
+                return "Киберпсихоз: персонажа ведёт мастер";
+            }
+            if (empathy == VICIOUS_EMP) {
+                return "EMP 1: жесток, едва держится";
+            }
+            if (empathy == RUDE_EMP) {
+                return "EMP 2: холоден и неприятен";
+            }
+            return empathy == COLD_EMP ? "EMP 3: отстранён" : null;
+        });
+    }
+
+    /** Коротко для трекера и кампании: там важно только то, что уже опасно */
+    static Optional<String> shortWarning(Character character) {
+        return empathy(character).map(empathy -> empathy <= 0 ? "Киберпсих" : empathy == VICIOUS_EMP ? "EMP 1" : null);
     }
 
     private static String humanity(Character character) {
-        return character.getCounters().stream()
-                .filter(counter -> Cp2020StatsStrategy.TYPE.equals(counter.getType()))
-                .findFirst()
+        return stats(character)
                 .map(stats -> {
                     int emp = stats.getAttribute(Cp2020StatsStrategy.EMP, Cp2020StatsStrategy.DEFAULT_STAT);
                     int humanity = Cp2020Rules.humanity(emp, stats.getAttribute(Cp2020StatsStrategy.HUMANITY_LOSS, 0));

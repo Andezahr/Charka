@@ -214,7 +214,7 @@
   </select>
   <input th:if="${action.amount != null}" type="number" name="amount" class="narrow" min="1"
          th:value="${action.amount}" th:attr="max=${action.maxAmount}" th:disabled="${action.unavailable != null}"
-         required aria-label="Сколько патронов">
+         required aria-label="Сколько">
   <button type="submit" class="btn btn-sm" th:disabled="${action.unavailable != null}"
           th:text="${action.label}">Выстрел</button>
 </form>
@@ -224,8 +224,26 @@
   <div class="installed-head">
     <h2 class="card-title"><span class="dot pink"></span><span th:text="${block.title}">Киберware</span></h2>
     <span th:if="${block.summary != null}" class="installed-summary" th:text="${block.summary}">Человечность 52/60 · EMP 5</span>
+    <span th:if="${block.warning != null}" class="chip" th:classappend="${block.alarming} ? 'red' : 'pink'" th:text="${block.warning}">EMP 2: холоден</span>
+    <details th:unless="${#lists.isEmpty(block.actions)}" class="item-chip-menu" data-menu>
+      <summary class="item-chip">Терапия</summary>
+      <div class="item-chip-options installed-menu">
+        <p th:if="${block.actionsNote != null}" class="item-note" th:text="${block.actionsNote}">Полная терапия</p>
+        <th:block th:each="action : ${block.actions}">
+          <form th:replace="~{fragments/items :: action-form(${action}, @{'/character/' + ${character.id} + '/installed/' + ${action.code}}, null)}"></form>
+        </th:block>
+      </div>
+    </details>
     <button th:unless="${#lists.isEmpty(character.inventories)}" type="button" class="btn btn-sm"
             th:attr="data-add-item=${character.inventories[0].id},data-add-item-name=${character.inventories[0].name},data-add-tab-open=${block.addType},data-add-then=${block.addAction},data-add-confirm=${block.addConfirm},data-add-title='Установить: ' + ${block.title}">＋</button>
+  </div>
+  <div th:if="${installedResult != null}" class="alert alert-success item-result" role="status">
+    <span class="alert-text" th:text="${installedResult}">Терапия</span>
+    <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+  </div>
+  <div th:if="${installedError != null}" class="alert alert-error item-result" role="alert">
+    <span class="alert-text" th:text="${installedError}">Укажите недели</span>
+    <button type="button" class="alert-close" aria-label="Закрыть">×</button>
   </div>
   <div th:unless="${#lists.isEmpty(block.rows)}" class="installed-chips">
     <details th:each="row : ${block.rows}" class="item-chip-menu" data-menu th:id="'item-' + ${row.item.id}">

@@ -13,11 +13,17 @@ import java.util.List;
  * @param addType тип предмета для окна «Добавить»
  * @param addAction действие над предметом сразу после выбора в окне
  * @param addConfirm что спросить перед этим: действие необратимо
+ * @param warning    чем это грозит сейчас; null — ничем
+ * @param alarming   предупреждение серьёзное
+ * @param actions    действия всего блока: терапия
+ * @param actionsNote что сказать в меню действий
  */
-public record InstalledBlock(String title, String summary, List<Row> rows, String addType, String addAction, String addConfirm) {
+public record InstalledBlock(String title, String summary, List<Row> rows, String addType, String addAction, String addConfirm,
+                             String warning, boolean alarming, List<ItemAction> actions, String actionsNote) {
 
     public InstalledBlock {
         rows = List.copyOf(rows);
+        actions = List.copyOf(actions);
     }
 
     /**
