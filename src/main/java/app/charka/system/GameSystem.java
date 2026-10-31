@@ -6,6 +6,8 @@ import app.charka.check.CheckResolver;
 import app.charka.check.GenericCheckResolver;
 import app.charka.item.CatalogItem;
 import app.charka.item.ItemAction;
+import app.charka.item.ItemAttachments;
+import app.charka.item.ItemSummary;
 import app.charka.item.ItemTypeDefinition;
 import app.charka.model.Campaign;
 import app.charka.model.Character;
@@ -132,6 +134,29 @@ public interface GameSystem {
      * Действия над предметом на листе персонажа; пусто — у предмета их нет. Вызывать в транзакции.
      */
     default List<ItemAction> getItemActions(Item item) {
+        return List.of();
+    }
+
+    /**
+     * Краткая строка предмета на листе. Вызывать в транзакции.
+     */
+    default ItemSummary getItemSummary(Item item) {
+        return findItemType(item.getType())
+                .map(type -> ItemSummary.allFields(type, item.getProperties()))
+                .orElse(new ItemSummary(null, List.of()));
+    }
+
+    /**
+     * Что показывается вместе с предметом, а не своими строками. Вызывать в транзакции.
+     */
+    default ItemAttachments getItemAttachments(Item item) {
+        return ItemAttachments.NONE;
+    }
+
+    /**
+     * Строки справочника, которые этому персонажу нужны в первую очередь: патроны и магазины к его оружию.
+     */
+    default List<CatalogItem> getSuggestedCatalog(Character character) {
         return List.of();
     }
 

@@ -23,6 +23,9 @@ public final class Cp2020Ammo {
     public static final String NAPALM = "Напалм";
     public static final String MICRO_MISSILES = "Микроракеты";
 
+    private static final String CANNON = "20/9mm";
+    private static final List<String> OWN_NAMES = List.of(ARROWS, BOLTS, PELLETS, NEEDLES, NAPALM, MICRO_MISSILES);
+
     private static final String GROUP = "Боеприпасы";
     private static final String OTHER_GROUP = "Боеприпасы: другие";
     private static final String BRASS_GROUP = "Боеприпасы: латунная гильза для старого оружия";
@@ -56,7 +59,7 @@ public final class Cp2020Ammo {
         bullets(rows, "дробовик", 12, 15, "00");
 
         // Подкалиберный снаряд Barrett-Arasaka (с. 63): бронебойный всегда, отдельной цены ×3 у него нет
-        rows.add(row("ammo_20mm", OTHER_GROUP, "20mm Cannon, снаряд", "20/9mm", true, 1, 25, null));
+        rows.add(row("ammo_20mm", OTHER_GROUP, "20mm Cannon, снаряд", CANNON, true, 1, 25, null));
         rows.add(other("arrows", "Стрелы (12)", ARROWS, 12, 24, BOX_NOTE));
         rows.add(other("bolts", "Болты для арбалета (12)", BOLTS, 12, 30, BOX_NOTE));
         rows.add(other("pellets", "Пульки для пневматики (100)", PELLETS, 100, 6, BOX_NOTE + ". С наркотиком или кислотой — ×5 к цене"));
@@ -97,7 +100,18 @@ public final class Cp2020Ammo {
         Map<String, String> properties = armorPiercing
                 ? Map.of(Cp2020ItemTypes.CALIBER, caliber, Cp2020ItemTypes.ARMOR_PIERCING, "1")
                 : Map.of(Cp2020ItemTypes.CALIBER, caliber);
-        return new CatalogItem(key, group, name, Cp2020ItemTypes.AMMO, cost, note, properties, pack);
+        return new CatalogItem(key, group, name, Cp2020ItemTypes.AMMO, cost, note, properties, pack, false, stackName(caliber, armorPiercing));
+    }
+
+    /** Название запаса в инвентаре: число в нём меняется, поэтому ни коробки, ни класса оружия в названии нет */
+    static String stackName(String caliber, boolean armorPiercing) {
+        if (OWN_NAMES.contains(caliber)) {
+            return caliber;
+        }
+        if (CANNON.equals(caliber)) {
+            return "Снаряды " + caliber;
+        }
+        return "Патроны " + caliber + (armorPiercing ? " AP" : "");
     }
 
     private static String key(String caliber, int cost, int boxSize) {

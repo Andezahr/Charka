@@ -116,13 +116,14 @@
           </form>
         </div>
         <div class="card-body">
-          <div th:each="inv : ${character.inventories}" class="inventory">
+          <div th:each="inv : ${character.inventories}" class="inventory" th:id="'inventory-' + ${inv.id}">
             <div class="inventory-head" data-editable>
               <div class="inventory-name">
                 🎒 <span th:text="${inv.name}">Инвентарь</span>
                 <span class="badge" th:text="${#lists.size(inv.content)}">0</span>
               </div>
               <div class="row-actions">
+                <button type="button" class="btn btn-sm btn-primary" th:attr="data-add-item=${inv.id},data-add-item-name=${inv.name}">＋ Добавить</button>
                 <button type="button" class="icon-btn" data-edit-toggle title="Переименовать">✎</button>
                 <form th:action="@{'/character/' + ${character.id} + '/inventories/' + ${inv.id} + '/delete'}"
                       method="post" class="inline" data-confirm="Удалить инвентарь вместе со всеми предметами?">
@@ -139,118 +140,19 @@
             </div>
 
             <div class="inventory-body">
-              <form th:action="@{'/character/' + ${character.id} + '/inventories/' + ${inv.id} + '/items'}"
-                    method="post" class="form-row" data-item-form>
-                <input type="text" name="itemName" class="grow" placeholder="Предмет" required autocomplete="off">
-                <input type="number" name="quantity" class="narrow" placeholder="Кол-во" required min="1">
-                <input type="number" name="cost" class="narrow" placeholder="Цена" required min="0">
-                <input type="text" name="description" class="grow" placeholder="Описание">
-                <th:block th:replace="~{fragments/items :: type-fields(${itemTypes}, null)}"></th:block>
-                <button type="submit" class="btn btn-sm btn-primary">＋</button>
-              </form>
-
-              <div th:unless="${#maps.isEmpty(itemCatalog)}" class="item-catalog" data-editable>
-                <button type="button" class="btn btn-sm btn-ghost" data-edit-toggle>＋ Из справочника</button>
-                <div class="edit-panel">
-                  <form th:action="@{'/character/' + ${character.id} + '/inventories/' + ${inv.id} + '/items/catalog'}"
-                        method="post" class="form-row">
-                    <select name="catalogKey" class="item-type-select" required aria-label="Предмет из справочника">
-                      <optgroup th:each="group : ${itemCatalog}" th:label="${group.key}">
-                        <option th:each="entry : ${group.value}" th:value="${entry.key}"
-                                th:text="${entry.name} + (${entry.properties['damage'] != null} ? ' — ' + ${entry.properties['damage']} : '') + (${entry.cost > 0} ? ', ' + ${entry.cost} + ' ' + ${currency.symbol} : '')">Arasaka Minami 10</option>
-                      </optgroup>
-                    </select>
-                    <input type="number" name="quantity" class="narrow" value="1" min="1" required aria-label="Количество">
-                    <button type="submit" class="btn btn-sm btn-primary">Добавить</button>
-                  </form>
+              <div th:each="section : ${inventorySections[inv.id]}" class="item-section">
+                <h3 class="item-section-title" th:text="${section.title}">Оружие</h3>
+                <div class="list">
+                  <th:block th:each="item : ${section.items}">
+                    <div th:replace="~{fragments/items :: row(${item}, ${inv}, null)}"></div>
+                  </th:block>
                 </div>
               </div>
-
-              <div class="list">
-                <div th:each="item : ${inv.content}" th:id="'item-' + ${item.id}" class="row" data-editable th:with="itemType=${itemTypeByCode[item.type]},disposable=${itemTypeByCode[item.type] != null and itemTypeByCode[item.type].isDisposable(item)}">
-                  <div class="row-main">
-                    <div class="row-title" th:text="${item.name}">Предмет</div>
-                    <div class="row-meta">
-                      <span>× <span th:text="${item.quantity}">1</span></span>
-                      <span th:text="${item.cost} + ' ' + ${currency.symbol}" th:title="${currency.name}">0</span>
-                    </div>
-                    <div class="row-meta item-line" th:if="${itemType != null and !#lists.isEmpty(itemType.fields)}">
-                      <span class="item-type-name" th:text="${itemType.displayName}">Оружие</span>
-                      <span th:each="line : ${itemType.describe(item.properties)}" th:text="${line.text}" th:title="${line.title}">WA 0</span>
-                    </div>
-                    <div class="row-desc" th:if="${!#strings.isEmpty(item.description)}" th:text="${item.description}">Описание</div>
-                    <p th:each="note : ${itemNotes[item.id]}" class="item-note" th:text="${note}">Большой магазин: надёжность VR → ST</p>
-                    <div th:if="${actionItemId == item.id and actionResult != null}" class="alert alert-success item-result" role="status">
-                      <span class="alert-text" th:text="${actionResult}">Выпущено 3</span>
-                      <button type="button" class="alert-close" aria-label="Закрыть">×</button>
-                    </div>
-                    <th:block th:if="${actionItemId == item.id and attackResult != null and !attackResult.detached}">
-                      <div th:replace="~{fragments/attack :: result(${attackResult})}"></div>
-                    </th:block>
-                    <div th:if="${actionItemId == item.id and actionError != null}" class="alert alert-error item-result" role="alert">
-                      <span class="alert-text" th:text="${actionError}">Магазин пуст</span>
-                      <button type="button" class="alert-close" aria-label="Закрыть">×</button>
-                    </div>
-                    <div class="item-actions" th:if="${attackForms != null and attackForms[item.id] != null}">
-                      <button type="button" class="btn btn-sm btn-primary" th:attr="data-dialog-open='attack-' + ${item.id}"
-                              th:disabled="${attackForms[item.id].unavailable != null}" th:text="${attackForms[item.id].actionLabel}">Атаковать</button>
-                      <p th:if="${attackForms[item.id].unavailable != null}" class="item-action-note" th:text="${attackForms[item.id].unavailable}">Магазин пуст</p>
-                      <dialog th:replace="~{fragments/attack :: dialog(${character.id}, ${item}, ${attackForms[item.id]}, ${attackTargets})}"></dialog>
-                    </div>
-                    <div class="item-actions" th:unless="${#lists.isEmpty(itemActions[item.id])}">
-                      <th:block th:each="action : ${itemActions[item.id].?[!secondary]}">
-                        <form th:replace="~{fragments/items :: action-form(${action}, @{'/character/' + ${character.id} + '/inventories/' + ${inv.id} + '/items/' + ${item.id} + '/action/' + ${action.code}})}"></form>
-                      </th:block>
-                      <details class="cp-more item-more" th:unless="${#lists.isEmpty(itemActions[item.id].?[secondary])}">
-                        <summary>Ещё</summary>
-                        <div class="item-actions">
-                          <th:block th:each="action : ${itemActions[item.id].?[secondary]}">
-                            <form th:replace="~{fragments/items :: action-form(${action}, @{'/character/' + ${character.id} + '/inventories/' + ${inv.id} + '/items/' + ${item.id} + '/action/' + ${action.code}})}"></form>
-                          </th:block>
-                        </div>
-                      </details>
-                      <p th:each="action, state : ${itemActions[item.id]}"
-                         th:if="${!action.secondary and action.unavailable != null and (state.first or itemActions[item.id][state.index - 1].unavailable != action.unavailable)}"
-                         class="item-action-note" th:text="${action.unavailable}">Магазин пуст</p>
-                    </div>
-                  </div>
-                  <div class="row-actions">
-                    <button type="button" class="icon-btn" data-edit-toggle th:title="${disposable} ? 'Редактировать / переместить' : 'Редактировать / переместить / удалить'">✎</button>
-                    <form th:if="${disposable}" th:action="@{'/character/' + ${character.id} + '/inventories/' + ${inv.id} + '/items/' + ${item.id} + '/delete'}"
-                          method="post" class="inline">
-                      <button type="submit" class="icon-btn danger" title="Удалить">✕</button>
-                    </form>
-                  </div>
-                  <div class="edit-panel">
-                    <form th:action="@{'/character/' + ${character.id} + '/inventories/' + ${inv.id} + '/items/' + ${item.id} + '/edit'}"
-                          method="post" class="form-row" data-item-form>
-                      <input type="text" name="itemName" class="grow" th:value="${item.name}" required placeholder="Название">
-                      <input type="number" name="quantity" class="narrow" th:value="${item.quantity}" min="1" placeholder="Кол-во">
-                      <input type="number" name="cost" class="narrow" th:value="${item.cost}" min="0" placeholder="Цена">
-                      <input type="text" name="description" class="grow" th:value="${item.description}" placeholder="Описание">
-                      <th:block th:replace="~{fragments/items :: type-fields(${itemTypes}, ${item})}"></th:block>
-                      <button type="submit" class="btn btn-sm btn-primary">Сохранить</button>
-                    </form>
-                    <form th:if="${#lists.size(character.inventories) > 1}"
-                          th:action="@{'/character/' + ${character.id} + '/inventories/' + ${inv.id} + '/items/' + ${item.id} + '/move'}"
-                          method="post" class="form-row">
-                      <select name="targetInventoryId" required aria-label="Куда переместить">
-                        <option th:each="target : ${character.inventories}" th:if="${target.id != inv.id}"
-                                th:value="${target.id}" th:text="'Переместить в: ' + ${target.name}">Инвентарь</option>
-                      </select>
-                      <button type="submit" class="btn btn-sm">⇄ Переместить</button>
-                    </form>
-                    <form th:unless="${disposable}" th:action="@{'/character/' + ${character.id} + '/inventories/' + ${inv.id} + '/items/' + ${item.id} + '/delete'}"
-                          method="post" class="form-row item-delete" th:attr="data-confirm='Удалить «' + ${item.name} + '»? Вернуть его будет нельзя.'">
-                      <button type="submit" class="btn btn-sm btn-danger">Удалить предмет</button>
-                    </form>
-                  </div>
-                </div>
-                <div th:if="${#lists.isEmpty(inv.content)}" class="empty">Пусто</div>
-              </div>
+              <div th:if="${#lists.isEmpty(inventorySections[inv.id])}" class="empty">Пусто</div>
             </div>
           </div>
           <div th:if="${#lists.isEmpty(character.inventories)}" class="empty">Нет инвентарей</div>
+          <dialog th:replace="~{fragments/items :: add-dialog(${character.id})}"></dialog>
         </div>
       </section>
     </div>

@@ -6,6 +6,8 @@ import app.charka.check.CheckRequest;
 import app.charka.check.CheckResolver;
 import app.charka.item.CatalogItem;
 import app.charka.item.ItemAction;
+import app.charka.item.ItemAttachments;
+import app.charka.item.ItemSummary;
 import app.charka.item.ItemTypeDefinition;
 import app.charka.model.Campaign;
 import app.charka.model.Character;
@@ -136,6 +138,22 @@ public class Cp2020System implements GameSystem {
     @Override
     public List<ItemAction> getItemActions(Item item) {
         return Cp2020WornArmor.isArmor(item) ? Cp2020ArmorActions.actions(item) : Cp2020WeaponActions.actions(item);
+    }
+
+    @Override
+    public ItemSummary getItemSummary(Item item) {
+        ItemSummary summary = Cp2020ItemSheet.summary(item);
+        return summary != null ? summary : GameSystem.super.getItemSummary(item);
+    }
+
+    @Override
+    public ItemAttachments getItemAttachments(Item item) {
+        return Cp2020ItemSheet.attachments(item);
+    }
+
+    @Override
+    public List<CatalogItem> getSuggestedCatalog(Character character) {
+        return Cp2020ItemSheet.suggested(character);
     }
 
     @Override

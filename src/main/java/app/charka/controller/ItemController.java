@@ -38,6 +38,7 @@ public class ItemController {
             @RequestParam(required = false) String description,
             @RequestParam(defaultValue = ItemTypeDefinition.GENERIC_CODE) String itemType,
             @RequestParam Map<String, String> params,
+            @RequestParam(required = false) String anchor,
             RedirectAttributes redirectAttributes
     ) {
         Item item = new Item();
@@ -45,7 +46,7 @@ public class ItemController {
         item.setQuantity(quantity);
         item.setCost(cost);
         item.setDescription(description);
-        return handle(characterId, redirectAttributes,
+        return handle(characterId, anchor, redirectAttributes,
                 () -> itemService.create(inventoryId, item, itemType, properties(params)));
     }
 
@@ -58,9 +59,10 @@ public class ItemController {
             @PathVariable Long inventoryId,
             @RequestParam String catalogKey,
             @RequestParam(defaultValue = "1") int quantity,
+            @RequestParam(required = false) String anchor,
             RedirectAttributes redirectAttributes
     ) {
-        return handle(characterId, redirectAttributes,
+        return handle(characterId, anchor, redirectAttributes,
                 () -> itemService.addFromCatalog(inventoryId, catalogKey, quantity));
     }
 
@@ -77,13 +79,15 @@ public class ItemController {
             @RequestParam Map<String, String> params,
             RedirectAttributes redirectAttributes
     ) {
-        return handle(characterId, redirectAttributes,
+        return handle(characterId, null, redirectAttributes,
                 () -> itemService.update(itemId, itemName, quantity, cost, description, itemType, properties(params)));
     }
 
     /**
      * Действие системы над предметом (выстрел, перезарядка). Возвращает к строке предмета, поэтому итог показывается в ней же:
      * сообщение вверху страницы осталось бы за экраном.
+     *
+     * @param returnTo предмет, под которым показан этот: своей строки у него может не быть
      */
     @PostMapping("/{itemId}/action/{action}")
     public String performAction(
@@ -92,15 +96,32 @@ public class ItemController {
             @PathVariable Long itemId,
             @PathVariable String action,
             @RequestParam Map<String, String> params,
+            @RequestParam(required = false) Long returnTo,
             RedirectAttributes redirectAttributes
     ) {
-        redirectAttributes.addFlashAttribute("actionItemId", itemId);
+        Long shownAt = returnTo != null ? returnTo : itemId;
+        redirectAttributes.addFlashAttribute("actionItemId", shownAt);
         try {
             redirectAttributes.addFlashAttribute("actionResult", itemService.performAction(characterId, itemId, action, params));
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("actionError", e.getMessage());
         }
-        return "redirect:/character/" + characterId + "#item-" + itemId;
+        return "redirect:/character/" + characterId + "#item-" + shownAt;
+    }
+
+    /**
+     * Кнопки − и ＋ на строке предмета.
+     */
+    @PostMapping("/{itemId}/quantity")
+    public String changeQuantity(
+            @PathVariable Long characterId,
+            @PathVariable Long inventoryId,
+            @PathVariable Long itemId,
+            @RequestParam int delta,
+            @RequestParam(required = false) Long returnTo
+    ) {
+        itemService.changeQuantity(characterId, itemId, delta);
+        return "redirect:/character/" + characterId + "#item-" + (returnTo != null ? returnTo : itemId);
     }
 
     private static Map<String, String> properties(Map<String, String> params) {
@@ -113,13 +134,16 @@ public class ItemController {
         return properties;
     }
 
-    private static String handle(Long characterId, RedirectAttributes redirectAttributes, Runnable action) {
+    /** Ошибка показывается вверху страницы, поэтому с ней к якорю не возвращаемся */
+    private static String handle(Long characterId, String anchor, RedirectAttributes redirectAttributes, Runnable action) {
         try {
             action.run();
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+            return "redirect:/character/" + characterId;
         }
-        return "redirect:/character/" + characterId;
+        boolean validAnchor = anchor != null && anchor.matches("[a-z0-9-]+");
+        return "redirect:/character/" + characterId + (validAnchor ? "#" + anchor : "");
     }
 
     @PostMapping("/{itemId}/delete")

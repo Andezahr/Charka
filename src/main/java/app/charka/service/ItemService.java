@@ -41,5 +41,8 @@ public interface ItemService {
     void delete(Long id);
 
     @Transactional
+    void changeQuantity(Long characterId, Long itemId, int delta);
+
+    @Transactional
     Item moveToInventory(Long itemId, Long targetInvId);
 }

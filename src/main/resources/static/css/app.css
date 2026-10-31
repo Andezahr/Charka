@@ -853,6 +853,92 @@ details.cp-more > summary:hover { color: var(--text-soft); }
 .item-result { margin: 6px 0 0; }
 .inventory .row[id] { scroll-margin-top: calc(var(--topbar-height) + 12px); }
 
+/* Строка предмета: всё важное в одну линию, остальное в панели */
+.item-section-title { margin: 0 0 6px; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.item-row { padding: 8px 12px; }
+.item-row > .row-main { flex: 1 1 0; min-width: 180px; }
+.item-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
+.item-main { font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+.item-main.is-bad { color: var(--danger); }
+.item-value { font-size: 13px; color: var(--text-soft); }
+.item-stepper { display: flex; align-items: center; gap: 2px; }
+.item-count { min-width: 24px; text-align: center; font-variant-numeric: tabular-nums; }
+.item-line { margin: 0 0 8px; }
+.item-edit { margin-top: 8px; }
+.item-row > details.item-more { flex-basis: 100%; margin-top: 0; }
+.item-attached { margin-top: 8px; }
+.item-attached .row { background: var(--surface-2); }
+
+/* Фишки магазинов и патронов */
+.item-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 6px; }
+.item-chips-title { min-width: 62px; font-size: 12px; color: var(--muted); }
+.item-chip {
+  display: inline-block;
+  min-height: 26px;
+  padding: 3px 8px;
+  font: inherit;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  background: var(--surface-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  list-style: none;
+}
+.item-chip:hover { color: var(--accent); border-color: var(--accent); }
+.item-chip::-webkit-details-marker { display: none; }
+.item-chip.is-static { color: var(--text-soft); background: none; border-color: var(--border); cursor: default; }
+.item-chip.is-off { opacity: .5; }
+.item-chip-menu { position: relative; }
+.item-chip-options {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 4px);
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 170px;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+}
+.item-chip-options .btn { width: 100%; justify-content: flex-start; white-space: nowrap; }
+
+/* Окно «Добавить» */
+.add-dialog { width: min(600px, calc(100vw - 32px)); }
+.add-dialog[open] { display: flex; flex-direction: column; gap: 10px; }
+.add-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.add-tabs { display: flex; flex-wrap: wrap; gap: 4px; }
+.add-tabs .btn.is-active { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+.add-panel { display: flex; flex-direction: column; gap: 10px; }
+.add-catalog { display: flex; flex-direction: column; gap: 6px; }
+.add-group { display: flex; flex-direction: column; gap: 2px; }
+.add-group-title { padding: 4px 0; font-size: 13px; font-weight: 600; color: var(--text-soft); cursor: pointer; }
+.add-entry {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.add-entry + .add-entry { margin-top: 2px; }
+.add-entry:hover { border-color: var(--accent); }
+.add-entry-meta { flex-shrink: 0; font-size: 13px; color: var(--muted); }
+.add-own > summary { font-size: 13px; color: var(--text-soft); cursor: pointer; }
+.add-own form { margin-top: 8px; }
+
 /* ---------- Навыки ---------- */
 
 .skills-head { margin-bottom: 16px; }

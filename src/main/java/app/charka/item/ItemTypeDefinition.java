@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 /**
@@ -17,14 +18,16 @@ import java.util.function.Consumer;
  * @param fields      поля в порядке показа
  * @param check       проверка значений вместе (когда одно поле зависит от другого); бросает {@link IllegalArgumentException}
  * @param stateKeys   свойства-состояние, которых нет в форме: правка предмета того же типа их сохраняет
+ * @param section     заголовок секции инвентаря на листе; порядок секций — порядок типов в системе
+ * @param stacking    одинаковые предметы складываются в одну строку, а количество меняется кнопками
  */
 public record ItemTypeDefinition(String code, String displayName, List<ItemField> fields, Consumer<Map<String, String>> check,
-                                 List<String> stateKeys) {
+                                 List<String> stateKeys, String section, boolean stacking) {
 
     public static final String GENERIC_CODE = "GENERIC";
 
     /** Обычный предмет без дополнительных полей, есть в любой системе */
-    public static final ItemTypeDefinition GENERIC = new ItemTypeDefinition(GENERIC_CODE, "Обычный предмет", List.of());
+    public static final ItemTypeDefinition GENERIC = new ItemTypeDefinition(GENERIC_CODE, "Обычный предмет", List.of()).inSection("Вещи").withStacking();
 
     private static final int MAX_TEXT = 255;
 
@@ -42,6 +45,11 @@ public record ItemTypeDefinition(String code, String displayName, List<ItemField
         stateKeys = List.copyOf(stateKeys);
     }
 
+    public ItemTypeDefinition(String code, String displayName, List<ItemField> fields, Consumer<Map<String, String>> check,
+                              List<String> stateKeys) {
+        this(code, displayName, fields, check, stateKeys, displayName, false);
+    }
+
     public ItemTypeDefinition(String code, String displayName, List<ItemField> fields, Consumer<Map<String, String>> check) {
         this(code, displayName, fields, check, List.of());
     }
@@ -49,6 +57,31 @@ public record ItemTypeDefinition(String code, String displayName, List<ItemField
     public ItemTypeDefinition(String code, String displayName, List<ItemField> fields) {
         this(code, displayName, fields, values -> {
         });
+    }
+
+    public ItemTypeDefinition inSection(String title) {
+        return new ItemTypeDefinition(code, displayName, fields, check, stateKeys, title, stacking);
+    }
+
+    public ItemTypeDefinition withStacking() {
+        return new ItemTypeDefinition(code, displayName, fields, check, stateKeys, section, true);
+    }
+
+    /**
+     * Количество имеет смысл менять кнопками: складывается, либо таких предметов уже несколько (гранаты).
+     */
+    public boolean isCounted(Item item) {
+        return stacking || (item.getQuantity() != null && item.getQuantity() > 1);
+    }
+
+    /**
+     * Новый предмет можно прибавить к этому, а не заводить строку: то же значение всех полей, а у типа без полей ещё название и описание.
+     */
+    public boolean stacksWith(Item existing, Item added) {
+        return stacking && code.equals(existing.getType())
+                && existing.getProperties().equals(added.getProperties())
+                && (!fields.isEmpty() || (Objects.equals(existing.getName(), added.getName())
+                && Objects.equals(existing.getDescription(), added.getDescription())));
     }
 
     /**

@@ -128,9 +128,9 @@ class Cp2020WeaponActionsTest {
         @Test
         @DisplayName("очередь есть только при ROF больше 1; извлечь можно, пока магазин в оружии")
         void weaponActions() {
-            assertThat(codes(weapon(8, 8, 1, "12mm"))).containsExactly("FIRE", "RELOAD", "EJECT", "ADD_MAGAZINE");
-            assertThat(codes(weapon(40, 40, 20, "10mm"))).containsExactly("FIRE", "BURST", "RELOAD", "EJECT", "ADD_MAGAZINE");
-            assertThat(codes(weapon(40, null, 20, "10mm"))).containsExactly("FIRE", "BURST", "RELOAD", "ADD_MAGAZINE");
+            assertThat(codes(weapon(8, 8, 1, "12mm"))).containsExactly("FIRE", "RELOAD", "EJECT", "ADD_MAGAZINE", "LOAD_ALL");
+            assertThat(codes(weapon(40, 40, 20, "10mm"))).containsExactly("FIRE", "BURST", "RELOAD", "EJECT", "ADD_MAGAZINE", "LOAD_ALL");
+            assertThat(codes(weapon(40, null, 20, "10mm"))).containsExactly("FIRE", "BURST", "RELOAD", "ADD_MAGAZINE", "LOAD_ALL");
         }
 
         @Test

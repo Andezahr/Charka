@@ -7,8 +7,11 @@ import app.charka.attack.AttackSource;
 import app.charka.skill.StatValue;
 import app.charka.dice.DiceService;
 import app.charka.item.CatalogItem;
+import app.charka.item.ItemAttachments;
+import app.charka.item.ItemSection;
 import app.charka.item.ItemTypeDefinition;
 import app.charka.model.Character;
+import app.charka.model.Inventory;
 import app.charka.model.Item;
 import app.charka.model.Money;
 import app.charka.service.CharacterService;
@@ -58,13 +61,24 @@ public class CharacterController {
         model.addAttribute("itemTypeByCode", system.getItemTypes().stream()
                 .collect(Collectors.toMap(ItemTypeDefinition::code, Function.identity())));
         model.addAttribute("itemCatalog", system.getItemCatalog().stream()
-                .collect(Collectors.groupingBy(CatalogItem::group, LinkedHashMap::new, Collectors.toList())));
+                .collect(Collectors.groupingBy(CatalogItem::typeCode, Collectors.groupingBy(CatalogItem::group, LinkedHashMap::new, Collectors.toList()))));
+        model.addAttribute("suggestedCatalog", system.getSuggestedCatalog(character).stream()
+                .collect(Collectors.groupingBy(CatalogItem::typeCode)));
         model.addAttribute("itemActions", character.getInventories().stream()
                 .flatMap(inventory -> inventory.getContent().stream())
                 .collect(Collectors.toMap(Item::getId, system::getItemActions)));
         model.addAttribute("itemNotes", character.getInventories().stream()
                 .flatMap(inventory -> inventory.getContent().stream())
                 .collect(Collectors.toMap(Item::getId, system::getItemNotes)));
+        model.addAttribute("itemSummaries", character.getInventories().stream()
+                .flatMap(inventory -> inventory.getContent().stream())
+                .collect(Collectors.toMap(Item::getId, system::getItemSummary)));
+        Map<Long, ItemAttachments> attachments = character.getInventories().stream()
+                .flatMap(inventory -> inventory.getContent().stream())
+                .collect(Collectors.toMap(Item::getId, system::getItemAttachments));
+        model.addAttribute("itemAttachments", attachments);
+        model.addAttribute("inventorySections", character.getInventories().stream()
+                .collect(Collectors.toMap(Inventory::getId, inventory -> ItemSection.of(inventory, system.getItemTypes(), attachments))));
         AttackRules attackRules = system.getAttackRules();
         if (attackRules != null) {
             Map<Long, AttackForm> attackForms = new HashMap<>();

@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -96,7 +97,7 @@ public class ItemServiceImpl implements ItemService {
     }
 
     /**
-     * Создать предмет заданного типа.
+     * Создать предмет заданного типа. Складывающийся предмет прибавляется к такому же в этом инвентаре.
      *
      * @param typeCode   код типа из системы кампании
      * @param properties значения полей типа из формы
@@ -107,7 +108,13 @@ public class ItemServiceImpl implements ItemService {
         Inventory inventory = inventoryRepository.findById(inventoryId)
                 .orElseThrow(() -> new NotFoundException(
                         "Inventory not found for id=" + inventoryId));
-        applyType(item, inventory, typeCode, properties);
+        ItemTypeDefinition type = applyType(item, inventory, typeCode, properties);
+        Optional<Item> stack = inventory.getContent().stream().filter(existing -> type.stacksWith(existing, item)).findFirst();
+        if (stack.isPresent()) {
+            int added = item.getQuantity() == null ? 1 : item.getQuantity();
+            stack.get().setQuantity((stack.get().getQuantity() == null ? 0 : stack.get().getQuantity()) + added);
+            return stack.get();
+        }
         return create(inventoryId, item);
     }
 
@@ -137,19 +144,22 @@ public class ItemServiceImpl implements ItemService {
         Inventory inventory = inventoryRepository.findById(inventoryId)
                 .orElseThrow(() -> new NotFoundException(
                         "Inventory not found for id=" + inventoryId));
-        CatalogItem entry = systemRegistry.forCharacter(inventory.getCharacter()).getItemCatalog().stream()
+        GameSystem system = systemRegistry.forCharacter(inventory.getCharacter());
+        CatalogItem entry = system.getItemCatalog().stream()
                 .filter(candidate -> candidate.key().equals(key))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Такого предмета нет в справочнике: " + key));
         int rows = entry.individual() ? quantity : 1;
         int perRow = entry.individual() ? 1 : quantity * entry.packSize();
+        // примечание справочника описывает строку продажи, а запас живёт дальше: «цена за коробку» у 20 патронов была бы неправдой
+        boolean keepsNote = system.findItemType(entry.typeCode()).map(type -> !type.stacking()).orElse(true);
         Item item = null;
         for (int row = 0; row < rows; row++) {
             item = new Item();
-            item.setName(entry.name());
+            item.setName(entry.nameInInventory());
             item.setQuantity(perRow);
             item.setCost(entry.cost());
-            item.setDescription(entry.description());
+            item.setDescription(keepsNote ? entry.description() : null);
             item = create(inventoryId, item, entry.typeCode(), entry.properties());
         }
         return item;
@@ -171,7 +181,27 @@ public class ItemServiceImpl implements ItemService {
         return systemRegistry.forCharacter(item.getInventory().getCharacter()).performItemAction(item, action, params);
     }
 
-    private void applyType(Item item, Inventory inventory, String typeCode, Map<String, String> properties) {
+    /**
+     * Изменить количество кнопками на строке предмета; ноль и меньше — предмет кончился.
+     *
+     * @param characterId владелец из адреса; предмет другого персонажа считается ненайденным
+     */
+    @Override
+    public void changeQuantity(Long characterId, Long itemId, int delta) {
+        Item item = findById(itemId);
+        if (!characterId.equals(item.getInventory().getCharacter().getId())) {
+            throw new NotFoundException(String.format(ITEM_NOT_FOUND, itemId));
+        }
+        int left = (item.getQuantity() == null ? 1 : item.getQuantity()) + delta;
+        if (left <= 0) {
+            // по ссылке: equals сущностей Lombok ходит по связям с инвентарём
+            item.getInventory().getContent().removeIf(candidate -> candidate == item);
+        } else {
+            item.setQuantity(left);
+        }
+    }
+
+    private ItemTypeDefinition applyType(Item item, Inventory inventory, String typeCode, Map<String, String> properties) {
         GameSystem system = systemRegistry.forCharacter(inventory.getCharacter());
         ItemTypeDefinition type = system.findItemType(typeCode)
                 .orElseThrow(() -> new IllegalArgumentException("Тип предмета недоступен в этой системе: " + typeCode));
@@ -186,6 +216,7 @@ public class ItemServiceImpl implements ItemService {
         item.setType(type.code());
         item.getProperties().clear();
         item.getProperties().putAll(values);
+        return type;
     }
 
     @Override

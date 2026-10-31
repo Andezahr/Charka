@@ -52,6 +52,8 @@ public final class Cp2020ItemTypes {
     public static final String WORN = "worn";
     private static final String ZONE_PREFIX = "zone_";
     private static final String WEAR_PREFIX = "wear_";
+    /** Сюда попадают только магазины и патроны, к которым нет оружия: остальные показаны под ним */
+    private static final String AMMO_SECTION = "Боеприпасы";
 
     /**
      * Урон — текст, а не кубики: в книге у части оружия не только они («1-5D6», «Drugs», «3D6/2D6»).
@@ -95,7 +97,7 @@ public final class Cp2020ItemTypes {
             ItemField.number(AREA, "Зона поражения, м", "зона ", " м", 1, null).asAdvanced(),
             ItemField.flag(EXPLOSIVE, "Взрывчатка: зона на единицу, по всему телу", "").asAdvanced()),
             Cp2020ItemTypes::checkWeapon,
-            List.of(JAMMED));
+            List.of(JAMMED)).inSection("Оружие");
 
     /** Каждая строка — один магазин со своим зарядом */
     public static final ItemTypeDefinition MAGAZINE_TYPE = new ItemTypeDefinition(MAGAZINE, "Магазин", List.of(
@@ -103,12 +105,12 @@ public final class Cp2020ItemTypes {
             ItemField.number(SHOTS, "Вместимость", "на ", "", 1, null),
             ItemField.number(LOADED, "Заряжено", "заряжено ", "", 0, null),
             ItemField.flag(ARMOR_PIERCING, "Заряжены бронебойные", "AP")),
-            Cp2020ItemTypes::checkMagazine);
+            Cp2020ItemTypes::checkMagazine).inSection(AMMO_SECTION);
 
     /** Количество патронов — количество предмета */
     public static final ItemTypeDefinition AMMO_TYPE = new ItemTypeDefinition(AMMO, "Боеприпасы", List.of(
             ItemField.suggested(CALIBER, "Патрон", true, "Патроны ", Cp2020Ammo.CALIBERS),
-            ItemField.flag(ARMOR_PIERCING, "Бронебойные", "AP")));
+            ItemField.flag(ARMOR_PIERCING, "Бронебойные", "AP"))).inSection(AMMO_SECTION).withStacking();
 
     public static String zoneKey(Cp2020Location location) {
         return ZONE_PREFIX + location.name();
@@ -134,7 +136,7 @@ public final class Cp2020ItemTypes {
             Cp2020ItemTypes::checkArmor,
             Stream.concat(Stream.of(WORN), Arrays.stream(Cp2020Location.values()).map(Cp2020ItemTypes::wearKey)).toList());
 
-    public static final List<ItemTypeDefinition> ALL = List.of(ItemTypeDefinition.GENERIC, WEAPON_TYPE, MAGAZINE_TYPE, AMMO_TYPE, ARMOR_TYPE);
+    public static final List<ItemTypeDefinition> ALL = List.of(WEAPON_TYPE, ARMOR_TYPE, ItemTypeDefinition.GENERIC, MAGAZINE_TYPE, AMMO_TYPE);
 
     private Cp2020ItemTypes() {
     }

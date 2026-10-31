@@ -174,6 +174,62 @@ document.addEventListener('DOMContentLoaded', () => {
     input.addEventListener('input', fillName);
   });
 
+  // Выбор из нескольких вариантов у фишки: второе нажатие мимо закрывает меню
+  document.addEventListener('click', e => {
+    document.querySelectorAll('details[data-menu][open]').forEach(menu => {
+      if (!menu.contains(e.target)) menu.open = false;
+    });
+  });
+
+  // Окно «Добавить»: одно на страницу, инвентарь подставляет кнопка. Запоминает последнюю вкладку и возвращает к инвентарю
+  document.querySelectorAll('[data-add-dialog]').forEach(dialog => {
+    const memoryKey = 'charka.addItem.tab';
+    const stored = {
+      get() { try { return localStorage.getItem(memoryKey); } catch (e) { return null; } },
+      set(value) { try { localStorage.setItem(memoryKey, value); } catch (e) { /* без памяти — первая вкладка */ } }
+    };
+    const panels = [...dialog.querySelectorAll('[data-add-panel]')];
+    const tabs = [...dialog.querySelectorAll('[data-add-tab]')];
+    const show = code => {
+      const panel = panels.find(candidate => candidate.dataset.addPanel === code) || panels[0];
+      panels.forEach(candidate => { candidate.hidden = candidate !== panel; });
+      tabs.forEach(tab => { tab.classList.toggle('is-active', tab.dataset.addTab === panel.dataset.addPanel); });
+      const first = panel.querySelector('[data-add-search], input[name=itemName]');
+      // на телефоне клавиатура закрыла бы половину списка
+      if (first && dialog.open && !matchMedia('(pointer: coarse)').matches) first.focus();
+    };
+    tabs.forEach(tab => tab.addEventListener('click', () => {
+      stored.set(tab.dataset.addTab);
+      show(tab.dataset.addTab);
+    }));
+
+    dialog.querySelector('[data-dialog-close]').addEventListener('click', () => dialog.close());
+    document.querySelectorAll('[data-add-item]').forEach(button => button.addEventListener('click', () => {
+      const items = dialog.dataset.base + button.dataset.addItem + '/items';
+      dialog.querySelector('[data-add-target]').textContent = 'Добавить в «' + button.dataset.addItemName + '»';
+      dialog.querySelectorAll('[data-add-form=catalog]').forEach(form => { form.action = items + '/catalog'; });
+      dialog.querySelectorAll('[data-add-form=own]').forEach(form => { form.action = items; });
+      dialog.querySelectorAll('[data-add-anchor]').forEach(input => { input.value = 'inventory-' + button.dataset.addItem; });
+      dialog.showModal();
+      show(stored.get());
+    }));
+
+    // Поиск: только совпавшие строки, группы раскрыты; Enter не должен добавить первую строку
+    dialog.querySelectorAll('[data-add-search]').forEach(search => {
+      const form = search.closest('form');
+      search.addEventListener('keydown', e => { if (e.key === 'Enter') e.preventDefault(); });
+      search.addEventListener('input', () => {
+        const query = search.value.trim().toLowerCase();
+        form.querySelectorAll('.add-entry').forEach(entry => { entry.hidden = !entry.dataset.search.includes(query); });
+        form.querySelectorAll('[data-add-group]').forEach(group => {
+          group.open = query !== '';
+          group.hidden = query !== '' && !group.querySelector('.add-entry:not([hidden])');
+        });
+      });
+    });
+    show(stored.get());
+  });
+
   // Страница навыков. Видимость строк: изученные и спецспособности ролей; «Все навыки», прокачка, ручная правка
   // и поиск показывают весь каталог. Без JS видно всё, но проверка и правка требуют JS.
   document.querySelectorAll('[data-skills]').forEach(page => {

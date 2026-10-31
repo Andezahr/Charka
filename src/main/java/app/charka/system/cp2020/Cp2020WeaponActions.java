@@ -27,6 +27,7 @@ final class Cp2020WeaponActions {
     static final String ADD_MAGAZINE = "ADD_MAGAZINE";
     static final String LOAD = "LOAD";
     static final String UNLOAD = "UNLOAD";
+    static final String LOAD_ALL = "LOAD_ALL";
 
     private static final int BURST_ROUNDS = 3;
 
@@ -85,17 +86,20 @@ final class Cp2020WeaponActions {
         if (weapon.getProperties().containsKey(Cp2020ItemTypes.JAMMED)) {
             actions.add(ItemAction.simple(UNJAM, "Расклинить", null));
         }
-        actions.add(ItemAction.simple(FIRE, "Списать патрон", blocked).asSecondary());
+        ItemAction fireOne = ItemAction.simple(FIRE, "Списать патрон", blocked).asSecondary();
+        actions.add(rof > 1 ? fireOne.asHidden() : fireOne);
         if (rof > 1) {
             int max = Math.min(rof, loaded);
             actions.add(ItemAction.withAmount(BURST, "Списать патроны", blocked, Math.min(BURST_ROUNDS, max), max).asSecondary());
         }
-        actions.add(usesMagazines(weapon) ? magazineReloadAction(weapon) : directReloadAction(weapon));
+        ItemAction reload = usesMagazines(weapon) ? magazineReloadAction(weapon) : directReloadAction(weapon);
+        actions.add(caliber(weapon) != null ? reload.asHidden() : reload);
         if (usesMagazines(weapon) && hasMagazine(weapon)) {
             actions.add(ItemAction.simple(EJECT, "Извлечь магазин", null).asSecondary());
         }
         if (usesMagazines(weapon)) {
-            actions.add(ItemAction.simple(ADD_MAGAZINE, "＋ Магазин", null).asSecondary());
+            actions.add(ItemAction.simple(ADD_MAGAZINE, "＋ Магазин", null).asHidden());
+            actions.add(ItemAction.simple(LOAD_ALL, "Снарядить все", null).asHidden());
         }
         return actions;
     }
@@ -143,7 +147,7 @@ final class Cp2020WeaponActions {
         int standard = number(weapon, Cp2020ItemTypes.SHOTS);
         String unavailable = sources.isEmpty()
                 ? "Нет снаряжённых магазинов «" + caliber(weapon) + "» на " + standard + "–" + standard * Cp2020MagazineRules.MAX_EXTENSION
-                + ": добавьте кнопкой «＋ Магазин» и снарядите патронами"
+                + ": добавьте кнопкой ＋ у магазинов и снарядите патронами"
                 : null;
         return ItemAction.withSources(RELOAD, "Перезарядить", unavailable, sources);
     }
@@ -160,7 +164,10 @@ final class Cp2020WeaponActions {
      */
     private static List<ItemAction> magazineActions(Item magazine) {
         List<ItemAction> actions = new ArrayList<>();
-        actions.add(loadFromStackAction(LOAD, "Снарядить", magazine));
+        boolean full = number(magazine, Cp2020ItemTypes.LOADED) == capacity(magazine);
+        ItemAction load = loadFromStackAction(LOAD, full ? "Заменить патроны" : "Снарядить", magazine);
+        // полному магазину заменить нечем: и кнопка, и объяснение были бы только шумом
+        actions.add(full && load.unavailable() != null ? load.asHidden() : load);
         if (number(magazine, Cp2020ItemTypes.LOADED) > 0) {
             actions.add(ItemAction.simple(UNLOAD, "Разрядить", null));
         }
@@ -176,7 +183,7 @@ final class Cp2020WeaponActions {
                 .map(stack -> new Option(String.valueOf(stack.getId()), stackLabel(stack)))
                 .toList();
         String unavailable = sources.isEmpty()
-                ? (loaded == capacity ? "Заряжено полностью" : "Нет патронов «" + caliber(holder) + "» в инвентарях персонажа: добавьте их через «Из справочника»")
+                ? (loaded == capacity ? "Заряжено полностью" : "Нет патронов «" + caliber(holder) + "» в инвентарях персонажа: добавьте их кнопкой ＋")
                 : null;
         return ItemAction.withSources(code, label, unavailable, sources);
     }
@@ -199,6 +206,7 @@ final class Cp2020WeaponActions {
             case EJECT -> eject(item);
             case ADD_MAGAZINE -> addMagazine(item);
             case LOAD -> loadFromStack(item, params.get("source"));
+            case LOAD_ALL -> loadEmptyMagazines(item, params.get("source"));
             default -> unload(item);
         };
     }
@@ -317,6 +325,27 @@ final class Cp2020WeaponActions {
                 + (returned > 0 ? ", в запас возвращено " + returned : "");
     }
 
+    /** Все пустые магазины к оружию из одного запаса, пока он не кончится */
+    private static String loadEmptyMagazines(Item weapon, String sourceId) {
+        Item stack = stacks(weapon)
+                .filter(candidate -> String.valueOf(candidate.getId()).equals(sourceId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Выберите запас патронов того же калибра"));
+        int before = stack.getQuantity();
+        int magazines = 0;
+        for (Item magazine : fittingMagazines(weapon).filter(candidate -> number(candidate, Cp2020ItemTypes.LOADED) == 0).toList()) {
+            if (stack.getQuantity() == 0) {
+                break;
+            }
+            loadFromStack(magazine, sourceId);
+            magazines++;
+        }
+        if (magazines == 0) {
+            throw new IllegalArgumentException("Пустых магазинов нет");
+        }
+        return weapon.getName() + ": снаряжено магазинов " + magazines + ", из запаса взято " + (before - stack.getQuantity());
+    }
+
     private static String unload(Item magazine) {
         int rounds = number(magazine, Cp2020ItemTypes.LOADED);
         returnToStock(magazine, rounds);
@@ -336,7 +365,7 @@ final class Cp2020WeaponActions {
             return;
         }
         Item stack = new Item();
-        stack.setName("Патроны " + caliber(holder) + (armorPiercing ? " AP" : ""));
+        stack.setName(Cp2020Ammo.stackName(caliber(holder), armorPiercing));
         stack.setQuantity(rounds);
         stack.setCost(0);
         stack.setType(Cp2020ItemTypes.AMMO);
@@ -372,7 +401,7 @@ final class Cp2020WeaponActions {
     }
 
     /** Запасы патронов этого калибра во всех инвентарях владельца; сначала те, что лежат рядом */
-    private static Stream<Item> stacks(Item holder) {
+    static Stream<Item> stacks(Item holder) {
         String caliber = caliber(holder);
         if (caliber == null) {
             return Stream.empty();
@@ -384,7 +413,7 @@ final class Cp2020WeaponActions {
      * Магазины, которые встают в оружие: тот же патрон и подходящий размер ({@link Cp2020MagazineRules#fits}).
      * Книга: Bushmaster (5.56, 30) «uses the M-16A1 clip» (5.56, 30) — магазин подходит по патрону и размеру, а не по модели. Самые полные — первыми.
      */
-    private static Stream<Item> fittingMagazines(Item weapon) {
+    static Stream<Item> fittingMagazines(Item weapon) {
         int standard = number(weapon, Cp2020ItemTypes.SHOTS);
         return carried(weapon)
                 .filter(item -> Cp2020ItemTypes.MAGAZINE.equals(item.getType())
@@ -403,24 +432,24 @@ final class Cp2020WeaponActions {
         return Cp2020ItemTypes.AMMO.equals(item.getType()) && caliber.equalsIgnoreCase(caliber(item));
     }
 
-    private static boolean usesMagazines(Item weapon) {
+    static boolean usesMagazines(Item weapon) {
         return Cp2020ItemTypes.WEAPON.equals(weapon.getType()) && caliber(weapon) != null
                 && !weapon.getProperties().containsKey(Cp2020ItemTypes.DIRECT_LOAD);
     }
 
     /** Заряд есть в свойствах, пока магазин в оружии, даже пустой */
-    private static boolean hasMagazine(Item weapon) {
+    static boolean hasMagazine(Item weapon) {
         return weapon.getProperties().containsKey(Cp2020ItemTypes.LOADED);
     }
 
     /** Сколько патронов сейчас вмещается: размер вставленного магазина, иначе стандартный */
-    private static int capacity(Item holder) {
+    static int capacity(Item holder) {
         return holder.getProperties().containsKey(Cp2020ItemTypes.INSERTED)
                 ? number(holder, Cp2020ItemTypes.INSERTED)
                 : number(holder, Cp2020ItemTypes.SHOTS);
     }
 
-    private static String stackLabel(Item stack) {
+    static String stackLabel(Item stack) {
         return caliber(stack) + (isArmorPiercing(stack) ? " AP" : "") + " × " + stack.getQuantity() + " (" + stack.getInventory().getName() + ")";
     }
 
@@ -437,20 +466,20 @@ final class Cp2020WeaponActions {
         }
     }
 
-    private static String caliber(Item item) {
+    static String caliber(Item item) {
         String caliber = item.getProperties().get(Cp2020ItemTypes.CALIBER);
         return caliber == null || caliber.isBlank() ? null : caliber.strip();
     }
 
-    private static boolean isArmorPiercing(Item item) {
+    static boolean isArmorPiercing(Item item) {
         return item.getProperties().containsKey(Cp2020ItemTypes.ARMOR_PIERCING);
     }
 
-    private static int quantity(Item item) {
+    static int quantity(Item item) {
         return item.getQuantity() == null ? 0 : item.getQuantity();
     }
 
-    private static int number(Item item, String key) {
+    static int number(Item item, String key) {
         String value = item.getProperties().get(key);
         return value == null ? 0 : Integer.parseInt(value);
     }
