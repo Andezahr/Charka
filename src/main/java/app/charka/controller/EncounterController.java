@@ -61,7 +61,9 @@ public class EncounterController {
     @PostMapping("/next")
     public String next(@PathVariable Long campaignId, RedirectAttributes redirectAttributes) {
         try {
-            return redirect(campaignId, encounterService.next(campaignId));
+            EncounterService.Turn turn = encounterService.next(campaignId);
+            redirectAttributes.addFlashAttribute("roundReport", turn.report());
+            return redirect(campaignId, turn.character());
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("encounterError", e.getMessage());
             return redirect(campaignId, null);
@@ -102,6 +104,15 @@ public class EncounterController {
     public String join(@PathVariable Long campaignId, @PathVariable Long participantId, RedirectAttributes redirectAttributes) {
         return attempt(campaignId, redirectAttributes, () -> {
             encounterService.join(campaignId, participantId);
+            return null;
+        });
+    }
+
+    @PostMapping("/participants/{participantId}/effects/{effectId}/remove")
+    public String removeEffect(@PathVariable Long campaignId, @PathVariable Long participantId, @PathVariable Long effectId,
+                               RedirectAttributes redirectAttributes) {
+        return attempt(campaignId, redirectAttributes, () -> {
+            encounterService.removeEffect(campaignId, participantId, effectId);
             return null;
         });
     }

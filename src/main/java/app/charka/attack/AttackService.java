@@ -6,11 +6,14 @@ import app.charka.dice.DiceService;
 import app.charka.exception.CharacterNotFoundException;
 import app.charka.exception.NotFoundException;
 import app.charka.model.Character;
+import app.charka.model.CombatEffect;
+import app.charka.model.EncounterParticipant;
 import app.charka.model.Item;
 import app.charka.model.PendingBlast;
 import app.charka.model.counters.strategy.health.DiceRoller;
 import app.charka.model.counters.strategy.health.HealthEvent;
 import app.charka.repository.CharacterRepository;
+import app.charka.repository.EncounterRepository;
 import app.charka.repository.ItemRepository;
 import app.charka.repository.PendingBlastRepository;
 import app.charka.service.counter.HealthCounterService;
@@ -22,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -35,6 +39,7 @@ public class AttackService {
     private final CharacterRepository characterRepository;
     private final ItemRepository itemRepository;
     private final PendingBlastRepository pendingBlastRepository;
+    private final EncounterRepository encounterRepository;
     private final GameSystemRegistry systemRegistry;
     private final CheckService checkService;
     private final DiceService diceService;
@@ -133,7 +138,7 @@ public class AttackService {
     /** Заряд упал мимо: ждёт решения мастера на листе, урон уже брошен и остаётся на сервере */
     private Long pendingBlast(AttackContext context, AttackOutcome outcome) {
         AreaDamage blast = outcome.scattered();
-        if (blast == null || blast.amount() == null) {
+        if (blast == null) {
             return null;
         }
         PendingBlast pending = new PendingBlast();
@@ -201,10 +206,63 @@ public class AttackService {
                 .orElseThrow(NotFoundException.forId("PendingBlast", blastId));
     }
 
+    /**
+     * Новый раунд: очередной бросок урона длящегося эффекта по этому персонажу.
+     *
+     * @param expression бросок эффекта
+     * @param data       данные системы
+     * @return итог для показа мастеру
+     */
+    @Transactional
+    public String effectDamage(Character victim, String label, String expression, Map<String, String> data) {
+        AttackRules rules = systemRegistry.forCharacter(victim).getAttackRules();
+        AttackHit hit = rules.effectHit(expression, data, diceRoller);
+        return applyHit(victim, label, victim, victim.getName(), hit, new ArrayList<>());
+    }
+
     private String applyHit(Character attacker, String weapon, Character target, String targetName, AttackHit hit, List<String> steps) {
-        if (hit.damage() == null) {
-            return "Попадание: " + hit.where() + ", урон определяет мастер";
+        String summary = hit.damage() != null ? applyDamage(attacker, weapon, target, targetName, hit, steps)
+                : hit.hasEffect() ? "Попадание: " + hit.where()
+                : "Попадание: " + hit.where() + ", урон определяет мастер";
+        if (hit.save() != null) {
+            Optional<HealthEvent> saved = target == null ? Optional.empty()
+                    : healthCounterService.save(target.getId(), hit.save().code(), hit.save().modifier());
+            if (saved.isPresent()) {
+                steps.addAll(saved.get().getSteps());
+                summary = saved.get().getSummary();
+            } else {
+                steps.add("Спасбросок с " + hit.save().modifier() + " бросает мастер: у цели нет здоровья на листе");
+            }
         }
+        hit.effects().forEach(effect -> applyEffect(target, effect, steps));
+        return summary;
+    }
+
+    /** Эффект считает раунды у участника боя; вне боя его ведёт мастер */
+    private void applyEffect(Character target, LingeringEffect effect, List<String> steps) {
+        Optional<EncounterParticipant> participant = target == null || target.getCampaign() == null ? Optional.empty()
+                : encounterRepository.findByCampaignId(target.getCampaign().getId())
+                .flatMap(encounter -> encounter.getParticipants().stream()
+                        .filter(other -> other.getCharacter().getId().equals(target.getId()))
+                        .findFirst());
+        if (participant.isEmpty()) {
+            steps.add(effect.describe() + " — вне боя ведёт мастер");
+            return;
+        }
+        // HOMEBREW: одинаковые эффекты не складываются, новый заменяет старый: книга молчит
+        participant.get().getEffects().removeIf(other -> other.getLabel().equals(effect.label()));
+        CombatEffect combatEffect = new CombatEffect();
+        combatEffect.setParticipant(participant.get());
+        combatEffect.setLabel(effect.label());
+        combatEffect.setRoundsLeft(effect.rounds());
+        combatEffect.setDamageRolls(effect.damage());
+        combatEffect.setAttackOption(effect.attackOption());
+        combatEffect.getData().putAll(effect.data());
+        participant.get().getEffects().add(combatEffect);
+        steps.add(effect.describe());
+    }
+
+    private String applyDamage(Character attacker, String weapon, Character target, String targetName, AttackHit hit, List<String> steps) {
         int amount = hit.damage().getAmount();
         diceService.log(attacker.getCampaign(), attacker, hit.expression(), String.join("; ", hit.steps()), amount,
                 "Урон: " + weapon + " → " + (target != null ? target.getName() : targetName));

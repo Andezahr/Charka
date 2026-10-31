@@ -56,6 +56,14 @@
       </form>
     </div>
 
+    <!-- Новый раунд начался с догорания: что вышло, пока никто не ходил -->
+    <div th:unless="${#lists.isEmpty(roundReport)}" class="alert alert-error" role="status">
+      <div class="alert-text">
+        <p th:each="line : ${roundReport}" class="encounter-report" th:text="${line}">Горит: Олежа получает 4 урона</p>
+      </div>
+      <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+    </div>
+
     <div class="grid grid-main">
       <div class="stack">
         <!-- Предмет израсходован: своей строки у него нет -->
@@ -78,6 +86,11 @@
                     <span th:each="line : ${row.card.lines}" class="chip" th:text="${line}">SP торса 14</span>
                     <span th:if="${row.participant.done and !row.card.out}" class="chip">Походил</span>
                     <span th:if="${row.participant.waiting}" class="chip">Ждёт</span>
+                    <form th:each="effect : ${row.effects}" class="chip red chip-effect" method="post"
+                          th:action="@{${base} + '/participants/' + ${row.participant.id} + '/effects/' + ${effect.id} + '/remove'}">
+                      <span th:text="${effect.summary}">Горит 1D6 · раундов 2</span>
+                      <button type="submit" class="chip-remove" aria-label="Снять эффект" title="Снять: огонь потушили">×</button>
+                    </form>
                   </div>
                 </div>
                 <form th:if="${row.participant.waiting and !row.current}" th:action="@{${base} + '/participants/' + ${row.participant.id} + '/join'}" method="post">

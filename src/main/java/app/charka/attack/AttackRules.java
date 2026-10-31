@@ -1,10 +1,15 @@
 package app.charka.attack;
 
 import app.charka.check.CheckResult;
+import app.charka.dice.DiceExpression;
+import app.charka.dice.DiceResult;
+import app.charka.model.counters.strategy.health.DamageRequest;
 import app.charka.model.counters.strategy.health.DiceRoller;
 import app.charka.skill.StatValue;
 
+import java.util.List;
 import java.util.Map;
+import java.util.stream.IntStream;
 
 /**
  * Правила атаки в системе: {@code GameSystem.getAttackRules()}. Ход один для всех атак: система строит план, ядро тратит ресурс,
@@ -45,5 +50,18 @@ public interface AttackRules {
      */
     default AttackHit blastHit(AreaDamage blast, DiceRoller dice) {
         throw new IllegalArgumentException("У этой системы нет урона по площади");
+    }
+
+    /**
+     * Очередной бросок длящегося эффекта: начался новый раунд.
+     *
+     * @param expression бросок из {@link LingeringEffect#damage}
+     * @param data       данные из {@link LingeringEffect#data}
+     */
+    default AttackHit effectHit(String expression, Map<String, String> data, DiceRoller dice) {
+        DiceExpression parsed = DiceExpression.parse(expression);
+        DiceResult result = DiceResult.of(parsed, IntStream.range(0, parsed.count()).map(i -> dice.roll(parsed.sides())).boxed().toList());
+        return new AttackHit("тело", expression, List.of("Урон " + expression + ": " + result.details()),
+                DamageRequest.builder().amount(result.total()).build());
     }
 }

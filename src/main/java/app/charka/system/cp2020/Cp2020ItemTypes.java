@@ -39,6 +39,10 @@ public final class Cp2020ItemTypes {
     public static final String AREA = "area";
     /** Взрывчатка (с. 111): зона умножается на число единиц, урон по всему телу. Единица — количество предмета */
     public static final String EXPLOSIVE = "explosive";
+    /** Единица взрывчатки: кг, шашка, литр */
+    public static final String UNIT = "unit";
+    /** Что заряд делает сверх урона: {@link Cp2020Effects} */
+    public static final String EFFECT = "effect";
     /** Оружие заклинило; состояние, не поле формы */
     public static final String JAMMED = "jammed";
 
@@ -95,7 +99,9 @@ public final class Cp2020ItemTypes {
             ItemField.flag(THROWN, "Метается", "").asAdvanced(),
             ItemField.flag(PLANTED, "Подрывается на месте", "").asAdvanced(),
             ItemField.number(AREA, "Зона поражения, м", "зона ", " м", 1, null).asAdvanced(),
-            ItemField.flag(EXPLOSIVE, "Взрывчатка: зона на единицу, по всему телу", "").asAdvanced()),
+            ItemField.flag(EXPLOSIVE, "Взрывчатка: зона на единицу, по всему телу", "").asAdvanced(),
+            ItemField.text(UNIT, "Единица взрывчатки").asAdvanced(),
+            ItemField.choice(EFFECT, "Особый эффект", false, Cp2020Effects.OPTIONS.toArray(new Option[0])).asAdvanced()),
             Cp2020ItemTypes::checkWeapon,
             List.of(JAMMED)).inSection("Оружие");
 

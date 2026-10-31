@@ -70,6 +70,29 @@ public class HealthCounterService {
     }
 
     /**
+     * Спасбросок персонажа от попадания, без выбора счётчика.
+     *
+     * @param modifier прибавка к числу спасброска
+     * @return итог; пусто, если у персонажа нет счётчика здоровья
+     */
+    @Transactional
+    public Optional<HealthEvent> save(Long characterId, String saveType, int modifier) {
+        List<Counter> siblings = counterRepository.findByCharacterId(characterId);
+        for (Counter counter : siblings) {
+            if (strategyFactory.findStrategy(counter.getType()).orElse(null) instanceof HealthCounterStrategy health) {
+                CounterContext context = new CounterContext(counter, siblings);
+                if (health.isDead(context)) {
+                    return Optional.of(new HealthEvent().step("Цель уже мертва").summary("Цель уже мертва"));
+                }
+                HealthEvent event = health.save(context, saveType, null, modifier);
+                counterRepository.saveAll(siblings);
+                return Optional.of(event);
+            }
+        }
+        return Optional.empty();
+    }
+
+    /**
      * Состояние счётчика здоровья для показа.
      *
      * @param siblings все счётчики персонажа

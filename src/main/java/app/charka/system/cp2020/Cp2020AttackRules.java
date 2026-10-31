@@ -155,6 +155,11 @@ final class Cp2020AttackRules implements AttackRules {
         return Cp2020AreaAttacks.hit(blast, dice);
     }
 
+    @Override
+    public AttackHit effectHit(String expression, Map<String, String> data, DiceRoller dice) {
+        return Cp2020AreaAttacks.effectHit(expression, data, dice);
+    }
+
     /** Заряд подрывается на месте, без броска на попадание */
     boolean isPlanted(AttackRequest request) {
         return PLANT.equals(mode(request));
@@ -390,6 +395,10 @@ final class Cp2020AttackRules implements AttackRules {
                     ? List.of(single, new AttackForm.Mode(PATTERNS, "Несколько пятен", true, false, true, false, false))
                     : List.of(single);
         }
+        if (weapon.getProperties().containsKey(Cp2020ItemTypes.AREA)) {
+            // ракетница, РПГ, огнемёт (с. 99, 110, 111): как граната, но выстрелом; задет всякий в зоне
+            return List.of(new AttackForm.Mode(SINGLE, "Выстрел", false, false, true, false, false));
+        }
         AttackForm.Mode single = new AttackForm.Mode(SINGLE, "Одиночный", false, false, false, false, true);
         if (!isAutomatic(weapon)) {
             return List.of(single);
@@ -585,7 +594,7 @@ final class Cp2020AttackRules implements AttackRules {
 
     private static String roundsLabel(Item weapon) {
         if (isExplosive(weapon)) {
-            return "Единиц, кг";
+            return "Единиц, " + weapon.getProperties().getOrDefault(Cp2020ItemTypes.UNIT, "кг");
         }
         return "SHT".equals(category(weapon)) ? "Пятен" : "Патронов";
     }

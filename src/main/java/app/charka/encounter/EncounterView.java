@@ -4,12 +4,14 @@ import app.charka.attack.AttackForm;
 import app.charka.item.ItemAction;
 import app.charka.item.ItemSummary;
 import app.charka.model.Character;
+import app.charka.model.CombatEffect;
 import app.charka.model.Encounter;
 import app.charka.model.EncounterParticipant;
 import app.charka.model.Item;
 import app.charka.model.PendingBlast;
 
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Страница идущего боя.
@@ -23,13 +25,19 @@ public record EncounterView(Encounter encounter, Character current, boolean last
 
     /**
      * @param targets цели атаки: живые участники, сначала другая сторона
+     * @param effects что длится на участнике
      */
     public record Row(EncounterParticipant participant, Character character, CombatCard card, boolean current,
-                      List<Weapon> weapons, List<Character> targets, List<PendingBlast> blasts) {
+                      List<Weapon> weapons, List<Character> targets, List<PendingBlast> blasts, List<CombatEffect> effects) {
 
         /** Итог действия с этим предметом показывается в этой строке */
         public boolean hasItem(Long itemId) {
             return weapons.stream().anyMatch(weapon -> weapon.item().getId().equals(itemId));
+        }
+
+        /** Модификаторы атаки, которые уже отмечены в диалоге: ослеплённому не надо искать свой */
+        public List<String> attackOptions() {
+            return effects.stream().map(CombatEffect::getAttackOption).filter(Objects::nonNull).toList();
         }
     }
 

@@ -3,6 +3,8 @@ package app.charka.controller;
 import app.charka.encounter.EncounterService;
 import app.charka.model.Campaign;
 import app.charka.model.Character;
+import app.charka.model.CombatEffect;
+import app.charka.model.EncounterParticipant;
 import app.charka.model.Item;
 import app.charka.repository.CampaignRepository;
 import app.charka.repository.CharacterRepository;
@@ -97,6 +99,28 @@ class EncounterPageTest {
         assertThat(html.split("checked=\"checked\"").length - 1).isEqualTo(2);
         assertThat(page("/campaign/" + campaign.getId())).contains("⚔ Бой");
         assertThat(page("/character/" + shooter.getId())).doesNotContain("⚔ Бой");
+    }
+
+    @Test
+    @DisplayName("эффект виден у участника, снимается нажатием; в диалоге ослеплённого отмечен штраф")
+    void effectChip() throws Exception {
+        fight();
+        EncounterParticipant shooterRow = encounterService.view(campaign.getId()).orElseThrow().rows().stream()
+                .filter(row -> row.character().getId().equals(shooter.getId())).findFirst().orElseThrow().participant();
+        CombatEffect effect = new CombatEffect();
+        effect.setParticipant(shooterRow);
+        effect.setLabel("Ослеплён −3");
+        effect.setRoundsLeft(4);
+        effect.setAttackOption("blinded");
+        shooterRow.getEffects().add(effect);
+        Long inventory = characterRepository.findById(shooter.getId()).orElseThrow().getInventories().get(0).getId();
+        itemService.addFromCatalog(inventory, "arasaka_minami_10", 1);
+        flushAndClear();
+
+        String html = page(base);
+
+        assertThat(html).contains("Ослеплён −3 · раундов 4").contains("/effects/");
+        assertThat(html).containsPattern("value=\"blinded\"\s+checked");
     }
 
     @Test

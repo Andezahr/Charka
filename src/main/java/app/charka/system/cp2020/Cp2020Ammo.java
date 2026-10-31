@@ -22,9 +22,11 @@ public final class Cp2020Ammo {
     public static final String NEEDLES = "Иглы";
     public static final String NAPALM = "Напалм";
     public static final String MICRO_MISSILES = "Микроракеты";
+    public static final String MISSILES = "Ракеты";
+    public static final String RPG_ROUNDS = "Заряды РПГ";
 
     private static final String CANNON = "20/9mm";
-    private static final List<String> OWN_NAMES = List.of(ARROWS, BOLTS, PELLETS, NEEDLES, NAPALM, MICRO_MISSILES);
+    private static final List<String> OWN_NAMES = List.of(ARROWS, BOLTS, PELLETS, NEEDLES, NAPALM, MICRO_MISSILES, MISSILES, RPG_ROUNDS);
 
     private static final String GROUP = "Боеприпасы";
     private static final String OTHER_GROUP = "Боеприпасы: другие";
@@ -67,6 +69,10 @@ public final class Cp2020Ammo {
         // HOMEBREW: в книге одна заправка без числа выстрелов; 10 — магазин K-A F-253
         rows.add(other("napalm", "Заправка огнемёта", NAPALM, 10, 50, "Цена за заправку. В книге без числа выстрелов, взят магазин F-253"));
         rows.add(other("micro_missiles", "Микроракеты (4)", MICRO_MISSILES, 4, 100, "Цена за 4"));
+
+        // HOMEBREW: в таблице Reloads (с. 64) ракет и зарядов РПГ нет, цены наши
+        rows.add(other("missile", "Ракета к Scorpion 16", MISSILES, 1, 300, "Цена за штуку. В книге цены нет"));
+        rows.add(other("rpg", "Заряд РПГ", RPG_ROUNDS, 1, 100, "Цена за штуку. В книге цены нет"));
 
         brass(rows, "лёгкий пистолет", 100, 15, ".25", ".38");
         brass(rows, "средний пистолет", 50, 15, ".357", ".45");

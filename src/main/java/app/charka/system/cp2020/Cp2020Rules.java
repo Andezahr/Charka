@@ -9,6 +9,9 @@ package app.charka.system.cp2020;
  */
 public final class Cp2020Rules {
 
+    /** С. 110: мягкая броня защищает от огнемёта только «>15 SP» и теряет 2 SP за попадание */
+    public static final int SOFT_ARMOR_FLAME_LIMIT = 15;
+    public static final int SOFT_ARMOR_FLAME_WEAR = 2;
     public static final int BOXES_PER_LEVEL = 4;
     public static final int LEVEL_COUNT = 10;
     /** 10 уровней по 4 клетки; урон сверх этого — смерть */

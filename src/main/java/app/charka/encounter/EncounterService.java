@@ -8,6 +8,7 @@ import app.charka.exception.CharacterNotFoundException;
 import app.charka.exception.NotFoundException;
 import app.charka.model.Campaign;
 import app.charka.model.Character;
+import app.charka.model.CombatEffect;
 import app.charka.model.Encounter;
 import app.charka.model.EncounterParticipant;
 import app.charka.model.counters.strategy.health.DamageRequest;
@@ -120,7 +121,8 @@ public class EncounterService {
         List<EncounterView.Row> rows = ordered(encounter).stream().map(participant -> {
             Character character = participant.getCharacter();
             return new EncounterView.Row(participant, character, system.getCombatCard(character), participant == current,
-                    weapons(character, system), targets(character, fighters, system), attackService.pendingBlasts(character.getId()));
+                    weapons(character, system), targets(character, fighters, system), attackService.pendingBlasts(character.getId()),
+                    List.copyOf(participant.getEffects()));
         }).toList();
         Set<Long> inFight = fighters.stream().map(Character::getId).collect(Collectors.toSet());
         List<Character> addable = encounter.getCampaign().getCharacters().stream()
@@ -159,12 +161,19 @@ public class EncounterService {
     }
 
     /**
-     * Текущий участник закончил ход. Если ходить больше некому, начинается новый раунд.
+     * Что вышло из «Следующий ход».
      *
-     * @return персонаж, чей теперь ход; null — ходить некому
+     * @param character персонаж, чей теперь ход; null — ходить некому
+     * @param report    что случилось в начале нового раунда: горение и прочее
+     */
+    public record Turn(Long character, List<String> report) {
+    }
+
+    /**
+     * Текущий участник закончил ход. Если ходить больше некому, начинается новый раунд.
      */
     @Transactional
-    public Long next(Long campaignId) {
+    public Turn next(Long campaignId) {
         Encounter encounter = encounter(campaignId);
         GameSystem system = system(encounter.getCampaign());
         EncounterParticipant current = current(encounter, system);
@@ -173,11 +182,13 @@ public class EncounterService {
             current.setWaiting(false);
         }
         EncounterParticipant next = current(encounter, system);
+        List<String> report = List.of();
         if (next == null) {
+            report = effectsOfNewRound(encounter, system);
             startRound(encounter, system);
             next = current(encounter, system);
         }
-        return next == null ? null : next.getCharacter().getId();
+        return new Turn(next == null ? null : next.getCharacter().getId(), report);
     }
 
     /**
@@ -243,6 +254,14 @@ public class EncounterService {
     public void remove(Long campaignId, Long participantId) {
         EncounterParticipant participant = participant(campaignId, participantId);
         participant.getEncounter().getParticipants().remove(participant);
+    }
+
+    /**
+     * Снять эффект с участника: огонь потушили.
+     */
+    @Transactional
+    public void removeEffect(Long campaignId, Long participantId, Long effectId) {
+        participant(campaignId, participantId).getEffects().removeIf(effect -> effect.getId().equals(effectId));
     }
 
     /**
@@ -314,6 +333,29 @@ public class EncounterService {
             throw new IllegalArgumentException("У персонажа нет счётчика здоровья");
         }
         return counterId;
+    }
+
+    /** Эффекты идут до нового броска инициативы: ожог и оглушение от него влияют на этот раунд */
+    private List<String> effectsOfNewRound(Encounter encounter, GameSystem system) {
+        List<String> report = new ArrayList<>();
+        for (EncounterParticipant participant : ordered(encounter)) {
+            Character character = participant.getCharacter();
+            for (CombatEffect effect : List.copyOf(participant.getEffects())) {
+                if (system.getCombatCard(character).out()) {
+                    participant.getEffects().clear();
+                    break;
+                }
+                String roll = effect.nextRound();
+                if (roll != null) {
+                    report.add(character.getName() + ", " + effect.getLabel().toLowerCase() + ": " + attackService.effectDamage(character, effect.getLabel(), roll, effect.getData()));
+                }
+                if (effect.isOver()) {
+                    participant.getEffects().remove(effect);
+                    report.add(character.getName() + ": «" + effect.getLabel() + "» закончилось");
+                }
+            }
+        }
+        return report;
     }
 
     /** Новый раунд: все снова ходят; очередь бросается заново, если так велит система */

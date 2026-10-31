@@ -29,7 +29,8 @@ public class PendingBlast {
 
     private String weapon;
     private String expression;
-    private int amount;
+    /** Урон; null — у заряда только эффект */
+    private Integer amount;
     private int radius;
 
     /** Как определены отклонение и урон */

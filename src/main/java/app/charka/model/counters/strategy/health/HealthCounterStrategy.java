@@ -38,6 +38,13 @@ public interface HealthCounterStrategy extends CounterStrategy {
      */
     HealthEvent save(CounterContext context, String saveType, Integer roll);
 
+    /**
+     * Спасбросок с прибавкой к числу: например, от оглушающей гранаты.
+     */
+    default HealthEvent save(CounterContext context, String saveType, Integer roll, int modifier) {
+        return save(context, saveType, roll);
+    }
+
     /** Стабилизировать умирающего (результат медицинской помощи) */
     HealthEvent stabilize(CounterContext context);
 

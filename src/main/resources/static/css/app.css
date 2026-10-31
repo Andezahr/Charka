@@ -1128,3 +1128,8 @@ html:has(.is-editing) {
 .encounter-damage { padding-top: 10px; border-top: 1px solid var(--border); }
 .encounter-minor { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-top: 10px; border-top: 1px solid var(--border); }
 .encounter-end { width: 100%; }
+
+/* Что длится на участнике боя */
+.chip-effect { display: inline-flex; align-items: center; gap: 6px; margin: 0; }
+.chip-remove { border: 0; background: none; color: inherit; cursor: pointer; font: inherit; line-height: 1; padding: 0 2px; }
+.encounter-report { margin: 0; }

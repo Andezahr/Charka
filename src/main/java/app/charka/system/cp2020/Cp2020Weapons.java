@@ -72,14 +72,17 @@ public final class Cp2020Weapons {
 
             note(armorWear(armorPiercing(gun(HEAVY, "Barrett-Arasaka Light 20mm", "HVY", 0, "N", "R", "4D10", "20/9mm", 10, 1, "VR", 450, 2000)), 2),
                     "Подкалиберный бронебойный снаряд: броня теряет 2 SP за попадание"),
-            gun(HEAVY, "Scorpion 16 Missile Launcher", "HVY", -1, "N", "R", "7D10", null, 1, 1, "VR", 1000, 3000),
-            gun(HEAVY, "Militech Arms RPG-A", "HVY", -2, "N", "R", "6D10", null, 1, 1, "VR", 750, 1500),
+            // зоны — таблица Area Effect (с. 99); заряжаются из запаса: заряд один
+            directLoad(withProperty(gun(HEAVY, "Scorpion 16 Missile Launcher", "HVY", -1, "N", "R", "7D10", Cp2020Ammo.MISSILES, 1, 1, "VR", 1000, 3000),
+                    Cp2020ItemTypes.AREA, "6")),
+            note(directLoad(withProperty(gun(HEAVY, "Militech Arms RPG-A", "HVY", -2, "N", "R", "6D10", Cp2020Ammo.RPG_ROUNDS, 1, 1, "VR", 750, 1500),
+                    Cp2020ItemTypes.AREA, "4")), "Обратный выброс: нельзя стрелять в тесноте"),
             // одноразовое (граната, взрывчатка, мина): магазина нет, расходуется количеством предмета
             grenade("Fragmentation", "7D6", null),
-            grenade("Incendiary", "4D6", "Горит 3 хода: 4D6 в каждый"),
-            grenade("Stun", "Stun −5", "Спасбросок от оглушения с −5"),
-            grenade("Dazzle", "Blind 4", "Слепота на 4 хода"),
-            grenade("Sonic", "Deaf 4", "Глухота на 4 хода"),
+            withProperty(grenade("Incendiary", "4D6", "Горит 3 хода: 4D6 в каждый"), Cp2020ItemTypes.EFFECT, Cp2020Effects.INCENDIARY),
+            withProperty(grenade("Stun", "Stun −5", "Спасбросок от оглушения с −5"), Cp2020ItemTypes.EFFECT, Cp2020Effects.STUN),
+            withProperty(grenade("Dazzle", "Blind 4", "Слепота на 4 хода"), Cp2020ItemTypes.EFFECT, Cp2020Effects.DAZZLE),
+            withProperty(grenade("Sonic", "Deaf 4", "Глухота на 4 хода"), Cp2020ItemTypes.EFFECT, Cp2020Effects.SONIC),
             grenade("Gas", "Газ", "Эффект по таблице газов, с. 110. Броня не защищает, фильтры защищают"),
             note(gun(HEAVY, "Grenade Launcher", "HVY", 0, null, "R", "По типу", null, 1, 1, "ST", 225, 150),
                     "Скрытность в книге: L/N. Крепится под ствол штурмовой винтовки или используется с рук; не подходит к Militech RPG-A"),
@@ -88,9 +91,18 @@ public final class Cp2020Weapons {
                     Cp2020ItemTypes.AREA, "5"), Cp2020ItemTypes.THROWN), Cp2020ItemTypes.PLANTED), Cp2020ItemTypes.EXPLOSIVE),
                     "Цена за кг. Количество — кг"),
             note(withFlag(withProperty(gun(HEAVY, "Mine (all types)", "HVY", 0, "J", "P", "4D10", null, null, 1, "VR", null, 350),
-                    Cp2020ItemTypes.AREA, "2"), Cp2020ItemTypes.PLANTED), "У клеймора другая зона: 6 м по линии от центра, задайте в правке предмета"),
+                    Cp2020ItemTypes.AREA, "2"), Cp2020ItemTypes.PLANTED), "Магнитный датчик находит обычную мину 7 из 10"),
+            // цена — «Mine (all types)» (с. 63); конус на листе не нарисовать, цели отмечает мастер
+            note(withFlag(withProperty(gun(HEAVY, "Claymore Mine", "HVY", 0, "J", "P", "4D10", null, null, 1, "VR", null, 350),
+                    Cp2020ItemTypes.AREA, "6"), Cp2020ItemTypes.PLANTED), "Спереди конус 6 × 75 м, сзади 6 × 6 м, в стыке круг 6 м"),
+            // С. 111; цен нет ни в таблице, ни в тексте
+            explosive("Plastique", "7D10", 4, "кг", true, "Цены в книге нет"),
+            explosive("TNT", "4D10", 3, "шашек", true, "Цены в книге нет"),
+            explosive("Molotov Cocktail", "2D10", 2, "л", false, "2 м на литр; обычная бутылка — 1 литр. Цены в книге нет"),
             // HOMEBREW: оружие без магазина (огнемёт, лук, арбалет, револьверы, Winchester) заряжается патронами прямо из запаса
-            directLoad(gun(HEAVY, "K-A F-253 Flamethrower", "HVY", -2, "N", "R", "2D10+", Cp2020Ammo.NAPALM, 10, 1, "ST", 50, 1500)),
+            note(directLoad(withProperty(withProperty(gun(HEAVY, "K-A F-253 Flamethrower", "HVY", -2, "N", "R", "2D10", Cp2020Ammo.NAPALM, 10, 1, "ST", 50, 1500),
+                    Cp2020ItemTypes.AREA, "2"), Cp2020ItemTypes.EFFECT, Cp2020Effects.FLAME)),
+                    "Можно вести полосой: отметьте всех на линии. Мягкая броня защищает только от 16 SP"),
 
             gun(EXOTIC, "Techtronica 15 Microwaver", "P", 0, "J", "P", "1D6", null, 10, 2, "VR", 20, 400),
             gun(EXOTIC, "Militech Elect. LaserCannon", "RIF", 0, "N", "R", "1-5D6", null, 10, 2, "UR", 200, 8000),
@@ -163,6 +175,14 @@ public final class Cp2020Weapons {
         CatalogItem grenade = gun(HEAVY, "Grenade: " + kind, "HVY", 0, "P", "P", damage, null, null, 1, "VR", null, 30);
         CatalogItem armed = withFlag(withFlag(withProperty(grenade, Cp2020ItemTypes.AREA, "5"), Cp2020ItemTypes.THROWN), Cp2020ItemTypes.PLANTED);
         return note(armed, description == null ? THROWN : THROWN + ". " + description);
+    }
+
+    /** Взрывчатка: зона на единицу, урон по всему телу (с. 111) */
+    private static CatalogItem explosive(String name, String damage, int area, String unit, boolean planted, String description) {
+        CatalogItem item = gun(HEAVY, name, "HVY", 0, "P", "P", damage, null, null, 1, "VR", null, 0);
+        CatalogItem armed = withProperty(withProperty(withFlag(withFlag(item, Cp2020ItemTypes.THROWN), Cp2020ItemTypes.EXPLOSIVE),
+                Cp2020ItemTypes.AREA, String.valueOf(area)), Cp2020ItemTypes.UNIT, unit);
+        return note(planted ? withFlag(armed, Cp2020ItemTypes.PLANTED) : armed, description);
     }
 
     private static CatalogItem old(String name, String category, int accuracy, String concealability, String availability,

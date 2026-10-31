@@ -119,7 +119,7 @@ class ItemTypesTest {
         @Test
         @DisplayName("справочник: коды уникальны, каждая строка проходит проверку полей без потерь")
         void catalogValid() {
-            assertThat(Cp2020Weapons.CATALOG).hasSize(78);
+            assertThat(Cp2020Weapons.CATALOG).hasSize(82);
             assertThat(Cp2020Weapons.CATALOG).extracting(CatalogItem::key).doesNotHaveDuplicates();
             assertThat(Cp2020Weapons.CATALOG).allSatisfy(entry -> {
                 assertThat(entry.typeCode()).isEqualTo(Cp2020ItemTypes.WEAPON);

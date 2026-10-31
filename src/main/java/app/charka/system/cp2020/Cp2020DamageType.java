@@ -14,13 +14,15 @@ public enum Cp2020DamageType {
     /** Бронебойный: броня считается за половину SP, прошедший урон тоже делится пополам */
     ARMOR_PIERCING("Бронебойный (AP)"),
     /** В обход брони: падение, огонь, яд — SP не учитывается и не изнашивается */
-    BYPASS("В обход брони");
+    BYPASS("В обход брони"),
+    /** Огнемёт (с. 110): жёсткая броня как обычно, мягкая защищает только от 16 SP и теряет 2 SP за попадание; см. Cp2020HealthStrategy */
+    FLAME("Огнемёт");
 
     private final String label;
 
     public int effectiveSp(int sp) {
         return switch (this) {
-            case NORMAL -> sp;
+            case NORMAL, FLAME -> sp;
             case ARMOR_PIERCING -> sp / 2;
             case BYPASS -> 0;
         };

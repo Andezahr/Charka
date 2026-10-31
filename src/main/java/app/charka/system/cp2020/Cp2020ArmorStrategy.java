@@ -155,6 +155,13 @@ public class Cp2020ArmorStrategy extends AbstractCounterStrategy {
     }
 
     /**
+     * Есть ли в зоне жёсткий слой. HOMEBREW: книга (с. 110) не говорит о смешанных слоях; один жёсткий слой — и зона защищена как жёсткая. Свой слой счётчика считается мягким.
+     */
+    public boolean isHard(Counter armor, Cp2020Location location) {
+        return Cp2020WornArmor.layers(armor.getCharacter(), location).stream().anyMatch(Cp2020WornArmor::isHard);
+    }
+
+    /**
      * Полный SP зоны: свой слой счётчика внутри, надетые предметы поверх, по таблице пропорциональной брони.
      */
     public int maxSp(Counter armor, Cp2020Location location) {

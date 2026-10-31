@@ -3,7 +3,7 @@
 <body>
 <!-- Что может участник: спасброски, оружие, урон, ожидание -->
 <div th:fragment="actions(row, base)" class="encounter-actions"
-     th:with="url=${base + '/participants/' + row.participant.id}">
+     th:with="url=${base + '/participants/' + row.participant.id}, presetOptions=${row.attackOptions()}">
   <div th:if="${!#lists.isEmpty(row.card.saves) or row.card.stabilizable}" class="encounter-saves">
     <form th:each="save : ${row.card.saves}" th:action="@{${url} + '/save/' + ${save.code}}" method="post">
       <button type="submit" class="btn btn-sm btn-danger" th:text="'🎲 ' + ${save.label}">🎲 Спасбросок</button>

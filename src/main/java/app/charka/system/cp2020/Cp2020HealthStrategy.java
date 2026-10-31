@@ -170,6 +170,18 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
         // 1. Броня
         int sp = armorStrategy.sp(armor, location);
         int effectiveSp = type.effectiveSp(sp);
+        boolean softAgainstFlame = type == Cp2020DamageType.FLAME && !armorStrategy.isHard(armor, location);
+        if (softAgainstFlame && sp > 0) {
+            if (sp <= Cp2020Rules.SOFT_ARMOR_FLAME_LIMIT) {
+                effectiveSp = 0;
+                event.step("Мягкая броня до " + Cp2020Rules.SOFT_ARMOR_FLAME_LIMIT + " SP от огня не защищает");
+            }
+            int burned = sp;
+            for (int i = 0; i < Cp2020Rules.SOFT_ARMOR_FLAME_WEAR; i++) {
+                burned = armorStrategy.wear(armor, location);
+            }
+            event.step("Огонь портит мягкую броню: SP «" + location.getLabel() + "» " + sp + " → " + burned);
+        }
         int damage = request.getAmount() - effectiveSp;
         if (type == Cp2020DamageType.BYPASS) {
             event.step("В обход брони: урон " + request.getAmount());
@@ -186,7 +198,7 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
             damage = Math.max(1, damage / 2);
             event.step("Бронебойный: прошедший урон делится пополам → " + damage);
         }
-        if (type != Cp2020DamageType.BYPASS && sp > 0) {
+        if (type != Cp2020DamageType.BYPASS && sp > 0 && !softAgainstFlame) {
             int worn = sp;
             for (int i = 0; i < request.extra(ARMOR_WEAR, 1); i++) {
                 worn = armorStrategy.wear(armor, location);
@@ -235,7 +247,7 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
 
         // 5. Оглушение
         if (request.isAutoSave()) {
-            rollStunSave(context, null, event);
+            rollStunSave(context, null, 0, event);
         }
         return event.summary(summary + ". " + statusLabel(counter));
     }
@@ -280,6 +292,11 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
 
     @Override
     public HealthEvent save(CounterContext context, String saveType, Integer roll) {
+        return save(context, saveType, roll, 0);
+    }
+
+    @Override
+    public HealthEvent save(CounterContext context, String saveType, Integer roll, int modifier) {
         ensureAlive(context.getCounter());
         if (roll != null && (roll < 1 || roll > 10)) {
             throw new IllegalArgumentException("Бросок d10 должен быть от 1 до 10");
@@ -287,7 +304,7 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
         HealthEvent event = new HealthEvent();
         String type = saveType == null ? "" : saveType.trim().toUpperCase();
         return switch (type) {
-            case SAVE_STUN -> rollStunSave(context, roll, event);
+            case SAVE_STUN -> rollStunSave(context, roll, modifier, event);
             case SAVE_DEATH -> rollDeathSave(context, roll, event);
             default -> throw new IllegalArgumentException("Неизвестный спасбросок: " + saveType);
         };
@@ -355,17 +372,21 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
     // ---------- спасброски ----------
 
     /** Спасбросок от оглушения: d10 ≤ BODY − штраф уровня ранения */
-    private HealthEvent rollStunSave(CounterContext context, Integer roll, HealthEvent event) {
+    private HealthEvent rollStunSave(CounterContext context, Integer roll, int modifier, HealthEvent event) {
         Counter counter = context.getCounter();
-        int target = body(context) - stunPenalty(woundLevel(counter.getValue()));
+        int target = body(context) - stunPenalty(woundLevel(counter.getValue())) + modifier;
         int result = roll != null ? roll : dice.d10();
         boolean success = result <= target;
-        event.step("Спасбросок от оглушения: d10 = " + result + ", нужно ≤ " + target
+        event.step("Спасбросок от оглушения" + (modifier != 0 ? " с " + modifier : "") + ": d10 = " + result + ", нужно ≤ " + target
                 + (success ? " — успех" : " — провал"));
         boolean wasStunned = counter.getFlag(STUNNED);
-        counter.setFlag(STUNNED, !success);
+        // спасбросок с модификатором — от нового удара: уже оглушённого он в себя не приводит
+        boolean staysStunned = wasStunned && modifier != 0;
+        counter.setFlag(STUNNED, !success || staysStunned);
         String outcome;
-        if (success) {
+        if (staysStunned && success) {
+            outcome = " всё ещё оглушён";
+        } else if (success) {
             outcome = wasStunned ? " приходит в себя" : " держится на ногах";
         } else {
             outcome = " оглушён и выведен из строя";

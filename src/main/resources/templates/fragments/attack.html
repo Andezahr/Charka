@@ -69,7 +69,7 @@
         <legend th:text="${section.name}">Часто</legend>
         <div th:replace="~{fragments/attack :: choices(${section})}"></div>
       </fieldset>
-      <details class="cp-more item-more">
+      <details class="cp-more item-more" th:open="${presetOptions != null and !#lists.isEmpty(presetOptions)}">
         <summary>Ещё модификаторы</summary>
         <fieldset th:each="section : ${form.sections.?[rare]}" class="attack-section">
           <legend th:text="${section.name}">Цель</legend>
@@ -92,7 +92,8 @@
 <div th:fragment="choices(section)" class="attack-options">
   <th:block th:each="choice : ${section.choices}">
     <label th:if="${choice.flag}" class="check">
-      <input type="checkbox" th:name="'option.' + ${choice.key}" th:value="${choice.options[0].value}">
+      <input type="checkbox" th:name="'option.' + ${choice.key}" th:value="${choice.options[0].value}"
+             th:checked="${presetOptions != null and presetOptions.contains(choice.options[0].value)}">
       <span th:text="${choice.options[0].label}">Цель неподвижна +4</span>
     </label>
     <label th:unless="${choice.flag}" class="field">
@@ -121,14 +122,14 @@
 <!-- Заряд упал мимо: хранится на сервере и ждёт решения мастера. Кто и так в зоне, уже отмечен -->
 <div th:fragment="pending(characterId, blast, targets)" class="alert alert-error item-result" role="status">
   <div class="alert-text">
-    <strong th:text="${blast.weapon} + ': заряд упал мимо, урон ' + ${blast.amount} + ', зона ' + ${blast.radius} + ' м'">Граната: заряд упал мимо</strong>
+    <strong th:text="${blast.weapon} + ': заряд упал мимо, ' + (${blast.amount != null} ? 'урон ' + ${blast.amount} + ', ' : '') + 'зона ' + ${blast.radius} + ' м'">Граната: заряд упал мимо</strong>
     <p class="item-note" th:text="${blast.note}">Отклонение: d10 = 3</p>
     <form th:action="@{'/character/' + ${characterId} + '/attack/blast/' + ${blast.id}}" method="post" class="form">
       <input th:if="${returnCampaign != null}" type="hidden" name="returnCampaign" th:value="${returnCampaign}">
       <span class="label">Кого задело</span>
       <th:block th:replace="~{fragments/attack :: target-checks(${targets}, ${blast.stillCaught})}"></th:block>
       <div class="form-row">
-        <button type="submit" class="btn btn-sm btn-primary">Применить урон</button>
+        <button type="submit" class="btn btn-sm btn-primary" th:text="${blast.amount != null} ? 'Применить урон' : 'Применить эффект'">Применить урон</button>
         <button type="submit" class="btn btn-sm btn-ghost" formnovalidate
                 th:attr="formaction=@{'/character/' + ${characterId} + '/attack/blast/' + ${blast.id} + '/dismiss'}">Никого</button>
       </div>

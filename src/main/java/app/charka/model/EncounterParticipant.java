@@ -4,6 +4,9 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Участник боя: его место в очереди раунда.
  */
@@ -39,4 +42,8 @@ public class EncounterParticipant {
 
     /** Решил подождать и вступить позже в этом раунде */
     private boolean waiting;
+
+    @OneToMany(mappedBy = "participant", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("id ASC")
+    private List<CombatEffect> effects = new ArrayList<>();
 }
