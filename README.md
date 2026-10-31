@@ -7,7 +7,7 @@
 ![Java](https://img.shields.io/badge/Java-24-orange)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.3-6DB33F)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-336791)
-![Tests](https://img.shields.io/badge/tests-711%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-714%20passing-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
 ---
@@ -57,7 +57,7 @@ Charka строится как **мультисистемный** менедже
 ## Стек
 
 - **Java 24**, **Spring Boot 3.5** — Web MVC, Data JPA, Validation
-- **Thymeleaf** — серверный рендеринг; один CSS и один JS без фреймворков, тёмная тема
+- **Thymeleaf** — серверный рендеринг; один CSS и один JS без фреймворков, страницы обновляются без перезагрузки, тёмная тема
 - **PostgreSQL 17** в Docker, схема — миграциями **Flyway**
 - Тесты: **JUnit 5**, Spring Boot Test, MockMvc, Mockito, **H2** в режиме PostgreSQL
 - Lombok, Maven Wrapper

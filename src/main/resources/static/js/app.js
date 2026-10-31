@@ -1,5 +1,8 @@
 // Общий JS для всех страниц Charka
-document.addEventListener('DOMContentLoaded', () => {
+
+// Обработчики элементов страницы: вызывается при загрузке и после каждого обновления на месте.
+// Обработчики на document сюда не класть, они накопятся: они в конце файла
+function initPage() {
 
   // Диалог по кнопке: [data-dialog-open="id диалога"]; закрывает [data-dialog-close] внутри него
   document.querySelectorAll('[data-dialog-open]').forEach(btn => {
@@ -174,13 +177,6 @@ document.addEventListener('DOMContentLoaded', () => {
     input.addEventListener('input', fillName);
   });
 
-  // Выбор из нескольких вариантов у фишки: второе нажатие мимо закрывает меню
-  document.addEventListener('click', e => {
-    document.querySelectorAll('details[data-menu][open]').forEach(menu => {
-      if (!menu.contains(e.target)) menu.open = false;
-    });
-  });
-
   // Окно «Добавить»: одно на страницу, инвентарь подставляет кнопка. Запоминает последнюю вкладку и возвращает к инвентарю
   document.querySelectorAll('[data-add-dialog]').forEach(dialog => {
     const memoryKey = 'charka.addItem.tab';
@@ -320,9 +316,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
     render();
-    // Строка из адреса могла быть скрыта, пока не отработал render
-    const anchored = location.hash && document.getElementById(location.hash.slice(1));
-    if (anchored) anchored.scrollIntoView();
 
     // Проверка навыка: бросок без перезагрузки, результат — прямо в диалоге, место на странице не теряется
     const dialog = page.querySelector('#skill-check-dialog');
@@ -510,11 +503,6 @@ document.addEventListener('DOMContentLoaded', () => {
     dialog.querySelector('[data-dialog-close]').addEventListener('click', () => dialog.close());
   });
 
-  // Закрытие уведомлений
-  document.querySelectorAll('.alert-close').forEach(btn => {
-    btn.addEventListener('click', () => btn.closest('.alert').remove());
-  });
-
   // Счётчик символов: <input data-count-to="hintId" maxlength="N">
   document.querySelectorAll('[data-count-to]').forEach(field => {
     const hint = document.getElementById(field.dataset.countTo);
@@ -529,4 +517,164 @@ document.addEventListener('DOMContentLoaded', () => {
     field.addEventListener('input', update);
     update();
   });
+}
+
+// Выбор из нескольких вариантов у фишки: второе нажатие мимо закрывает меню
+document.addEventListener('click', e => {
+  document.querySelectorAll('details[data-menu][open]').forEach(menu => {
+    if (!menu.contains(e.target)) menu.open = false;
+  });
+});
+
+// Закрытие уведомлений
+document.addEventListener('click', e => {
+  const close = e.target.closest('.alert-close');
+  if (close) close.closest('.alert').remove();
+});
+
+// Обновление страницы на месте: формы и ссылки идут через fetch, новая страница заменяет старую без мигания,
+// прокрутка остаётся. Сервер отвечает обычным HTML, на редирект — адресом с якорем (InPlaceRedirectFilter).
+// Без JS всё работает обычными переходами
+const IN_PLACE_HEADER = 'X-Charka-In-Place';
+const LOCATION_HEADER = 'X-Charka-Location';
+let lastVisit = 0;
+let submitting = false;
+
+// Страница с якорем: заголовок нужной строки на экране — прокрутка не нужна, иначе переходим к ней
+const revealAnchor = () => {
+  const anchored = location.hash && document.getElementById(location.hash.slice(1));
+  if (!anchored) return;
+  const top = anchored.getBoundingClientRect().top;
+  const topbar = document.querySelector('.topbar');
+  if (top < (topbar ? topbar.offsetHeight : 0) || top > innerHeight - 80) anchored.scrollIntoView();
+};
+
+// Раскрытые блоки переживают обновление. Меню и всё внутри диалогов закрываются, как после перехода
+const openableDetails = () => [...document.querySelectorAll('details:not([data-menu])')]
+  .filter(details => !details.closest('dialog'));
+const detailsKey = details => {
+  const holder = details.parentElement.closest('[id]');
+  const inHolder = [...(holder || document).querySelectorAll('details:not([data-menu])')];
+  return (holder ? holder.id : '') + '/' + inHolder.indexOf(details);
+};
+
+const replacePage = html => {
+  const next = new DOMParser().parseFromString(html, 'text/html');
+  const opened = new Set(openableDetails().filter(details => details.open).map(detailsKey));
+  document.title = next.title;
+  document.body.replaceWith(next.body);
+  openableDetails().filter(details => opened.has(detailsKey(details))).forEach(details => { details.open = true; });
+  initPage();
+};
+
+const fetchPage = async (url, init) => {
+  const response = await fetch(url, { cache: 'no-cache', ...init, headers: { [IN_PLACE_HEADER]: '1' } });
+  const redirect = response.headers.get(LOCATION_HEADER);
+  if (redirect) return fetchPage(new URL(redirect, location.href).href);
+  return { response, url };
+};
+
+// Сервер недоступен: действие могло не выполниться, страница и введённое остаются
+const showConnectionError = () => {
+  const alert = document.createElement('div');
+  alert.className = 'alert alert-error';
+  alert.setAttribute('role', 'alert');
+  const text = document.createElement('span');
+  text.className = 'alert-text';
+  text.textContent = 'Нет связи с сервером. Проверьте, прошло ли действие, и повторите.';
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.className = 'alert-close';
+  close.setAttribute('aria-label', 'Закрыть');
+  close.textContent = '×';
+  alert.append(text, close);
+  (document.querySelector('main') || document.body).prepend(alert);
+};
+
+// scroll — куда вернуться при ходьбе по истории; без него та же страница остаётся на месте, новая открывается сверху.
+// pressed — нажатая кнопка: её строка остаётся под пальцем, даже если сообщение над ней исчезло или добавилось
+const visit = async (url, init, scroll, pressed) => {
+  const ticket = ++lastVisit;
+  const pressedRow = pressed && pressed.closest('[id]');
+  const pressedId = pressedRow && pressedRow.id;
+  try {
+    const page = await fetchPage(url, init);
+    // пока шёл ответ, нажали другую ссылку
+    if (ticket !== lastVisit) return;
+    if (!(page.response.headers.get('Content-Type') || '').includes('text/html')) {
+      location.assign(page.url);
+      return;
+    }
+    const html = await page.response.text();
+    if (ticket !== lastVisit) return;
+    const target = new URL(page.url, location.href);
+    const samePage = target.pathname + target.search === location.pathname + location.search;
+    const x = scrollX;
+    const y = scrollY;
+    const pressedTop = pressedRow && pressedRow.isConnected ? pressedRow.getBoundingClientRect().top : null;
+    // страница ошибки адрес не меняет: форма осталась на прежней
+    if (page.response.ok && scroll === undefined) {
+      if (samePage) {
+        history.replaceState(null, '', target.href);
+      } else {
+        history.replaceState({ scroll: y }, '');
+        history.pushState(null, '', target.href);
+      }
+    }
+    replacePage(html);
+    if (scroll !== undefined) scrollTo(0, scroll);
+    else scrollTo(samePage ? x : 0, samePage ? y : 0);
+    const kept = samePage && pressedTop !== null && document.getElementById(pressedId);
+    if (kept) scrollBy(0, kept.getBoundingClientRect().top - pressedTop);
+    revealAnchor();
+  } catch (e) {
+    if (ticket === lastVisit) showConnectionError();
+  }
+};
+
+document.addEventListener('submit', async e => {
+  // отменено подтверждением или форма сама шлёт запрос (проверка навыка)
+  if (e.defaultPrevented) return;
+  const form = e.target;
+  const action = (e.submitter && e.submitter.getAttribute('formaction')) || form.getAttribute('action') || location.href;
+  const method = (form.getAttribute('method') || 'get').toLowerCase();
+  if (method === 'dialog') return;
+  e.preventDefault();
+  const data = new URLSearchParams(new FormData(form, e.submitter));
+  if (method === 'get') {
+    const url = new URL(action, location.href);
+    url.search = data.toString();
+    visit(url.href);
+    return;
+  }
+  // второе нажатие, пока идёт первое, не должно выстрелить ещё раз
+  if (submitting) return;
+  submitting = true;
+  document.documentElement.classList.add('is-busy');
+  await visit(new URL(action, location.href).href, { method: 'POST', body: data }, undefined, e.submitter || form);
+  submitting = false;
+  document.documentElement.classList.remove('is-busy');
+});
+
+document.addEventListener('click', e => {
+  const link = e.target.closest('a[href]');
+  if (!link || e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+  if (link.target || link.hasAttribute('download')) return;
+  const url = new URL(link.href);
+  if (url.origin !== location.origin) return;
+  // переход внутри страницы браузер делает сам
+  if (url.hash && url.pathname === location.pathname && url.search === location.search) return;
+  e.preventDefault();
+  visit(url.href);
+});
+
+// Адресом и прокруткой управляем сами: иначе при «Назад» браузер сдвинул бы старую страницу до прихода новой
+history.scrollRestoration = 'manual';
+window.addEventListener('popstate', e => visit(location.href, undefined, (e.state && e.state.scroll) || 0));
+window.addEventListener('pagehide', () => history.replaceState({ scroll: scrollY }, ''));
+
+document.addEventListener('DOMContentLoaded', () => {
+  initPage();
+  if (history.state && history.state.scroll) scrollTo(0, history.state.scroll);
+  revealAnchor();
 });

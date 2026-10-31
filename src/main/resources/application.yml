@@ -20,7 +20,8 @@ spring:
     chain:
       cache: false
   thymeleaf:
-    cache: false
+    # без кэша лист персонажа рендерится в 6 раз дольше (1,2 с против 0,2 с). Править шаблоны без перезапуска: THYMELEAF_CACHE=false
+    cache: ${THYMELEAF_CACHE:true}
   mvc:
     # позволяет HTML-формам слать DELETE через скрытое поле _method (удаление счётчиков)
     hiddenmethod:

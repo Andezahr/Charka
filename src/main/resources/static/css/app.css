@@ -499,6 +499,16 @@ form.inline { display: inline-flex; margin: 0; }
   cursor: pointer; opacity: .7;
 }
 .alert .alert-close:hover { opacity: 1; }
+/* Итог действия вверху страницы: прокрутка после действия остаётся на месте, сообщение не должно оказаться за краем */
+main.page > .alert {
+  position: sticky;
+  top: calc(var(--topbar-height) + 12px);
+  z-index: 5;
+  max-height: 45vh;
+  overflow-y: auto;
+  backdrop-filter: blur(10px);
+}
+html.is-busy, html.is-busy * { cursor: progress; }
 
 /* ---------- Кампания: дата и хроника ---------- */
 

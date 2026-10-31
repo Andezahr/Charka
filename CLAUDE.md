@@ -22,7 +22,7 @@
 ## Стек
 
 - Java 24 (в `pom.xml`; локально стоит JDK 25), Spring Boot 3.5.3
-- Spring Web MVC + **Thymeleaf** (серверный рендеринг, формы с POST + redirect)
+- Spring Web MVC + **Thymeleaf** (серверный рендеринг, формы с POST + redirect; `app.js` выполняет их без перезагрузки). Кэш шаблонов включён: правка шаблона видна после перезапуска или с `THYMELEAF_CACHE=false`
 - Spring Data JPA / Hibernate, **PostgreSQL 17 в Docker** (`compose.yaml`: контейнер `charka-postgres`, `localhost:5433/charka`, `charka`/`charka_dev_pw`; переопределяется `DB_URL`/`DB_USER`/`DB_PASSWORD`). `spring-boot-docker-compose` поднимает контейнер сам при `spring-boot:run` — нужен запущенный Docker Desktop. Установленный в системе PostgreSQL (5432) не используется
 - **Flyway**: схема только миграциями `src/main/resources/db/migration/V<n>__*.sql`, Hibernate `ddl-auto=validate` → любое изменение сущности = новая миграция
 - Тесты: H2 в режиме PostgreSQL на тех же миграциях (`application-test.yml`, `@ActiveProfiles("test")` у `@SpringBootTest`) — SQL миграций держать переносимым
@@ -35,7 +35,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 711 тестов, на 2026-10-31 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 714 тестов, на 2026-10-31 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -66,7 +66,7 @@ TODO.txt       список планов автора (см. ниже)
 ```
 
 Шаблоны: `src/main/resources/templates/` — `error.html`, `home.html`, `campaign.html`, `character.html`, `notes.html`, `counters/list.html`, `skills/list.html`; общие куски — `fragments/layout.html` (`head(title)`, `topbar(characterId, active)` с вкладками Лист/Навыки/Счётчики/Заметки; «Навыки» — только если у системы есть каталог), `fragments/dice.html` (`card(action, showAuthor)` — карточка «Кубики», `check-result` — итог проверки), `fragments/items.html` (`row(item, inv, owner)` — строка предмета, `chip` — фишка, `add-dialog` — окно «Добавить», `type-fields(types, item)` — выбор типа и поля предмета, редкие за «Дополнительно»; `action-form` — кнопка действия), `fragments/attack.html` (`dialog(...)` — диалог атаки, `pending(...)` — упавший заряд, `result(...)` — итог, `target-checks`, `target-options`).
-Фронт единый: один CSS `static/css/app.css` (тёмная тема, токены в `:root`, шрифты Inter + Russo One с Google Fonts) и один JS `static/js/app.js` — без Bootstrap. JS-соглашения: `[data-edit-toggle]` открывает `.edit-panel` внутри ближайшего `[data-editable]`; `form[data-confirm]` спрашивает подтверждение; `[data-count-to]` — счётчик символов; `.alert-close` закрывает flash-сообщение; `[data-item-form]` — поля выбранного типа предмета; `select[data-suggest]` — список типичных значений для текстового поля рядом («Другой…» открывает его), `data-name-prefix` подставляет название предмета; `[data-add-item]` + `[data-add-dialog]` — окно «Добавить» (одно на страницу, вкладка запоминается); `details[data-menu]` — выбор у фишки, закрывается нажатием мимо; `[data-dialog-open]` — диалог по кнопке; `[data-attack]` — диалог атаки (поля по режиму, цели нажатием, цель и расстояние запоминаются в localStorage для оружия); `[data-skills]` — страница навыков (фильтр, поиск, правка уровней, диалог проверки).
+Фронт единый: один CSS `static/css/app.css` (тёмная тема, токены в `:root`, шрифты Inter + Russo One с Google Fonts) и один JS `static/js/app.js` — без Bootstrap. Страницы обновляются на месте: формы и ссылки идут через fetch, ответ заменяет `body`, затем снова вызывается `initPage()`, поэтому обработчики элементов живут в ней, а обработчики на `document` — вне её; редирект с якорем отдаёт `InPlaceRedirectFilter`. JS-соглашения: `[data-edit-toggle]` открывает `.edit-panel` внутри ближайшего `[data-editable]`; `form[data-confirm]` спрашивает подтверждение; `[data-count-to]` — счётчик символов; `.alert-close` закрывает flash-сообщение; `[data-item-form]` — поля выбранного типа предмета; `select[data-suggest]` — список типичных значений для текстового поля рядом («Другой…» открывает его), `data-name-prefix` подставляет название предмета; `[data-add-item]` + `[data-add-dialog]` — окно «Добавить» (одно на страницу, вкладка запоминается); `details[data-menu]` — выбор у фишки, закрывается нажатием мимо; `[data-dialog-open]` — диалог по кнопке; `[data-attack]` — диалог атаки (поля по режиму, цели нажатием, цель и расстояние запоминаются в localStorage для оружия); `[data-skills]` — страница навыков (фильтр, поиск, правка уровней, диалог проверки).
 
 **Убирая что-то с экрана ради разгрузки, записывай в `TODO.md`, где это вернуть** (пример — таблица «Скрыто с экрана навыков» и пометки в задачах G-05, P-01, I-06, C-03, C-07).
 
