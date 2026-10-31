@@ -4,6 +4,8 @@ import app.charka.attack.AttackRules;
 import app.charka.attack.AttackSource;
 import app.charka.check.CheckRequest;
 import app.charka.check.CheckResolver;
+import app.charka.encounter.CombatCard;
+import app.charka.encounter.Initiative;
 import app.charka.item.CatalogItem;
 import app.charka.item.ItemAction;
 import app.charka.item.ItemAttachments;
@@ -32,6 +34,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 /**
@@ -197,6 +200,49 @@ public class Cp2020System implements GameSystem {
         }
         int damage = health.getValue() == null ? 0 : health.getValue();
         return damage == 0 ? "Цел" : Cp2020Rules.levelName(Cp2020Rules.woundLevel(damage)) + " · урон " + damage;
+    }
+
+    @Override
+    public Initiative rollInitiative(Character character, DiceRoller dice) {
+        return Cp2020Initiative.roll(character, getCurrentStats(character), dice);
+    }
+
+    /** «Every round... The order of the round is based on an initiative roll» (книга, с. 97) */
+    @Override
+    public boolean rollsInitiativeEachRound() {
+        return true;
+    }
+
+    /** Состояние, броня головы и торса, штрафы и какие спасброски нужны сейчас */
+    @Override
+    public CombatCard getCombatCard(Character character) {
+        CounterContext context = new CounterContext(null, character.getCounters());
+        Optional<Counter> health = context.sibling(Cp2020HealthStrategy.TYPE);
+        if (health.isEmpty()) {
+            return GameSystem.super.getCombatCard(character);
+        }
+        Cp2020HealthView view = (Cp2020HealthView) healthCounterService.describe(health.get(), character.getCounters());
+        List<String> lines = new ArrayList<>();
+        if (view.getDamage() > 0) {
+            lines.add("Урон " + view.getDamage() + "/" + view.getMaxDamage());
+        }
+        context.sibling(Cp2020ArmorStrategy.TYPE).ifPresent(armor ->
+                lines.add("SP голова " + ARMOR.sp(armor, Cp2020Location.HEAD) + " · торс " + ARMOR.sp(armor, Cp2020Location.TORSO)));
+        lines.add("BTM −" + view.getBtm());
+        if (view.getPenalty() != null) {
+            lines.add(view.getPenalty());
+        }
+        List<CombatCard.Save> saves = new ArrayList<>();
+        if (view.isDeathSaveRequired()) {
+            saves.add(new CombatCard.Save(Cp2020HealthStrategy.SAVE_DEATH, "Спасбросок от смерти, d10 ≤ " + view.getDeathTarget()));
+        }
+        if (view.isStunned()) {
+            saves.add(new CombatCard.Save(Cp2020HealthStrategy.SAVE_STUN, "Оглушён: спасбросок, d10 ≤ " + view.getStunTarget()));
+        }
+        return new CombatCard(health.get().getId(), view.getStatusLabel(), view.isDead(),
+                view.isDead() || !saves.isEmpty(), lines, saves, view.isDeathSaveRequired(),
+                view.getLocations().stream().map(option -> new CombatCard.Option(option.getCode(), option.getLabel())).toList(),
+                view.getDamageTypes().stream().map(option -> new CombatCard.Option(option.getCode(), option.getLabel())).toList());
     }
 
     /** HOMEBREW: копия получает снаряжение как новое: целая броня, рабочее оружие, полный магазин. В книге копий нет */

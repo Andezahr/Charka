@@ -1079,3 +1079,52 @@ html:has(.is-editing) {
 .attack-options .check { white-space: normal; }
 .attack-steps { margin: 6px 0 0; padding-left: 18px; font-size: 13px; }
 .attack-steps li + li { margin-top: 2px; }
+
+/* ---------- Боевой трекер ---------- */
+
+.encounter-bar {
+  position: sticky;
+  top: var(--topbar-height);
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-bottom: 20px;
+  padding: 10px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+}
+.encounter-now { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; font-weight: 600; }
+.encounter-round { font-family: var(--font-display); color: var(--accent); }
+.encounter-pick { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+.encounter-pick .row-title { display: block; margin-bottom: 4px; }
+.encounter-row { display: block; scroll-margin-top: calc(var(--topbar-height) + 80px); }
+.encounter-row.is-current { border-color: var(--accent); background: var(--accent-soft); }
+.encounter-row.is-done { opacity: .7; }
+.encounter-row.is-out { opacity: .45; }
+.encounter-head { display: flex; align-items: flex-start; gap: 12px; }
+.encounter-head .row-main { flex: 1; min-width: 0; }
+.encounter-init {
+  flex: 0 0 auto;
+  min-width: 40px;
+  padding: 6px 4px;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 18px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+}
+.encounter-details { font-size: 12px; color: var(--muted); }
+.encounter-lines { margin-bottom: 6px; }
+.encounter-row > .item-result, .encounter-row > details { margin-top: 10px; }
+.encounter-actions { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
+.encounter-saves { display: flex; flex-wrap: wrap; gap: 8px; }
+.encounter-weapon { padding-top: 10px; border-top: 1px solid var(--border); }
+.encounter-weapon .item-actions { margin-top: 8px; }
+.encounter-damage { padding-top: 10px; border-top: 1px solid var(--border); }
+.encounter-minor { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-top: 10px; border-top: 1px solid var(--border); }
+.encounter-end { width: 100%; }

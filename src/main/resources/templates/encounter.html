@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Бой: ' + ${campaign.name})}"></head>
+<body>
+<header th:replace="~{fragments/layout :: topbar(null, 'encounter')}"></header>
+
+<main class="page" th:with="base=${'/campaign/' + campaign.id + '/encounter'}">
+  <div class="page-head">
+    <div>
+      <span class="eyebrow">Бой</span>
+      <h1 class="page-title" th:text="${campaign.name}">Кампания</h1>
+    </div>
+    <div class="page-actions">
+      <a th:href="@{'/campaign/' + ${campaign.id}}" class="btn btn-ghost">← К кампании</a>
+    </div>
+  </div>
+
+  <div th:if="${encounterError != null}" class="alert alert-error" role="alert">
+    <span class="alert-text" th:text="${encounterError}">Бой уже идёт</span>
+    <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+  </div>
+
+  <!-- Боя нет: кто участвует. Отмечены все живые, начать бой — одно нажатие -->
+  <section th:if="${view == null}" class="card">
+    <form th:action="@{${base} + '/start'}" method="post">
+      <div class="card-head">
+        <h2 class="card-title"><span class="dot red"></span>Кто участвует</h2>
+        <button type="submit" class="btn btn-primary">⚔ Начать бой</button>
+      </div>
+      <div class="card-body list">
+        <label th:each="c : ${candidates}" class="row encounter-pick">
+          <input type="checkbox" name="character" th:value="${c.character.id}" th:checked="${!c.card.out}">
+          <span class="row-main">
+            <span class="row-title" th:text="${c.character.name}">Колясик</span>
+            <span class="chips">
+              <span class="chip" th:text="${c.character.npc} ? 'NPC' : 'Игрок'">NPC</span>
+              <span th:if="${c.card.status != null}" class="chip" th:classappend="${c.card.alarming} ? 'red'" th:text="${c.card.status}">Цел</span>
+            </span>
+          </span>
+        </label>
+        <div th:if="${#lists.isEmpty(candidates)}" class="empty">В кампании пока нет персонажей</div>
+      </div>
+    </form>
+  </section>
+
+  <th:block th:if="${view != null}">
+    <!-- Чей ход и главная кнопка всегда на экране -->
+    <div class="encounter-bar">
+      <div class="encounter-now">
+        <span class="encounter-round" th:text="'Раунд ' + ${view.encounter.round}">Раунд 1</span>
+        <span th:if="${view.current != null}" th:text="'Ход: ' + ${view.current.name}">Ход: Колясик</span>
+        <span th:if="${view.current == null}">Ходить некому</span>
+      </div>
+      <form th:action="@{${base} + '/next'}" method="post">
+        <button type="submit" class="btn btn-primary" th:text="${view.lastInRound} ? 'Следующий раунд →' : 'Следующий ход →'">Следующий ход →</button>
+      </form>
+    </div>
+
+    <div class="grid grid-main">
+      <div class="stack">
+        <!-- Предмет израсходован: своей строки у него нет -->
+        <th:block th:if="${attackResult != null and attackResult.detached}">
+          <div th:replace="~{fragments/attack :: result(${attackResult})}"></div>
+        </th:block>
+        <section class="card">
+          <div class="card-body list">
+            <div th:each="row : ${view.rows}" class="row encounter-row" th:id="'combatant-' + ${row.character.id}"
+                 th:classappend="${(row.current ? 'is-current ' : '') + (row.participant.done ? 'is-done ' : '') + (row.participant.waiting ? 'is-waiting ' : '') + (row.card.out ? 'is-out' : '')}">
+              <div class="encounter-head">
+                <span class="encounter-init" th:text="${row.participant.initiative}" th:title="${row.participant.initiativeDetails}">17</span>
+                <div class="row-main">
+                  <a class="row-title" th:href="@{'/character/' + ${row.character.id}} + '#inventories'" th:text="${row.character.name}" title="Открыть лист">Колясик</a>
+                  <div class="row-meta encounter-lines">
+                    <span th:if="${row.participant.initiativeDetails != null}" class="encounter-details" th:text="${row.participant.initiativeDetails}">REF 8 + d10 7 = 15</span>
+                  </div>
+                  <div class="chips">
+                    <span th:if="${row.card.status != null}" class="chip" th:classappend="${row.card.alarming} ? 'red'" th:text="${row.card.status}">Цел</span>
+                    <span th:each="line : ${row.card.lines}" class="chip" th:text="${line}">SP торса 14</span>
+                    <span th:if="${row.participant.done and !row.card.out}" class="chip">Походил</span>
+                    <span th:if="${row.participant.waiting}" class="chip">Ждёт</span>
+                  </div>
+                </div>
+                <form th:if="${row.participant.waiting and !row.current}" th:action="@{${base} + '/participants/' + ${row.participant.id} + '/join'}" method="post">
+                  <button type="submit" class="btn btn-sm btn-primary">Вступить</button>
+                </form>
+              </div>
+
+              <th:block th:if="${resultCharacterId == row.character.id and combatResult != null}">
+                <div th:replace="~{fragments/attack :: result(${combatResult})}"></div>
+              </th:block>
+              <th:block th:if="${row.hasItem(actionItemId)}">
+                <th:block th:if="${attackResult != null and !attackResult.detached}">
+                  <div th:replace="~{fragments/attack :: result(${attackResult})}"></div>
+                </th:block>
+                <div th:if="${actionResult != null}" class="alert alert-success item-result" role="status">
+                  <span class="alert-text" th:text="${actionResult}">Перезаряжено</span>
+                  <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+                </div>
+                <div th:if="${actionError != null}" class="alert alert-error item-result" role="alert">
+                  <span class="alert-text" th:text="${actionError}">Магазин пуст</span>
+                  <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+                </div>
+              </th:block>
+              <th:block th:each="blast : ${row.blasts}">
+                <div th:replace="~{fragments/attack :: pending(${row.character.id}, ${blast}, ${row.targets})}"></div>
+              </th:block>
+              <div th:if="${blastError != null and !#lists.isEmpty(row.blasts)}" class="alert alert-error item-result" role="alert">
+                <span class="alert-text" th:text="${blastError}">Выберите, кого задело</span>
+                <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+              </div>
+
+              <!-- Кто ходит, у того всё открыто; у остальных — за одним нажатием: урон и атака вне очереди редки -->
+              <th:block th:if="${row.current}">
+                <div th:replace="~{fragments/encounter :: actions(${row}, ${base})}"></div>
+              </th:block>
+              <details th:unless="${row.current or row.card.out}" class="cp-more item-more">
+                <summary>Действия</summary>
+                <div th:replace="~{fragments/encounter :: actions(${row}, ${base})}"></div>
+              </details>
+            </div>
+            <div th:if="${#lists.isEmpty(view.rows)}" class="empty">В бою никого нет</div>
+          </div>
+        </section>
+      </div>
+
+      <div class="stack">
+        <section class="card" th:unless="${#lists.isEmpty(view.addable)}">
+          <div class="card-head"><h2 class="card-title"><span class="dot yellow"></span>Вступает в бой</h2></div>
+          <div class="card-body">
+            <form th:action="@{${base} + '/participants'}" method="post" class="form-row">
+              <select name="character" class="grow" required aria-label="Кого ввести в бой">
+                <option th:each="c : ${view.addable}" th:value="${c.id}" th:text="${c.name}">Бустер 2</option>
+              </select>
+              <button type="submit" class="btn">＋ В бой</button>
+            </form>
+          </div>
+        </section>
+
+        <!-- Журнал: итог атаки и урон остаются на экране, когда сообщение в строке уже ушло -->
+        <section class="card">
+          <div class="card-head"><h2 class="card-title"><span class="dot pink"></span>Последние броски</h2></div>
+          <div class="card-body list">
+            <div th:each="r : ${recentRolls}" class="row roll-row">
+              <div class="row-main">
+                <div class="row-title">
+                  <span th:text="${r.character != null ? r.character.name : 'Мастер'}">Колясик</span>
+                  <span th:if="${r.label != null}" th:text="'· ' + ${r.label}">· Атака</span>
+                </div>
+                <div class="row-meta"><span th:text="${r.expression} + ': ' + ${r.details}">d10: 7</span></div>
+              </div>
+              <span class="amount" th:text="${r.total}">8</span>
+            </div>
+            <div th:if="${#lists.isEmpty(recentRolls)}" class="empty">Бросков пока нет</div>
+          </div>
+        </section>
+
+        <form th:action="@{${base} + '/end'}" method="post" data-confirm="Закончить бой? Раны и расход патронов останутся.">
+          <button type="submit" class="btn btn-danger encounter-end">Закончить бой</button>
+        </form>
+      </div>
+    </div>
+  </th:block>
+</main>
+
+</body>
+</html>

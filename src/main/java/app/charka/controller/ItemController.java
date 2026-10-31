@@ -88,6 +88,7 @@ public class ItemController {
      * сообщение вверху страницы осталось бы за экраном.
      *
      * @param returnTo предмет, под которым показан этот: своей строки у него может не быть
+     * @param returnCampaign действие из боевого трекера этой кампании: возвращаемся туда
      */
     @PostMapping("/{itemId}/action/{action}")
     public String performAction(
@@ -97,6 +98,7 @@ public class ItemController {
             @PathVariable String action,
             @RequestParam Map<String, String> params,
             @RequestParam(required = false) Long returnTo,
+            @RequestParam(required = false) Long returnCampaign,
             RedirectAttributes redirectAttributes
     ) {
         Long shownAt = returnTo != null ? returnTo : itemId;
@@ -105,6 +107,9 @@ public class ItemController {
             redirectAttributes.addFlashAttribute("actionResult", itemService.performAction(characterId, itemId, action, params));
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("actionError", e.getMessage());
+        }
+        if (returnCampaign != null) {
+            return "redirect:/campaign/" + returnCampaign + "/encounter#combatant-" + characterId;
         }
         return "redirect:/character/" + characterId + "#item-" + shownAt;
     }

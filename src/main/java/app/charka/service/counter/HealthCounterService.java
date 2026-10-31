@@ -8,6 +8,7 @@ import app.charka.model.counters.strategy.CounterStrategyFactory;
 import app.charka.model.counters.strategy.health.DamageRequest;
 import app.charka.model.counters.strategy.health.HealthCounterStrategy;
 import app.charka.model.counters.strategy.health.HealthEvent;
+import app.charka.model.counters.strategy.health.HealthView;
 import app.charka.repository.CounterRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -66,6 +67,16 @@ public class HealthCounterService {
             }
         }
         return Optional.empty();
+    }
+
+    /**
+     * Состояние счётчика здоровья для показа.
+     *
+     * @param siblings все счётчики персонажа
+     * @throws IllegalArgumentException если это не счётчик здоровья
+     */
+    public HealthView describe(Counter counter, List<Counter> siblings) {
+        return strategyFor(new CounterContext(counter, siblings)).describe(new CounterContext(counter, siblings));
     }
 
     @Transactional

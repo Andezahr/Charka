@@ -207,7 +207,7 @@ public class AttackService {
         }
         int amount = hit.damage().getAmount();
         diceService.log(attacker.getCampaign(), attacker, hit.expression(), String.join("; ", hit.steps()), amount,
-                "Урон: " + weapon + " → " + targetName);
+                "Урон: " + weapon + " → " + (target != null ? target.getName() : targetName));
         Optional<HealthEvent> event = target == null
                 ? Optional.empty()
                 : healthCounterService.applyDamage(target.getId(), hit.damage());

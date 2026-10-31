@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Что может участник: спасброски, оружие, урон, ожидание -->
+<div th:fragment="actions(row, base)" class="encounter-actions"
+     th:with="url=${base + '/participants/' + row.participant.id}">
+  <div th:if="${!#lists.isEmpty(row.card.saves) or row.card.stabilizable}" class="encounter-saves">
+    <form th:each="save : ${row.card.saves}" th:action="@{${url} + '/save/' + ${save.code}}" method="post">
+      <button type="submit" class="btn btn-sm btn-danger" th:text="'🎲 ' + ${save.label}">🎲 Спасбросок</button>
+    </form>
+    <form th:if="${row.card.stabilizable}" th:action="@{${url} + '/stabilize'}" method="post">
+      <button type="submit" class="btn btn-sm">Стабилизирован медиком</button>
+    </form>
+  </div>
+
+  <div th:each="weapon : ${row.weapons}" class="encounter-weapon">
+    <div class="item-head">
+      <span class="row-title" th:text="${weapon.item.name}">Minami</span>
+      <span th:if="${weapon.summary.main != null}" class="item-main" th:text="${weapon.summary.main}">6/8</span>
+      <span th:each="line : ${weapon.summary.lines}" class="item-value" th:text="${line}">2D6+3</span>
+    </div>
+    <p th:if="${weapon.form.unavailable != null}" class="item-action-note" th:text="${weapon.form.unavailable}">Магазин пуст</p>
+    <div class="item-actions">
+      <button type="button" class="btn btn-sm btn-primary" th:attr="data-dialog-open='attack-' + ${weapon.item.id}"
+              th:disabled="${weapon.form.unavailable != null}" th:text="${weapon.form.actionLabel}">Атаковать</button>
+      <dialog th:replace="~{fragments/attack :: dialog(${row.character.id}, ${weapon.item}, ${weapon.form}, ${row.targets})}"></dialog>
+      <th:block th:each="action : ${weapon.actions.?[!secondary and !hidden]}">
+        <form th:replace="~{fragments/items :: action-form(${action}, @{${weapon.url} + '/action/' + ${action.code}}, null)}"></form>
+      </th:block>
+    </div>
+  </div>
+
+  <form th:if="${row.card.healthCounterId != null}" th:action="@{${url} + '/damage'}" method="post" class="form-row encounter-damage">
+    <input type="number" name="amount" class="narrow" min="0" placeholder="Урон" required aria-label="Урон">
+    <select name="location" aria-label="Зона попадания">
+      <option value="">Случайная зона</option>
+      <option th:each="l : ${row.card.locations}" th:value="${l.code}" th:text="${l.label}">Торс</option>
+    </select>
+    <select name="damageType" aria-label="Тип урона">
+      <option th:each="t : ${row.card.damageTypes}" th:value="${t.code}" th:text="${t.label}">Обычный</option>
+    </select>
+    <button type="submit" class="btn btn-sm btn-danger">Нанести</button>
+  </form>
+
+  <div class="encounter-minor">
+    <form th:if="${row.current and !row.participant.waiting and !view.lastInRound}" th:action="@{${url} + '/wait'}" method="post">
+      <button type="submit" class="btn btn-sm btn-ghost" title="Вступит позже в этом раунде">Подождать</button>
+    </form>
+    <form th:action="@{${url} + '/initiative'}" method="post" class="form-row">
+      <input type="number" name="initiative" class="narrow" th:value="${row.participant.initiative}" required aria-label="Инициатива" title="Игрок бросил свой кубик">
+      <button type="submit" class="btn btn-sm btn-ghost">Инициатива</button>
+    </form>
+    <form th:action="@{${url} + '/remove'}" method="post" th:attr="data-confirm='Убрать ' + ${row.character.name} + ' из боя?'">
+      <button type="submit" class="btn btn-sm btn-ghost">Убрать из боя</button>
+    </form>
+  </div>
+</div>
+</body>
+</html>

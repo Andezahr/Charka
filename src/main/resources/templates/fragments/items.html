@@ -208,6 +208,7 @@
 <!-- Кнопка действия над предметом -->
 <form th:fragment="action-form(action, url, back)" th:action="${url}" method="post" class="item-action">
   <input th:if="${back != null}" type="hidden" name="returnTo" th:value="${back}">
+  <input th:if="${returnCampaign != null}" type="hidden" name="returnCampaign" th:value="${returnCampaign}">
   <select th:unless="${#lists.isEmpty(action.sources)}" name="source" required aria-label="Откуда взять патроны">
     <option th:each="source : ${action.sources}" th:value="${source.value}" th:text="${source.label}">Патроны</option>
   </select>

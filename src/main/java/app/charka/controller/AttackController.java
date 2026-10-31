@@ -42,6 +42,7 @@ public class AttackController {
                          @RequestParam(required = false) String mode,
                          @RequestParam(defaultValue = "0") int rounds,
                          @RequestParam(defaultValue = "0") int zoneWidth,
+                         @RequestParam(required = false) Long returnCampaign,
                          @RequestParam Map<String, String> params,
                          RedirectAttributes redirectAttributes) {
         redirectAttributes.addFlashAttribute("actionItemId", itemId);
@@ -56,7 +57,7 @@ public class AttackController {
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("actionError", e.getMessage());
         }
-        return "redirect:/character/" + characterId + anchor;
+        return back(characterId, returnCampaign, anchor);
     }
 
     /**
@@ -66,19 +67,28 @@ public class AttackController {
     public String applyBlast(@PathVariable Long characterId,
                              @PathVariable Long blastId,
                              @RequestParam(required = false) List<Long> target,
+                             @RequestParam(required = false) Long returnCampaign,
                              RedirectAttributes redirectAttributes) {
         try {
             redirectAttributes.addFlashAttribute("attackResult", attackService.applyBlast(characterId, blastId, targets(target)));
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("blastError", e.getMessage());
         }
-        return "redirect:/character/" + characterId + "#inventories";
+        return back(characterId, returnCampaign, "#inventories");
     }
 
     @PostMapping("/character/{characterId}/attack/blast/{blastId}/dismiss")
-    public String dismissBlast(@PathVariable Long characterId, @PathVariable Long blastId) {
+    public String dismissBlast(@PathVariable Long characterId, @PathVariable Long blastId,
+                               @RequestParam(required = false) Long returnCampaign) {
         attackService.dismissBlast(characterId, blastId);
-        return "redirect:/character/" + characterId + "#inventories";
+        return back(characterId, returnCampaign, "#inventories");
+    }
+
+    /** Атака из боевого трекера возвращает в строку участника, с листа — к оружию */
+    private static String back(Long characterId, Long returnCampaign, String anchor) {
+        return returnCampaign != null
+                ? "redirect:/campaign/" + returnCampaign + "/encounter#combatant-" + characterId
+                : "redirect:/character/" + characterId + anchor;
     }
 
     /** Пустой пункт «Без листа» приходит как null */

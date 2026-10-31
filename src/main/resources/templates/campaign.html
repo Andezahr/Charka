@@ -15,6 +15,10 @@
     </div>
     <div class="page-actions">
       <a th:href="@{/}" class="btn btn-ghost">← На главную</a>
+      <th:block th:with="round=${@encounterService.activeRound(campaign.id)}">
+        <a th:href="@{'/campaign/' + ${campaign.id} + '/encounter'}" class="btn btn-primary"
+           th:text="${round != null} ? '⚔ Идёт бой · раунд ' + ${round} : '⚔ Бой'">⚔ Бой</a>
+      </th:block>
       <a th:href="@{'/api/campaigns/' + ${campaign.id} + '/download'}" class="btn" download>⬇ Скачать JSON</a>
     </div>
   </div>

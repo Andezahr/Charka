@@ -4,6 +4,8 @@ import app.charka.attack.AttackRules;
 import app.charka.check.CheckRequest;
 import app.charka.check.CheckResolver;
 import app.charka.check.GenericCheckResolver;
+import app.charka.encounter.CombatCard;
+import app.charka.encounter.Initiative;
 import app.charka.item.CatalogItem;
 import app.charka.item.ItemAction;
 import app.charka.item.ItemAttachments;
@@ -199,6 +201,28 @@ public interface GameSystem {
      */
     default List<String> getCharacterBrief(Character character) {
         return rolesOf(character).stream().map(CharacterRole::name).toList();
+    }
+
+    /**
+     * Инициатива участника боя; по умолчанию d20. Вызывать в транзакции.
+     */
+    default Initiative rollInitiative(Character character, DiceRoller dice) {
+        int roll = dice.roll(20);
+        return new Initiative(roll, "d20 = " + roll);
+    }
+
+    /**
+     * Очередь бросается заново каждый раунд; иначе один раз за бой.
+     */
+    default boolean rollsInitiativeEachRound() {
+        return false;
+    }
+
+    /**
+     * Что показать об участнике в строке боевого трекера. Вызывать в транзакции.
+     */
+    default CombatCard getCombatCard(Character character) {
+        return CombatCard.brief(getCharacterBrief(character));
     }
 
     /**
