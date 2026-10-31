@@ -35,7 +35,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 739 тестов, на 2026-10-31 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 764 теста, на 2026-10-31 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -52,14 +52,14 @@ service/       бизнес-логика; campaign/, counter/, notes/ — под
 controller/    MVC-контроллеры, возвращают имена шаблонов или redirect
 api/           REST: CampaignExportController, SkillCheckController (проверка навыка)
 dice/         DiceExpression (разбор NdM±K), DiceResult, DiceService (броски + лог RollLog)
-attack/       AttackRules (контракт системы: form, plan, spend, outcome), AttackSource (предмет или способность), AttackContext, AttackPlan, AttackOutcome, AttackForm, AttackRequest, AttackHit, AreaDamage (урон по площади), AttackResult, AttackService (один ход для всех атак, урон цели, лог, заряды PendingBlast)
+attack/       AttackRules (контракт системы: form, plan, spend, outcome, effectHit), AttackSource (предмет или способность), AttackContext, AttackPlan, AttackOutcome, AttackForm, AttackRequest, AttackHit, AreaDamage (урон по площади), LingeringEffect (что остаётся на цели на следующие раунды), AttackResult, AttackService (один ход для всех атак, урон цели, лог, заряды PendingBlast)
 npc/          NpcTemplate, NpcSheet (что выбросила система), NpcService (создание по шаблону, копии, удаление)
 encounter/    EncounterService (бой кампании: очередь, раунды, ожидание, урон), EncounterView (страница боя), Initiative и CombatCard (что отдаёт система)
 check/        CheckRequest/CheckResult/CheckResolver (GenericCheckResolver: d20), OpposedCheckResult, CheckService (правила системы + лог)
 item/         ItemTypeDefinition, ItemField (поля типа предмета, проверка ввода, строка предмета), CatalogItem (строка справочника), ItemAction (кнопка действия на листе), ItemSection (секции инвентаря), ItemSummary (краткая строка), ItemAttachments + ItemChip (что показано под предметом: магазины и патроны фишками); всё это отдаёт GameSystem
 skill/        SkillDefinition, CharacterRole, StatValue, SkillSheet, SkillCheck, SkillOpponent, SkillProgression (контракт прокачки), SkillImprovement, SkillService (навыки, роли, проверка, прокачка)
 system/        GameSystem, GameSystemRegistry, GenericSystem ("GENERIC"), Currency; cp2020/ — Cp2020System ("CP2020"),
-               стратегии счётчиков, Cp2020Rules, Cp2020Dice (d10: на 10 один дополнительный кубик), Cp2020CheckResolver, Cp2020Skills (каталог, роли), Cp2020Fumbles (таблица книги), Cp2020SkillRules (языки по семьям, бонусы от других навыков, требования), Cp2020ItemTypes (оружие, магазины, боеприпасы), Cp2020Weapons (справочник оружия книги), Cp2020Ammo (таблица боеприпасов книги), Cp2020Magazines (справочник магазинов), Cp2020MagazineRules (цены, размеры, штрафы магазинов; хоумбрю помечен), Cp2020WeaponActions (выстрел, очередь, смена и снаряжение магазина), Cp2020ItemSheet (краткая строка, фишки под оружием, что предложить в окне «Добавить»), Cp2020Armors (справочник брони книги), Cp2020ArmorRules (пропорциональная броня, слои), Cp2020WornArmor (надетая броня), Cp2020ArmorActions (надеть, снять, починить), Cp2020AttackRules (дальняя атака и метание: план, сложность по дальности, зона, урон), Cp2020AreaAttacks (урон по площади и отклонение), Cp2020AttackModifiers (таблица модификаторов FNFF), Cp2020SkillProgression + Cp2020IpStrategy (очки улучшения), Cp2020Npcs (быстрые NPC, с. 30)
+               стратегии счётчиков, Cp2020Rules, Cp2020Dice (d10: на 10 один дополнительный кубик), Cp2020CheckResolver, Cp2020Skills (каталог, роли), Cp2020Fumbles (таблица книги), Cp2020SkillRules (языки по семьям, бонусы от других навыков, требования), Cp2020ItemTypes (оружие, магазины, боеприпасы), Cp2020Weapons (справочник оружия книги), Cp2020Ammo (таблица боеприпасов книги), Cp2020Magazines (справочник магазинов), Cp2020MagazineRules (цены, размеры, штрафы магазинов; хоумбрю помечен), Cp2020WeaponActions (выстрел, очередь, смена и снаряжение магазина), Cp2020ItemSheet (краткая строка, фишки под оружием, что предложить в окне «Добавить»), Cp2020Armors (справочник брони книги), Cp2020ArmorRules (пропорциональная броня, слои), Cp2020WornArmor (надетая броня), Cp2020ArmorActions (надеть, снять, починить), Cp2020AttackRules (дальняя атака и метание: план, сложность по дальности, зона, урон), Cp2020AreaAttacks (урон по площади и отклонение), Cp2020Effects (особые заряды: горение, оглушение, слепота), Cp2020AttackModifiers (таблица модификаторов FNFF), Cp2020SkillProgression + Cp2020IpStrategy (очки улучшения), Cp2020Npcs (быстрые NPC, с. 30)
 dto/counter/   DTO только для счётчиков (единственный модуль, переведённый на DTO)
 exception/     NotFoundException.forId("Entity", id) (NoSuchElementException → 404), наследники CharacterNotFoundException, InventoryNotFoundException;
                GlobalExceptionHandler (страницы → error.html: 404/400/500), ApiExceptionHandler (app.charka.api → text/plain)
@@ -76,7 +76,7 @@ TODO.txt       список планов автора (см. ниже)
 ```
 Campaign (name, system, startDate, currentDate)   — system: код GameSystem (колонка game_system)
  ├─ RollLog* (character?, expression, details, total, label, gameDate, createdAt) — без коллекции в Campaign, не экспортируется
- ├─ Encounter (round) └─ EncounterParticipant* (character, initiative, initiativeDetails, turnOrder, done, waiting) — идущий бой, один на кампанию; закончился — удаляется
+ ├─ Encounter (round) └─ EncounterParticipant* (character, initiative, initiativeDetails, turnOrder, done, waiting) └─ CombatEffect* (label, roundsLeft, damage, attackOption, data) — идущий бой, один на кампанию; закончился — удаляется
  ├─ Chronicle* (name, startDate, endDate)     — запись о прошедшем периоде
  └─ Character* (name, birthDate, npc, roles)  — npc: персонаж мастера; roles: коды из GameSystem.getRoles(), таблица character_role; уровень роли = уровень спецспособности
      ├─ CharacterSkill* (skillCode, level, customName?) — код из каталога системы; уровень 0 у обычного навыка не хранится
@@ -121,7 +121,7 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 | GET | `/campaign/{id}/encounter` | боевой трекер; без боя — выбор участников |
 | POST | `/campaign/{id}/encounter/start`, `.../next`, `.../end` | `character` (несколько) → начать бой с инициативой; следующий ход или раунд; закончить бой |
 | POST | `/campaign/{id}/encounter/participants` | `character` → ввести в идущий бой |
-| POST | `/campaign/{id}/encounter/participants/{pid}/wait\|join\|remove\|initiative\|damage\|stabilize`, `.../save/{code}` | ожидание, вступление, убрать, инициатива вручную, урон (`amount`, `location?`, `damageType?`), спасбросок; итог во flash в строке участника |
+| POST | `/campaign/{id}/encounter/participants/{pid}/wait\|join\|remove\|initiative\|damage\|stabilize`, `.../save/{code}`, `.../effects/{eid}/remove` | ожидание, вступление, убрать, инициатива вручную, урон (`amount`, `location?`, `damageType?`), спасбросок, снять эффект; итог во flash в строке участника |
 | POST | `/character/{id}/npc/copy`, `.../npc/delete` | `count` → копии NPC без ран; удаление только NPC |
 | GET | `/api/campaigns/{id}/download` | экспорт кампании в JSON-файл |
 | POST | `/campaign/{id}/roll`, `/character/{id}/roll` | `expression` или `quick`, `label?` → бросок в лог, результат во flash |
