@@ -169,7 +169,8 @@ public class EncounterService {
             return new EncounterView.Row(participant, character, declaration(participant, system), available(participant, system), checks(character, system),
                     system.getCombatCard(character), participant == current,
                     weapons(character, system), targets(character, fighters, system), attackService.pendingBlasts(character.getId()),
-                    List.copyOf(participant.getEffects()), abilities(character, system));
+                    List.copyOf(participant.getEffects()), abilities(character, system),
+                    system.getMapRules().movedAttackOption());
         }).toList();
         Set<Long> inFight = fighters.stream().map(Character::getId).collect(Collectors.toSet());
         List<Character> addable = encounter.getCampaign().getCharacters().stream()
@@ -580,6 +581,7 @@ public class EncounterService {
             participant.setDone(false);
             participant.setWaiting(false);
             participant.setDeclaration(null);
+            participant.setMovedMeters(0);
             if (system.rollsInitiativeEachRound()) {
                 roll(participant, system, dice);
             }

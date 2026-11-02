@@ -32,10 +32,12 @@ public record EncounterView(Encounter encounter, Character current, boolean last
      * @param targets цели атаки: живые участники, сначала другая сторона
      * @param effects что длится на участнике
      * @param abilities чем можно бить без предмета
+     * @param movedOption модификатор атаки после бега по карте ({@code MapRules.movedAttackOption}); null — нет
      */
     public record Row(EncounterParticipant participant, Character character, InitiativeDeclaration declaration,
                       List<InitiativeDeclaration> declarations, List<CheckOption> checks, CombatCard card, boolean current,
-                      List<Weapon> weapons, List<Character> targets, List<PendingBlast> blasts, List<CombatEffect> effects, List<Ability> abilities) {
+                      List<Weapon> weapons, List<Character> targets, List<PendingBlast> blasts, List<CombatEffect> effects, List<Ability> abilities,
+                      String movedOption) {
 
         /** Итог действия с этим предметом показывается в этой строке */
         public boolean hasItem(Long itemId) {
@@ -44,8 +46,9 @@ public record EncounterView(Encounter encounter, Character current, boolean last
 
         /** Модификаторы атаки, которые уже отмечены в диалоге: ослеплённому не надо искать свой */
         public List<String> attackOptions() {
-            return Stream.concat(effects.stream().map(CombatEffect::getAttackOption),
-                            Stream.of(declaration).filter(Objects::nonNull).map(InitiativeDeclaration::attackOption))
+            return Stream.concat(Stream.concat(effects.stream().map(CombatEffect::getAttackOption),
+                                    Stream.of(declaration).filter(Objects::nonNull).map(InitiativeDeclaration::attackOption)),
+                            Stream.of(movedOption).filter(option -> option != null && participant.getMovedMeters() > 0))
                     .filter(Objects::nonNull).toList();
         }
     }

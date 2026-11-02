@@ -175,7 +175,7 @@ public final class MapGrid {
     /**
      * Куда добежать не дальше {@code meters}: шаг по стороне — клетка, по диагонали — клетка × √2; угол стены не срезается.
      *
-     * @return клетки {@code {x, y}}, включая начальную
+     * @return клетки {@code {x, y, метров}}, включая начальную; метры пути округлены вверх
      */
     public List<int[]> reach(int fromX, int fromY, int meters) {
         int cell = doc.cell();
@@ -193,7 +193,7 @@ public final class MapGrid {
             if (!done.add(pack(x, y))) {
                 continue;
             }
-            cells.add(new int[]{x, y});
+            cells.add(new int[]{x, y, (int) Math.ceil(head[0] - 1e-9)});
             for (int[] step : steps) {
                 int nx = x + step[0];
                 int ny = y + step[1];

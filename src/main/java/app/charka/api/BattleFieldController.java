@@ -21,6 +21,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class BattleFieldController {
 
     private final BattleFieldService battleFieldService;
+    private final app.charka.security.AccessService accessService;
+    private final app.charka.service.campaign.CampaignService campaignService;
 
     /** 404 — боя нет или он без карты */
     @GetMapping
@@ -30,8 +32,12 @@ public class BattleFieldController {
 
     @PostMapping("/participants/{participantId}/move")
     public ResponseEntity<Void> move(@PathVariable Long campaignId, @PathVariable Long participantId,
-                                     @RequestParam int x, @RequestParam int y) {
-        battleFieldService.move(campaignId, participantId, x, y);
+                                     @RequestParam int x, @RequestParam int y, @RequestParam(defaultValue = "false") boolean free) {
+        // без ограничения бега ставит только мастер
+        if (free && !accessService.isGm(campaignService.getById(campaignId))) {
+            throw new IllegalArgumentException("Без ограничения бега ставит только мастер");
+        }
+        battleFieldService.move(campaignId, participantId, x, y, free);
         return ResponseEntity.noContent().build();
     }
 

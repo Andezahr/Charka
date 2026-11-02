@@ -172,11 +172,47 @@ class BattleFieldServiceTest {
         }
 
         @Test
+        @DisplayName("Бег за раунд — не дальше MA × 3 по пути; новый раунд обнуляет; мастер ставит без ограничения")
+        void runLimit() {
+            start();
+            Long id = token(player).id();
+            field.move(campaign.getId(), id, 0, 6, true);
+            int run = field.reach(campaign.getId(), id).run();
+
+            field.move(campaign.getId(), id, 2, 6);
+            assertThat(field.reach(campaign.getId(), id).meters()).isEqualTo(run - 4);
+            assertThatThrownBy(() -> field.move(campaign.getId(), id, 2 + run / 2, 6)).hasMessageContaining("Дальше бега");
+
+            encounterService.next(campaign.getId());
+            encounterService.next(campaign.getId());
+            entityManager.flush();
+            assertThat(field.reach(campaign.getId(), id).meters()).isEqualTo(run);
+            field.move(campaign.getId(), id, 11, 0, true);
+            assertThat(token(player).x()).isEqualTo(11);
+        }
+
+        @Test
+        @DisplayName("После бега атака в трекере — уже второе действие, −3 отмечено")
+        void secondAction() {
+            start();
+            Long id = token(player).id();
+            field.move(campaign.getId(), id, 0, 6, true);
+            field.move(campaign.getId(), id, 1, 6);
+            entityManager.flush();
+            entityManager.clear();
+
+            assertThat(encounterService.view(campaign.getId()).orElseThrow().rows().stream()
+                    .filter(row -> row.character().getId().equals(player.getId())).findFirst().orElseThrow().attackOptions())
+                    .contains("second_action");
+            assertThat(field.field(campaign.getId()).orElseThrow().movedOption()).isEqualTo("second_action");
+        }
+
+        @Test
         @DisplayName("Досягаемость: бег MA × 3, сквозь стену не идёт")
         void reach() {
             start();
             Long id = token(player).id();
-            field.move(campaign.getId(), id, 4, 6);
+            field.move(campaign.getId(), id, 4, 6, true);
 
             BattleFieldService.Reach reach = field.reach(campaign.getId(), id);
 
@@ -193,8 +229,8 @@ class BattleFieldServiceTest {
         @DisplayName("Закрытая дверь закрывает линию, открытая — нет; расстояние по прямой")
         void door() {
             start();
-            field.move(campaign.getId(), token(player).id(), 4, 3);
-            field.move(campaign.getId(), token(npc).id(), 9, 3);
+            field.move(campaign.getId(), token(player).id(), 4, 3, true);
+            field.move(campaign.getId(), token(npc).id(), 9, 3, true);
 
             BattleFieldService.Sight closed = field.sight(campaign.getId(), token(player).id(), token(npc).id());
             assertThat(closed.blocked()).isTrue();
@@ -209,8 +245,8 @@ class BattleFieldServiceTest {
         @DisplayName("Цель за машиной: укрытие — кузов, его код идёт в диалог атаки")
         void cover() {
             start();
-            field.move(campaign.getId(), token(player).id(), 0, 1);
-            field.move(campaign.getId(), token(npc).id(), 4, 1);
+            field.move(campaign.getId(), token(player).id(), 0, 1, true);
+            field.move(campaign.getId(), token(npc).id(), 4, 1, true);
 
             BattleFieldService.Sight sight = field.sight(campaign.getId(), token(player).id(), token(npc).id());
 

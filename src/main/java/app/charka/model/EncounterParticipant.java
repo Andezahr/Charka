@@ -46,6 +46,10 @@ public class EncounterParticipant {
     /** Что объявлено в этом раунде: код из {@code GameSystem.getInitiativeDeclarations}; новый раунд сбрасывает */
     private String declaration;
 
+    /** Сколько метров пробежал в этом раунде по карте (M-16); новый раунд обнуляет */
+    @Column(name = "moved_meters")
+    private int movedMeters;
+
     /** Клетка фишки на карте боя; null — ещё не на поле */
     @Column(name = "pos_x")
     private Integer posX;

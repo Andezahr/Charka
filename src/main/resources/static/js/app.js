@@ -1130,7 +1130,8 @@ async function loadReach(id) {
     if (!response.ok) return;
     const reach = await response.json();
     if (battle.reachFor !== id) return;
-    battle.reach = { meters: reach.meters, cells: new Set(reach.cells.map(cell => cell[0] + ',' + cell[1])) };
+    // клетка → метры пути: подсказка при переносе показывает бег, а не прямую
+    battle.reach = { meters: reach.meters, run: reach.run, cells: new Map(reach.cells.map(cell => [cell[0] + ',' + cell[1], cell[2]])) };
     renderBattle();
   } catch (e) { /* без области: только подсказка */ }
 }
@@ -1266,7 +1267,7 @@ function renderBattle() {
   drawMapLayers(svg, doc, materials, objects, svg => {
     if (battle.reach && battle.selected) {
       const group = svgEl('g', { class: 'battle-reach' }, svg);
-      battle.reach.cells.forEach(key => {
+      battle.reach.cells.forEach((cost, key) => {
         const [x, y] = key.split(',').map(Number);
         svgEl('rect', { x: x * CELL, y: y * CELL, width: CELL, height: CELL }, group);
       });
@@ -1349,14 +1350,14 @@ function renderTray() {
   });
 }
 
-async function moveToken(token, x, y) {
+async function moveToken(token, x, y, free) {
   const before = { x: token.x, y: token.y };
   token.x = x;
   token.y = y;
   renderBattle();
   try {
     const response = await fetch(battle.url + '/participants/' + token.id + '/move', {
-      method: 'POST', body: new URLSearchParams({ x, y })
+      method: 'POST', body: new URLSearchParams({ x, y, free: Boolean(free) })
     });
     if (!response.ok) {
       Object.assign(token, before);
@@ -1462,12 +1463,16 @@ function wireBattleSvg(svg) {
       battle.dragging = true;
       const cell = cellAt(event);
       press.tokenEl.setAttribute('transform', `translate(${cell.point.x} ${cell.point.y})`);
-      const meters = battleMeters(press.token.x, press.token.y, cell.x, cell.y);
-      const far = battle.reach && battle.reachFor === press.token.id && battle.reach.meters
-        && !battle.reach.cells.has(cell.x + ',' + cell.y);
+      // M-16: бег за раунд — MA × 3 м по пути в обход стен (с. 98); сервер сверит, мастер с Shift ставит без ограничения
+      const known = battle.reach && battle.reachFor === press.token.id && battle.reach.run;
+      const path = known ? battle.reach.cells.get(cell.x + ',' + cell.y) : undefined;
+      const free = event.shiftKey;
+      const far = known && path === undefined && !free;
       press.tokenEl.classList.toggle('is-far', Boolean(far));
-      // HOMEBREW-подсказка: дальше бега — второе действие, −3 (с. 98); учёта действий на сервере нет
-      battleHint(meters + ' м' + (far ? ' — дальше бега: второе действие, −3' : ''));
+      if (free) battleHint('Без ограничения бега (мастер)');
+      else if (!known) battleHint(battleMeters(press.token.x, press.token.y, cell.x, cell.y) + ' м');
+      else if (far) battleHint('Дальше бега: осталось ' + battle.reach.meters + ' из ' + battle.reach.run + ' м');
+      else battleHint(path + ' м · останется ' + (battle.reach.meters - path) + ' из ' + battle.reach.run + ' м · атака после бега — второе действие, −3');
     } else if (!press.token && !battle.pointerMode) {
       const scale = battle.view.w / svg.getBoundingClientRect().width;
       battle.view.x -= dx * scale;
@@ -1492,7 +1497,7 @@ function wireBattleSvg(svg) {
       return;
     }
     if (current.token && current.moved) {
-      if (inside(cell) && (cell.x !== current.token.x || cell.y !== current.token.y)) moveToken(current.token, cell.x, cell.y);
+      if (inside(cell) && (cell.x !== current.token.x || cell.y !== current.token.y)) moveToken(current.token, cell.x, cell.y, event.shiftKey);
       else renderBattle();
       return;
     }
@@ -1723,6 +1728,10 @@ function openAttackFromMap(dialog, target, sight) {
     distance.value = sight.meters;
     distance.dispatchEvent(new Event('input', { bubbles: true }));
   }
+  // бегал в этом раунде — атака уже второе действие (с. 98)
+  const attacker = battleAttacker(target);
+  const moved = battle.data.movedOption && dialog.querySelector(`input[value="${battle.data.movedOption}"]`);
+  if (moved) moved.checked = Boolean(attacker && attacker.moved > 0);
   const cover = dialog.querySelector('select[name="option.cover"]');
   if (cover) cover.value = sight.cover || '';
   if (cover && sight.cover) {

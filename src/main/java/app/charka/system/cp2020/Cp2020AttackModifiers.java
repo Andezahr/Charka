@@ -31,7 +31,9 @@ final class Cp2020AttackModifiers {
     /** Прицелы, турель и машина бывают только у стрельбы, не у броска */
     private static final Set<String> FIREARM_ONLY = Set.of("turret", "vehicle", "laser", "targeting_scope", "smartgun", "smartgoggles", TELESCOPIC, "two_weapons", "hip");
     private static final Set<String> SHOULDER_ARMS = Set.of("RIF", "SHT", "HVY");
-    private static final Set<String> MELEE_CODES = Set.of("immobile", "ambush", "blinded", "turning", "size_large", "size_small", "size_tiny", "fast_draw", "swept", "swept_foe", Cp2020Melee.DEFENSE);
+    static final String SECOND_ACTION = "second_action";
+
+    private static final Set<String> MELEE_CODES = Set.of("immobile", "ambush", "blinded", "turning", "size_large", "size_small", "size_tiny", "fast_draw", "swept", "swept_foe", SECOND_ACTION, Cp2020Melee.DEFENSE);
 
     /**
      * @param choice код выбора: варианты с одним кодом взаимоисключающие; у флажка совпадает с {@code code}
@@ -69,6 +71,8 @@ final class Cp2020AttackModifiers {
             flag("swept_foe", SHOOTER, "Противник сбит с ног", 2),
             flag("two_weapons", SHOOTER, "Стрельба с двух рук", -3),
             flag("running", SHOOTER, "Стрельба на бегу", -3),
+            // с. 98: «more than one action at a −3 penalty to each successive action»; карта ставит его сама после бега
+            flag(SECOND_ACTION, SHOOTER, "Второе действие в раунде", -3),
             flag("hip", SHOOTER, "Длинноствольное от бедра", -2),
 
             flag("ricochet", WEAPON, "Рикошет или стрельба навесом", -5),

@@ -42,9 +42,10 @@ public class BattleFieldService {
      * @param current  его ход
      * @param out      выбыл
      * @param alarming состояние требует внимания: красное кольцо
+     * @param moved    сколько метров пробежал в этом раунде
      */
     public record Token(Long id, Long character, String name, String initials, boolean npc, Integer x, Integer y,
-                        boolean current, boolean done, boolean out, boolean alarming, String status) {
+                        boolean current, boolean done, boolean out, boolean alarming, String status, int moved) {
     }
 
     /**
@@ -55,9 +56,10 @@ public class BattleFieldService {
      * @param metric    мера расстояния ({@link MapRules#metric})
      * @param materials материалы системы
      * @param objects   готовые предметы системы
+     * @param movedOption модификатор атаки после бега (CP2020: второе действие −3); null — нет
      */
     public record Field(Long mapId, String turn, MapDoc doc, String metric, List<Material> materials, List<MapObject> objects,
-                        List<Token> tokens, List<PointerBoard.Pointer> pointers, String backgroundUrl) {
+                        List<Token> tokens, List<PointerBoard.Pointer> pointers, String backgroundUrl, String movedOption) {
     }
 
     /**
@@ -75,21 +77,27 @@ public class BattleFieldService {
             EncounterParticipant participant = row.participant();
             return new Token(participant.getId(), row.character().getId(), row.character().getName(), initials(row.character().getName()),
                     row.character().isNpc(), participant.getPosX(), participant.getPosY(), row.current(), participant.isDone(),
-                    row.card().out(), row.card().alarming(), row.card().status());
+                    row.card().out(), row.card().alarming(), row.card().status(), participant.getMovedMeters());
         }).toList();
         String turn = encounter.getRound() + ":" + (view.get().current() == null ? "" : view.get().current().getId());
         MapDoc doc = MapDoc.parse(encounter.getMapDoc());
         return Optional.of(new Field(encounter.getBattleMapId(), turn, doc, rules.metric(), rules.materials(), rules.objects(), tokens,
-                pointerBoard.live(campaignId), EditableMap.backgroundUrl(campaignId, encounter.getBattleMapId(), doc)));
+                pointerBoard.live(campaignId), EditableMap.backgroundUrl(campaignId, encounter.getBattleMapId(), doc), rules.movedAttackOption()));
+    }
+
+    public void move(Long campaignId, Long participantId, int x, int y) {
+        move(campaignId, participantId, x, y, false);
     }
 
     /**
-     * Перенести фишку. Стены на пути не проверяются: решает мастер, досягаемость только подсказка.
+     * Перенести фишку. Бег за раунд — не дальше досягаемости системы (CP2020: MA × 3 м, с. 98), путь — в обход стен и
+     * закрытых дверей; пройденное копится до нового раунда. Фишка из лотка встаёт куда угодно.
      *
-     * @throws IllegalArgumentException если клетка за краем, в предмете или занята
+     * @param free мастер ставит без ограничения и не тратит бег (расстановка, отброс взрывом)
+     * @throws IllegalArgumentException если клетка за краем, в предмете, занята или дальше оставшегося бега
      */
     @Transactional
-    public void move(Long campaignId, Long participantId, int x, int y) {
+    public void move(Long campaignId, Long participantId, int x, int y, boolean free) {
         Encounter encounter = withMap(campaignId);
         EncounterParticipant participant = participant(encounter, participantId);
         MapGrid grid = grid(encounter);
@@ -104,8 +112,25 @@ public class BattleFieldService {
         if (taken) {
             throw new IllegalArgumentException("Клетка занята");
         }
+        Integer run = free || participant.getPosX() == null ? null : runOf(encounter, participant);
+        if (run != null) {
+            int left = Math.max(0, run - participant.getMovedMeters());
+            int cost = grid.reach(participant.getPosX(), participant.getPosY(), left).stream()
+                    .filter(cell -> cell[0] == x && cell[1] == y).mapToInt(cell -> cell[2]).findFirst().orElse(-1);
+            if (cost < 0) {
+                throw new IllegalArgumentException(left == 0 ? "Бег в этом раунде уже весь: " + run + " м"
+                        : "Дальше бега: осталось " + left + " из " + run + " м");
+            }
+            participant.setMovedMeters(participant.getMovedMeters() + cost);
+        }
         participant.setPosX(x);
         participant.setPosY(y);
+    }
+
+    /** Бег за раунд по правилам системы; null — система его не знает, ограничения нет */
+    private Integer runOf(Encounter encounter, EncounterParticipant participant) {
+        GameSystem system = systemRegistry.get(encounter.getCampaign().getSystem());
+        return system.getMapRules().reach(system.getCurrentStats(participant.getCharacter()));
     }
 
     /**
@@ -154,11 +179,13 @@ public class BattleFieldService {
     }
 
     /**
-     * Куда участник добежит за действие (CP2020: бег MA × 3 м), не сквозь стены и закрытые двери.
+     * Куда участник ещё добежит в этом раунде (CP2020: бег MA × 3 м), не сквозь стены и закрытые двери.
      *
-     * @param meters дистанция одного действия; null — система не знает, область не рисуется
+     * @param meters сколько бега осталось; null — система не знает, область не рисуется
+     * @param run    весь бег за раунд
+     * @param cells  клетки {@code {x, y, метров пути}}
      */
-    public record Reach(Integer meters, List<int[]> cells) {
+    public record Reach(Integer meters, Integer run, List<int[]> cells) {
     }
 
     @Transactional(readOnly = true)
@@ -166,11 +193,12 @@ public class BattleFieldService {
         Encounter encounter = withMap(campaignId);
         EncounterParticipant participant = participant(encounter, participantId);
         GameSystem system = systemRegistry.get(encounter.getCampaign().getSystem());
-        Integer meters = system.getMapRules().reach(system.getCurrentStats(participant.getCharacter()));
-        if (meters == null || participant.getPosX() == null) {
-            return new Reach(meters, List.of());
+        Integer run = system.getMapRules().reach(system.getCurrentStats(participant.getCharacter()));
+        if (run == null || participant.getPosX() == null) {
+            return new Reach(run, run, List.of());
         }
-        return new Reach(meters, grid(encounter).reach(participant.getPosX(), participant.getPosY(), meters));
+        int left = Math.max(0, run - participant.getMovedMeters());
+        return new Reach(left, run, grid(encounter).reach(participant.getPosX(), participant.getPosY(), left));
     }
 
     /**

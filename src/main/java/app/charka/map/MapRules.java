@@ -56,6 +56,15 @@ public interface MapRules {
         return null;
     }
 
+    /**
+     * Модификатор атаки, который ставится сам, если участник уже бегал в этом раунде: бег — действие, атака после него — следующее.
+     *
+     * @return код варианта модификатора атаки; null — у системы такого нет
+     */
+    default String movedAttackOption() {
+        return null;
+    }
+
     /** Без системы: прямая в метрах, материалы без прочности */
     MapRules GENERIC = new MapRules() {
 
