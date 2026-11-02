@@ -103,6 +103,9 @@ final class Cp2020AttackRules implements AttackRules {
             AreaDamage blast = Cp2020AreaAttacks.areaDamage(weapon, request, dice);
             return new AttackPlan(title, toHit == null ? List.of() : List.of(new AttackPlan.PlannedCheck(toHit, context.attacker(), null, null)), blast);
         }
+        if (targets.size() > 1 && AUTO.equals(mode(request))) {
+            return splitAuto(context, weapon, request, targets, title);
+        }
         if (targets.size() > 1) {
             throw new IllegalArgumentException("Такой режим огня — только по одной цели");
         }
@@ -142,8 +145,10 @@ final class Cp2020AttackRules implements AttackRules {
         if (!landed) {
             return AttackOutcome.miss(steps, result.outcome());
         }
-        Character target = context.targets().isEmpty() ? null : context.targets().get(0);
-        List<AttackOutcome.TargetedHit> hits = hits(weapon, request, result, dice).stream()
+        Character target = planned.target() != null ? planned.target() : context.targets().isEmpty() ? null : context.targets().get(0);
+        AttackRequest forTarget = context.targets().size() > 1 && AUTO.equals(mode(request))
+                ? withRounds(request, request.rounds() / context.targets().size()) : request;
+        List<AttackOutcome.TargetedHit> hits = hits(weapon, forTarget, result, dice).stream()
                 .map(hit -> new AttackOutcome.TargetedHit(target, hit)).toList();
         return AttackOutcome.hits(steps, hits, hits.isEmpty() ? result.outcome() + ", но ни одна пуля не дошла" : null, !hits.isEmpty());
     }
@@ -287,7 +292,7 @@ final class Cp2020AttackRules implements AttackRules {
         if (!isAutomatic(weapon)) {
             return List.of();
         }
-        String reliability = weapon.getProperties().getOrDefault("reliability", "ST");
+        String reliability = Cp2020WeaponActions.reliability(weapon);
         int limit = Cp2020Rules.jamLimit(reliability);
         int roll = dice.d10();
         boolean jammed = roll <= limit;
@@ -296,6 +301,29 @@ final class Cp2020AttackRules implements AttackRules {
         }
         return List.of("Надёжность " + reliability + ": d10 = " + roll + ", заклинивает на " + limit + " и ниже"
                 + (jammed ? " — заклинило, расклинивать 1D6 раундов" : " — не заклинило"));
+    }
+
+    /**
+     * Автоогонь по нескольким целям (с. 107): ROF делится на число целей (вниз), на каждую свой бросок со своей долей патронов.
+     * Расход — все выпущенные патроны. HOMEBREW: расстояние одно на всех, штраф Facedown не применяется.
+     */
+    private AttackPlan splitAuto(AttackContext context, Item weapon, AttackRequest request, List<Character> targets, String title) {
+        int share = request.rounds() / targets.size();
+        if (share < 1) {
+            throw new IllegalArgumentException("Патронов меньше, чем целей: на каждую нужен хотя бы один");
+        }
+        AttackRequest perTarget = withRounds(request, share);
+        List<AttackPlan.PlannedCheck> checks = new ArrayList<>();
+        for (Character target : targets) {
+            CheckRequest toHit = toHit(context.attacker(), weapon, perTarget, context.stats(context.attacker()));
+            checks.add(new AttackPlan.PlannedCheck(toHit, context.attacker(), target, target.getName() + ": " + share + " патр."));
+        }
+        return new AttackPlan(title, checks, null);
+    }
+
+    private static AttackRequest withRounds(AttackRequest request, int rounds) {
+        return new AttackRequest(request.targetIds(), request.targetName(), request.distance(), request.location(), request.skillCode(),
+                request.options(), request.modifier(), request.mode(), rounds, request.zoneWidth(), request.luck());
     }
 
     boolean isZoneFire(AttackRequest request) {
@@ -462,7 +490,7 @@ final class Cp2020AttackRules implements AttackRules {
         }
         return List.of(single,
                 new AttackForm.Mode(BURST, "Очередь из 3", false, false, false, false, false),
-                new AttackForm.Mode(AUTO, "Автоогонь", true, false, false, false, false),
+                new AttackForm.Mode(AUTO, "Автоогонь", true, false, true, false, false),
                 new AttackForm.Mode(SUPPRESS, "Подавляющий огонь", true, true, true, false, false));
     }
 

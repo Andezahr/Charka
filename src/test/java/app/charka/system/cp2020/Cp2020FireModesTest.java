@@ -224,6 +224,18 @@ class Cp2020FireModesTest {
         }
 
         @Test
+        @DisplayName("Магазин больше двух стандартных: надёжность на ступень хуже — Minami (ST) клинит на 8, как UR")
+        void oversizedMagazine() {
+            Item minami = minami();
+            minami.getProperties().put("reliability", "ST");
+            minami.getProperties().put(Cp2020ItemTypes.INSERTED, String.valueOf(Integer.parseInt(minami.getProperties().get(Cp2020ItemTypes.SHOTS)) * 3));
+
+            rules.onFumble(minami, sides -> 8);
+
+            assertThat(minami.getProperties()).containsKey(Cp2020ItemTypes.JAMMED);
+        }
+
+        @Test
         @DisplayName("Неавтоматическое оружие не клинит: у него таблица фамблов")
         void notAutomatic() {
             Item pistol = weapon("budgetarms_c_13");

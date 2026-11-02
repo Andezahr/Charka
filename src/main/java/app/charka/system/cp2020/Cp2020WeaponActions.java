@@ -45,8 +45,21 @@ final class Cp2020WeaponActions {
         return List.of();
     }
 
+    /** В оружии магазин больше двух стандартных (Solo of Fortune II): надёжность на ступень хуже */
+    static boolean hasOversizedMagazine(Item item) {
+        return Cp2020ItemTypes.WEAPON.equals(item.getType()) && hasMagazine(item)
+                && Cp2020MagazineRules.isOversized(number(item, Cp2020ItemTypes.SHOTS), capacity(item));
+    }
+
+    /** Надёжность с учётом магазина: её проверяет заклинивание */
+    static String reliability(Item item) {
+        String reliability = item.getProperties().getOrDefault("reliability", "ST");
+        return hasOversizedMagazine(item) ? Cp2020MagazineRules.lowerReliability(reliability) : reliability;
+    }
+
     /**
-     * Штрафы от большого магазина в оружии. Solo of Fortune II; значения для I-05, I-08 и C-03 — в {@link Cp2020MagazineRules}.
+     * Штрафы от большого магазина в оружии. Solo of Fortune II; надёжность применяется в заклинивании ({@link #reliability}),
+     * скрытность и Snapshot только показываются.
      */
     static List<String> notes(Item item) {
         if (!Cp2020ItemTypes.WEAPON.equals(item.getType()) || !hasMagazine(item)) {

@@ -115,6 +115,23 @@ class AttackServiceTest {
     }
 
     @Test
+    @DisplayName("Автоогонь по двум целям (с. 107): 20 патронов делятся по 10, бросок на каждую, расход — все 20")
+    void autoSplit() {
+        Character second = member(campaignRepository.findById(characterRepository.findById(shooter.getId()).orElseThrow()
+                .getCampaign().getId()).orElseThrow(), "Второй");
+        entityManager.flush();
+        when(dice.roll(anyInt())).thenReturn(5);
+
+        AttackResult result = attackService.attack(shooter.getId(), minami.getId(),
+                new AttackRequest(List.of(victim.getId(), second.getId()), null, 5, null, null, Set.of(), 0, "AUTO", 20, 0));
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(result.steps()).contains("Цель: 10 патр.", "Второй: 10 патр.");
+        assertThat(itemRepository.findById(minami.getId()).orElseThrow().getProperties()).containsEntry("ammo", "20");
+    }
+
+    @Test
     @DisplayName("Очередь не падает, если цель умерла на одной из пуль")
     void targetDiesMidBurst() {
         counter(victim, Cp2020HealthStrategy.TYPE).getAttributes().put(Cp2020HealthStrategy.DEAD, 1);
