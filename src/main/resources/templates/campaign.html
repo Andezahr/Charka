@@ -56,6 +56,29 @@
         </div>
         <div th:if="${#lists.isEmpty(players)}" class="empty">В кампании пока нет персонажей</div>
       </div>
+      <!-- Начислить всем: опыт, IP. Галочки — игроки, NPC по умолчанию не получают -->
+      <div class="card-body" id="award" th:unless="${#lists.isEmpty(awardCounters) or #lists.isEmpty(players)}">
+        <form th:action="@{'/campaign/' + ${campaign.id} + '/award'}" method="post" class="form">
+          <div class="form-row">
+            <select th:if="${#lists.size(awardCounters) > 1}" name="counter" class="grow" aria-label="Что начислить">
+              <option th:each="name : ${awardCounters}" th:value="${name}" th:text="${name}">Очки улучшения</option>
+            </select>
+            <input th:if="${#lists.size(awardCounters) == 1}" type="hidden" name="counter" th:value="${awardCounters[0]}">
+            <span th:if="${#lists.size(awardCounters) == 1}" class="grow award-label" th:text="${awardCounters[0]}">Очки улучшения</span>
+            <input type="number" name="amount" class="narrow" placeholder="Сколько" required aria-label="Сколько начислить">
+            <button type="submit" class="btn btn-primary">Начислить</button>
+          </div>
+          <div class="chips">
+            <label th:each="character : ${players}" class="check">
+              <input type="checkbox" name="character" th:value="${character.id}" checked>
+              <span th:text="${character.name}">Колясик</span>
+            </label>
+          </div>
+        </form>
+        <ul th:if="${awardResult != null}" class="award-result">
+          <li th:each="line : ${awardResult}" th:text="${line}">Колясик: 0 → 10</li>
+        </ul>
+      </div>
     </section>
 
     <!-- NPC мастера -->

@@ -29,4 +29,10 @@ public class SimpleIntegerCounterStrategy extends AbstractCounterStrategy {
     public boolean canHandle(String counterType) {
         return getCounterType().equals(counterType);
     }
+
+    /** Простой счётчик бывает опытом: его начисляют всем сразу */
+    @Override
+    public boolean isAwardable() {
+        return true;
+    }
 }

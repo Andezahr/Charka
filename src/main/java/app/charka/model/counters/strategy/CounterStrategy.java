@@ -74,6 +74,13 @@ public interface CounterStrategy {
     /**
      * true — у персонажа может быть только один счётчик этого типа.
      */
+    /**
+     * Мастер начисляет этот счётчик всем сразу со страницы кампании: опыт, очки улучшения.
+     */
+    default boolean isAwardable() {
+        return false;
+    }
+
     default boolean isUniquePerCharacter() {
         return false;
     }

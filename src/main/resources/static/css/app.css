@@ -927,6 +927,8 @@ details.cp-more > summary:hover { color: var(--text-soft); }
 .add-panel { display: flex; flex-direction: column; gap: 10px; }
 .add-catalog { display: flex; flex-direction: column; gap: 6px; }
 .add-buy { white-space: nowrap; }
+.award-label { align-self: center; font-weight: 600; }
+.award-result { margin: 10px 0 0; padding-left: 18px; color: var(--muted); font-size: 13px; }
 .add-entry.is-dear { opacity: .45; }
 .add-group { display: flex; flex-direction: column; gap: 2px; }
 .add-group-title { padding: 4px 0; font-size: 13px; font-weight: 600; color: var(--text-soft); cursor: pointer; }

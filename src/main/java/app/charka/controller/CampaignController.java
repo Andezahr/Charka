@@ -5,6 +5,7 @@ import app.charka.model.Campaign;
 
 import app.charka.model.Character;
 import app.charka.service.CharacterService;
+import app.charka.service.campaign.CampaignAwardService;
 import app.charka.service.campaign.CampaignService;
 import app.charka.system.GameSystem;
 import app.charka.system.GameSystemRegistry;
@@ -13,7 +14,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
 import java.time.LocalDate;
+import java.util.List;
 import java.util.stream.Collectors;
 
 @Controller
@@ -24,13 +28,15 @@ public class CampaignController {
     private final CharacterService characterService;
     private final GameSystemRegistry systemRegistry;
     private final DiceService diceService;
+    private final CampaignAwardService awardService;
 
     public CampaignController(CampaignService campaignService, CharacterService characterService,
-                              GameSystemRegistry systemRegistry, DiceService diceService) {
+                              GameSystemRegistry systemRegistry, DiceService diceService, CampaignAwardService awardService) {
         this.campaignService = campaignService;
         this.characterService = characterService;
         this.systemRegistry = systemRegistry;
         this.diceService = diceService;
+        this.awardService = awardService;
     }
 
     @GetMapping
@@ -51,8 +57,24 @@ public class CampaignController {
         model.addAttribute("quickDice", gameSystem.getQuickDice());
         model.addAttribute("difficultyPresets", gameSystem.getCheckResolver().getDifficultyPresets());
         model.addAttribute("recentRolls", diceService.recentForCampaign(campaignId, 20));
+        model.addAttribute("awardCounters", awardService.awardableCounters(campaignId));
 
         return "campaign";
+    }
+
+    /**
+     * Начислить всем выбранным: итог построчно во flash {@code awardResult}, ошибка — {@code errorMessage}.
+     */
+    @PostMapping("/award")
+    public String award(@PathVariable Long campaignId, @RequestParam String counter, @RequestParam int amount,
+                        @RequestParam(name = "character", required = false) List<Long> characters,
+                        RedirectAttributes redirectAttributes) {
+        try {
+            redirectAttributes.addFlashAttribute("awardResult", awardService.award(campaignId, counter, amount, characters));
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        }
+        return "redirect:/campaign/" + campaignId + "#award";
     }
 
     @PostMapping("/characters")
