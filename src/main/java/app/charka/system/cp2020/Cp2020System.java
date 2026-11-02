@@ -63,7 +63,7 @@ public class Cp2020System implements GameSystem {
     private static final Cp2020ArmorStrategy ARMOR = new Cp2020ArmorStrategy();
 
     private static final List<CatalogItem> ITEM_CATALOG =
-            Stream.of(Cp2020Weapons.CATALOG, Cp2020Magazines.CATALOG, Cp2020Ammo.CATALOG, Cp2020Armors.CATALOG, Cp2020Cyberware.CATALOG, Cp2020Chips.CATALOG, Cp2020Drugs.CATALOG, Cp2020Vehicles.CATALOG).flatMap(List::stream).toList();
+            Stream.of(Cp2020Weapons.CATALOG, Cp2020Magazines.CATALOG, Cp2020Ammo.CATALOG, Cp2020Armors.CATALOG, Cp2020Cyberware.CATALOG, Cp2020Chips.CATALOG, Cp2020Drugs.CATALOG, Cp2020Vehicles.CATALOG, Cp2020Netrunning.CATALOG).flatMap(List::stream).toList();
 
     private final HealthCounterService healthCounterService;
     private final DiceRoller dice;
@@ -153,6 +153,9 @@ public class Cp2020System implements GameSystem {
         if (Cp2020Vehicles.isVehicle(item)) {
             return Cp2020Vehicles.actions(item);
         }
+        if (Cp2020Netrunning.isDeck(item) || Cp2020Netrunning.isProgram(item)) {
+            return Cp2020Netrunning.actions(item);
+        }
         return Cp2020WornArmor.isArmor(item) ? Cp2020ArmorActions.actions(item) : Cp2020WeaponActions.actions(item);
     }
 
@@ -163,6 +166,9 @@ public class Cp2020System implements GameSystem {
         }
         if (Cp2020Drugs.isDrug(item)) {
             return Cp2020Drugs.summary(item);
+        }
+        if (Cp2020Netrunning.isDeck(item) || Cp2020Netrunning.isProgram(item)) {
+            return Cp2020Netrunning.summary(item);
         }
         ItemSummary summary = Cp2020ItemSheet.summary(item);
         return summary != null ? summary : GameSystem.super.getItemSummary(item);
@@ -183,6 +189,9 @@ public class Cp2020System implements GameSystem {
         if (Cp2020Vehicles.isVehicle(item)) {
             return Cp2020Vehicles.notes(item);
         }
+        if (Cp2020Netrunning.isDeck(item) || Cp2020Netrunning.isProgram(item)) {
+            return Cp2020Netrunning.notes(item);
+        }
         return Cp2020WornArmor.isArmor(item) ? Cp2020ArmorActions.notes(item) : Cp2020WeaponActions.notes(item);
     }
 
@@ -196,6 +205,9 @@ public class Cp2020System implements GameSystem {
         }
         if (Cp2020Vehicles.isVehicle(item)) {
             return Cp2020Vehicles.perform(item, action, params, getCurrentStats(item.getInventory().getCharacter()), getCheckResolver(), dice);
+        }
+        if (Cp2020Netrunning.isDeck(item) || Cp2020Netrunning.isProgram(item)) {
+            return Cp2020Netrunning.perform(item, action, params, getCurrentStats(item.getInventory().getCharacter()), getCheckResolver(), dice);
         }
         return Cp2020WornArmor.isArmor(item) ? Cp2020ArmorActions.perform(item, action) : Cp2020WeaponActions.perform(item, action, params);
     }

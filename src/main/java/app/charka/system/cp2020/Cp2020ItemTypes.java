@@ -239,7 +239,7 @@ public final class Cp2020ItemTypes {
             Stream.concat(Stream.of(WORN, HUMANITY_LOST, LIMB_ZONE, LIMB_HOST, LIMB_DAMAGE, CHIP_DAYS),
                     Arrays.stream(Cp2020Location.values()).map(Cp2020ItemTypes::wearKey)).toList()).inSection("Киберware");
 
-    public static final List<ItemTypeDefinition> ALL = List.of(WEAPON_TYPE, ARMOR_TYPE, ItemTypeDefinition.GENERIC, MAGAZINE_TYPE, AMMO_TYPE, CYBER_TYPE, Cp2020Drugs.DRUG_TYPE, Cp2020Vehicles.VEHICLE_TYPE);
+    public static final List<ItemTypeDefinition> ALL = List.of(WEAPON_TYPE, ARMOR_TYPE, ItemTypeDefinition.GENERIC, MAGAZINE_TYPE, AMMO_TYPE, CYBER_TYPE, Cp2020Drugs.DRUG_TYPE, Cp2020Vehicles.VEHICLE_TYPE, Cp2020Netrunning.DECK_TYPE, Cp2020Netrunning.PROGRAM_TYPE);
 
     private Cp2020ItemTypes() {
     }
