@@ -116,7 +116,7 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 |---|---|---|
 | GET | `/` | список персонажей и кампаний |
 | POST | `/campaigns` | `name`, `system`, `startDate?` → новая кампания |
-| GET | `/campaign/{id}` | страница кампании; `?rolls=N` — страница лога бросков (по 20, новые сверху) |
+| GET | `/campaign/{id}` | страница кампании; `?rolls=N` — страница лога бросков (по 10, новые сверху) |
 | POST | `/campaign/{id}/characters` | добавить персонажа (инвентарь «Backpack» + счётчики по умолчанию системы) |
 | GET, POST | `/campaign/{id}/characters/new`, POST `.../roll`, `.../background` (лайфпас) | мастер создания по правилам системы (`CharacterCreation`; CP2020: очки, статы, роль и 40 карьерных очков, хобби, стартовые деньги) |
 | POST | `/campaign/{id}/session` | новая игровая сессия: потраченная Удача возвращается (`GameSystem.restoreLuck`) |
