@@ -36,6 +36,17 @@ public class Cp2020HealthView implements HealthView {
     List<Option> locations;
     List<Option> damageTypes;
 
+    /** Как идёт лечение: «Медицинская техника: 1 в день»; null — лечить нечего */
+    String careLabel;
+    /** Medical Tech: можно добавить Speedheal и нанотехнику */
+    boolean medicalTech;
+    boolean speedheal;
+    boolean nanotech;
+    /** Какая медпомощь нужна сейчас */
+    List<Option> careOptions;
+    /** Условия для броска медика: код — прибавка */
+    List<Option> careModifiers;
+
     @Value
     public static class TrackLevel {
         String name;

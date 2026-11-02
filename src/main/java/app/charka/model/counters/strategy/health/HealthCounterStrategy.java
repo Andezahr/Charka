@@ -48,6 +48,21 @@ public interface HealthCounterStrategy extends CounterStrategy {
     /** Стабилизировать умирающего (результат медицинской помощи) */
     HealthEvent stabilize(CounterContext context);
 
+    /** Какую медпомощь бывает: проверка навыка медика против состояния пациента. Пусто — только ручные кнопки */
+    default java.util.List<CareOption> getCareOptions() {
+        return java.util.List.of();
+    }
+
+    /** Сложность проверки медика; null — помощь сейчас не нужна */
+    default Integer careDifficulty(CounterContext context, CareOption option) {
+        return null;
+    }
+
+    /** Итог проверки медика: что меняется у пациента */
+    default HealthEvent applyCare(CounterContext context, CareOption option, boolean success) {
+        throw new UnsupportedOperationException("Медпомощи в этой системе нет");
+    }
+
     @Override
     HealthView describe(CounterContext context);
 }

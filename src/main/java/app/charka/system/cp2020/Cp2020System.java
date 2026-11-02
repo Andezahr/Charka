@@ -311,14 +311,15 @@ public class Cp2020System implements GameSystem {
     }
 
     /**
-     * Естественное лечение: 1 очко в день (правила — в {@link Cp2020HealthStrategy#healOverTime}).
+     * Лечение по книге (с. 116, {@link Cp2020HealthStrategy#healOverTime}) и обкатка чипов; что случилось — в отчёт.
      */
     @Override
-    public void onTimePassed(Campaign campaign, int days) {
-        healthCounterService.healOverTime(campaign.getId(), days);
+    public List<String> onTimePassed(Campaign campaign, int days) {
+        List<String> report = healthCounterService.healOverTime(campaign.getId(), days);
         if (campaign.getCharacters() != null) {
             campaign.getCharacters().forEach(character -> Cp2020Chips.practice(character, days));
         }
+        return report == null ? List.of() : report;
     }
 
     @Override

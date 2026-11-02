@@ -160,6 +160,9 @@
               <button type="submit" class="btn btn-pink">⏩ Промотать</button>
             </div>
           </form>
+          <ul th:if="${timeReport != null and !#lists.isEmpty(timeReport)}" class="award-result">
+            <li th:each="line : ${timeReport}" th:text="${line}">Колясик: урон 12 → 9</li>
+          </ul>
         </div>
         <div class="card-body">
           <div class="timeline" th:unless="${#lists.isEmpty(campaign.chronicles)}">

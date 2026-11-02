@@ -291,7 +291,8 @@ public interface GameSystem {
     /**
      * Вызывается после промотки времени кампании (лечение, траты по правилам системы).
      */
-    default void onTimePassed(Campaign campaign, int days) {
+    default List<String> onTimePassed(Campaign campaign, int days) {
+        return List.of();
     }
 
     /**

@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
+import java.util.ArrayList;
 
 /**
  * Сервис для управления ходом времени в кампании.
@@ -36,9 +38,10 @@ public class CampaignTimelineService {
      * @param campaignId  ID кампании, для которой происходит расчет
      * @param daysToSkip  количество дней для пропуска (>=1)
      * @param description описание события в хронике
+     * @return что случилось с персонажами: лечение, траты
      */
     @Transactional
-    public void proceedDate(Long campaignId, int daysToSkip, String description) {
+    public List<String> proceedDate(Long campaignId, int daysToSkip, String description) {
         Campaign campaign = campaignService.getById(campaignId);
         LocalDate oldDate = campaign.getCurrentDate();
         LocalDate newDate = oldDate.plusDays(daysToSkip);
@@ -54,10 +57,14 @@ public class CampaignTimelineService {
         campaignService.updateCurrentDate(campaign.getId(), newDate);
 
         // Раны заживают и т.п. — по правилам системы кампании (у GENERIC ничего не происходит)
-        systemRegistry.get(campaign.getSystem()).onTimePassed(campaign, daysToSkip);
+        List<String> report = new ArrayList<>(systemRegistry.get(campaign.getSystem()).onTimePassed(campaign, daysToSkip));
 
         // Аренда, еда: всё, что наступило за период, списывается своими датами
-        recurringExpenseService.chargeDue(campaign, newDate);
+        int charged = recurringExpenseService.chargeDue(campaign, newDate);
+        if (charged > 0) {
+            report.add("Регулярные траты: списаний " + charged);
+        }
+        return report;
     }
 }
 

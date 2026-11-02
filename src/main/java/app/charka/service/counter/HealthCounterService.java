@@ -1,5 +1,15 @@
 package app.charka.service.counter;
 
+import app.charka.system.GameSystemRegistry;
+import app.charka.system.GameSystem;
+import org.springframework.beans.factory.ObjectProvider;
+import java.util.Set;
+import app.charka.model.counters.strategy.health.CareOption;
+import app.charka.exception.NotFoundException;
+import app.charka.skill.SkillService;
+import app.charka.skill.SkillCheck;
+import app.charka.repository.CharacterRepository;
+import app.charka.model.Character;
 import app.charka.dto.counter.request.HealthDamageRequestDto;
 import app.charka.model.counters.Counter;
 import app.charka.model.counters.strategy.CounterContext;
@@ -31,6 +41,11 @@ public class HealthCounterService {
     private final CounterService counterService;
     private final CounterRepository counterRepository;
     private final CounterStrategyFactory strategyFactory;
+    private final CharacterRepository characterRepository;
+    /** Через провайдер: SkillService зависит от реестра систем, а система — от этого сервиса */
+    private final ObjectProvider<SkillService> skillService;
+    /** Тоже через провайдер: реестр собирает системы, а система CP2020 зависит от этого сервиса */
+    private final ObjectProvider<GameSystemRegistry> systemRegistry;
 
     @Transactional
     public HealthEvent applyDamage(Long characterId, Long counterId, HealthDamageRequestDto requestDto) {
@@ -127,6 +142,88 @@ public class HealthCounterService {
         HealthEvent event = strategyFor(context).stabilize(context);
         counterRepository.save(context.getCounter());
         return event;
+    }
+
+    /**
+     * Медпомощь: медик бросает свой навык против состояния пациента, при успехе система меняет здоровье.
+     *
+     * @param healerId персонаж-медик из той же кампании
+     * @throws IllegalArgumentException если помощь не нужна, медик тот же, а себе нельзя, или медик чужой
+     */
+    @Transactional
+    public HealthEvent care(Long characterId, Long counterId, Long healerId, String optionCode, int modifier) {
+        CounterContext context = contextFor(characterId, counterId);
+        HealthCounterStrategy strategy = strategyFor(context);
+        CareOption option = strategy.getCareOptions().stream()
+                .filter(candidate -> candidate.code().equals(optionCode))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Такой помощи нет: " + optionCode));
+        if (healerId.equals(characterId) && !option.selfAllowed()) {
+            throw new IllegalArgumentException("Себе так помочь нельзя: нужен другой медик");
+        }
+        Character patient = context.getCounter().getCharacter();
+        Character healer = characterRepository.findById(healerId).orElseThrow(NotFoundException.forId("Character", healerId));
+        boolean sameCampaign = patient.getCampaign() != null && healer.getCampaign() != null
+                && patient.getCampaign().getId().equals(healer.getCampaign().getId());
+        if (!sameCampaign) {
+            throw new IllegalArgumentException("Медик должен быть из той же кампании");
+        }
+        Integer difficulty = strategy.careDifficulty(context, option);
+        if (difficulty == null) {
+            throw new IllegalArgumentException("Сейчас это не нужно");
+        }
+        SkillCheck check = skillService.getObject().check(healerId, option.skillCode(), null, modifier, difficulty);
+        HealthEvent event = new HealthEvent();
+        event.step(healer.getName() + ", " + check.label() + ": " + check.result().outcome());
+        check.result().steps().forEach(step -> event.step("  " + step));
+        HealthEvent result = strategy.applyCare(context, option, Boolean.TRUE.equals(check.result().success()));
+        result.getSteps().forEach(event::step);
+        counterRepository.save(context.getCounter());
+        return event.summary(result.getSummary());
+    }
+
+    /**
+     * Кто может оказать помощь: персонажи кампании, сначала с лучшим медицинским навыком, сам пациент — последним.
+     */
+    @Transactional(readOnly = true)
+    public List<Character> healers(Long characterId, List<CareOption> options) {
+        Character patient = characterRepository.findById(characterId).orElseThrow(NotFoundException.forId("Character", characterId));
+        if (patient.getCampaign() == null) {
+            return List.of(patient);
+        }
+        Set<String> skills = options.stream().map(CareOption::skillCode).collect(Collectors.toSet());
+        return patient.getCampaign().getCharacters().stream()
+                .sorted(java.util.Comparator.comparing((Character character) -> character.getId().equals(characterId))
+                        .thenComparing(character -> -character.getSkills().stream()
+                                .filter(skill -> skills.contains(skill.getSkillCode()))
+                                .mapToInt(app.charka.model.CharacterSkill::getLevel).max().orElse(0)))
+                .toList();
+    }
+
+    /**
+     * Что выбрать в форме медпомощи по умолчанию: первое нужное сейчас действие (стабилизация раньше лечения), чей навык
+     * у медика есть; иначе первое, что не требует спецспособности роли. null — помощь не нужна.
+     */
+    @Transactional(readOnly = true)
+    public String defaultCare(Long characterId, Long counterId, Character healer) {
+        CounterContext context = contextFor(characterId, counterId);
+        if (!(strategyFactory.getStrategy(context.getCounter().getType()) instanceof HealthCounterStrategy strategy)) {
+            return null;
+        }
+        List<CareOption> needed = strategy.getCareOptions().stream()
+                .filter(option -> strategy.careDifficulty(context, option) != null)
+                .toList();
+        GameSystem system = systemRegistry.getObject().forCharacter(context.getCounter().getCharacter());
+        return needed.stream()
+                .filter(option -> healer != null && healer.getSkills().stream()
+                        .anyMatch(skill -> skill.getSkillCode().equals(option.skillCode()) && skill.getLevel() > 0))
+                .findFirst()
+                .or(() -> needed.stream()
+                        .filter(option -> system.getSkillCatalog().stream()
+                                .anyMatch(skill -> skill.code().equals(option.skillCode()) && !skill.special()))
+                        .findFirst())
+                .map(CareOption::code)
+                .orElse(null);
     }
 
     /**

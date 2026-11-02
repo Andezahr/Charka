@@ -19,9 +19,10 @@ public class ChronicleController {
     public String addChronicle(
             @PathVariable Long campaignId,
             @RequestParam String name,
-            @RequestParam Integer duration
+            @RequestParam Integer duration,
+            org.springframework.web.servlet.mvc.support.RedirectAttributes redirectAttributes
     ) {
-        campaignTimelineService.proceedDate(campaignId, duration, name);
+        redirectAttributes.addFlashAttribute("timeReport", campaignTimelineService.proceedDate(campaignId, duration, name));
         return "redirect:/campaign/" + campaignId;
     }
 }
