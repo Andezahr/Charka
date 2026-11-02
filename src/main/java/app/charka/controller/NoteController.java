@@ -35,7 +35,7 @@ public class NoteController {
                 ? noteService.getNotesByCharacter(characterId)
                 : noteService.getNotesByCharacterAndCategory(characterId, categoryId);
 
-        List<NoteCategory> categories = categoryService.getAllCategories();
+        List<NoteCategory> categories = categoryService.getForCharacter(characterId);
 
         model.addAttribute("character", character);
         model.addAttribute("notes", notes);
@@ -112,7 +112,7 @@ public class NoteController {
         Character character = characterService.getById(characterId);
 
         Note note = noteService.getNoteById(noteId);
-        List<NoteCategory> categories = categoryService.getAllCategories();
+        List<NoteCategory> categories = categoryService.getForCharacter(characterId);
         List<Note> notes = noteService.getNotesByCharacter(characterId);
 
         model.addAttribute("character", character);

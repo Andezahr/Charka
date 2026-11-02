@@ -316,13 +316,13 @@ public class Cp2020Creation implements CharacterCreation {
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
             throw new IllegalArgumentException("Лайфпас не прочитать: бросьте его ещё раз");
         }
-        NoteCategory category = noteCategoryService.getAllCategories().stream()
+        NoteCategory category = noteCategoryService.getForCharacter(character.getId()).stream()
                 .filter(existing -> LIFEPATH_CATEGORY.equals(existing.getName()))
                 .findFirst()
                 .orElseGet(() -> {
                     NoteCategory created = new NoteCategory();
                     created.setName(LIFEPATH_CATEGORY);
-                    return noteCategoryService.createCategory(created);
+                    return noteCategoryService.createCategory(character.getId(), created);
                 });
         for (Cp2020Lifepath.Section section : lifepath.sections()) {
             List<String> chunk = new ArrayList<>();

@@ -21,7 +21,7 @@ public class NoteCategoryController {
             @ModelAttribute("categoryForm") NoteCategory categoryForm,
             Model model
     ) {
-        categoryService.createCategory(categoryForm);
+        categoryService.createCategory(characterId, categoryForm);
         return "redirect:/character/" + characterId + "/notes";
     }
 
@@ -32,7 +32,7 @@ public class NoteCategoryController {
             @ModelAttribute("categoryForm") NoteCategory categoryForm,
             Model model
     ) {
-        categoryService.updateCategory(categoryId, categoryForm);
+        categoryService.updateCategory(characterId, categoryId, categoryForm);
         return "redirect:/character/" + characterId + "/notes";
     }
 
@@ -41,7 +41,7 @@ public class NoteCategoryController {
             @PathVariable Long characterId,
             @PathVariable Long categoryId
     ) {
-        categoryService.deleteCategory(categoryId);
+        categoryService.deleteCategory(characterId, categoryId);
         return "redirect:/character/" + characterId + "/notes";
     }
 }
