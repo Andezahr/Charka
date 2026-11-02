@@ -1276,3 +1276,5 @@ html:has(.is-editing) {
 .topbar-user { display: flex; align-items: center; gap: 8px; margin-left: 12px; color: var(--muted); font-size: 13px; }
 .char-player { margin: 6px 0; }
 .char-player .label { margin: 0; }
+.battle-add { display: inline-flex; gap: 4px; align-items: center; }
+.battle-add select { max-width: 160px; }

@@ -31,6 +31,7 @@ public class BattleFieldService {
     private final BattleMapService battleMapService;
     private final GameSystemRegistry systemRegistry;
     private final PointerBoard pointerBoard;
+    private final app.charka.npc.NpcService npcService;
 
     /**
      * Фишка участника.
@@ -105,6 +106,43 @@ public class BattleFieldService {
         }
         participant.setPosX(x);
         participant.setPosY(y);
+    }
+
+    /**
+     * Инструмент мастера «＋ Фишка»: персонаж кампании или новый NPC по шаблону встаёт в бой сразу на эту клетку.
+     * Уже в бою — фишка просто переносится сюда.
+     *
+     * @param characterId персонаж кампании; null — новый NPC
+     * @param template    шаблон системы для нового NPC; пусто — пустой NPC
+     * @return кто встал
+     * @throws IllegalArgumentException если клетка за краем, в предмете или занята
+     */
+    @Transactional
+    public String addToken(Long campaignId, Long characterId, String template, int x, int y) {
+        Encounter encounter = withMap(campaignId);
+        MapGrid grid = grid(encounter);
+        if (!grid.doc().inside(x, y)) {
+            throw new IllegalArgumentException("За краем карты");
+        }
+        if (grid.blocked(x, y)) {
+            throw new IllegalArgumentException("Туда не встать: " + grid.material(x, y).map(Material::label).orElse("занято"));
+        }
+        Long id = characterId != null ? characterId
+                : npcService.create(campaignId, template == null ? "" : template, null, 1, false).get(0).getId();
+        EncounterParticipant participant = encounter.getParticipants().stream()
+                .filter(p -> p.getCharacter().getId().equals(id)).findFirst()
+                .orElseGet(() -> {
+                    encounterService.add(campaignId, id);
+                    return encounter.getParticipants().stream().filter(p -> p.getCharacter().getId().equals(id)).findFirst().orElseThrow();
+                });
+        boolean taken = encounter.getParticipants().stream()
+                .anyMatch(other -> other != participant && Integer.valueOf(x).equals(other.getPosX()) && Integer.valueOf(y).equals(other.getPosY()));
+        if (taken) {
+            throw new IllegalArgumentException("Клетка занята");
+        }
+        participant.setPosX(x);
+        participant.setPosY(y);
+        return participant.getCharacter().getName();
     }
 
     /** Убрать фишку с поля в лоток */

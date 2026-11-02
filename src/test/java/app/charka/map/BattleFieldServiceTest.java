@@ -154,6 +154,24 @@ class BattleFieldServiceTest {
         }
 
         @Test
+        @DisplayName("«＋ Фишка»: персонаж кампании и новый NPC по шаблону встают в бой на нажатую клетку")
+        void addToken() {
+            Character late = member("Олежа", false);
+            start();
+
+            assertThat(field.addToken(campaign.getId(), late.getId(), null, 1, 6)).isEqualTo("Олежа");
+            String bandit = field.addToken(campaign.getId(), null, "bandit", 8, 6);
+            entityManager.flush();
+            entityManager.clear();
+
+            assertThat(token(late)).extracting(BattleFieldService.Token::x, BattleFieldService.Token::y).containsExactly(1, 6);
+            assertThat(field.field(campaign.getId()).orElseThrow().tokens())
+                    .anyMatch(t -> t.name().equals(bandit) && t.npc() && t.x() == 8 && t.y() == 6);
+            assertThatThrownBy(() -> field.addToken(campaign.getId(), null, "bandit", 2, 1)).hasMessageContaining("Туда не встать");
+            assertThatThrownBy(() -> field.addToken(campaign.getId(), null, "bandit", 1, 6)).hasMessageContaining("занята");
+        }
+
+        @Test
         @DisplayName("Досягаемость: бег MA × 3, сквозь стену не идёт")
         void reach() {
             start();

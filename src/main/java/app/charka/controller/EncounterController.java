@@ -53,6 +53,7 @@ public class EncounterController {
             model.addAttribute("view", view.get());
             model.addAttribute("attackObjects", attackService.objectTargets(campaign));
             model.addAttribute("hasField", view.get().encounter().getMapDoc() != null);
+            model.addAttribute("npcTemplates", systemRegistry.get(campaign.getSystem()).getNpcTemplates());
             model.addAttribute("feed", chatService.feed(campaignId, ChatController.FEED_SIZE));
             // U-03: игрок действует своими персонажами, остальные строки — только смотрит
             model.addAttribute("controllable", view.get().rows().stream().map(row -> row.character())

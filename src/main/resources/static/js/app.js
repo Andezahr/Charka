@@ -975,7 +975,7 @@ const CELL = 32;
 const POINTER_SHOW_MS = 4000;
 const battle = {
   url: null, data: null, etag: null, timer: null, view: null, selected: undefined, reach: null, reachFor: null,
-  lastChange: 0, dragging: false, pointerMode: false, placing: null, seen: new Map(), turn: null, stage: null
+  lastChange: 0, dragging: false, pointerMode: false, adding: false, placing: null, seen: new Map(), turn: null, stage: null
 };
 
 const svgEl = (name, attrs, parent) => {
@@ -1032,12 +1032,27 @@ function initBattle() {
       renderBattle();
     });
   }
+  // «＋ Фишка» мастера: режим остаётся включённым — несколько бандитов подряд
+  const addButton = document.querySelector('[data-battle-add]');
+  if (addButton) {
+    addButton.classList.toggle('is-active', battle.adding);
+    addButton.addEventListener('click', () => {
+      battle.adding = !battle.adding;
+      battle.pointerMode = false;
+      addButton.classList.toggle('is-active', battle.adding);
+      const pointer = document.querySelector('[data-battle-pointer]');
+      if (pointer) pointer.classList.remove('is-active');
+      battleHint(battle.adding ? 'Нажимайте клетки: каждое нажатие ставит фишку. Ещё раз «＋ Фишка» — выключить' : '');
+    });
+  }
   const pointerButton = document.querySelector('[data-battle-pointer]');
   if (pointerButton) {
     pointerButton.classList.toggle('is-active', battle.pointerMode);
     pointerButton.addEventListener('click', () => {
       battle.pointerMode = !battle.pointerMode;
+      battle.adding = false;
       pointerButton.classList.toggle('is-active', battle.pointerMode);
+      if (addButton) addButton.classList.remove('is-active');
       battleHint(battle.pointerMode ? 'Нажмите клетку — её увидят все. От своей фишки можно протянуть стрелку' : '');
     });
   }
@@ -1360,6 +1375,28 @@ async function moveToken(token, x, y) {
   pollBattle();
 }
 
+// Новая строка в трекере нужна сразу (её действия, оружие): страница обновляется на месте, карта и режим остаются
+async function addToken(x, y) {
+  const who = document.querySelector('[data-battle-add-who]');
+  if (!who || !who.value) return;
+  const [kind, value] = [who.value.slice(0, 2), who.value.slice(2)];
+  const params = new URLSearchParams({ x, y });
+  if (kind === 'c:') params.set('character', value);
+  else params.set('template', value);
+  try {
+    const response = await fetch(battle.url + '/tokens', { method: 'POST', body: params });
+    const text = await response.text();
+    if (!response.ok) {
+      battleError(text);
+      return;
+    }
+    battleHint(text + ' в бою');
+    await visit(location.href);
+  } catch (e) {
+    battleError('Нет связи с сервером');
+  }
+}
+
 async function sendPointer(x, y, from) {
   const me = battleMe();
   const meToken = battle.data.tokens.find(token => String(token.character) === me);
@@ -1460,6 +1497,10 @@ function wireBattleSvg(svg) {
     }
     if (current.token) {
       tokenClick(current.token, event);
+      return;
+    }
+    if (battle.adding && inside(cell) && !current.token) {
+      addToken(cell.x, cell.y);
       return;
     }
     if (battle.placing && inside(cell)) {

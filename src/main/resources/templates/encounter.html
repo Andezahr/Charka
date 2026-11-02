@@ -97,6 +97,19 @@
               </select>
             </label>
             <button type="button" class="btn btn-sm btn-ghost" data-battle-pointer title="Показать клетку всем (Alt+нажатие, долгое нажатие)">👆 Указать</button>
+            <!-- Мастер: кто-то из кампании или новый NPC встаёт в бой прямо на нажатую клетку -->
+            <span th:if="${isGm}" class="battle-add">
+              <button type="button" class="btn btn-sm btn-ghost" data-battle-add title="Выберите, кого, и нажимайте клетки: каждое нажатие — фишка">＋ Фишка</button>
+              <select data-battle-add-who data-remember="battle-add" aria-label="Кого поставить">
+                <optgroup label="Новый NPC" th:unless="${#lists.isEmpty(npcTemplates)}">
+                  <option th:each="t : ${npcTemplates}" th:value="'t:' + ${t.code}" th:text="${t.label}">Бандит</option>
+                </optgroup>
+                <option value="t:">Пустой NPC</option>
+                <optgroup label="Из кампании" th:unless="${#lists.isEmpty(view.addable)}">
+                  <option th:each="c : ${view.addable}" th:value="'c:' + ${c.id}" th:text="${c.name} + (${c.npc} ? ' · NPC' : '')">Олежа</option>
+                </optgroup>
+              </select>
+            </span>
             <span class="battle-zoom">
               <button type="button" class="btn btn-sm btn-ghost" data-battle-zoom="1.25" aria-label="Крупнее">＋</button>
               <button type="button" class="btn btn-sm btn-ghost" data-battle-zoom="0.8" aria-label="Мельче">−</button>

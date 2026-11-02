@@ -35,6 +35,13 @@ public class BattleFieldController {
         return ResponseEntity.noContent().build();
     }
 
+    /** «＋ Фишка» мастера: {@code character} — кто из кампании или {@code template} — новый NPC; клетка {@code x}, {@code y} */
+    @PostMapping("/tokens")
+    public ResponseEntity<String> addToken(@PathVariable Long campaignId, @RequestParam(required = false) Long character,
+                                           @RequestParam(required = false) String template, @RequestParam int x, @RequestParam int y) {
+        return ResponseEntity.ok(battleFieldService.addToken(campaignId, character, template, x, y));
+    }
+
     @PostMapping("/participants/{participantId}/lift")
     public ResponseEntity<Void> lift(@PathVariable Long campaignId, @PathVariable Long participantId) {
         battleFieldService.lift(campaignId, participantId);
