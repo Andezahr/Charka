@@ -63,8 +63,6 @@ public final class Cp2020Cyberware {
             neural(cyber(NEURAL, "DataTerm Link", "N", 100, "2", "Загрузка с DataTerm в память")),
             neural(cyber(NEURAL, "Interface Plugs", "M", 200, "1D6", "Подключение к смартгану и машине. Потеря за пару")),
             neural(cyber(NEURAL, SOCKET, "N", 200, "1D6/2", "До 10 чипов")),
-            requires(cyber(NEURAL, "Reflex Chip", "N", 0, "0", "Навык REF или TECH с ручной работой, +1…+3, заменяет природный уровень. Цена разная"), SOCKET),
-            requires(cyber(NEURAL, "Memory Chip", "N", 0, "0", "Навык INT, +1…+3, заменяет природный уровень. Цена разная"), SOCKET),
 
             cyber(IMPLANTS, "Nasal Filters", "M", 60, "2", "Останавливают газы, 70%"),
             cyber(IMPLANTS, "Gills", "MA", 400, "3D6", "Дышать под водой 4 часа"),

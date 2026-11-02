@@ -293,4 +293,11 @@ public interface GameSystem {
      */
     default void onTimePassed(Campaign campaign, int days) {
     }
+
+    /**
+     * Уровень навыка, заданный не персонажем (CP2020: вставленный чип). Пусто — действует природный уровень.
+     */
+    default java.util.Optional<app.charka.skill.SkillOverride> getSkillOverride(Character character, String skillCode) {
+        return java.util.Optional.empty();
+    }
 }

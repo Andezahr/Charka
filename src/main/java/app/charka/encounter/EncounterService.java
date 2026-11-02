@@ -202,7 +202,7 @@ public class EncounterService {
         List<String> always = system.getCombatCheckSkills();
         return skillService.getSheet(character.getId()).groups().stream()
                 .flatMap(group -> group.rows().stream())
-                .filter(row -> row.level() > 0 || always.contains(row.code()))
+                .filter(row -> row.level() > 0 || row.override() != null || always.contains(row.code()))
                 .sorted(Comparator.comparing((SkillSheet.Row row) -> !always.contains(row.code())).thenComparing(SkillSheet.Row::name))
                 .map(row -> new EncounterView.CheckOption(row.customId() != null ? "custom:" + row.customId() : row.code(),
                         row.name() + " " + row.total()))

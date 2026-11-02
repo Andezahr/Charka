@@ -63,7 +63,7 @@ public class Cp2020System implements GameSystem {
     private static final Cp2020ArmorStrategy ARMOR = new Cp2020ArmorStrategy();
 
     private static final List<CatalogItem> ITEM_CATALOG =
-            Stream.of(Cp2020Weapons.CATALOG, Cp2020Magazines.CATALOG, Cp2020Ammo.CATALOG, Cp2020Armors.CATALOG, Cp2020Cyberware.CATALOG).flatMap(List::stream).toList();
+            Stream.of(Cp2020Weapons.CATALOG, Cp2020Magazines.CATALOG, Cp2020Ammo.CATALOG, Cp2020Armors.CATALOG, Cp2020Cyberware.CATALOG, Cp2020Chips.CATALOG).flatMap(List::stream).toList();
 
     private final HealthCounterService healthCounterService;
     private final DiceRoller dice;
@@ -316,5 +316,13 @@ public class Cp2020System implements GameSystem {
     @Override
     public void onTimePassed(Campaign campaign, int days) {
         healthCounterService.healOverTime(campaign.getId(), days);
+        if (campaign.getCharacters() != null) {
+            campaign.getCharacters().forEach(character -> Cp2020Chips.practice(character, days));
+        }
+    }
+
+    @Override
+    public java.util.Optional<app.charka.skill.SkillOverride> getSkillOverride(Character character, String skillCode) {
+        return Cp2020Chips.override(character, skillCode);
     }
 }

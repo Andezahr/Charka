@@ -430,11 +430,12 @@ final class Cp2020Melee {
     }
 
     private static int level(Character character, String code) {
-        return character.getSkills().stream()
+        int natural = character.getSkills().stream()
                 .filter(skill -> code.equals(skill.getSkillCode()))
                 .mapToInt(CharacterSkill::getLevel)
                 .findFirst()
                 .orElse(0);
+        return Cp2020Chips.skillLevel(character, code, natural);
     }
 
     private static String skillName(String code) {

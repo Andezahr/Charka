@@ -60,6 +60,7 @@ public final class Cp2020ItemTypes {
 
     public static final String CYBER = "CP2020_CYBER";
     public static final String SURGERY = "surgery";
+    public static final String NO_SURGERY = "NONE";
     /** Потеря человечности за установку, как в таблице: «2D6», «1D6/2», «0.5» */
     public static final String HUMANITY_COST = "humanityCost";
     /** Сколько потеряно на самом деле; состояние, не поле формы */
@@ -86,6 +87,12 @@ public final class Cp2020ItemTypes {
     public static final String LIMB_END = "limbEnd";
     /** Покрытие: места опции не занимает, одно на конечность */
     public static final String LIMB_COVERING = "limbCovering";
+    /** Чип навыка (с. 82–83): код навыка, уровень +1…+3, рефлекторный ли */
+    public static final String CHIP_SKILL = "chipSkill";
+    public static final String CHIP_LEVEL = "chipLevel";
+    public static final String CHIP_REFLEX = "chipReflex";
+    /** Дни обкатки рефлекторного чипа — состояние */
+    public static final String CHIP_DAYS = "chipDays";
     /** Слой брони без штрафа к REF (Skinweave, с. 101) */
     public static final String NO_LAYER_PENALTY = "noLayerPenalty";
 
@@ -201,7 +208,8 @@ public final class Cp2020ItemTypes {
                                     new Option("N", "Negligible: 1 час, 1 урон"),
                                     new Option("M", "Minor: 2 часа, 1D6+1"),
                                     new Option("MA", "Major: 4 часа, 2D6+1"),
-                                    new Option("CR", "Critical: 6 часов, 3D6+1")),
+                                    new Option("CR", "Critical: 6 часов, 3D6+1"),
+                                    new Option(NO_SURGERY, "Без хирургии: чип вставляют сами")),
                             ItemField.text(HUMANITY_COST, "Потеря человечности"),
                             ItemField.text(REQUIRES, "Нужен модуль").asAdvanced(),
                             ItemField.number(BODY_BONUS, "К BODY", "BODY +", "", 1, 10).asAdvanced(),
@@ -219,13 +227,16 @@ public final class Cp2020ItemTypes {
                             ItemField.flag(LIMB_HYDRAULIC, "Гидравлика: прочность 30 и 40", "").asAdvanced(),
                             ItemField.number(LIMB_POWER, "Множитель удара конечностью", "удар ×", "", 2, 5).asAdvanced(),
                             ItemField.flag(LIMB_END, "Кисть или стопа: одна на конечность", "").asAdvanced(),
-                            ItemField.flag(LIMB_COVERING, "Покрытие конечности: без места опции", "").asAdvanced()),
+                            ItemField.flag(LIMB_COVERING, "Покрытие конечности: без места опции", "").asAdvanced(),
+                            ItemField.text(CHIP_SKILL, "Чип: код навыка").asAdvanced(),
+                            ItemField.number(CHIP_LEVEL, "Чип: уровень", "чип +", "", 1, 3).asAdvanced(),
+                            ItemField.flag(CHIP_REFLEX, "Чип рефлекторный: нужна обкатка", "").asAdvanced()),
                     Arrays.stream(Cp2020Location.values())
                             .map(location -> ItemField.flag(zoneKey(location), location.getLabel(), location.getShortLabel()).asAdvanced()))
                     .toList(),
             values -> {
             },
-            Stream.concat(Stream.of(WORN, HUMANITY_LOST, LIMB_ZONE, LIMB_HOST, LIMB_DAMAGE),
+            Stream.concat(Stream.of(WORN, HUMANITY_LOST, LIMB_ZONE, LIMB_HOST, LIMB_DAMAGE, CHIP_DAYS),
                     Arrays.stream(Cp2020Location.values()).map(Cp2020ItemTypes::wearKey)).toList()).inSection("Киберware");
 
     public static final List<ItemTypeDefinition> ALL = List.of(WEAPON_TYPE, ARMOR_TYPE, ItemTypeDefinition.GENERIC, MAGAZINE_TYPE, AMMO_TYPE, CYBER_TYPE);

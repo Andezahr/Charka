@@ -21,6 +21,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -289,7 +290,10 @@ public class SkillService {
         String name = displayName(definition, skill);
         List<CheckRequest.Part> parts = new ArrayList<>();
         parts.add(new CheckRequest.Part(statName(definition.statCode(), stat), stat == null ? 0 : stat.value()));
-        parts.add(new CheckRequest.Part(name, skill == null ? 0 : skill.getLevel()));
+        Optional<SkillOverride> override = definition.custom() ? Optional.empty() : system.getSkillOverride(character, definition.code());
+        parts.add(override
+                .map(chip -> new CheckRequest.Part(name + " (" + chip.source() + ")", chip.level()))
+                .orElseGet(() -> new CheckRequest.Part(name, skill == null ? 0 : skill.getLevel())));
         parts.addAll(system.getSkillBonuses(character, definition, skill));
         if (modifier != 0) {
             parts.add(new CheckRequest.Part("Мод.", modifier));
@@ -341,6 +345,8 @@ public class SkillService {
         StatValue stat = stats.get(definition.statCode());
         int statValue = stat == null ? 0 : stat.value();
         int level = skill == null ? 0 : skill.getLevel();
+        Optional<SkillOverride> override = definition.custom() ? Optional.empty() : system.getSkillOverride(character, definition.code());
+        int working = override.map(SkillOverride::level).orElse(level);
         int bonus = system.getSkillBonuses(character, definition, skill).stream().mapToInt(CheckRequest.Part::value).sum();
         Integer nextCost = progression == null || level >= MAX_LEVEL
                 ? null
@@ -348,8 +354,9 @@ public class SkillService {
         String blockedReason = progression == null ? null : progression.blockedReason(character, definition);
         boolean affordable = nextCost != null && blockedReason == null && points != null && points >= nextCost;
         return new SkillSheet.Row(definition.code(), definition.custom() ? skill.getId() : null,
-                displayName(definition, skill), level, statValue + level + bonus,
-                statName(definition.statCode(), stat), statValue, roleName, nextCost, affordable, bonus, blockedReason);
+                displayName(definition, skill), level, statValue + working + bonus,
+                statName(definition.statCode(), stat), statValue, roleName, nextCost, affordable, bonus, blockedReason,
+                override.map(SkillOverride::label).orElse(null));
     }
 
     private static String displayName(SkillDefinition definition, CharacterSkill skill) {

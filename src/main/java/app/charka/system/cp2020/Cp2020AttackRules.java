@@ -726,11 +726,12 @@ final class Cp2020AttackRules implements AttackRules {
     }
 
     private static int skillLevel(Character character, String code) {
-        return character.getSkills().stream()
+        int natural = character.getSkills().stream()
                 .filter(skill -> code.equals(skill.getSkillCode()))
                 .mapToInt(CharacterSkill::getLevel)
                 .findFirst()
                 .orElse(0);
+        return Cp2020Chips.skillLevel(character, code, natural);
     }
 
     static String category(Item weapon) {

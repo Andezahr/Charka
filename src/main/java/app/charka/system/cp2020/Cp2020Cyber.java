@@ -72,6 +72,9 @@ final class Cp2020Cyber {
     }
 
     static List<ItemAction> actions(Item item) {
+        if (Cp2020Chips.isChip(item)) {
+            return Cp2020Chips.actions(item);
+        }
         if (!isInstalled(item)) {
             return List.of(ItemAction.simple(INSTALL, "Установить", blockedReason(item)).withConfirm(CONFIRM));
         }
@@ -83,8 +86,8 @@ final class Cp2020Cyber {
         return actions;
     }
 
-    /** Почему нельзя установить; null — можно. Базовый модуль и место в слоях брони */
-    private static String blockedReason(Item item) {
+    /** Нет базового модуля: null — есть или не нужен */
+    static String requiresReason(Item item) {
         String requires = item.getProperties().get(Cp2020ItemTypes.REQUIRES);
         if (requires != null) {
             List<String> parents = Arrays.asList(requires.split("\\|"));
@@ -92,6 +95,18 @@ final class Cp2020Cyber {
             if (!present) {
                 return "Сначала установите: " + String.join(" или ", parents);
             }
+        }
+        return null;
+    }
+
+    /** Почему нельзя установить; null — можно. Базовый модуль, лимит чипов и место в слоях брони */
+    private static String blockedReason(Item item) {
+        String requires = requiresReason(item);
+        if (requires != null) {
+            return requires;
+        }
+        if (Cp2020Chips.isChip(item)) {
+            return Cp2020Chips.blockedReason(item);
         }
         String limb = Cp2020Cyberlimbs.blockedReason(item);
         if (limb != null) {
@@ -117,6 +132,7 @@ final class Cp2020Cyber {
         }
         return switch (action) {
             case INSTALL -> install(item, dice, health);
+            case Cp2020Chips.PRACTICED -> Cp2020Chips.markPracticed(item);
             case REPAIR -> {
                 if (Cp2020Cyberlimbs.isRepairable(item)) {
                     Cp2020Cyberlimbs.repair(item);
@@ -126,6 +142,10 @@ final class Cp2020Cyber {
                 yield item.getName() + ": отремонтирован, SP восстановлен";
             }
             default -> {
+                if (Cp2020Chips.isChip(item)) {
+                    item.getProperties().remove(Cp2020ItemTypes.WORN);
+                    yield item.getName() + ": вынут, навык снова свой";
+                }
                 List<String> withIt = Cp2020Cyberlimbs.detach(item);
                 item.getProperties().remove(Cp2020ItemTypes.WORN);
                 yield item.getName() + ": снят" + (withIt.isEmpty() ? "" : " вместе с " + String.join(", ", withIt))
@@ -146,7 +166,7 @@ final class Cp2020Cyber {
                 .orElseThrow(() -> new IllegalArgumentException("У персонажа нет счётчика характеристик: создайте его на вкладке «Счётчики»"));
         List<String> parts = new ArrayList<>();
         String where = Cp2020Cyberlimbs.attach(item);
-        parts.add(item.getName() + ": установлен" + (where != null ? " (" + where + ")" : ""));
+        parts.add(item.getName() + (Cp2020Chips.isChip(item) ? ": вставлен" : ": установлен") + (where != null ? " (" + where + ")" : ""));
         // HOMEBREW: снятое и поставленное обратно потери не бросает: книга говорит о потере за установку нового
         if (!item.getProperties().containsKey(Cp2020ItemTypes.HUMANITY_LOST)) {
             int lost = rollHumanity(item, parts, dice);
@@ -155,6 +175,9 @@ final class Cp2020Cyber {
         }
         surgery(item).ifPresent(surgery -> operate(surgery, owner, parts, dice, health));
         markInstalled(item);
+        if (Cp2020Chips.isChip(item)) {
+            parts.add(Cp2020Chips.installNote(item));
+        }
         warning(owner).ifPresent(parts::add);
         return String.join(". ", parts);
     }
@@ -164,7 +187,9 @@ final class Cp2020Cyber {
         if (!cost.toUpperCase().contains("D")) {
             // HOMEBREW: в таблице есть 0.5, а человечность целая: дробь вверх, иначе татуировки бесплатны
             int lost = (int) Math.ceil(Double.parseDouble(cost));
-            parts.add("Человечность −" + lost);
+            if (lost > 0) {
+                parts.add("Человечность −" + lost);
+            }
             return lost;
         }
         List<String> steps = new ArrayList<>();
@@ -223,6 +248,11 @@ final class Cp2020Cyber {
 
     private static int sum(Character character, String key) {
         return installed(character).mapToInt(item -> Cp2020WeaponActions.number(item, key)).sum();
+    }
+
+    /** INT по счётчику характеристик, без штрафа ран; нет счётчика — 0 */
+    static int intelligence(Character character) {
+        return stats(character).map(stats -> stats.getAttribute(Cp2020StatsStrategy.INT, Cp2020StatsStrategy.DEFAULT_STAT)).orElse(0);
     }
 
     /** Muscle Lace, Grafted Muscle: складываются (с. 76–79) */
@@ -364,12 +394,15 @@ final class Cp2020Cyber {
         if (item.getProperties().containsKey(Cp2020ItemTypes.STRENGTH)) {
             values.add("сила " + item.getProperties().get(Cp2020ItemTypes.STRENGTH));
         }
+        if (Cp2020Chips.isChip(item) && !Cp2020Chips.chipText(item).isEmpty()) {
+            values.add(Cp2020Chips.chipText(item));
+        }
         String limb = Cp2020Cyberlimbs.chipSuffix(item);
         if (!limb.isEmpty()) {
             values.add(limb);
         }
         // в названии уже есть прибавка: «Kerenzikov +1 · иниц. +1» было бы повтором
-        String name = item.getName().replaceAll(" \\+\\d$", "");
+        String name = Cp2020Chips.isChip(item) ? item.getName() : item.getName().replaceAll(" \\+\\d$", "");
         return values.isEmpty() ? name : name + " · " + String.join(" · ", values);
     }
 

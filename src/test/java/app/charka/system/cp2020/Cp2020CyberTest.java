@@ -18,6 +18,7 @@ import app.charka.repository.CampaignRepository;
 import app.charka.repository.CharacterRepository;
 import app.charka.service.CharacterService;
 import app.charka.service.ItemService;
+import app.charka.skill.SkillSheet;
 import app.charka.service.counter.HealthCounterService;
 import app.charka.system.GameSystemRegistry;
 import jakarta.persistence.EntityManager;
@@ -625,6 +626,117 @@ class Cp2020CyberTest {
 
             assertThat(result.steps()).anyMatch(step -> step.contains("Киберудар 1D6×3 → 6"));
             assertThat(Cp2020Melee.brawl(owner())).extracting(source -> source.name()).asString().contains("киберудар 1D6×3");
+        }
+    }
+
+    @Nested
+    @DisplayName("Чипы навыков (с. 82–83)")
+    class Chips {
+
+        @Autowired private app.charka.skill.SkillService skillService;
+        @Autowired private app.charka.service.campaign.CampaignTimelineService timelineService;
+
+        private Item chip(String key) {
+            Item item = itemService.addFromCatalog(owner().getInventories().get(0).getId(), key, 1);
+            flush();
+            return item;
+        }
+
+        private String plug(Item chip) {
+            String result = itemService.performAction(owner.getId(), chip.getId(), "INSTALL", Map.of());
+            flush();
+            return result;
+        }
+
+        private java.util.Optional<app.charka.skill.SkillOverride> override(String skill) {
+            return registry.forCharacter(owner()).getSkillOverride(owner(), skill);
+        }
+
+        private void socket() {
+            install("Neural Processor");
+            install("Chipware Socket");
+        }
+
+        @Test
+        @DisplayName("Справочник: цена за уровень × уровень, строки проходят проверку полей")
+        void catalog() {
+            assertThat(Cp2020Chips.CATALOG).extracting(CatalogItem::key).doesNotHaveDuplicates();
+            assertThat(Cp2020Chips.CATALOG).allSatisfy(entry ->
+                    assertThat(Cp2020ItemTypes.CYBER_TYPE.normalize(entry.properties())).isEqualTo(entry.properties()));
+            assertThat(Cp2020Chips.CATALOG).filteredOn(entry -> entry.key().equals("chip_karate_3"))
+                    .singleElement().satisfies(entry -> assertThat(entry.cost()).isEqualTo(1050));
+            assertThat(Cp2020Chips.CATALOG).filteredOn(entry -> entry.key().equals("chip_heavy_weapons_2"))
+                    .singleElement().satisfies(entry -> assertThat(entry.cost()).isEqualTo(800));
+        }
+
+        @Test
+        @DisplayName("Без разъёма не вставить; вставка — без хирургии и потери человечности")
+        void socketNeeded() {
+            Item math = chip("chip_mathematics_2");
+            assertThatThrownBy(() -> plug(math)).hasMessageContaining("Сначала установите");
+
+            socket();
+            int wounds = counter(Cp2020HealthStrategy.TYPE).getValue();
+            int loss = humanityLoss();
+            assertThat(plug(math)).contains("Работает сразу на +2").doesNotContain("Хирургия").doesNotContain("Человечность");
+            assertThat(counter(Cp2020HealthStrategy.TYPE).getValue()).isEqualTo(wounds);
+            assertThat(humanityLoss()).isEqualTo(loss);
+        }
+
+        @Test
+        @DisplayName("Чип памяти работает сразу и перекрывает природный уровень, даже больший; вынутый — навык снова свой")
+        void overrides() {
+            socket();
+            skillService.updateLevels(owner.getId(), Map.of("mathematics", 5), Map.of());
+            flush();
+            Item math = chip("chip_mathematics_2");
+            plug(math);
+
+            assertThat(override("mathematics")).hasValueSatisfying(chip -> assertThat(chip.level()).isEqualTo(2));
+            SkillSheet.Row row = skillService.getSheet(owner.getId()).groups().stream()
+                    .flatMap(group -> group.rows().stream()).filter(r -> "mathematics".equals(r.code())).findFirst().orElseThrow();
+            assertThat(row.level()).isEqualTo(5);
+            assertThat(row.override()).isEqualTo("чип +2");
+            assertThat(row.total()).isEqualTo(Cp2020StatsStrategy.DEFAULT_STAT + 2);
+
+            itemService.performAction(owner.getId(), math.getId(), "REMOVE", Map.of());
+            flush();
+            assertThat(override("mathematics")).isEmpty();
+        }
+
+        @Test
+        @DisplayName("Рефлекторный чип обкатывается: 2 дня на уровень, «Обкатан» — сразу весь")
+        void practice() {
+            socket();
+            Item karate = chip("chip_karate_3");
+            assertThat(plug(karate)).contains("Обкатка: 6 дн.");
+            assertThat(override("karate")).isEmpty();
+
+            timelineService.proceedDate(campaign.getId(), 4, "Тренировки");
+            flush();
+            assertThat(override("karate")).hasValueSatisfying(chip -> assertThat(chip.level()).isEqualTo(2));
+            assertThat(registry.forCharacter(owner()).getItemActions(itemService.findById(karate.getId())))
+                    .extracting(ItemAction::code).contains("PRACTICED");
+
+            itemService.performAction(owner.getId(), karate.getId(), "PRACTICED", Map.of());
+            flush();
+            assertThat(override("karate")).hasValueSatisfying(chip -> assertThat(chip.level()).isEqualTo(3));
+        }
+
+        @Test
+        @DisplayName("Чипов работает не больше INT")
+        void limit() {
+            socket();
+            Counter stats = counter(Cp2020StatsStrategy.TYPE);
+            stats.getAttributes().put(Cp2020StatsStrategy.INT, 2);
+            flush();
+
+            plug(chip("chip_history_1"));
+            plug(chip("chip_physics_1"));
+            Item third = chip("chip_botany_1");
+            assertThat(registry.forCharacter(owner()).getItemActions(itemService.findById(third.getId())).get(0).unavailable())
+                    .contains("INT 2");
+            assertThatThrownBy(() -> plug(third)).hasMessageContaining("INT 2");
         }
     }
 }
