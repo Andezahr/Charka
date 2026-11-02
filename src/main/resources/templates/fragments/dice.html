@@ -88,6 +88,14 @@
       <span class="amount" th:text="${r.total}">8</span>
     </div>
   </div>
+  <!-- Листалка лога: только там, где контроллер дал страницу (кампания) -->
+  <nav th:if="${rollPage != null and rollPage.totalPages > 1}" class="card-body pager" aria-label="Страницы лога бросков">
+    <a th:if="${rollPage.hasPrevious()}" class="btn btn-sm btn-ghost"
+       th:href="@{${base}(rolls=${rollPage.number - 1})} + '#dice'">← Новее</a>
+    <span class="pager-info" th:text="${rollPage.number + 1} + ' из ' + ${rollPage.totalPages}">1 из 3</span>
+    <a th:if="${rollPage.hasNext()}" class="btn btn-sm btn-ghost"
+       th:href="@{${base}(rolls=${rollPage.number + 1})} + '#dice'">Старее →</a>
+  </nav>
 </section>
 
 </body>

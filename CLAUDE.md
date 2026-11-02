@@ -35,7 +35,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 908 тестов, на 2026-11-02 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 910 тестов, на 2026-11-02 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -116,7 +116,7 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 |---|---|---|
 | GET | `/` | список персонажей и кампаний |
 | POST | `/campaigns` | `name`, `system`, `startDate?` → новая кампания |
-| GET | `/campaign/{id}` | страница кампании |
+| GET | `/campaign/{id}` | страница кампании; `?rolls=N` — страница лога бросков (по 20, новые сверху) |
 | POST | `/campaign/{id}/characters` | добавить персонажа (инвентарь «Backpack» + счётчики по умолчанию системы) |
 | GET, POST | `/campaign/{id}/characters/new`, POST `.../roll`, `.../background` (лайфпас) | мастер создания по правилам системы (`CharacterCreation`; CP2020: очки, статы, роль и 40 карьерных очков, хобби, стартовые деньги) |
 | POST | `/campaign/{id}/session` | новая игровая сессия: потраченная Удача возвращается (`GameSystem.restoreLuck`) |

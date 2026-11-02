@@ -24,6 +24,9 @@ import java.util.stream.Collectors;
 @RequestMapping("/campaign/{campaignId}")
 public class CampaignController {
 
+    /** Бросков на странице лога */
+    private static final int ROLLS_PER_PAGE = 20;
+
     private final CampaignService campaignService;
     private final CharacterService characterService;
     private final GameSystemRegistry systemRegistry;
@@ -43,7 +46,7 @@ public class CampaignController {
     }
 
     @GetMapping
-    public String campaignPage(@PathVariable Long campaignId, Model model) {
+    public String campaignPage(@PathVariable Long campaignId, @RequestParam(defaultValue = "0") int rolls, Model model) {
         Campaign campaign = campaignService.getById(campaignId);
 
         LocalDate currentDate = campaign.getCurrentDate();
@@ -59,7 +62,9 @@ public class CampaignController {
                 .collect(Collectors.toMap(Character::getId, gameSystem::getCharacterBrief)));
         model.addAttribute("quickDice", gameSystem.getQuickDice());
         model.addAttribute("difficultyPresets", gameSystem.getCheckResolver().getDifficultyPresets());
-        model.addAttribute("recentRolls", diceService.recentForCampaign(campaignId, 20));
+        org.springframework.data.domain.Page<app.charka.model.RollLog> rollPage = diceService.pageForCampaign(campaignId, rolls, ROLLS_PER_PAGE);
+        model.addAttribute("recentRolls", rollPage.getContent());
+        model.addAttribute("rollPage", rollPage);
         model.addAttribute("awardCounters", awardService.awardableCounters(campaignId));
         model.addAttribute("hasCreation", creations.stream().anyMatch(creation -> creation.getSystemCode().equals(campaign.getSystem())));
 

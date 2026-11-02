@@ -1166,3 +1166,7 @@ html:has(.is-editing) {
 .gm-row.is-out { opacity: 0.55; }
 .gm-stats span { font-variant-numeric: tabular-nums; }
 .gm-side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+
+/* Листалка лога бросков */
+.pager { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.pager-info { color: var(--text-soft); font-size: 0.85rem; margin: 0 auto; }

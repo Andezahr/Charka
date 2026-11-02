@@ -82,6 +82,21 @@ public class DiceService {
     }
 
     /**
+     * Страница лога бросков кампании, новые сверху; номер страницы за пределами — последняя существующая.
+     *
+     * @param page с нуля
+     */
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<RollLog> pageForCampaign(Long campaignId, int page, int size) {
+        org.springframework.data.domain.Page<RollLog> result =
+                rollLogRepository.findPageByCampaignIdOrderByCreatedAtDescIdDesc(campaignId, PageRequest.of(Math.max(0, page), size));
+        if (result.getContent().isEmpty() && result.getTotalPages() > 0 && page >= result.getTotalPages()) {
+            return rollLogRepository.findPageByCampaignIdOrderByCreatedAtDescIdDesc(campaignId, PageRequest.of(result.getTotalPages() - 1, size));
+        }
+        return result;
+    }
+
+    /**
      * Последние броски персонажа, новые сверху.
      */
     @Transactional(readOnly = true)
