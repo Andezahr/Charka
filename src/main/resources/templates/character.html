@@ -197,7 +197,7 @@
             <div class="row-main">
               <div class="row-title" th:text="${effect.name}">Boost</div>
               <div class="row-meta">
-                <span th:if="${effect.stat != null}" class="chip" th:text="(${effect.modifier >= 0} ? '+' : '') + ${effect.modifier} + ' ' + ${#strings.toUpperCase(effect.stat)}">+1 INT</span>
+                <span th:if="${effect.stat != null}" class="chip" th:text="(${effect.modifier >= 0} ? '+' : '') + ${effect.modifier} + ' ' + (${effect.stat == '*'} ? 'ко всем' : ${#strings.toUpperCase(effect.stat)})">+1 INT</span>
                 <span th:text="'ещё ' + ${effect.remainingLabel}">ещё 4 ч</span>
                 <span th:if="${effect.note != null}" th:text="${effect.note}">заметка</span>
               </div>
@@ -223,6 +223,7 @@
               <input type="text" name="name" class="grow" placeholder="Название" required autocomplete="off">
               <select th:unless="${#lists.isEmpty(effectStats)}" name="stat" aria-label="Какой стат">
                 <option value="">Без стата</option>
+                <option value="*">Все статы</option>
                 <option th:each="s : ${effectStats}" th:value="${s.code}" th:text="${s.name}">REF</option>
               </select>
               <input type="number" name="modifier" class="narrow" value="0" aria-label="Правка стата" title="Правка стата">

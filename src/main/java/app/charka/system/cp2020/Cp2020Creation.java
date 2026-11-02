@@ -136,6 +136,7 @@ public class Cp2020Creation implements CharacterCreation {
     private final NoteService noteService;
     private final NoteCategoryService noteCategoryService;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+    private final app.charka.service.ContactService contactService;
 
     @Override
     public String getSystemCode() {
@@ -347,6 +348,11 @@ public class Cp2020Creation implements CharacterCreation {
                 money.setAmount(effect.money());
                 moneyService.create(character.getId(), money);
             }
+        }
+        // Друзья, враги и любовь из событий — контактами: им за столом нужно отношение и долги, а не только текст
+        for (Cp2020Lifepath.Person person : lifepath.people()) {
+            contactService.save(character.getId(), null, person.name(), null,
+                    app.charka.model.Contact.Relation.valueOf(person.relation()), null, person.note());
         }
         String language = params.getOrDefault("nativeLanguage", "");
         lifepath.languages().stream()

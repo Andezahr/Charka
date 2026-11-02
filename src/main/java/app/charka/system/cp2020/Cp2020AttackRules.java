@@ -152,6 +152,11 @@ final class Cp2020AttackRules implements AttackRules {
         steps.addAll(blast.steps());
         List<AttackOutcome.TargetedHit> hits = new ArrayList<>();
         context.targets().forEach(target -> hits.add(new AttackOutcome.TargetedHit(target, Cp2020AreaAttacks.hit(blast, dice))));
+        // несмертельный газ: спасбросок и штраф на лист каждой цели
+        String effect = blast.data().get(Cp2020ItemTypes.EFFECT);
+        if (Cp2020Gas.isGas(effect)) {
+            context.targets().forEach(target -> steps.add(Cp2020Gas.apply(target, effect, dice)));
+        }
         // цель без листа названа по имени; если никого не выбрали, урон только брошен
         boolean named = context.request().targetName() != null && !context.request().targetName().isBlank();
         if (hits.isEmpty() && named) {

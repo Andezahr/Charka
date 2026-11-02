@@ -42,7 +42,7 @@ public class TimedEffectService {
     public String create(Long characterId, String name, String stat, int modifier, String duration,
                          EffectTemplate.DurationUnit unit, String note) {
         Character character = character(characterId);
-        if (stat != null && !stat.isBlank() && !systemRegistry.forCharacter(character).getCurrentStats(character).containsKey(stat)) {
+        if (stat != null && !stat.isBlank() && !TimedEffects.ALL_STATS.equals(stat) && !systemRegistry.forCharacter(character).getCurrentStats(character).containsKey(stat)) {
             throw new IllegalArgumentException("Нет такого стата: " + stat);
         }
         return describe(TimedEffects.add(character, name, stat, modifier, duration, unit, note, diceRoller));

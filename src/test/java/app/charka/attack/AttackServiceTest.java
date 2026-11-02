@@ -178,6 +178,26 @@ class AttackServiceTest {
     }
 
     @Test
+    @DisplayName("Слезоточивый газ: спасбросок провален — REF −2 на листе цели на 1D6+1 минуту")
+    void teargas() {
+        Item grenade = fromCatalog("grenade_gas_teargas", 1);
+        // бросок попадания 9; спасбросок 9 > BODY 6 — провал; срок 3 + 1 = 4 минуты
+        when(dice.roll(anyInt())).thenReturn(9, 9, 3);
+
+        AttackResult result = attackService.attack(shooter.getId(), grenade.getId(),
+                new AttackRequest(List.of(victim.getId()), null, 5, null, null, Set.of(), 0, "THROW", 0, 0));
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(result.steps()).anyMatch(step -> step.contains("провал, REF -2"));
+        assertThat(characterRepository.findById(victim.getId()).orElseThrow().getEffects()).singleElement()
+                .satisfies(effect -> {
+                    assertThat(effect.getModifier()).isEqualTo(-2);
+                    assertThat(effect.getRemainingLabel()).isEqualTo("≈4 мин");
+                });
+    }
+
+    @Test
     @DisplayName("Брошенная граната попала: задеты выбранные цели, последняя граната ушла из инвентаря")
     void grenadeHits() {
         Item grenade = fromCatalog("grenade_fragmentation", 1);

@@ -124,6 +124,26 @@ class Cp2020DrugsTest {
         }
 
         @Test
+        @DisplayName("Speedheal включает ускоренное лечение и вешает отходняк −1 REF на 7 дней")
+        void speedheal() {
+            Long inventoryId = reload().getInventories().getFirst().getId();
+            Item speedheal = itemService.addFromCatalog(inventoryId, "drug-speedheal", 1);
+            flush();
+
+            String result = itemService.performAction(user.getId(), speedheal.getId(), Cp2020Drugs.USE, Map.of());
+            flush();
+
+            assertThat(result).contains("лечение ускорено").contains("REF −1");
+            Character character = reload();
+            assertThat(character.getCounters()).filteredOn(c -> Cp2020HealthStrategy.TYPE.equals(c.getType()))
+                    .singleElement().satisfies(health -> assertThat(health.getFlag(Cp2020HealthStrategy.SPEEDHEAL)).isTrue());
+            assertThat(character.getEffects()).anySatisfy(effect -> {
+                assertThat(effect.getUnit()).isEqualTo(TimedEffect.Unit.DAY);
+                assertThat(effect.getModifier()).isEqualTo(-1);
+            });
+        }
+
+        @Test
         @DisplayName("Последняя доза убирает предмет")
         void lastDose() {
             Long inventoryId = reload().getInventories().getFirst().getId();

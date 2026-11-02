@@ -96,13 +96,33 @@ public final class Cp2020Drugs {
                 .orElseThrow(() -> new IllegalArgumentException("Неизвестный препарат"));
         Character owner = item.getInventory().getCharacter();
         var effect = TimedEffects.add(owner, template, dice);
+        String extra = template.code().equals("SPEEDHEAL") ? speedheal(owner, dice) : "";
         int left = (item.getQuantity() == null ? 1 : item.getQuantity()) - 1;
         if (left <= 0) {
             item.getInventory().getContent().removeIf(candidate -> candidate == item);
         } else {
             item.setQuantity(left);
         }
-        return template.name() + " действует " + effect.getRemainingLabel()
+        return template.name() + " действует " + effect.getRemainingLabel() + extra
                 + (left > 0 ? ", осталось " + left : ", это была последняя доза");
+    }
+
+    /**
+     * Speedheal (с. 116, 123): лечение быстрее — флаг на счётчике здоровья; побочно −1D6/3 REF на неделю.
+     * HOMEBREW: отходняк считается с момента приёма, книга говорит «after use».
+     */
+    private static String speedheal(Character owner, DiceRoller dice) {
+        StringBuilder text = new StringBuilder();
+        owner.getCounters().stream()
+                .filter(counter -> Cp2020HealthStrategy.TYPE.equals(counter.getType()))
+                .findFirst()
+                .ifPresent(health -> {
+                    health.getAttributes().put(Cp2020HealthStrategy.SPEEDHEAL, 1);
+                    text.append("; лечение ускорено");
+                });
+        int penalty = Math.max(1, dice.roll(6) / 3);
+        TimedEffects.add(owner, "Отходняк Speedheal", Cp2020StatsStrategy.REF, -penalty, "7", DurationUnit.DAY,
+                "Побочное действие Speedheal", dice);
+        return text + "; REF −" + penalty + " на неделю";
     }
 }

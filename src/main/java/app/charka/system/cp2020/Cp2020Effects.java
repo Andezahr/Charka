@@ -26,7 +26,11 @@ final class Cp2020Effects {
             new Option(STUN, "Оглушающий: спасбросок −5"),
             new Option(DAZZLE, "Ослепляющий: 4 раунда"),
             new Option(SONIC, "Звуковой: глухота 4 раунда"),
-            new Option(GAS, "Смертельный газ: спасбросок, два раунда"));
+            new Option(GAS, "Смертельный газ: спасбросок, два раунда"),
+            new Option(Cp2020Gas.HALLUCINOGEN, "Галлюциноген: −4 INT"),
+            new Option(Cp2020Gas.NAUSEA, "Тошнота: −4 REF"),
+            new Option(Cp2020Gas.TEARGAS, "Слезоточивый: −2 REF"),
+            new Option(Cp2020Gas.SLEEP, "Снотворный: сон"));
 
     /** С. 63: «−5 to Stun» */
     private static final int STUN_GRENADE_SAVE = -5;

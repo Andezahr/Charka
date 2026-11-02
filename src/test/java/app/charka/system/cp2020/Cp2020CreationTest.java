@@ -192,7 +192,8 @@ class Cp2020CreationTest {
                         new Cp2020Lifepath.Section("События, возраст 18", java.util.List.of("17: Ничего", "18: Удача: 300 eb."))),
                 java.util.List.of(new Cp2020Lifepath.Language("русский", "slavic")),
                 java.util.List.of(new Cp2020Lifepath.Effect("Удачное дело", null, 0, 300),
-                        new Cp2020Lifepath.Effect("Болезнь", Cp2020StatsStrategy.REF, -1, 0)));
+                        new Cp2020Lifepath.Effect("Болезнь", Cp2020StatsStrategy.REF, -1, 0)),
+                java.util.List.of(new Cp2020Lifepath.Person("ENEMY", "Враг из прошлого", "Враг (мужчина, бывший друг): увёл подругу")));
         Map<String, String> params = solo();
         params.put("lifepath", objectMapper.writeValueAsString(lifepath));
         params.put("nativeLanguage", "русский|slavic");
@@ -212,5 +213,9 @@ class Cp2020CreationTest {
         assertThat(loaded.getMoneyList()).extracting(Money::getAmount).containsExactlyInAnyOrder(6000L, 300L);
         Counter stats = loaded.getCounters().stream().filter(c -> Cp2020StatsStrategy.TYPE.equals(c.getType())).findFirst().orElseThrow();
         assertThat(stats.getAttribute(Cp2020StatsStrategy.REF, 0)).isEqualTo(9);
+        assertThat(loaded.getContacts()).singleElement().satisfies(contact -> {
+            assertThat(contact.getRelation()).isEqualTo(app.charka.model.Contact.Relation.ENEMY);
+            assertThat(contact.getNote()).contains("увёл подругу");
+        });
     }
 }

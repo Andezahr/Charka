@@ -15,6 +15,9 @@ import java.util.List;
  */
 public final class TimedEffects {
 
+    /** Код «все статы» в {@link TimedEffect#getStat()}: снотворное, усталость */
+    public static final String ALL_STATS = "*";
+
     private TimedEffects() {
     }
 
@@ -24,7 +27,7 @@ public final class TimedEffects {
             return 0;
         }
         return character.getEffects().stream()
-                .filter(effect -> stat.equals(effect.getStat()))
+                .filter(effect -> stat.equals(effect.getStat()) || ALL_STATS.equals(effect.getStat()))
                 .mapToInt(TimedEffect::getModifier)
                 .sum();
     }

@@ -86,10 +86,10 @@ public final class Cp2020Weapons {
             withProperty(grenade("Stun", "Stun −5", "Спасбросок от оглушения с −5"), Cp2020ItemTypes.EFFECT, Cp2020Effects.STUN),
             withProperty(grenade("Dazzle", "Blind 4", "Слепота на 4 хода"), Cp2020ItemTypes.EFFECT, Cp2020Effects.DAZZLE),
             withProperty(grenade("Sonic", "Deaf 4", "Глухота на 4 хода"), Cp2020ItemTypes.EFFECT, Cp2020Effects.SONIC),
-            gas("Hallucinogen", "−4 INT", "Галлюциноген: при спасброске −2 INT"),
-            gas("Nausea", "−4 REF", "Тошнота: при спасброске −2 REF"),
-            gas("Teargas", "−2 REF", "Слезоточивый: при спасброске −1 REF"),
-            gas("Sleep", "Сон", "Снотворный: при спасброске сонливость и −2 ко всем статам"),
+            gas("Hallucinogen", "−4 INT", "Галлюциноген: при спасброске −2 INT", Cp2020Gas.HALLUCINOGEN),
+            gas("Nausea", "−4 REF", "Тошнота: при спасброске −2 REF", Cp2020Gas.NAUSEA),
+            gas("Teargas", "−2 REF", "Слезоточивый: при спасброске −1 REF", Cp2020Gas.TEARGAS),
+            gas("Sleep", "Сон", "Снотворный: при спасброске сонливость и −2 ко всем статам", Cp2020Gas.SLEEP),
             deadlyGas("Biotoxin I", "4D6"),
             deadlyGas("Biotoxin II", "8D6"),
             deadlyGas("Nerve", "8D10"),
@@ -199,8 +199,9 @@ public final class Cp2020Weapons {
     }
 
     /** Газ (с. 110): сразу все в 3 м, а не 5 м обычной гранаты */
-    private static CatalogItem gas(String kind, String damage, String description) {
-        return withProperty(grenade("Gas, " + kind, damage, description + ". " + GAS_NOTE + ". Штраф ведёт мастер"), Cp2020ItemTypes.AREA, "3");
+    private static CatalogItem gas(String kind, String damage, String description, String effect) {
+        return withProperty(withProperty(grenade("Gas, " + kind, damage, description + ". " + GAS_NOTE),
+                Cp2020ItemTypes.AREA, "3"), Cp2020ItemTypes.EFFECT, effect);
     }
 
     private static CatalogItem deadlyGas(String kind, String damage) {

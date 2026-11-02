@@ -29,7 +29,23 @@ final class Cp2020Lifepath {
     record Effect(String label, String stat, int delta, long money) {
     }
 
-    record Result(int age, List<Section> sections, List<Language> languages, List<Effect> effects) {
+    /**
+     * Человек из событий лайфпаса: при создании персонажа становится контактом.
+     *
+     * @param relation код {@code Contact.Relation}: FRIEND, ENEMY, LOVER
+     */
+    record Person(String relation, String name, String note) {
+    }
+
+    record Result(int age, List<Section> sections, List<Language> languages, List<Effect> effects, List<Person> people) {
+
+        Result {
+            people = people == null ? List.of() : List.copyOf(people);
+        }
+
+        Result(int age, List<Section> sections, List<Language> languages, List<Effect> effects) {
+            this(age, sections, languages, effects, List.of());
+        }
     }
 
     private static final String[] CLOTHES = {"байкерская кожа", "джинсы", "корпоративные костюмы", "комбинезоны", "мини-юбки",
@@ -150,6 +166,7 @@ final class Cp2020Lifepath {
         int years = age != null ? Math.clamp(age, MIN_AGE, MAX_AGE) : dice.roll(6) + dice.roll(6) + MIN_AGE;
         List<Section> sections = new ArrayList<>();
         List<Effect> effects = new ArrayList<>();
+        List<Person> people = new ArrayList<>();
 
         sections.add(new Section("Стиль", List.of("Одежда: " + pick(CLOTHES, dice), "Причёска: " + pick(HAIR, dice),
                 "Особенность: " + pick(AFFECTATIONS, dice))));
@@ -191,23 +208,30 @@ final class Cp2020Lifepath {
 
         List<String> events = new ArrayList<>();
         for (int year = MIN_AGE + 1; year <= years; year++) {
-            events.add(year + ": " + event(dice, effects));
+            events.add(year + ": " + event(dice, effects, people));
         }
         sections.add(new Section("События, возраст " + years, events.isEmpty() ? List.of("Ничего: ровно 16") : events));
-        return new Result(years, sections, origin.languages(), effects);
+        return new Result(years, sections, origin.languages(), effects, people);
     }
 
     /** Событие года, с. 36: 1–3 беды и удачи, 4–6 друзья и враги, 7–8 роман, 9–10 ничего */
-    private static String event(DiceRoller dice, List<Effect> effects) {
+    private static String event(DiceRoller dice, List<Effect> effects, List<Person> people) {
         int roll = dice.d10();
         if (roll <= 3) {
             return dice.d10() % 2 == 0 ? lucky(dice, effects) : disaster(dice, effects) + " Решил: " + pick(RESPONSE, dice) + ".";
         }
         if (roll <= 6) {
-            return dice.d10() <= 5 ? friend(dice) : enemy(dice);
+            boolean friend = dice.d10() <= 5;
+            String text = friend ? friend(dice) : enemy(dice);
+            people.add(new Person(friend ? "FRIEND" : "ENEMY", friend ? "Друг из прошлого" : "Враг из прошлого", text));
+            return text;
         }
         if (roll <= 8) {
-            return romance(dice);
+            String text = romance(dice);
+            if (!text.endsWith("интрижки.")) {
+                people.add(new Person("LOVER", "Любовь из прошлого", text));
+            }
+            return text;
         }
         return "Ничего не случилось.";
     }
