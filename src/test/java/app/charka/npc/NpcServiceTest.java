@@ -141,7 +141,7 @@ class NpcServiceTest {
         assertThat(copy.getSkills()).hasSize(10);
         assertThat(counter(copy, Cp2020StatsStrategy.TYPE).getAttributes()).containsEntry("ref", 8);
         assertThat(counter(copy, Cp2020HealthStrategy.TYPE).getValue()).isZero();
-        assertThat(copy.getCounters()).hasSize(4);
+        assertThat(copy.getCounters()).hasSize(5);
         assertThat(items(copy)).hasSize(2);
         assertThat(items(copy)).allSatisfy(item -> assertThat(item.getProperties()).doesNotContainKey(Cp2020ItemTypes.JAMMED));
         Character original = characterRepository.findById(source.getId()).orElseThrow();

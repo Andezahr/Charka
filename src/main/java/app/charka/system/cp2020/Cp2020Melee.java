@@ -196,6 +196,7 @@ final class Cp2020Melee {
         if (request.options().contains(DODGING)) {
             parts.add(new CheckRequest.Part("Цель уклоняется", DODGE_PENALTY));
         }
+        Cp2020Facedown.penalty(context).ifPresent(parts::add);
         Set<String> others = new HashSet<>(request.options());
         others.removeIf(Cp2020Melee::isDefense);
         parts.addAll(Cp2020AttackModifiers.parts(others, 0));

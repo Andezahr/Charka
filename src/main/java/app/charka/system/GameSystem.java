@@ -300,4 +300,27 @@ public interface GameSystem {
     default java.util.Optional<app.charka.skill.SkillOverride> getSkillOverride(Character character, String skillCode) {
         return java.util.Optional.empty();
     }
+
+    /**
+     * Противостояния в трекере боя: участник против другого участника. Пусто — кнопок нет.
+     */
+    default List<app.charka.encounter.CombatContest> getCombatContests() {
+        return List.of();
+    }
+
+    /**
+     * Из чего складывается бросок участника в противостоянии.
+     *
+     * @throws IllegalArgumentException если такого противостояния нет
+     */
+    default app.charka.check.CheckRequest getContestRequest(String code, Character character) {
+        throw new IllegalArgumentException("Такого противостояния нет: " + code);
+    }
+
+    /**
+     * Что остаётся на проигравшем до конца боя или пока мастер не снимет: название эффекта; null — ничего.
+     */
+    default String getContestLoserEffect(String code, Character winner) {
+        return null;
+    }
 }

@@ -4,6 +4,8 @@ import app.charka.attack.AttackForm;
 import app.charka.attack.AttackRules;
 import app.charka.attack.AttackService;
 import app.charka.attack.AttackSource;
+import app.charka.check.CheckService;
+import app.charka.check.OpposedCheckResult;
 import app.charka.exception.CharacterNotFoundException;
 import app.charka.exception.NotFoundException;
 import app.charka.model.Campaign;
@@ -56,6 +58,7 @@ public class EncounterService {
     private final HealthCounterService healthCounterService;
     private final AttackService attackService;
     private final SkillService skillService;
+    private final CheckService checkService;
 
     /**
      * Раунд идущего боя кампании; null — боя нет.
@@ -373,6 +376,43 @@ public class EncounterService {
         return skill.startsWith(CUSTOM_SKILL)
                 ? skillService.check(character.getId(), null, Long.valueOf(skill.substring(CUSTOM_SKILL.length())), modifier, difficulty)
                 : skillService.check(character.getId(), skill, null, modifier, difficulty);
+    }
+
+    /**
+     * Противостояние двух участников (CP2020: Facedown). Равенство — ничего; у проигравшего остаётся эффект системы.
+     *
+     * @param targetId персонаж противника, участник того же боя
+     * @throws IllegalArgumentException если противостояния нет в системе или противник тот же
+     */
+    @Transactional
+    public OpposedCheckResult contest(Long campaignId, Long participantId, String code, Long targetId) {
+        EncounterParticipant initiator = participant(campaignId, participantId);
+        EncounterParticipant target = encounter(campaignId).getParticipants().stream()
+                .filter(candidate -> candidate.getCharacter().getId().equals(targetId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Противника нет в бою"));
+        GameSystem system = systemRegistry.forCharacter(initiator.getCharacter());
+        if (system.getCombatContests().stream().noneMatch(contest -> contest.code().equals(code))) {
+            throw new IllegalArgumentException("Такого противостояния нет: " + code);
+        }
+        OpposedCheckResult result = checkService.checkOpposed(initiator.getCharacter(), system.getContestRequest(code, initiator.getCharacter()),
+                target.getCharacter(), null, system.getContestRequest(code, target.getCharacter()));
+        if (result.initiator().result().total() == result.opponent().result().total()
+                || result.winner() == OpposedCheckResult.Winner.NONE) {
+            return result;
+        }
+        boolean initiatorWon = result.winner() == OpposedCheckResult.Winner.INITIATOR;
+        EncounterParticipant winner = initiatorWon ? initiator : target;
+        EncounterParticipant loser = initiatorWon ? target : initiator;
+        String label = system.getContestLoserEffect(code, winner.getCharacter());
+        if (label != null && loser.getEffects().stream().noneMatch(effect -> effect.getLabel().equals(label))) {
+            CombatEffect effect = new CombatEffect();
+            effect.setParticipant(loser);
+            effect.setLabel(label);
+            effect.setRoundsLeft(CombatEffect.UNTIL_REMOVED);
+            loser.getEffects().add(effect);
+        }
+        return result;
     }
 
     /**

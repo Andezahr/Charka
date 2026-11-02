@@ -85,7 +85,7 @@ public class Cp2020System implements GameSystem {
 
     @Override
     public List<String> getDefaultCounterTypes() {
-        return List.of(Cp2020StatsStrategy.TYPE, Cp2020ArmorStrategy.TYPE, Cp2020HealthStrategy.TYPE, Cp2020IpStrategy.TYPE);
+        return List.of(Cp2020StatsStrategy.TYPE, Cp2020ArmorStrategy.TYPE, Cp2020HealthStrategy.TYPE, Cp2020IpStrategy.TYPE, Cp2020RepStrategy.TYPE);
     }
 
     @Override
@@ -319,6 +319,24 @@ public class Cp2020System implements GameSystem {
         if (campaign.getCharacters() != null) {
             campaign.getCharacters().forEach(character -> Cp2020Chips.practice(character, days));
         }
+    }
+
+    @Override
+    public List<app.charka.encounter.CombatContest> getCombatContests() {
+        return List.of(Cp2020Facedown.CONTEST);
+    }
+
+    @Override
+    public app.charka.check.CheckRequest getContestRequest(String code, Character character) {
+        if (!Cp2020Facedown.CODE.equals(code)) {
+            return GameSystem.super.getContestRequest(code, character);
+        }
+        return Cp2020Facedown.request(character, getCurrentStats(character));
+    }
+
+    @Override
+    public String getContestLoserEffect(String code, Character winner) {
+        return Cp2020Facedown.CODE.equals(code) ? Cp2020Facedown.loserEffect(winner) : null;
     }
 
     @Override

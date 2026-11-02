@@ -106,7 +106,7 @@ final class Cp2020AttackRules implements AttackRules {
         if (targets.size() > 1) {
             throw new IllegalArgumentException("Такой режим огня — только по одной цели");
         }
-        CheckRequest toHit = toHit(context.attacker(), weapon, request, context.stats(context.attacker()));
+        CheckRequest toHit = Cp2020Facedown.withPenalty(toHit(context.attacker(), weapon, request, context.stats(context.attacker())), context);
         return new AttackPlan(title, List.of(new AttackPlan.PlannedCheck(toHit, context.attacker(), null, null)), null);
     }
 

@@ -8,8 +8,10 @@ import app.charka.model.Campaign;
 import app.charka.model.counters.strategy.health.HealthEvent;
 import app.charka.service.campaign.CampaignService;
 import app.charka.skill.SkillCheck;
+import app.charka.check.OpposedCheckResult;
 import app.charka.system.GameSystemRegistry;
 import lombok.RequiredArgsConstructor;
+import java.util.ArrayList;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -49,6 +51,7 @@ public class EncounterController {
             model.addAttribute("view", view.get());
             model.addAttribute("recentRolls", diceService.recentForCampaign(campaignId, JOURNAL_SIZE));
             model.addAttribute("difficultyPresets", systemRegistry.get(campaign.getSystem()).getCheckResolver().getDifficultyPresets());
+            model.addAttribute("contests", systemRegistry.get(campaign.getSystem()).getCombatContests());
         } else {
             model.addAttribute("candidates", encounterService.candidates(campaignId));
         }
@@ -133,6 +136,29 @@ public class EncounterController {
             SkillCheck check = encounterService.check(campaignId, participantId, skill, difficulty, modifier);
             redirectAttributes.addFlashAttribute("combatResult", new AttackResult(check.label(), check.result().outcome(),
                     !Boolean.FALSE.equals(check.result().success()), check.result().steps()));
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("encounterError", e.getMessage());
+        }
+        return redirect(campaignId, character);
+    }
+
+    /**
+     * Противостояние с другим участником (CP2020: Facedown): итог в строке начавшего.
+     */
+    @PostMapping("/participants/{participantId}/contest/{code}")
+    public String contest(@PathVariable Long campaignId, @PathVariable Long participantId, @PathVariable String code,
+                          @RequestParam Long target, RedirectAttributes redirectAttributes) {
+        Long character = encounterService.characterOf(campaignId, participantId);
+        redirectAttributes.addFlashAttribute("resultCharacterId", character);
+        try {
+            OpposedCheckResult result = encounterService.contest(campaignId, participantId, code, target);
+            List<String> steps = new ArrayList<>();
+            steps.add(result.initiator().title() + ": " + result.initiator().result().outcome());
+            result.initiator().result().steps().forEach(step -> steps.add("  " + step));
+            steps.add(result.opponent().title() + ": " + result.opponent().result().outcome());
+            result.opponent().result().steps().forEach(step -> steps.add("  " + step));
+            redirectAttributes.addFlashAttribute("combatResult", new AttackResult(result.initiator().skill(), result.verdict(),
+                    result.winner() == OpposedCheckResult.Winner.INITIATOR, steps));
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("encounterError", e.getMessage());
         }

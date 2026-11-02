@@ -64,6 +64,14 @@
     <button type="submit" class="btn btn-sm">🎲 Проверка</button>
   </form>
 
+  <form th:each="contest : ${contests}" th:unless="${#lists.isEmpty(row.targets)}"
+        th:action="@{${url} + '/contest/' + ${contest.code}}" method="post" class="form-row encounter-check">
+    <select name="target" class="grow" aria-label="Против кого">
+      <option th:each="t : ${row.targets}" th:value="${t.id}" th:text="${t.name}">Олежа</option>
+    </select>
+    <button type="submit" class="btn btn-sm" th:text="'🎲 ' + ${contest.label}">🎲 Facedown</button>
+  </form>
+
   <div class="encounter-minor">
     <form th:if="${row.current and !row.participant.waiting and !view.lastInRound}" th:action="@{${url} + '/wait'}" method="post">
       <button type="submit" class="btn btn-sm btn-ghost" title="Вступит позже в этом раунде">Подождать</button>
