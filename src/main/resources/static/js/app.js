@@ -1430,15 +1430,25 @@ function wireBattleSvg(svg) {
     press = { tokenEl, token: tokenEl ? tokenById(Number(tokenEl.dataset.token)) : null, door: door && door.dataset.edge,
       x: event.clientX, y: event.clientY, start, moved: false };
     svg.setPointerCapture(event.pointerId);
-    if (!tokenEl && !battle.pointerMode) {
-      // долгое нажатие на пустой клетке — указатель для всех
+    if (!battle.pointerMode) {
+      // долгое нажатие: по фишке — атака (телефон без правой кнопки), по пустой клетке — указатель для всех
       longPress = setTimeout(() => {
-        if (press && !press.moved && inside(start)) {
-          sendPointer(start.x, start.y);
-          press = null;
-        }
+        if (!press || press.moved) return;
+        const held = press;
+        press = null;
+        // долгое нажатие на выбранную или свою фишку — не атака по себе
+        const own = held.token && (held.token.id === battle.selected || String(held.token.character) === battleMe());
+        if (held.token && !own) attackMenu(held.token, event);
+        else if (inside(start)) sendPointer(start.x, start.y);
       }, 600);
     }
+  });
+
+  // правая кнопка по фишке — атака по ней
+  svg.addEventListener('contextmenu', event => {
+    event.preventDefault();
+    const tokenEl = event.target.closest('[data-token]');
+    if (tokenEl) attackMenu(tokenById(Number(tokenEl.dataset.token)), event);
   });
 
   svg.addEventListener('pointermove', event => {
@@ -1496,7 +1506,7 @@ function wireBattleSvg(svg) {
       return;
     }
     if (current.token) {
-      tokenClick(current.token, event);
+      tokenClick(current.token);
       return;
     }
     if (battle.adding && inside(cell) && !current.token) {
@@ -1533,7 +1543,13 @@ function wireBattleSvg(svg) {
       const token = tokenById(Number(el.dataset.token));
       if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
-        tokenClick(token, null);
+        tokenClick(token);
+        return;
+      }
+      // клавиатура: A — атаковать эту фишку выбранной
+      if (event.key === 'a' || event.key === 'A' || event.key === 'ф' || event.key === 'Ф') {
+        event.preventDefault();
+        attackMenu(token, null);
         return;
       }
       const step = steps[event.key];
@@ -1564,12 +1580,26 @@ const closeBattleMenu = () => {
 };
 
 // Своя фишка выбирается, чужая при выбранной своей — атака: оружие, цель, расстояние и укрытие уже в диалоге
-async function tokenClick(token, event) {
+// Нажатие на фишку — выбрать её (повторное — снять выбор). Атака — правой кнопкой или долгим нажатием по цели
+function tokenClick(token) {
   if (!token) return;
-  const attacker = tokenById(battle.selected);
-  if (!attacker || attacker.id === token.id || attacker.x === null || token.x === null) {
-    closeBattleMenu();
-    selectToken(attacker && attacker.id === token.id ? null : token.id);
+  closeBattleMenu();
+  selectToken(battle.selected === token.id ? null : token.id);
+}
+
+// Кто атакует: выбранная фишка, иначе своя по «Я — …», у мастера — чей ход
+const battleAttacker = target => {
+  const candidates = [tokenById(battle.selected), battle.data.tokens.find(token => String(token.character) === battleMe()),
+    battle.data.tokens.find(token => token.current)];
+  return candidates.find(token => token && token.id !== target.id && token.x !== null) || null;
+};
+
+// Меню атаки: расстояние, линия видимости и укрытие считает сервер, оружие — из строки атакующего
+async function attackMenu(token, event) {
+  if (!token || token.x === null) return;
+  const attacker = battleAttacker(token);
+  if (!attacker) {
+    battleError('Сначала выберите, кто атакует: нажмите свою фишку');
     return;
   }
   const menu = document.querySelector('[data-battle-menu]');
