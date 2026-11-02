@@ -1,5 +1,6 @@
 package app.charka.service;
 
+import app.charka.item.Purchase;
 import app.charka.model.Item;
 
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +34,12 @@ public interface ItemService {
 
     @Transactional
     Item addFromCatalog(Long inventoryId, String key, int quantity);
+
+    @Transactional
+    Purchase buyFromCatalog(Long inventoryId, String key, int quantity);
+
+    @Transactional
+    Purchase buy(Long inventoryId, Item item, String typeCode, Map<String, String> properties);
 
     @Transactional
     String performAction(Long characterId, Long itemId, String action, Map<String, String> params);

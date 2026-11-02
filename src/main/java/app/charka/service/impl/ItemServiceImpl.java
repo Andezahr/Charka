@@ -3,11 +3,15 @@ package app.charka.service.impl;
 import app.charka.exception.NotFoundException;
 import app.charka.item.CatalogItem;
 import app.charka.item.ItemTypeDefinition;
+import app.charka.item.Purchase;
 import app.charka.model.Inventory;
 import app.charka.model.Item;
+import app.charka.model.Money;
 import app.charka.repository.InventoryRepository;
 import app.charka.repository.ItemRepository;
 import app.charka.service.ItemService;
+import app.charka.service.MoneyService;
+import app.charka.system.Currency;
 import app.charka.system.GameSystem;
 import app.charka.system.GameSystemRegistry;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +31,7 @@ public class ItemServiceImpl implements ItemService {
     private final ItemRepository itemRepository;
     private final InventoryRepository inventoryRepository;
     private final GameSystemRegistry systemRegistry;
+    private final MoneyService moneyService;
 
     private static final String ITEM_NOT_FOUND = "Item not found for id=%d";
 
@@ -142,14 +148,9 @@ public class ItemServiceImpl implements ItemService {
         if (quantity < 1) {
             throw new IllegalArgumentException("Количество должно быть не меньше 1");
         }
-        Inventory inventory = inventoryRepository.findById(inventoryId)
-                .orElseThrow(() -> new NotFoundException(
-                        "Inventory not found for id=" + inventoryId));
+        Inventory inventory = inventory(inventoryId);
         GameSystem system = systemRegistry.forCharacter(inventory.getCharacter());
-        CatalogItem entry = system.getItemCatalog().stream()
-                .filter(candidate -> candidate.key().equals(key))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Такого предмета нет в справочнике: " + key));
+        CatalogItem entry = catalogEntry(system, key);
         int rows = entry.individual() ? quantity : 1;
         int perRow = entry.individual() ? 1 : quantity * entry.packSize();
         // примечание справочника описывает строку продажи, а запас живёт дальше: «цена за коробку» у 20 патронов была бы неправдой
@@ -164,6 +165,67 @@ public class ItemServiceImpl implements ItemService {
             item = create(inventoryId, item, entry.typeCode(), entry.properties());
         }
         return item;
+    }
+
+    /**
+     * Купить строку справочника: добавить, как {@link #addFromCatalog}, и списать цену записью в деньгах персонажа
+     * по игровой дате. Количество у патронов — коробки, цена справочника — за коробку.
+     *
+     * @throws IllegalArgumentException если денег на счету меньше цены
+     */
+    @Override
+    public Purchase buyFromCatalog(Long inventoryId, String key, int quantity) {
+        Inventory inventory = inventory(inventoryId);
+        CatalogItem entry = catalogEntry(systemRegistry.forCharacter(inventory.getCharacter()), key);
+        long price = (long) entry.cost() * Math.max(quantity, 1);
+        return pay(inventory, entry.name(), quantity, price, () -> addFromCatalog(inventoryId, key, quantity));
+    }
+
+    /**
+     * Купить своё, которого нет в справочнике: цена предмета за штуку × количество.
+     *
+     * @throws IllegalArgumentException если денег на счету меньше цены
+     */
+    @Override
+    public Purchase buy(Long inventoryId, Item item, String typeCode, Map<String, String> properties) {
+        Inventory inventory = inventory(inventoryId);
+        int quantity = item.getQuantity() == null ? 1 : item.getQuantity();
+        long price = (long) (item.getCost() == null ? 0 : item.getCost()) * quantity;
+        return pay(inventory, item.getName(), quantity, price, () -> create(inventoryId, item, typeCode, properties));
+    }
+
+    /**
+     * Проверить счёт, добавить предмет и записать расход. Всё в одной транзакции: отказ не оставляет предмет.
+     */
+    private Purchase pay(Inventory inventory, String name, int quantity, long price, Supplier<Item> add) {
+        Long characterId = inventory.getCharacter().getId();
+        Currency currency = systemRegistry.forCharacter(inventory.getCharacter()).getCurrency();
+        long balance = moneyService.calculateBalance(characterId);
+        if (price > balance) {
+            throw new IllegalArgumentException("Не хватает денег: нужно " + price + " " + currency.symbol()
+                    + ", на счету " + balance + " " + currency.symbol());
+        }
+        Item item = add.get();
+        if (price > 0) {
+            Money expense = new Money();
+            expense.setName("Покупка: " + name + (quantity > 1 ? " ×" + quantity : ""));
+            expense.setAmount(-price);
+            moneyService.create(characterId, expense);
+        }
+        return new Purchase(item, price, balance - price, currency);
+    }
+
+    private Inventory inventory(Long inventoryId) {
+        return inventoryRepository.findById(inventoryId)
+                .orElseThrow(() -> new NotFoundException(
+                        "Inventory not found for id=" + inventoryId));
+    }
+
+    private static CatalogItem catalogEntry(GameSystem system, String key) {
+        return system.getItemCatalog().stream()
+                .filter(candidate -> candidate.key().equals(key))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Такого предмета нет в справочнике: " + key));
     }
 
     /**

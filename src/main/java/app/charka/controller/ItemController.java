@@ -1,6 +1,7 @@
 package app.charka.controller;
 
 import app.charka.item.ItemTypeDefinition;
+import app.charka.item.Purchase;
 import app.charka.model.Item;
 import app.charka.service.ItemService;
 import org.springframework.stereotype.Controller;
@@ -12,6 +13,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Supplier;
 
 @Controller
 @RequestMapping("/character/{characterId}/inventories/{inventoryId}/items")
@@ -39,6 +41,7 @@ public class ItemController {
             @RequestParam(defaultValue = ItemTypeDefinition.GENERIC_CODE) String itemType,
             @RequestParam Map<String, String> params,
             @RequestParam(required = false) String anchor,
+            @RequestParam(defaultValue = "false") boolean buy,
             RedirectAttributes redirectAttributes
     ) {
         Item item = new Item();
@@ -46,12 +49,16 @@ public class ItemController {
         item.setQuantity(quantity);
         item.setCost(cost);
         item.setDescription(description);
+        if (buy) {
+            return bought(characterId, anchor, redirectAttributes,
+                    () -> itemService.buy(inventoryId, item, itemType, properties(params)), null);
+        }
         return handle(characterId, anchor, redirectAttributes,
                 () -> itemService.create(inventoryId, item, itemType, properties(params)));
     }
 
     /**
-     * Предмет из справочника системы.
+     * Предмет из справочника системы. {@code buy} — купить: цена списывается в деньги, итог в строке нового предмета.
      */
     @PostMapping("/catalog")
     public String addFromCatalog(
@@ -61,8 +68,15 @@ public class ItemController {
             @RequestParam(defaultValue = "1") int quantity,
             @RequestParam(required = false) String anchor,
             @RequestParam(required = false) String thenAction,
+            @RequestParam(defaultValue = "false") boolean buy,
             RedirectAttributes redirectAttributes
     ) {
+        if (buy) {
+            boolean then = thenAction != null && !thenAction.isBlank();
+            return bought(characterId, anchor, redirectAttributes,
+                    () -> itemService.buyFromCatalog(inventoryId, catalogKey, then ? 1 : quantity),
+                    then ? thenAction : null);
+        }
         if (thenAction == null || thenAction.isBlank()) {
             return handle(characterId, anchor, redirectAttributes,
                     () -> itemService.addFromCatalog(inventoryId, catalogKey, quantity));
@@ -152,6 +166,32 @@ public class ItemController {
     }
 
     /** Ошибка показывается вверху страницы, поэтому с ней к якорю не возвращаемся */
+    /**
+     * Покупка: итог в строке нового предмета, отказ (не хватает денег) — вверху страницы, как ошибка ввода.
+     * {@code then} — действие сразу после покупки (установить киберware), его итог дописывается к покупке.
+     */
+    private String bought(Long characterId, String anchor, RedirectAttributes redirectAttributes,
+                          Supplier<Purchase> purchase, String then) {
+        Purchase done;
+        try {
+            done = purchase.get();
+        } catch (IllegalArgumentException e) {
+            return handle(characterId, anchor, redirectAttributes, () -> { throw e; });
+        }
+        Long itemId = done.item().getId();
+        redirectAttributes.addFlashAttribute("actionItemId", itemId);
+        String result = done.summary();
+        if (then != null) {
+            try {
+                result += ". " + itemService.performAction(characterId, itemId, then, Map.of());
+            } catch (IllegalArgumentException e) {
+                redirectAttributes.addFlashAttribute("actionError", e.getMessage());
+            }
+        }
+        redirectAttributes.addFlashAttribute("actionResult", result);
+        return "redirect:/character/" + characterId + "#item-" + itemId;
+    }
+
     private static String handle(Long characterId, String anchor, RedirectAttributes redirectAttributes, Runnable action) {
         try {
             action.run();

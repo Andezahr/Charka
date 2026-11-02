@@ -288,6 +288,7 @@
       <div class="form-row">
         <input type="search" class="grow" placeholder="Поиск" autocomplete="off" aria-label="Поиск по справочнику" data-add-search>
         <input type="number" name="quantity" class="narrow" value="1" min="1" required aria-label="Количество" title="Сколько добавить">
+        <label th:replace="~{fragments/items :: buy-check}"></label>
       </div>
       <div th:if="${suggested != null}" class="add-group">
         <div class="add-group-title">Подходит к вашему оружию</div>
@@ -312,6 +313,7 @@
         <input type="number" name="quantity" class="narrow" value="1" min="1" required aria-label="Количество" title="Количество">
         <input type="number" name="cost" class="narrow" value="0" min="0" required aria-label="Цена" title="Цена">
         <input type="text" name="description" class="grow" placeholder="Описание, если нужно">
+        <label th:replace="~{fragments/items :: buy-check}"></label>
         <div th:unless="${#lists.isEmpty(t.fields)}" class="field-grid item-fields" th:attr="data-item-fields=${t.code}" hidden>
           <th:block th:each="f : ${t.fields.?[!advanced]}">
             <th:block th:replace="~{fragments/items :: field(${f}, null)}"></th:block>
@@ -331,9 +333,16 @@
   </div>
 </dialog>
 
+<!-- «Купить»: цена списывается записью в деньгах. Выбор общий для всех вкладок и запоминается (app.js) -->
+<label th:fragment="buy-check" class="check add-buy" th:title="'Списать цену с денег персонажа, на счету ' + ${moneySum} + ' ' + ${currency.symbol}">
+  <input type="checkbox" name="buy" value="true" data-add-buy th:attr="data-balance=${moneySum}">
+  <span>Купить</span>
+  <span class="add-entry-meta" th:text="${moneySum} + ' ' + ${currency.symbol}">1200 eb</span>
+</label>
+
 <!-- Строка справочника в окне «Добавить»: нажатие сразу добавляет -->
 <button th:fragment="catalog-entry(entry)" type="submit" name="catalogKey" th:value="${entry.key}" class="add-entry"
-        th:title="${entry.description}" th:attr="data-search=${#strings.toLowerCase(entry.name)}">
+        th:title="${entry.description}" th:attr="data-search=${#strings.toLowerCase(entry.name)},data-cost=${entry.cost}">
   <span th:text="${entry.name}">Arasaka Minami 10</span>
   <span class="add-entry-meta" th:text="(${entry.properties['damage'] != null} ? ${entry.properties['damage']} + ' · ' : '') + ${entry.cost} + ' ' + ${currency.symbol}">2D6+3 · 500 eb</span>
 </button>

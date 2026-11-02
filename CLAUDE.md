@@ -35,7 +35,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 825 тестов, на 2026-10-31 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 830 тестов, на 2026-11-02 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -129,7 +129,7 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 | GET | `/character/{id}` | лист персонажа (раны, инвентари, деньги, кубики) |
 | POST | `/character/{id}/wounds`, `.../wounds/{wid}/delete` | раны |
 | POST | `/character/{id}/inventories`, `.../{invId}/edit`, `.../{invId}/delete` | инвентари |
-| POST | `/character/{id}/inventories/{invId}/items` (+ `/{itemId}/edit|delete|move`) | предметы; `itemType`, `prop.<ключ>` — тип и его поля; `anchor` — куда вернуться; `/catalog` (`catalogKey`, `quantity`, `anchor`, `thenAction?`) — из справочника системы, `thenAction` — сразу действие над новым предметом; `/{itemId}/quantity` (`delta`, `returnTo`) — кнопки − и ＋, ноль убирает предмет; `/{itemId}/action/{action}` (`source`, `amount`, `returnTo`) — действие системы (CP2020: `FIRE`, `BURST`, `RELOAD`, `EJECT`, `ADD_MAGAZINE`, `LOAD`, `LOAD_ALL`, `UNLOAD`, `UNJAM`, у брони `WEAR`, `TAKE_OFF`, `REPAIR`, у киберware `INSTALL`, `REMOVE`, `REPAIR`), итог во flash для строки предмета или `returnTo` |
+| POST | `/character/{id}/inventories/{invId}/items` (+ `/{itemId}/edit|delete|move`) | предметы; `itemType`, `prop.<ключ>` — тип и его поля; `anchor` — куда вернуться; `/catalog` (`catalogKey`, `quantity`, `anchor`, `thenAction?`) — из справочника системы, `thenAction` — сразу действие над новым предметом; `buy=true` (и у своего предмета) — купить: цена × количество списывается записью в деньгах, не хватает — отказ, итог `Purchase` в строке предмета; `/{itemId}/quantity` (`delta`, `returnTo`) — кнопки − и ＋, ноль убирает предмет; `/{itemId}/action/{action}` (`source`, `amount`, `returnTo`) — действие системы (CP2020: `FIRE`, `BURST`, `RELOAD`, `EJECT`, `ADD_MAGAZINE`, `LOAD`, `LOAD_ALL`, `UNLOAD`, `UNJAM`, у брони `WEAR`, `TAKE_OFF`, `REPAIR`, у киберware `INSTALL`, `REMOVE`, `REPAIR`), итог во flash для строки предмета или `returnTo` |
 | POST | `/character/{id}/items/{itemId}/attack` | `target` (в зоне огня несколько) или `targetName`, `distance`, `location?`, `skill?`, `modifier`, `mode`, `rounds`, `zoneWidth`, `option.<выбор>`, `returnCampaign?` (вернуться в трекер; то же у действий предмета и зарядов) → атака оружием, итог во flash `attackResult` в строке предмета (предмет израсходован — в начале блока инвентарей) |
 | POST | `/character/{id}/attack/ability/{code}` | то же без предмета, кодом способности системы (CP2020: `BRAWL`, режимы `STRIKE`, `KICK`, `GRAPPLE`, `BODY_THROW`, `HOLD`, `CHOKE`, `SWEEP`, `DISARM`, `ESCAPE`); только из трекера, итог над строками боя |
 | POST | `/character/{id}/attack/blast/{blastId}`, `.../dismiss` | `target` (несколько) → заряд упал мимо (`PendingBlast`): урон выбранным целям; `dismiss` — никого не задело |

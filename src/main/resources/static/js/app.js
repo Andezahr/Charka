@@ -219,6 +219,7 @@ function initPage() {
       dialog.querySelectorAll('[data-add-form=catalog]').forEach(form => { form.action = items + '/catalog'; });
       dialog.querySelectorAll('[data-add-form=own]').forEach(form => { form.action = items; });
       dialog.querySelectorAll('[data-add-anchor]').forEach(input => { input.value = 'inventory-' + button.dataset.addItem; });
+      syncBuy(buys.length > 0 && buys[0].checked);
       dialog.showModal();
       show(button.dataset.addTabOpen || stored.get());
     }));
@@ -236,6 +237,29 @@ function initPage() {
         });
       });
     });
+    // «Купить»: одна галочка на всех вкладках, запоминается; что не по карману — приглушено
+    const buyKey = 'charka.addItem.buy';
+    const buys = [...dialog.querySelectorAll('[data-add-buy]')];
+    const syncBuy = checked => {
+      buys.forEach(input => { input.checked = checked; });
+      dialog.querySelectorAll('[data-add-form=catalog]').forEach(form => {
+        const quantity = Number(form.querySelector('input[name=quantity]').value) || 1;
+        form.querySelectorAll('.add-entry').forEach(entry => {
+          entry.classList.toggle('is-dear', checked && Number(entry.dataset.cost) * quantity > Number(buys[0].dataset.balance));
+        });
+      });
+    };
+    buys.forEach(input => input.addEventListener('change', () => {
+      try { localStorage.setItem(buyKey, input.checked ? '1' : ''); } catch (e) { /* только удобство */ }
+      syncBuy(input.checked);
+    }));
+    dialog.querySelectorAll('[data-add-form=catalog] input[name=quantity]').forEach(input =>
+      input.addEventListener('input', () => syncBuy(buys.length > 0 && buys[0].checked)));
+    if (buys.length) {
+      let remembered = false;
+      try { remembered = localStorage.getItem(buyKey) === '1'; } catch (e) { /* без памяти — не покупать */ }
+      syncBuy(remembered);
+    }
     show(stored.get());
   });
 
