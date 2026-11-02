@@ -73,7 +73,7 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
     private static final CareOption TREAT_AID = new CareOption("TREAT_AID", "Лечить: Первая помощь", "first_aid", true, false);
     private static final List<CareOption> CARE_OPTIONS = List.of(STABILIZE_MED, STABILIZE_AID, TREAT_MED, TREAT_AID);
 
-    /** Прибавки к броску стабилизации (с. 116). Cryo Tank +3 — по распознанному тексту, на изображении строка срезана */
+    /** Прибавки к броску стабилизации (с. 116, с изображения страницы) */
     private static final List<Option> CARE_MODIFIERS = List.of(
             new Option("0", "Без условий"),
             new Option("5", "Больница +5"),
