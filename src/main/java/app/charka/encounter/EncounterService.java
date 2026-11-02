@@ -504,6 +504,8 @@ public class EncounterService {
         List<String> report = new ArrayList<>();
         for (EncounterParticipant participant : ordered(encounter)) {
             Character character = participant.getCharacter();
+            app.charka.effect.TimedEffects.passRounds(character, 1)
+                    .forEach(name -> report.add(character.getName() + ": «" + name + "» закончилось"));
             for (CombatEffect effect : List.copyOf(participant.getEffects())) {
                 if (system.getCombatCard(character).out()) {
                     participant.getEffects().clear();

@@ -209,12 +209,12 @@
 <form th:fragment="action-form(action, url, back)" th:action="${url}" method="post" class="item-action" th:attr="data-confirm=${action.confirm}">
   <input th:if="${back != null}" type="hidden" name="returnTo" th:value="${back}">
   <input th:if="${returnCampaign != null}" type="hidden" name="returnCampaign" th:value="${returnCampaign}">
-  <select th:unless="${#lists.isEmpty(action.sources)}" name="source" required aria-label="Откуда взять патроны">
+  <select th:unless="${#lists.isEmpty(action.sources)}" name="source" required th:attr="aria-label=${action.sourceLabel != null} ? ${action.sourceLabel} : 'Откуда взять патроны'">
     <option th:each="source : ${action.sources}" th:value="${source.value}" th:text="${source.label}">Патроны</option>
   </select>
   <input th:if="${action.amount != null}" type="number" name="amount" class="narrow" min="1"
-         th:value="${action.amount}" th:attr="max=${action.maxAmount}" th:disabled="${action.unavailable != null}"
-         required aria-label="Сколько">
+         th:value="${action.amount}" th:disabled="${action.unavailable != null}"
+         required th:attr="max=${action.maxAmount},aria-label=${action.amountLabel != null} ? ${action.amountLabel} : 'Сколько',title=${action.amountLabel}">
   <button type="submit" class="btn btn-sm" th:disabled="${action.unavailable != null}"
           th:text="${action.label}">Выстрел</button>
 </form>

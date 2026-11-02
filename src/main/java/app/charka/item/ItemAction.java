@@ -15,12 +15,25 @@ import java.util.List;
  * @param hidden      кнопки нет, действие вызывается фишкой ({@link ItemChip})
  * @param combat      нужно и в бою: фишек в трекере нет, там это кнопка
  * @param confirm     что спросить перед действием: оно необратимо; null — не спрашивать
+ * @param sourceLabel что выбирают в {@code sources}; null — патроны
+ * @param amountLabel что значит число; null — «Сколько»
  */
 public record ItemAction(String code, String label, String unavailable, List<ItemField.Option> sources,
-                         Integer amount, Integer maxAmount, boolean secondary, boolean hidden, boolean combat, String confirm) {
+                         Integer amount, Integer maxAmount, boolean secondary, boolean hidden, boolean combat, String confirm,
+                         String sourceLabel, String amountLabel) {
 
     public ItemAction {
         sources = List.copyOf(sources);
+    }
+
+    public ItemAction(String code, String label, String unavailable, List<ItemField.Option> sources,
+                      Integer amount, Integer maxAmount, boolean secondary, boolean hidden, boolean combat, String confirm) {
+        this(code, label, unavailable, sources, amount, maxAmount, secondary, hidden, combat, confirm, null, null);
+    }
+
+    /** Подписи выбора и числа, когда это не патроны и не количество */
+    public ItemAction withLabels(String source, String number) {
+        return new ItemAction(code, label, unavailable, sources, amount, maxAmount, secondary, hidden, combat, confirm, source, number);
     }
 
     public static ItemAction simple(String code, String label, String unavailable) {
@@ -41,7 +54,7 @@ public record ItemAction(String code, String label, String unavailable, List<Ite
     }
 
     public ItemAction asSecondary() {
-        return new ItemAction(code, label, unavailable, sources, amount, maxAmount, true, hidden, combat, confirm);
+        return new ItemAction(code, label, unavailable, sources, amount, maxAmount, true, hidden, combat, confirm, sourceLabel, amountLabel);
     }
 
     /** Просто кнопка: ни выбора, ни числа, поэтому помещается в одну линию с названием предмета */
@@ -50,15 +63,15 @@ public record ItemAction(String code, String label, String unavailable, List<Ite
     }
 
     public ItemAction asHidden() {
-        return new ItemAction(code, label, unavailable, sources, amount, maxAmount, secondary, true, combat, confirm);
+        return new ItemAction(code, label, unavailable, sources, amount, maxAmount, secondary, true, combat, confirm, sourceLabel, amountLabel);
     }
 
     public ItemAction forCombat() {
-        return new ItemAction(code, label, unavailable, sources, amount, maxAmount, secondary, hidden, true, confirm);
+        return new ItemAction(code, label, unavailable, sources, amount, maxAmount, secondary, hidden, true, confirm, sourceLabel, amountLabel);
     }
 
     public ItemAction withConfirm(String text) {
-        return new ItemAction(code, label, unavailable, sources, amount, maxAmount, secondary, hidden, combat, text);
+        return new ItemAction(code, label, unavailable, sources, amount, maxAmount, secondary, hidden, combat, text, sourceLabel, amountLabel);
     }
 
     /** Кнопка в строке участника боя: то, что на листе делает фишка, здесь показывается, только если его можно сделать */

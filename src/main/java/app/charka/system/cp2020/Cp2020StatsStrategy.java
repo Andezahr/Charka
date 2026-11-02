@@ -1,5 +1,7 @@
 package app.charka.system.cp2020;
 
+import app.charka.effect.TimedEffects;
+
 import app.charka.model.counters.Counter;
 import app.charka.model.counters.strategy.AbstractCounterStrategy;
 import app.charka.model.counters.strategy.CounterContext;
@@ -168,6 +170,11 @@ public class Cp2020StatsStrategy extends AbstractCounterStrategy {
                 case BODY -> body(counter);
                 default -> base;
             };
+            // P-03: препараты и прочие временные эффекты; итог с правкой не меньше 1 (с. 25)
+            int boost = TimedEffects.modifier(counter.getCharacter(), key);
+            if (boost != 0) {
+                effective = Math.max(1, effective + boost);
+            }
             stats.add(new StatLine(key, label, base, effective));
         });
 

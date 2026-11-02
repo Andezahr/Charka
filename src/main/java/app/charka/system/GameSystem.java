@@ -326,6 +326,17 @@ public interface GameSystem {
     }
 
     /**
+     * Готовые временные эффекты (препараты, стимуляторы) для блока «Эффекты» на листе. Пусто — только свой эффект.
+     */
+    default List<app.charka.effect.EffectTemplate> getEffectTemplates() {
+        return List.of();
+    }
+
+    default Optional<app.charka.effect.EffectTemplate> findEffectTemplate(String code) {
+        return getEffectTemplates().stream().filter(template -> template.code().equals(code)).findFirst();
+    }
+
+    /**
      * Типичные регулярные траты (еда, жильё) для формы на листе. Пусто — только своя трата.
      */
     default List<ExpenseTemplate> getExpenseTemplates() {

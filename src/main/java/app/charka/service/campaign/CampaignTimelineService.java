@@ -60,6 +60,14 @@ public class CampaignTimelineService {
         // Раны заживают и т.п. — по правилам системы кампании (у GENERIC ничего не происходит)
         List<String> report = new ArrayList<>(systemRegistry.get(campaign.getSystem()).onTimePassed(campaign, daysToSkip));
 
+        // Препараты и прочие временные эффекты: часы прошли, дни убывают
+        for (var character : campaign.getCharacters()) {
+            List<String> ended = app.charka.effect.TimedEffects.passDays(character, daysToSkip);
+            if (!ended.isEmpty()) {
+                report.add(character.getName() + ": закончилось " + String.join(", ", ended));
+            }
+        }
+
         // Аренда, еда: всё, что наступило за период, списывается своими датами
         int charged = recurringExpenseService.chargeDue(campaign, newDate);
         if (charged > 0) {

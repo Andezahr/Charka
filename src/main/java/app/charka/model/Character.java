@@ -58,6 +58,12 @@ public class Character {
     private List<RecurringExpense> recurringExpenses = new ArrayList<>();
 
     @JsonManagedReference
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @OneToMany(mappedBy = "character", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<TimedEffect> effects = new ArrayList<>();
+
+    @JsonManagedReference
     @OneToMany(mappedBy = "character", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Note> notes = new ArrayList<>();
 

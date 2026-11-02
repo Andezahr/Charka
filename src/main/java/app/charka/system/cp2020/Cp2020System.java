@@ -63,7 +63,7 @@ public class Cp2020System implements GameSystem {
     private static final Cp2020ArmorStrategy ARMOR = new Cp2020ArmorStrategy();
 
     private static final List<CatalogItem> ITEM_CATALOG =
-            Stream.of(Cp2020Weapons.CATALOG, Cp2020Magazines.CATALOG, Cp2020Ammo.CATALOG, Cp2020Armors.CATALOG, Cp2020Cyberware.CATALOG, Cp2020Chips.CATALOG).flatMap(List::stream).toList();
+            Stream.of(Cp2020Weapons.CATALOG, Cp2020Magazines.CATALOG, Cp2020Ammo.CATALOG, Cp2020Armors.CATALOG, Cp2020Cyberware.CATALOG, Cp2020Chips.CATALOG, Cp2020Drugs.CATALOG, Cp2020Vehicles.CATALOG).flatMap(List::stream).toList();
 
     private final HealthCounterService healthCounterService;
     private final DiceRoller dice;
@@ -147,11 +147,23 @@ public class Cp2020System implements GameSystem {
         if (Cp2020Cyber.isCyber(item)) {
             return Cp2020Cyber.actions(item);
         }
+        if (Cp2020Drugs.isDrug(item)) {
+            return Cp2020Drugs.actions(item);
+        }
+        if (Cp2020Vehicles.isVehicle(item)) {
+            return Cp2020Vehicles.actions(item);
+        }
         return Cp2020WornArmor.isArmor(item) ? Cp2020ArmorActions.actions(item) : Cp2020WeaponActions.actions(item);
     }
 
     @Override
     public ItemSummary getItemSummary(Item item) {
+        if (Cp2020Vehicles.isVehicle(item)) {
+            return Cp2020Vehicles.summary(item);
+        }
+        if (Cp2020Drugs.isDrug(item)) {
+            return Cp2020Drugs.summary(item);
+        }
         ItemSummary summary = Cp2020ItemSheet.summary(item);
         return summary != null ? summary : GameSystem.super.getItemSummary(item);
     }
@@ -168,6 +180,9 @@ public class Cp2020System implements GameSystem {
 
     @Override
     public List<String> getItemNotes(Item item) {
+        if (Cp2020Vehicles.isVehicle(item)) {
+            return Cp2020Vehicles.notes(item);
+        }
         return Cp2020WornArmor.isArmor(item) ? Cp2020ArmorActions.notes(item) : Cp2020WeaponActions.notes(item);
     }
 
@@ -175,6 +190,12 @@ public class Cp2020System implements GameSystem {
     public String performItemAction(Item item, String action, Map<String, String> params) {
         if (Cp2020Cyber.isCyber(item)) {
             return Cp2020Cyber.perform(item, action, dice, healthCounterService);
+        }
+        if (Cp2020Drugs.isDrug(item)) {
+            return Cp2020Drugs.perform(item, action, dice);
+        }
+        if (Cp2020Vehicles.isVehicle(item)) {
+            return Cp2020Vehicles.perform(item, action, params, getCurrentStats(item.getInventory().getCharacter()), getCheckResolver(), dice);
         }
         return Cp2020WornArmor.isArmor(item) ? Cp2020ArmorActions.perform(item, action) : Cp2020WeaponActions.perform(item, action, params);
     }
@@ -367,6 +388,11 @@ public class Cp2020System implements GameSystem {
         return character.getCounters().stream()
                 .filter(counter -> Cp2020StatsStrategy.TYPE.equals(counter.getType()))
                 .findFirst();
+    }
+
+    @Override
+    public List<app.charka.effect.EffectTemplate> getEffectTemplates() {
+        return Cp2020Drugs.TEMPLATES;
     }
 
     @Override

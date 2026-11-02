@@ -185,6 +185,58 @@
       <!-- КУБИКИ -->
       <section th:replace="~{fragments/dice :: card('/character/' + ${character.id}, false)}"></section>
 
+      <!-- ЭФФЕКТЫ: препараты и прочее со сроком; раунды идут в бою, часы и дни — с промоткой времени -->
+      <section class="card" id="effects">
+        <div class="card-head">
+          <h2 class="card-title"><span class="dot"></span>Эффекты</h2>
+          <span class="badge" th:text="${#lists.size(character.effects)}">0</span>
+        </div>
+        <div th:if="${effectResult != null}" class="alert alert-success" th:text="${effectResult}">Boost: +1 INT на 4 ч</div>
+        <div class="card-body list">
+          <div th:each="effect : ${character.effects}" class="row">
+            <div class="row-main">
+              <div class="row-title" th:text="${effect.name}">Boost</div>
+              <div class="row-meta">
+                <span th:if="${effect.stat != null}" class="chip" th:text="(${effect.modifier >= 0} ? '+' : '') + ${effect.modifier} + ' ' + ${#strings.toUpperCase(effect.stat)}">+1 INT</span>
+                <span th:text="'ещё ' + ${effect.remainingLabel}">ещё 4 ч</span>
+                <span th:if="${effect.note != null}" th:text="${effect.note}">заметка</span>
+              </div>
+            </div>
+            <div class="row-actions">
+              <form th:action="@{'/character/' + ${character.id} + '/effects/' + ${effect.id} + '/delete'}" method="post" class="inline">
+                <button type="submit" class="icon-btn danger" title="Снять раньше срока">✕</button>
+              </form>
+            </div>
+          </div>
+          <div th:if="${#lists.isEmpty(character.effects)}" class="empty">Ничего не действует</div>
+        </div>
+        <div class="card-body">
+          <form th:unless="${#lists.isEmpty(effectTemplates)}" th:action="@{'/character/' + ${character.id} + '/effects'}" method="post" class="form-row">
+            <select name="template" class="grow" required aria-label="Готовый эффект">
+              <option th:each="t : ${effectTemplates}" th:value="${t.code}" th:text="${t.name} + ' · ' + ${t.summary}">Boost</option>
+            </select>
+            <button type="submit" class="btn btn-sm btn-primary" title="Срок бросается сам">＋</button>
+          </form>
+          <details class="add-own">
+            <summary>Свой эффект</summary>
+            <form th:action="@{'/character/' + ${character.id} + '/effects'}" method="post" class="form-row">
+              <input type="text" name="name" class="grow" placeholder="Название" required autocomplete="off">
+              <select th:unless="${#lists.isEmpty(effectStats)}" name="stat" aria-label="Какой стат">
+                <option value="">Без стата</option>
+                <option th:each="s : ${effectStats}" th:value="${s.code}" th:text="${s.name}">REF</option>
+              </select>
+              <input type="number" name="modifier" class="narrow" value="0" aria-label="Правка стата" title="Правка стата">
+              <input type="text" name="duration" class="narrow" value="1d6+1" required aria-label="Срок: число или кубики" title="Срок: число или кубики">
+              <select name="unit" aria-label="Единица срока">
+                <option th:each="u : ${T(app.charka.effect.EffectTemplate.DurationUnit).values()}" th:value="${u}" th:text="${u.label}">раунды</option>
+              </select>
+              <input type="text" name="note" class="grow" placeholder="Что ещё делает" autocomplete="off">
+              <button type="submit" class="btn btn-sm btn-primary">＋</button>
+            </form>
+          </details>
+        </div>
+      </section>
+
       <!-- ДЕНЬГИ -->
       <section class="card" id="money">
         <div class="card-head">
