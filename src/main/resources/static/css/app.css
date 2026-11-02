@@ -1241,3 +1241,21 @@ html:has(.is-editing) {
 .battle-hint.is-error { color: var(--danger); }
 .btn.is-active { border-color: var(--accent); color: var(--accent); }
 .stack-sm { display: flex; flex-direction: column; gap: 8px; }
+
+/* ===== Редактор карты (M-06) ===== */
+.page-wide { max-width: 1500px; }
+.editor-tools { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 16px 8px; }
+.editor-tools kbd { font-size: 10px; color: var(--muted); margin-left: 2px; }
+.editor-undo { display: inline-flex; gap: 4px; margin-left: auto; }
+.editor-options { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; padding: 0 16px 10px; min-height: 40px; }
+.editor-field { min-width: 160px; }
+.editor-note { color: var(--muted); font-size: 13px; }
+.editor-status { color: var(--muted); font-size: 13px; align-self: center; }
+.editor-status.is-error { color: var(--danger); }
+.editor-svg { cursor: crosshair; }
+.editor-ghost { fill: rgba(34, 211, 238, 0.12); stroke: var(--accent); stroke-width: 2; stroke-dasharray: 5 4; pointer-events: none; }
+.editor-ghost-line { stroke: var(--accent); stroke-width: 6; stroke-linecap: round; opacity: 0.7; pointer-events: none; }
+.editor-paint { fill: rgba(251, 191, 36, 0.35); pointer-events: none; }
+.editor-erase { fill: rgba(248, 113, 113, 0.35); pointer-events: none; }
+.editor-selection { fill: rgba(34, 211, 238, 0.08); stroke: var(--accent); stroke-width: 2; pointer-events: none; }
+.battle-edge.gap { stroke: #475569; stroke-width: 2; stroke-dasharray: 2 5; }

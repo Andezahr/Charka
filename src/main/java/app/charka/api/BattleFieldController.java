@@ -65,6 +65,12 @@ public class BattleFieldController {
         return ResponseEntity.noContent().build();
     }
 
+    /** Копия карты боя для редактора (M-11) */
+    @GetMapping("/doc")
+    public app.charka.map.EditableMap doc(@PathVariable Long campaignId) {
+        return battleFieldService.editable(campaignId);
+    }
+
     /** Мастер правит копию карты боя: документ целиком */
     @PostMapping(value = "/doc", consumes = "application/json")
     public ResponseEntity<Void> doc(@PathVariable Long campaignId, @RequestBody String json) {

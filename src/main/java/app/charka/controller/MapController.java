@@ -53,6 +53,17 @@ public class MapController {
         }
     }
 
+    /** Редактор: рисует app.js, документ приходит и сохраняется через {@code MapEditorController} */
+    @GetMapping("/{mapId}/edit")
+    public String edit(@PathVariable Long campaignId, @PathVariable Long mapId, Model model) {
+        model.addAttribute("campaign", campaignService.getById(campaignId));
+        model.addAttribute("map", battleMapService.get(campaignId, mapId));
+        model.addAttribute("docUrl", "/campaign/" + campaignId + "/maps/" + mapId + "/doc");
+        model.addAttribute("backUrl", "/campaign/" + campaignId + "/maps");
+        model.addAttribute("inFight", false);
+        return "map-editor";
+    }
+
     @PostMapping("/{mapId}/copy")
     public String copy(@PathVariable Long campaignId, @PathVariable Long mapId) {
         battleMapService.copy(campaignId, mapId);

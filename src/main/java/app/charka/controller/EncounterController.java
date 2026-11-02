@@ -78,6 +78,16 @@ public class EncounterController {
         return attempt(campaignId, redirectAttributes, () -> encounterService.start(campaignId, character == null ? List.of() : character, groupPlayers, groupNpcs, map));
     }
 
+    /** M-11: мастер правит копию карты идущего боя теми же инструментами */
+    @GetMapping("/edit-map")
+    public String editMap(@PathVariable Long campaignId, Model model) {
+        model.addAttribute("campaign", campaignService.getById(campaignId));
+        model.addAttribute("docUrl", "/campaign/" + campaignId + "/encounter/map/doc");
+        model.addAttribute("backUrl", "/campaign/" + campaignId + "/encounter");
+        model.addAttribute("inFight", true);
+        return "map-editor";
+    }
+
     /** Положить карту под идущий бой: фишки расставляются заново */
     @PostMapping("/attach")
     public String attach(@PathVariable Long campaignId, @RequestParam Long map, RedirectAttributes redirectAttributes) {

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${inFight} ? 'Карта боя: ' + ${campaign.name} : 'Карта: ' + ${map.name})}"></head>
+<body>
+<header th:replace="~{fragments/layout :: topbar(null, 'campaign')}"></header>
+
+<!-- M-06, M-07: редактор карты. Рисует app.js ([data-map-editor]), документ сохраняется сам через 2 с после правки -->
+<main class="page page-wide">
+  <div class="page-head">
+    <div>
+      <span class="eyebrow" th:text="${inFight} ? 'Правка карты идущего боя' : 'Редактор карты'">Редактор карты</span>
+      <h1 class="page-title" th:text="${inFight} ? ${campaign.name} : ${map.name}">Бар</h1>
+      <p class="page-sub" th:if="${inFight}">Правится копия боя: игроки увидят изменения на следующем опросе, заготовка не меняется.</p>
+    </div>
+    <div class="page-actions">
+      <span class="editor-status" data-editor-status>Сохранено</span>
+      <a th:href="@{${backUrl}}" class="btn btn-ghost" th:text="${inFight} ? '← К бою' : '← К картам'">← К картам</a>
+    </div>
+  </div>
+
+  <section class="card editor" th:attr="data-map-editor=@{${docUrl}}">
+    <div class="editor-tools" role="toolbar" aria-label="Инструменты">
+      <button type="button" class="btn btn-sm btn-ghost" data-tool="room" title="Комната: протянуть прямоугольник. Alt — слить, стены внутри уходят">▭ Комната <kbd>R</kbd></button>
+      <button type="button" class="btn btn-sm btn-ghost" data-tool="wall" title="Стена по сетке; нажатие на грань — стена → дверь → окно → проём">╱ Стена <kbd>W</kbd></button>
+      <button type="button" class="btn btn-sm btn-ghost" data-tool="fill" title="Заливка местности до стен">◧ Заливка <kbd>F</kbd></button>
+      <button type="button" class="btn btn-sm btn-ghost" data-tool="brush" title="Кисть местности: обломки, вода">✎ Кисть <kbd>B</kbd></button>
+      <button type="button" class="btn btn-sm btn-ghost" data-tool="object" title="Предмет: нажатие ставит, Q/E — поворот">▣ Предмет <kbd>O</kbd></button>
+      <button type="button" class="btn btn-sm btn-ghost" data-tool="row" title="Ряд предметов вдоль линии">⋯ Ряд <kbd>L</kbd></button>
+      <button type="button" class="btn btn-sm btn-ghost" data-tool="scatter" title="Россыпь предметов в прямоугольнике">⁘ Россыпь <kbd>S</kbd></button>
+      <button type="button" class="btn btn-sm btn-ghost" data-tool="zone" title="Зона старта игроков или NPC">◌ Зона <kbd>Z</kbd></button>
+      <button type="button" class="btn btn-sm btn-ghost" data-tool="label" title="Подпись на карте">T Подпись <kbd>T</kbd></button>
+      <button type="button" class="btn btn-sm btn-ghost" data-tool="select" title="Выделение: перенести, Ctrl+C/V, Q/E — поворот, M — отразить, Delete">⬚ Выделение <kbd>V</kbd></button>
+      <button type="button" class="btn btn-sm btn-ghost" data-tool="eraser" title="Ластик; правая кнопка стирает в любом инструменте">⌫ Ластик <kbd>X</kbd></button>
+      <span class="editor-undo">
+        <button type="button" class="btn btn-sm btn-ghost" data-editor-undo title="Отменить (Ctrl+Z)">↶</button>
+        <button type="button" class="btn btn-sm btn-ghost" data-editor-redo title="Вернуть (Ctrl+Y)">↷</button>
+      </span>
+    </div>
+    <div class="editor-options" data-editor-options></div>
+    <div class="battle-stage editor-stage" data-editor-stage></div>
+    <p class="battle-hint" data-editor-hint>R комната · W стена · F заливка · B кисть · O предмет · L ряд · S россыпь · Z зона · T подпись · V выделение · X ластик · 1–9 материал · Q/E поворот · Ctrl+Z/Y · колесо — масштаб, пробел + тянуть — сдвиг</p>
+  </section>
+</main>
+</body>
+</html>

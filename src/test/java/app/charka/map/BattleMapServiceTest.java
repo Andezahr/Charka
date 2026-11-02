@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
+@org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
 @DisplayName("Карты кампании (M-01)")
@@ -31,6 +32,7 @@ class BattleMapServiceTest {
     @Autowired private CampaignRepository campaignRepository;
     @Autowired private GameSystemRegistry systemRegistry;
     @Autowired private EntityManager entityManager;
+    @Autowired private org.springframework.test.web.servlet.MockMvc mockMvc;
 
     private Campaign campaign;
 
@@ -123,6 +125,38 @@ class BattleMapServiceTest {
             assertThat(rules.materials()).allMatch(material -> material.sp() == 0);
             assertThat(rules.reach(Map.of())).isNull();
             assertThat(rules.defaults().values()).allMatch(code -> rules.material(code).isPresent());
+        }
+    }
+
+    @Nested
+    @DisplayName("Страницы и редактор")
+    class Pages {
+
+        @Test
+        @DisplayName("Список, создание открывает редактор, документ туда и обратно; сломанный — 400 текстом")
+        void editor() throws Exception {
+            String base = "/campaign/" + campaign.getId() + "/maps";
+            String location = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(base)
+                            .param("name", "Склад").param("width", "10").param("height", "6"))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().is3xxRedirection())
+                    .andReturn().getResponse().getRedirectedUrl();
+            assertThat(location).endsWith("/edit");
+            String mapUrl = location.substring(0, location.length() - "/edit".length());
+
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(location))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("data-map-editor")));
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(mapUrl + "/doc"))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.doc.w").value(10))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.defaults.room").value("cover_brick"));
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(mapUrl + "/doc")
+                            .contentType("application/json").content("{\"v\":1,\"w\":10,\"h\":6,\"cell\":2,\"walls\":{\"0,0,h\":\"cover_brick\"}}"))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isNoContent());
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(mapUrl + "/doc")
+                            .contentType("application/json").content("{\"v\":1,\"w\":10,\"h\":6,\"cell\":2,\"walls\":{\"99,0,h\":\"cover_brick\"}}"))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isBadRequest());
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(base))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("Склад")));
         }
     }
 }

@@ -199,6 +199,12 @@ public class BattleFieldService {
                 });
     }
 
+    @Transactional(readOnly = true)
+    public EditableMap editable(Long campaignId) {
+        Encounter encounter = withMap(campaignId);
+        return EditableMap.of(encounter.getBattleMapId(), "Карта боя", MapDoc.parse(encounter.getMapDoc()), rules(encounter));
+    }
+
     /** «Сохранить как новую карту»: копия боя становится заготовкой */
     @Transactional
     public BattleMap saveAsMap(Long campaignId, String name) {
