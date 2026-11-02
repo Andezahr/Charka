@@ -2,8 +2,10 @@ package app.charka.system.cp2020;
 
 import app.charka.item.InstalledBlock;
 import app.charka.item.ItemAction;
+import app.charka.item.ItemField;
 import app.charka.model.Character;
 import app.charka.model.Item;
+import app.charka.model.Money;
 import app.charka.model.counters.Counter;
 import app.charka.model.counters.strategy.health.DamageRequest;
 import app.charka.model.counters.strategy.health.DiceRoller;
@@ -60,6 +62,10 @@ final class Cp2020Cyber {
             new Surgery("MA", "Major", "2D6+1", 1500, 20),
             new Surgery("CR", "Critical", "3D6+1", 2500, 25));
 
+    /** Источник установки: платить за хирургию или нет */
+    static final String PAY = "PAY";
+    static final String FREE = "FREE";
+
     private Cp2020Cyber() {
     }
 
@@ -76,7 +82,15 @@ final class Cp2020Cyber {
             return Cp2020Chips.actions(item);
         }
         if (!isInstalled(item)) {
-            return List.of(ItemAction.simple(INSTALL, "Установить", blockedReason(item)).withConfirm(CONFIRM));
+            int cost = surgery(item).map(Surgery::cost).orElse(0);
+            if (cost == 0 || item.getProperties().containsKey(Cp2020ItemTypes.HUMANITY_LOST)) {
+                return List.of(ItemAction.simple(INSTALL, "Установить", blockedReason(item)).withConfirm(CONFIRM));
+            }
+            List<ItemField.Option> payment = List.of(
+                    new ItemField.Option(PAY, "Хирургия " + cost + " eb"),
+                    new ItemField.Option(FREE, "Хирургия оплачена"));
+            return List.of(ItemAction.withSources(INSTALL, "Установить", blockedReason(item), payment)
+                    .withLabels("Оплата хирургии", null).withConfirm(CONFIRM));
         }
         List<ItemAction> actions = new ArrayList<>();
         if (Cp2020WornArmor.isDamaged(item) || Cp2020Cyberlimbs.isRepairable(item)) {
@@ -120,6 +134,13 @@ final class Cp2020Cyber {
      * @throws IllegalArgumentException если действие сейчас невозможно
      */
     static String perform(Item item, String action, DiceRoller dice, HealthCounterService health) {
+        return perform(item, action, java.util.Map.of(), dice, health);
+    }
+
+    /**
+     * @param params {@code source} установки: {@link #PAY} — цена хирургии списывается в деньги (на листе выбрано по умолчанию), {@link #FREE} или без выбора — уже оплачено
+     */
+    static String perform(Item item, String action, java.util.Map<String, String> params, DiceRoller dice, HealthCounterService health) {
         if (GRANT.equals(action)) {
             if (Cp2020Cyberlimbs.blockedReason(item) == null) {
                 Cp2020Cyberlimbs.attach(item);
@@ -131,7 +152,7 @@ final class Cp2020Cyber {
             throw new IllegalArgumentException("Неизвестное действие с предметом: " + action);
         }
         return switch (action) {
-            case INSTALL -> install(item, dice, health);
+            case INSTALL -> install(item, PAY.equals(params.get("source")), dice, health);
             case Cp2020Chips.PRACTICED -> Cp2020Chips.markPracticed(item);
             case REPAIR -> {
                 if (Cp2020Cyberlimbs.isRepairable(item)) {
@@ -154,12 +175,21 @@ final class Cp2020Cyber {
         };
     }
 
-    private static String install(Item item, DiceRoller dice, HealthCounterService health) {
+    private static String install(Item item, boolean pay, DiceRoller dice, HealthCounterService health) {
         String blocked = blockedReason(item);
         if (blocked != null) {
             throw new IllegalArgumentException(blocked);
         }
         Character owner = item.getInventory().getCharacter();
+        // с. 79: хирургия стоит денег; снятое и поставленное обратно — тоже операция, но платить ли, решает игрок выбором
+        int cost = surgery(item).map(Surgery::cost).orElse(0);
+        boolean charge = pay && cost > 0 && !item.getProperties().containsKey(Cp2020ItemTypes.HUMANITY_LOST);
+        if (charge) {
+            long balance = owner.getMoneyList().stream().map(Money::getAmount).filter(java.util.Objects::nonNull).mapToLong(Long::longValue).sum();
+            if (balance < cost) {
+                throw new IllegalArgumentException("На хирургию нужно " + cost + " eb, есть " + balance + ": выберите «Хирургия оплачена», если платит кто-то другой");
+            }
+        }
         Counter stats = owner.getCounters().stream()
                 .filter(counter -> Cp2020StatsStrategy.TYPE.equals(counter.getType()))
                 .findFirst()
@@ -174,6 +204,16 @@ final class Cp2020Cyber {
             stats.getAttributes().put(Cp2020StatsStrategy.HUMANITY_LOSS, stats.getAttribute(Cp2020StatsStrategy.HUMANITY_LOSS, 0) + lost);
         }
         surgery(item).ifPresent(surgery -> operate(surgery, owner, parts, dice, health));
+        if (charge) {
+            Money money = new Money();
+            money.setName("Хирургия: " + item.getName());
+            money.setAmount((long) -cost);
+            money.setOperationDate(owner.getCampaign() != null && owner.getCampaign().getCurrentDate() != null
+                    ? owner.getCampaign().getCurrentDate() : java.time.LocalDate.now());
+            money.setCharacter(owner);
+            owner.getMoneyList().add(money);
+            parts.add("Оплачено " + cost + " eb");
+        }
         markInstalled(item);
         if (Cp2020Chips.isChip(item)) {
             parts.add(Cp2020Chips.installNote(item));

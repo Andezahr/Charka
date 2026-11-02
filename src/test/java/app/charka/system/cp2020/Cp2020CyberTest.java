@@ -57,6 +57,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @DisplayName("Киберware CP2020")
 class Cp2020CyberTest {
 
+    @Autowired private app.charka.service.MoneyService moneyService;
     @Autowired private MockMvc mockMvc;
     @Autowired private CampaignRepository campaignRepository;
     @Autowired private CharacterRepository characterRepository;
@@ -165,6 +166,30 @@ class Cp2020CyberTest {
             assertThat(humanityLoss()).isEqualTo(9);
             assertThat(result).contains("Человечность −9").contains("Minor").contains("DC 15").contains("4 урона");
             assertThat(counter(Cp2020HealthStrategy.TYPE).getValue()).isEqualTo(4);
+        }
+
+        @Test
+        @DisplayName("Хирургия за деньги (с. 79): Minor 500 eb списывается записью; денег нет — отказ, «оплачена» — без списания")
+        void paidSurgery() {
+            Item rippers = buy("Rippers");
+            assertThatThrownBy(() -> itemService.performAction(owner.getId(), rippers.getId(), "INSTALL", Map.of("source", "PAY")))
+                    .hasMessageContaining("500");
+
+            app.charka.model.Money income = new app.charka.model.Money();
+            income.setName("Гонорар");
+            income.setAmount(800L);
+            moneyService.create(owner.getId(), income);
+            flush();
+            String result = itemService.performAction(owner.getId(), rippers.getId(), "INSTALL", Map.of("source", "PAY"));
+            flush();
+
+            assertThat(result).contains("Оплачено 500 eb");
+            assertThat(owner().getMoneyList()).extracting(app.charka.model.Money::getAmount).containsExactlyInAnyOrder(800L, -500L);
+
+            String free = itemService.performAction(owner.getId(), buy("Wolvers").getId(), "INSTALL", Map.of("source", "FREE"));
+            flush();
+            assertThat(free).doesNotContain("Оплачено");
+            assertThat(owner().getMoneyList()).hasSize(2);
         }
 
         @Test

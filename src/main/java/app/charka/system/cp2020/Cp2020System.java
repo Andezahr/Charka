@@ -198,7 +198,7 @@ public class Cp2020System implements GameSystem {
     @Override
     public String performItemAction(Item item, String action, Map<String, String> params) {
         if (Cp2020Cyber.isCyber(item)) {
-            return Cp2020Cyber.perform(item, action, dice, healthCounterService);
+            return Cp2020Cyber.perform(item, action, params, dice, healthCounterService);
         }
         if (Cp2020Drugs.isDrug(item)) {
             return Cp2020Drugs.perform(item, action, dice);
