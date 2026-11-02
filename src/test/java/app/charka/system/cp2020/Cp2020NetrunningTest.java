@@ -38,6 +38,7 @@ class Cp2020NetrunningTest {
     @Autowired private ItemService itemService;
     @Autowired private GameSystemRegistry registry;
     @Autowired private EntityManager entityManager;
+    @Autowired private app.charka.service.MoneyService moneyService;
 
     @MockitoBean(answers = Answers.CALLS_REAL_METHODS) private DiceRoller dice;
 
@@ -106,6 +107,24 @@ class Cp2020NetrunningTest {
         assertThat(act(genie, Cp2020Netrunning.RUN)).contains("1D10 = 5 ≤ силы 5").contains("сработала");
         // сила 4 + INT 6 + Interface 0 + 5
         assertThat(act(hellbolt, Cp2020Netrunning.RUN)).contains("Hellbolt: 15");
+    }
+
+    @Test
+    @DisplayName("Улучшение деки за деньги (с. 134): скорость +1 за 2000 eb; денег мало — отказ; память до 20 MU")
+    void upgrade() {
+        Item deck = add("deck-standard");
+        assertThatThrownBy(() -> act(deck, Cp2020Netrunning.UPGRADE_SPEED)).hasMessageContaining("2000");
+
+        app.charka.model.Money income = new app.charka.model.Money();
+        income.setName("Гонорар");
+        income.setAmount(7000L);
+        moneyService.create(runner.getId(), income);
+        flush();
+
+        assertThat(act(deck, Cp2020Netrunning.UPGRADE_SPEED)).contains("0 → 1").contains("2000");
+        assertThat(act(deck, Cp2020Netrunning.UPGRADE_MEMORY)).contains("10 → 20");
+        assertThat(registry.get("CP2020").getItemSummary(itemService.findById(deck.getId())).main()).isEqualTo("MU 0/20");
+        assertThatThrownBy(() -> act(deck, Cp2020Netrunning.UPGRADE_MEMORY)).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

@@ -43,6 +43,18 @@ public final class Cp2020Netrunning {
     public static final String LOAD = "LOAD";
     public static final String UNLOAD = "UNLOAD";
     public static final String RUN = "RUN";
+    public static final String UPGRADE_MEMORY = "UPGRADE_MEMORY";
+    public static final String UPGRADE_SPEED = "UPGRADE_SPEED";
+    public static final String UPGRADE_WALL = "UPGRADE_WALL";
+
+    /** С. 134: вторая память 5000 eb — 20 MU; скорость +1 за 2000 eb до 5; стена +1 за 1000 eb до 10 */
+    private static final int MEMORY_COST = 5000;
+    private static final int MEMORY_STEP = 10;
+    private static final int MEMORY_MAX = 20;
+    private static final int SPEED_COST = 2000;
+    private static final int SPEED_MAX = 5;
+    private static final int WALL_COST = 1000;
+    private static final int WALL_MAX = 10;
 
     private static final String SECTION = "Сеть";
     private static final String INTERFACE = "interface";
@@ -262,7 +274,16 @@ public final class Cp2020Netrunning {
 
     public static List<ItemAction> actions(Item item) {
         if (isDeck(item)) {
-            return List.of();
+            int memory = number(item, MEMORY, 10);
+            int speed = number(item, SPEED, 0);
+            int wall = number(item, DATA_WALL, 2);
+            return List.of(
+                    ItemAction.simple(UPGRADE_MEMORY, "+10 MU · " + MEMORY_COST + " eb", memory >= MEMORY_MAX ? "Уже " + MEMORY_MAX + " MU: больше память не ставится" : null)
+                            .withConfirm("Купить вторую память за " + MEMORY_COST + " eb?").asSecondary(),
+                    ItemAction.simple(UPGRADE_SPEED, "Скорость +1 · " + SPEED_COST + " eb", speed >= SPEED_MAX ? "Скорость уже " + SPEED_MAX : null)
+                            .withConfirm("Поднять скорость за " + SPEED_COST + " eb?").asSecondary(),
+                    ItemAction.simple(UPGRADE_WALL, "Стена +1 · " + WALL_COST + " eb", wall >= WALL_MAX ? "Стена уже " + WALL_MAX : null)
+                            .withConfirm("Поднять Data Wall за " + WALL_COST + " eb?").asSecondary());
         }
         List<ItemAction> actions = new ArrayList<>();
         Optional<Item> deck = deckOf(item);
@@ -286,8 +307,13 @@ public final class Cp2020Netrunning {
 
     static String perform(Item item, String action, Map<String, String> params, Map<String, StatValue> stats,
                           CheckResolver resolver, DiceRoller dice) {
-        if (!isProgram(item)) {
-            throw new IllegalArgumentException("У деки нет действий: загрузите в неё программу");
+        if (isDeck(item)) {
+            return switch (action) {
+                case UPGRADE_MEMORY -> upgrade(item, MEMORY, 10, MEMORY_STEP, MEMORY_MAX, MEMORY_COST, "память");
+                case UPGRADE_SPEED -> upgrade(item, SPEED, 0, 1, SPEED_MAX, SPEED_COST, "скорость");
+                case UPGRADE_WALL -> upgrade(item, DATA_WALL, 2, 1, WALL_MAX, WALL_COST, "Data Wall");
+                default -> throw new IllegalArgumentException("Неизвестное действие с декой: " + action);
+            };
         }
         return switch (action) {
             case LOAD -> load(item, params.get("source"));
@@ -298,6 +324,30 @@ public final class Cp2020Netrunning {
             case RUN -> run(item, stats, resolver, dice);
             default -> throw new IllegalArgumentException("Неизвестное действие с программой: " + action);
         };
+    }
+
+    /** Улучшение деки за деньги: запись в деньгах, отказ, если денег мало или предел достигнут */
+    private static String upgrade(Item deck, String key, int fallback, int step, int max, int cost, String label) {
+        int value = number(deck, key, fallback);
+        if (value >= max) {
+            throw new IllegalArgumentException("Предел: " + label + " " + max);
+        }
+        Character owner = deck.getInventory().getCharacter();
+        long balance = owner.getMoneyList().stream().map(app.charka.model.Money::getAmount)
+                .filter(java.util.Objects::nonNull).mapToLong(Long::longValue).sum();
+        if (balance < cost) {
+            throw new IllegalArgumentException("Нужно " + cost + " eb, есть " + balance);
+        }
+        int next = Math.min(max, value + step);
+        deck.getProperties().put(key, String.valueOf(next));
+        app.charka.model.Money money = new app.charka.model.Money();
+        money.setName("Улучшение деки «" + deck.getName() + "»: " + label);
+        money.setAmount((long) -cost);
+        money.setOperationDate(owner.getCampaign() != null && owner.getCampaign().getCurrentDate() != null
+                ? owner.getCampaign().getCurrentDate() : java.time.LocalDate.now());
+        money.setCharacter(owner);
+        owner.getMoneyList().add(money);
+        return deck.getName() + ": " + label + " " + value + " → " + next + ", списано " + cost + " eb";
     }
 
     private static String load(Item program, String deckId) {
