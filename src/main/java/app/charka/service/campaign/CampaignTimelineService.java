@@ -3,6 +3,7 @@ package app.charka.service.campaign;
 import app.charka.model.Campaign;
 import app.charka.model.Chronicle;
 import app.charka.service.ChronicleService;
+import app.charka.service.RecurringExpenseService;
 import app.charka.system.GameSystemRegistry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ public class CampaignTimelineService {
     private final ChronicleService chronicleService;
     private final CampaignService campaignService;
     private final GameSystemRegistry systemRegistry;
+    private final RecurringExpenseService recurringExpenseService;
 
     /**
      * Переводит кампанию вперед на заданное количество дней,
@@ -54,7 +56,8 @@ public class CampaignTimelineService {
         // Раны заживают и т.п. — по правилам системы кампании (у GENERIC ничего не происходит)
         systemRegistry.get(campaign.getSystem()).onTimePassed(campaign, daysToSkip);
 
-        // Реализовать периодические траты
+        // Аренда, еда: всё, что наступило за период, списывается своими датами
+        recurringExpenseService.chargeDue(campaign, newDate);
     }
 }
 

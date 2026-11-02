@@ -6,6 +6,8 @@ import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -48,6 +50,12 @@ public class Character {
     @JsonManagedReference
     @OneToMany(mappedBy = "character", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Money> moneyList = new ArrayList<>();
+
+    @JsonManagedReference
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @OneToMany(mappedBy = "character", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<RecurringExpense> recurringExpenses = new ArrayList<>();
 
     @JsonManagedReference
     @OneToMany(mappedBy = "character", cascade = CascadeType.ALL, orphanRemoval = true)

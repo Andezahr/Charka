@@ -35,7 +35,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 851 тест, на 2026-11-02 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 854 теста, на 2026-11-02 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -83,6 +83,7 @@ Campaign (name, system, startDate, currentDate)   — system: код GameSystem 
      ├─ Wound*     (name, severity, date)
      ├─ Inventory* (name) └─ Item* (name, quantity, cost, description, type, properties) — type: код из GameSystem.getItemTypes()
      ├─ Money*     (name, amount, operationDate) — журнал операций, баланс = сумма amount
+     ├─ RecurringExpense* (name, amount, periodDays, nextDate) — регулярная трата, `proceedDate` пишет её в Money
      ├─ Note*      (name ≤255, text ≤1000, createdAt) ←M:N→ NoteCategory (глобальные, не привязаны к персонажу)
      └─ Counter*   (name, value:Integer, type:String)
 ```
@@ -106,7 +107,7 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 
 ### Время кампании
 
-`CampaignTimelineService.proceedDate(campaignId, days, description)` создаёт `Chronicle` [старая дата → новая], сдвигает `currentDate` и вызывает `GameSystem.onTimePassed` (CP2020 — естественное лечение). Место под периодические траты/лечение ран оставлено комментарием.
+`CampaignTimelineService.proceedDate(campaignId, days, description)` создаёт `Chronicle` [старая дата → новая], сдвигает `currentDate`, вызывает `GameSystem.onTimePassed` (CP2020 — естественное лечение, обкатка чипов) и списывает наступившие регулярные траты (`RecurringExpenseService.chargeDue`).
 
 ## HTTP-маршруты
 
@@ -136,6 +137,7 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 | POST | `/character/{id}/attack/ability/{code}` | то же без предмета, кодом способности системы (CP2020: `BRAWL`, режимы `STRIKE`, `KICK`, `GRAPPLE`, `BODY_THROW`, `HOLD`, `CHOKE`, `SWEEP`, `DISARM`, `ESCAPE`); только из трекера, итог над строками боя |
 | POST | `/character/{id}/attack/blast/{blastId}`, `.../dismiss` | `target` (несколько) → заряд упал мимо (`PendingBlast`): урон выбранным целям; `dismiss` — никого не задело |
 | POST | `/character/{id}/money`, `.../money/{mid}/delete` | деньги |
+| POST | `/character/{id}/expenses`, `.../expenses/{eid}/delete` | `name`, `amount`, `periodDays` → регулярная трата, списывается при промотке времени |
 | POST | `/character/{id}/installed/{action}` | действие блока вживлённого (CP2020: `THERAPY`, `source`, `amount`), итог в блоке |
 | GET | `/character/{id}/notes/` | заметки (фильтр `?categoryId=`) |
 | POST | `/character/{id}/notes`, `.../{noteId}/edit|delete`; GET `.../{noteId}/edit` | заметки |

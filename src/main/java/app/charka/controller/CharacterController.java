@@ -17,6 +17,7 @@ import app.charka.model.Item;
 import app.charka.model.Money;
 import app.charka.service.CharacterService;
 import app.charka.service.MoneyService;
+import app.charka.service.RecurringExpenseService;
 import app.charka.system.GameSystem;
 import app.charka.system.GameSystemRegistry;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +43,7 @@ public class CharacterController {
 
     private final CharacterService characterService;
     private final MoneyService moneyService;
+    private final RecurringExpenseService recurringExpenseService;
     private final GameSystemRegistry systemRegistry;
     private final DiceService diceService;
     private final AttackService attackService;
@@ -57,6 +59,7 @@ public class CharacterController {
         model.addAttribute("character", character);
         model.addAttribute("moneyList", moneyList);
         model.addAttribute("moneySum", moneySum);
+        model.addAttribute("expenses", recurringExpenseService.getByCharacter(id));
         GameSystem system = systemRegistry.forCharacter(character);
         model.addAttribute("currency", system.getCurrency());
         model.addAttribute("itemTypes", system.getItemTypes());

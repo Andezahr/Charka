@@ -93,7 +93,10 @@
         </div>
       </section>
 
-      <section th:if="${installed != null}" th:replace="~{fragments/items :: installed(${installed}, ${character})}"></section>
+      <!-- th:replace выполняется раньше th:if, поэтому условие снаружи: у GENERIC блока нет -->
+      <th:block th:if="${installed != null}">
+        <section th:replace="~{fragments/items :: installed(${installed}, ${character})}"></section>
+      </th:block>
 
       <!-- ИНВЕНТАРИ -->
       <section class="card" id="inventories">
@@ -164,7 +167,7 @@
       <section th:replace="~{fragments/dice :: card('/character/' + ${character.id}, false)}"></section>
 
       <!-- ДЕНЬГИ -->
-      <section class="card">
+      <section class="card" id="money">
         <div class="card-head">
           <h2 class="card-title"><span class="dot green"></span>Деньги</h2>
           <span class="amount" th:classappend="${moneySum < 0} ? 'neg' : 'pos'"
@@ -176,6 +179,31 @@
             <input type="number" name="amount" class="narrow" th:placeholder="'±Сумма, ' + ${currency.symbol}" required autocomplete="off">
             <button type="submit" class="btn btn-primary">＋</button>
           </form>
+        </div>
+        <!-- Регулярные траты: списываются сами, когда кампания проматывает время -->
+        <div class="card-body expenses">
+          <div th:each="expense : ${expenses}" class="row">
+            <div class="row-main">
+              <div class="row-title" th:text="${expense.name}">Аренда</div>
+              <div class="row-meta" th:text="'раз в ' + ${expense.periodDays} + ' дн. · следующее ' + ${expense.nextDate}">раз в 30 дн.</div>
+            </div>
+            <span class="amount neg" th:text="'−' + ${expense.amount} + ' ' + ${currency.symbol}">−500 eb</span>
+            <div class="row-actions">
+              <form th:action="@{'/character/' + ${character.id} + '/expenses/' + ${expense.id} + '/delete'}" method="post" class="inline"
+                    th:attr="data-confirm='Больше не списывать «' + ${expense.name} + '»?'">
+                <button type="submit" class="icon-btn danger" title="Больше не списывать">✕</button>
+              </form>
+            </div>
+          </div>
+          <details class="add-own">
+            <summary>Регулярная трата</summary>
+            <form th:action="@{'/character/' + ${character.id} + '/expenses'}" method="post" class="form-row">
+              <input type="text" name="name" class="grow" placeholder="Аренда, еда" required autocomplete="off">
+              <input type="number" name="amount" class="narrow" min="1" th:placeholder="${currency.symbol}" required aria-label="Сумма за период">
+              <input type="number" name="periodDays" class="narrow" min="1" value="30" required aria-label="Раз в сколько дней" title="Раз в сколько дней">
+              <button type="submit" class="btn btn-sm btn-primary">＋</button>
+            </form>
+          </details>
         </div>
         <div class="card-body list">
           <div th:each="money : ${moneyList}" class="row" data-editable>
