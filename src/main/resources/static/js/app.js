@@ -722,6 +722,20 @@ function initPage() {
     field.addEventListener('input', update);
     update();
   });
+
+  // Запоминаемый выбор: <select data-remember="ключ"> — последняя карта начала боя
+  document.querySelectorAll('select[data-remember]').forEach(select => {
+    const key = 'charka.remember.' + select.dataset.remember;
+    try {
+      const stored = localStorage.getItem(key);
+      if (stored !== null && [...select.options].some(option => option.value === stored)) select.value = stored;
+    } catch (e) { /* только удобство */ }
+    select.addEventListener('change', () => {
+      try { localStorage.setItem(key, select.value); } catch (e) { /* только удобство */ }
+    });
+  });
+
+  initBattle();
 }
 
 // Выбор из нескольких вариантов у фишки: второе нажатие мимо закрывает меню
@@ -884,3 +898,644 @@ document.addEventListener('DOMContentLoaded', () => {
   if (history.state && history.state.scroll) scrollTo(0, history.state.scroll);
   revealAnchor();
 });
+
+// Поле боя (M-02..M-05, M-13): рисуется по JSON карты в своём контейнере, чужие изменения приходят опросом с ETag.
+// Состояние вне initPage(): масштаб, сдвиг и выбранная фишка переживают обновление страницы на месте
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const CELL = 32;
+const POINTER_SHOW_MS = 4000;
+const battle = {
+  url: null, data: null, etag: null, timer: null, view: null, selected: undefined, reach: null, reachFor: null,
+  lastChange: 0, dragging: false, pointerMode: false, placing: null, seen: new Map(), turn: null, stage: null
+};
+
+const svgEl = (name, attrs, parent) => {
+  const el = document.createElementNS(SVG_NS, name);
+  Object.entries(attrs || {}).forEach(([key, value]) => el.setAttribute(key, value));
+  if (parent) parent.appendChild(el);
+  return el;
+};
+
+const battleMe = () => {
+  try { return localStorage.getItem('charka.battle.me.' + battle.url) || ''; } catch (e) { return ''; }
+};
+
+// Мера «прямая»: та же формула, что MapRules.distance на сервере
+const battleMeters = (x1, y1, x2, y2) => Math.round(Math.hypot(x2 - x1, y2 - y1) * battle.data.doc.cell);
+
+const tokenById = id => battle.data && battle.data.tokens.find(token => token.id === id);
+
+function initBattle() {
+  const stage = document.querySelector('[data-battle]');
+  if (!stage) {
+    clearTimeout(battle.timer);
+    battle.stage = null;
+    return;
+  }
+  if (battle.url !== stage.dataset.battle) {
+    Object.assign(battle, { url: stage.dataset.battle, data: null, etag: null, view: null, selected: undefined, reach: null, reachFor: null });
+  }
+  battle.stage = stage;
+  battle.turn = stage.dataset.turn;
+  const wrap = stage.closest('[data-battle-wrap]');
+  if (wrap) {
+    // на телефоне карта свёрнута, пока её не открыли
+    let stored = null;
+    try { stored = localStorage.getItem('charka.battle.open'); } catch (e) { /* только удобство */ }
+    wrap.open = stored !== null ? stored === '1' : innerWidth >= 768;
+    wrap.addEventListener('toggle', () => {
+      try { localStorage.setItem('charka.battle.open', wrap.open ? '1' : '0'); } catch (e) { /* только удобство */ }
+      if (wrap.open) renderBattle();
+    });
+  }
+  const me = document.querySelector('[data-battle-me]');
+  if (me) {
+    me.value = battleMe();
+    if (me.selectedIndex < 0) me.value = '';
+    me.addEventListener('change', () => {
+      try { localStorage.setItem('charka.battle.me.' + battle.url, me.value); } catch (e) { /* только удобство */ }
+      battle.selected = undefined;
+      renderBattle();
+    });
+  }
+  const pointerButton = document.querySelector('[data-battle-pointer]');
+  if (pointerButton) {
+    pointerButton.classList.toggle('is-active', battle.pointerMode);
+    pointerButton.addEventListener('click', () => {
+      battle.pointerMode = !battle.pointerMode;
+      pointerButton.classList.toggle('is-active', battle.pointerMode);
+      battleHint(battle.pointerMode ? 'Нажмите клетку — её увидят все. От своей фишки можно протянуть стрелку' : '');
+    });
+  }
+  document.querySelectorAll('[data-battle-zoom]').forEach(button => {
+    button.addEventListener('click', () => {
+      const factor = Number(button.dataset.battleZoom);
+      if (!battle.view) return;
+      if (factor === 0) battle.view = null;
+      else zoomBattle(factor, battle.view.x + battle.view.w / 2, battle.view.y + battle.view.h / 2);
+      renderBattle();
+    });
+  });
+  if (battle.data) renderBattle();
+  pollBattle();
+}
+
+const battleHint = text => {
+  const hint = document.querySelector('[data-battle-hint]');
+  if (hint) {
+    hint.textContent = text || hint.dataset.default || '';
+    hint.classList.toggle('is-error', false);
+  }
+};
+
+const battleError = text => {
+  const hint = document.querySelector('[data-battle-hint]');
+  if (!hint) return;
+  hint.textContent = text;
+  hint.classList.add('is-error');
+};
+
+const scheduleBattle = delay => {
+  clearTimeout(battle.timer);
+  battle.timer = setTimeout(pollBattle, delay);
+};
+
+// Опрос: раз в секунду во время боя, раз в 5 с после минуты без изменений, на паузе, пока вкладка скрыта или фишку тянут
+async function pollBattle() {
+  if (!battle.stage || !battle.stage.isConnected) return;
+  if (document.hidden || battle.dragging) {
+    scheduleBattle(1000);
+    return;
+  }
+  const url = battle.url;
+  try {
+    const response = await fetch(url, { cache: 'no-store', headers: battle.etag ? { 'If-None-Match': battle.etag } : {} });
+    if (url !== battle.url) return;
+    if (response.status === 200) {
+      battle.etag = response.headers.get('ETag');
+      battle.data = await response.json();
+      battle.lastChange = Date.now();
+      if (battle.reachFor) loadReach(battle.reachFor);
+      renderBattle();
+      checkBattleTurn();
+    } else if (response.status === 404) {
+      return;
+    }
+  } catch (e) { /* сеть пропала: попробуем позже */ }
+  scheduleBattle(Date.now() - battle.lastChange > 60000 ? 5000 : 1000);
+}
+
+document.addEventListener('visibilitychange', () => { if (!document.hidden && battle.stage) pollBattle(); });
+
+// Строки трекера не трогаем (в них открытые формы): если сменился ход или раунд — полоса с предложением обновить
+function checkBattleTurn() {
+  const bar = document.querySelector('[data-battle-turn]');
+  if (!bar || !battle.data) return;
+  bar.hidden = battle.data.turn === battle.turn;
+}
+
+async function loadReach(id) {
+  battle.reachFor = id;
+  try {
+    const response = await fetch(battle.url + '/participants/' + id + '/reach', { cache: 'no-store' });
+    if (!response.ok) return;
+    const reach = await response.json();
+    if (battle.reachFor !== id) return;
+    battle.reach = { meters: reach.meters, cells: new Set(reach.cells.map(cell => cell[0] + ',' + cell[1])) };
+    renderBattle();
+  } catch (e) { /* без области: только подсказка */ }
+}
+
+function selectToken(id) {
+  battle.selected = id;
+  battle.reach = null;
+  battle.reachFor = null;
+  if (id) loadReach(id);
+  renderBattle();
+}
+
+const toSvgPoint = (svg, clientX, clientY) => {
+  const point = svg.createSVGPoint();
+  point.x = clientX;
+  point.y = clientY;
+  return point.matrixTransform(svg.getScreenCTM().inverse());
+};
+
+const zoomBattle = (factor, cx, cy) => {
+  const view = battle.view;
+  const w = Math.min(Math.max(view.w / factor, CELL * 4), CELL * 400);
+  const h = w * view.h / view.w;
+  battle.view = { x: cx - (cx - view.x) * w / view.w, y: cy - (cy - view.y) * h / view.h, w, h };
+};
+
+const MATERIAL_COLORS = { WALL: '#c7cfdb', DOOR: '#b7834a', WINDOW: '#7dd3fc', OBJECT: '#64748b', TERRAIN: '#3f3a2e' };
+
+function renderBattle() {
+  const stage = battle.stage;
+  const data = battle.data;
+  if (!stage || !data || !stage.isConnected) return;
+  const doc = data.doc;
+  const width = doc.w * CELL;
+  const height = doc.h * CELL;
+  if (!battle.view) battle.view = { x: -CELL / 2, y: -CELL / 2, w: width + CELL, h: height + CELL };
+  // высота поля — по пропорциям карты: широкая улица на телефоне не оставляет пустоты сверху и снизу
+  if (stage.clientWidth) {
+    stage.style.height = Math.round(Math.min(innerHeight * 0.7, Math.max(240, stage.clientWidth * (doc.h + 1) / (doc.w + 1)))) + 'px';
+  }
+  const materials = new Map(data.materials.map(material => [material.code, material]));
+  const objects = new Map(data.objects.map(object => [object.code, object]));
+  const me = battleMe();
+  // фишка ещё не выбрана: своя по «Я — …», у мастера — чей ход; null — выбор снят нажатием
+  if (battle.selected && !tokenById(battle.selected)) battle.selected = undefined;
+  if (battle.selected === undefined) {
+    battle.selected = null;
+    const mine = data.tokens.find(token => String(token.character) === me && token.x !== null);
+    const current = data.tokens.find(token => token.current && token.x !== null);
+    const chosen = mine || (me === '' ? current : null);
+    if (chosen) {
+      battle.selected = chosen.id;
+      loadReach(chosen.id);
+    }
+  }
+
+  const svg = svgEl('svg', {
+    viewBox: [battle.view.x, battle.view.y, battle.view.w, battle.view.h].join(' '),
+    class: 'battle-svg', role: 'img', 'aria-label': 'Карта боя', 'data-metric': data.metric
+  });
+  const defs = svgEl('defs', {}, svg);
+  const pattern = svgEl('pattern', { id: 'battle-grid', width: CELL, height: CELL, patternUnits: 'userSpaceOnUse' }, defs);
+  svgEl('path', { d: `M ${CELL} 0 L 0 0 0 ${CELL}`, class: 'battle-gridline' }, pattern);
+  svgEl('rect', { x: 0, y: 0, width, height, class: 'battle-floor' }, svg);
+  svgEl('rect', { x: 0, y: 0, width, height, fill: 'url(#battle-grid)' }, svg);
+
+  doc.zones.forEach(zone => svgEl('rect', {
+    x: zone.x * CELL, y: zone.y * CELL, width: zone.w * CELL, height: zone.h * CELL, class: 'battle-zone ' + zone.kind
+  }, svg));
+  Object.entries(doc.cells).forEach(([key, code]) => {
+    const [x, y] = key.split(',').map(Number);
+    const material = materials.get(code);
+    svgEl('rect', { x: x * CELL, y: y * CELL, width: CELL, height: CELL, class: 'battle-terrain', fill: MATERIAL_COLORS.TERRAIN },
+      svg).appendChild(svgEl('title', {})).textContent = material ? material.label : code;
+  });
+  doc.stamps.forEach(stamp => {
+    const object = objects.get(stamp.code);
+    if (!object) return;
+    const rot = ((stamp.rot % 4) + 4) % 4;
+    const w = rot % 2 === 0 ? object.w : object.h;
+    const h = rot % 2 === 0 ? object.h : object.w;
+    const group = svgEl('g', { class: 'battle-stamp' }, svg);
+    svgEl('title', {}, group).textContent = object.label;
+    for (let dy = 0; dy < h; dy++) {
+      for (let dx = 0; dx < w; dx++) {
+        const code = stampCell(object, rot, dx, dy);
+        if (!code) continue;
+        const material = materials.get(code);
+        svgEl('rect', {
+          x: (stamp.x + dx) * CELL + 1, y: (stamp.y + dy) * CELL + 1, width: CELL - 2, height: CELL - 2, rx: 3,
+          fill: MATERIAL_COLORS.OBJECT, 'fill-opacity': material && material.sp >= 30 ? 0.95 : 0.7
+        }, group);
+      }
+    }
+    svgEl('rect', { x: stamp.x * CELL, y: stamp.y * CELL, width: w * CELL, height: h * CELL, class: 'battle-stamp-outline' }, group);
+  });
+
+  if (battle.reach && battle.selected) {
+    const group = svgEl('g', { class: 'battle-reach' }, svg);
+    battle.reach.cells.forEach(key => {
+      const [x, y] = key.split(',').map(Number);
+      svgEl('rect', { x: x * CELL, y: y * CELL, width: CELL, height: CELL }, group);
+    });
+  }
+
+  Object.entries(doc.walls).forEach(([key, value]) => {
+    const [x, y, dir] = key.split(',');
+    const cx = Number(x) * CELL;
+    const cy = Number(y) * CELL;
+    const [kind, , state] = value.split(':');
+    if (value === 'gap') return;
+    const line = svgEl('line', dir === 'h'
+      ? { x1: cx, y1: cy, x2: cx + CELL, y2: cy }
+      : { x1: cx, y1: cy, x2: cx, y2: cy + CELL }, svg);
+    const type = kind === 'door' ? 'door' : kind === 'window' ? 'window' : 'wall';
+    line.setAttribute('class', 'battle-edge ' + type + (state === 'open' ? ' open' : ''));
+    const material = materials.get(type === 'wall' ? kind : value.split(':')[1]);
+    const title = svgEl('title', {}, line);
+    title.textContent = (material ? material.label + (material.sp ? ' SP ' + material.sp : '') : value)
+      + (type === 'door' ? (state === 'open' ? ' · открыта, нажмите — закрыть' : ' · закрыта, нажмите — открыть') : '');
+    if (type === 'door') line.dataset.edge = key;
+  });
+  doc.labels.forEach(label => {
+    svgEl('text', { x: (label.x + 0.5) * CELL, y: (label.y + 0.5) * CELL, class: 'battle-label' }, svg).textContent = label.text;
+  });
+
+  const now = Date.now();
+  data.pointers.forEach(pointer => {
+    if (!battle.seen.has(pointer.id)) battle.seen.set(pointer.id, now);
+    if (now - battle.seen.get(pointer.id) > POINTER_SHOW_MS) return;
+    const group = svgEl('g', { class: 'battle-pointer', style: '--who:' + battleColor(pointer.who) }, svg);
+    if (pointer.fromX !== null && pointer.fromX !== undefined) {
+      svgEl('line', {
+        x1: (pointer.fromX + 0.5) * CELL, y1: (pointer.fromY + 0.5) * CELL, x2: (pointer.x + 0.5) * CELL, y2: (pointer.y + 0.5) * CELL,
+        class: 'battle-pointer-arrow'
+      }, group);
+    }
+    svgEl('circle', { cx: (pointer.x + 0.5) * CELL, cy: (pointer.y + 0.5) * CELL, r: CELL * 0.45, class: 'battle-pointer-ring' }, group);
+    svgEl('text', { x: (pointer.x + 0.5) * CELL, y: (pointer.y - 0.15) * CELL, class: 'battle-pointer-label' }, group).textContent = pointer.who;
+  });
+
+  data.tokens.filter(token => token.x !== null).forEach(token => {
+    const group = svgEl('g', {
+      class: 'battle-token' + (token.npc ? ' npc' : ' player') + (token.current ? ' is-current' : '') + (token.out ? ' is-out' : '')
+        + (token.done ? ' is-done' : '') + (token.alarming ? ' is-alarming' : '') + (token.id === battle.selected ? ' is-selected' : '')
+        + (String(token.character) === me ? ' is-me' : ''),
+      transform: `translate(${(token.x + 0.5) * CELL} ${(token.y + 0.5) * CELL})`,
+      tabindex: 0, 'data-token': token.id, role: 'button',
+      'aria-label': token.name + (token.status ? ', ' + token.status : '')
+    }, svg);
+    svgEl('title', {}, group).textContent = token.name + (token.status ? ' · ' + token.status : '');
+    svgEl('circle', { r: CELL * 0.46, class: 'battle-token-ring' }, group);
+    svgEl('circle', { r: CELL * 0.38, class: 'battle-token-body' }, group);
+    svgEl('text', { class: 'battle-token-text', dy: '0.35em' }, group).textContent = token.initials;
+  });
+
+  stage.replaceChildren(svg);
+  wireBattleSvg(svg);
+  renderTray();
+}
+
+// Клетка предмета, повёрнутого на rot четвертей: та же формула, что MapObject.cellAt
+const stampCell = (object, rot, dx, dy) => {
+  let sx = dx;
+  let sy = dy;
+  if (rot === 1) { sx = dy; sy = object.h - 1 - dx; }
+  if (rot === 2) { sx = object.w - 1 - dx; sy = object.h - 1 - dy; }
+  if (rot === 3) { sx = object.w - 1 - dy; sy = dx; }
+  return object.cells[sy * object.w + sx];
+};
+
+const battleColor = name => {
+  let hash = 0;
+  for (const char of String(name)) hash = (hash * 31 + char.charCodeAt(0)) % 360;
+  return `hsl(${hash} 85% 62%)`;
+};
+
+function renderTray() {
+  const tray = document.querySelector('[data-battle-tray]');
+  if (!tray || !battle.data) return;
+  const off = battle.data.tokens.filter(token => token.x === null && !token.out);
+  tray.hidden = off.length === 0;
+  tray.replaceChildren();
+  if (!off.length) return;
+  const label = document.createElement('span');
+  label.className = 'label';
+  label.textContent = 'Не на карте:';
+  tray.appendChild(label);
+  off.forEach(token => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'btn btn-sm' + (battle.placing === token.id ? ' btn-primary' : ' btn-ghost');
+    button.textContent = token.name;
+    button.addEventListener('click', () => {
+      battle.placing = battle.placing === token.id ? null : token.id;
+      battleHint(battle.placing ? 'Нажмите клетку для ' + token.name : '');
+      renderTray();
+    });
+    tray.appendChild(button);
+  });
+}
+
+async function moveToken(token, x, y) {
+  const before = { x: token.x, y: token.y };
+  token.x = x;
+  token.y = y;
+  renderBattle();
+  try {
+    const response = await fetch(battle.url + '/participants/' + token.id + '/move', {
+      method: 'POST', body: new URLSearchParams({ x, y })
+    });
+    if (!response.ok) {
+      Object.assign(token, before);
+      renderBattle();
+      battleError(await response.text());
+      return;
+    }
+    battleHint('');
+    if (battle.reachFor === token.id) loadReach(token.id);
+  } catch (e) {
+    Object.assign(token, before);
+    renderBattle();
+    battleError('Нет связи с сервером: фишка не сдвинулась');
+  }
+  battle.lastChange = Date.now();
+  pollBattle();
+}
+
+async function sendPointer(x, y, from) {
+  const me = battleMe();
+  const meToken = battle.data.tokens.find(token => String(token.character) === me);
+  const params = new URLSearchParams({ x, y, who: meToken ? meToken.name : 'Мастер' });
+  if (from) {
+    params.set('fromX', from.x);
+    params.set('fromY', from.y);
+  }
+  try {
+    await fetch(battle.url + '/pointer', { method: 'POST', body: params });
+  } catch (e) { /* указатель не важен */ }
+  battle.lastChange = Date.now();
+  pollBattle();
+}
+
+function wireBattleSvg(svg) {
+  let press = null;
+  let longPress = null;
+  const cellAt = event => {
+    const point = toSvgPoint(svg, event.clientX, event.clientY);
+    return { x: Math.floor(point.x / CELL), y: Math.floor(point.y / CELL), point };
+  };
+  const inside = cell => cell.x >= 0 && cell.y >= 0 && cell.x < battle.data.doc.w && cell.y < battle.data.doc.h;
+
+  svg.addEventListener('pointerdown', event => {
+    if (event.button !== 0) return;
+    const tokenEl = event.target.closest('[data-token]');
+    const start = cellAt(event);
+    // после захвата указателя pointerup приходит на сам svg: дверь запоминаем здесь
+    const door = event.target.closest('[data-edge]');
+    press = { tokenEl, token: tokenEl ? tokenById(Number(tokenEl.dataset.token)) : null, door: door && door.dataset.edge,
+      x: event.clientX, y: event.clientY, start, moved: false };
+    svg.setPointerCapture(event.pointerId);
+    if (!tokenEl && !battle.pointerMode) {
+      // долгое нажатие на пустой клетке — указатель для всех
+      longPress = setTimeout(() => {
+        if (press && !press.moved && inside(start)) {
+          sendPointer(start.x, start.y);
+          press = null;
+        }
+      }, 600);
+    }
+  });
+
+  svg.addEventListener('pointermove', event => {
+    if (!press) return;
+    const dx = event.clientX - press.x;
+    const dy = event.clientY - press.y;
+    if (!press.moved && Math.hypot(dx, dy) < 5) return;
+    press.moved = true;
+    clearTimeout(longPress);
+    if (press.token && !battle.pointerMode) {
+      battle.dragging = true;
+      const cell = cellAt(event);
+      press.tokenEl.setAttribute('transform', `translate(${cell.point.x} ${cell.point.y})`);
+      const meters = battleMeters(press.token.x, press.token.y, cell.x, cell.y);
+      const far = battle.reach && battle.reachFor === press.token.id && battle.reach.meters
+        && !battle.reach.cells.has(cell.x + ',' + cell.y);
+      press.tokenEl.classList.toggle('is-far', Boolean(far));
+      // HOMEBREW-подсказка: дальше бега — второе действие, −3 (с. 98); учёта действий на сервере нет
+      battleHint(meters + ' м' + (far ? ' — дальше бега: второе действие, −3' : ''));
+    } else if (!press.token && !battle.pointerMode) {
+      const scale = battle.view.w / svg.getBoundingClientRect().width;
+      battle.view.x -= dx * scale;
+      battle.view.y -= dy * scale;
+      press.x = event.clientX;
+      press.y = event.clientY;
+      svg.setAttribute('viewBox', [battle.view.x, battle.view.y, battle.view.w, battle.view.h].join(' '));
+    }
+  });
+
+  const finish = event => {
+    clearTimeout(longPress);
+    if (!press) return;
+    const current = press;
+    press = null;
+    battle.dragging = false;
+    const cell = cellAt(event);
+    if (battle.pointerMode) {
+      if (!inside(cell)) return;
+      const from = current.token && current.moved && current.token.x !== null ? { x: current.token.x, y: current.token.y } : null;
+      sendPointer(cell.x, cell.y, from);
+      return;
+    }
+    if (current.token && current.moved) {
+      if (inside(cell) && (cell.x !== current.token.x || cell.y !== current.token.y)) moveToken(current.token, cell.x, cell.y);
+      else renderBattle();
+      return;
+    }
+    if (current.moved) return;
+    if (event.altKey && inside(cell)) {
+      sendPointer(cell.x, cell.y);
+      return;
+    }
+    if (current.door && !current.token) {
+      toggleDoor(current.door);
+      return;
+    }
+    if (current.token) {
+      tokenClick(current.token, event);
+      return;
+    }
+    if (battle.placing && inside(cell)) {
+      const token = tokenById(battle.placing);
+      battle.placing = null;
+      if (token) moveToken(token, cell.x, cell.y);
+      return;
+    }
+    closeBattleMenu();
+  };
+  svg.addEventListener('pointerup', finish);
+  svg.addEventListener('pointercancel', () => {
+    clearTimeout(longPress);
+    press = null;
+    battle.dragging = false;
+    renderBattle();
+  });
+
+  svg.addEventListener('wheel', event => {
+    event.preventDefault();
+    const point = toSvgPoint(svg, event.clientX, event.clientY);
+    zoomBattle(event.deltaY < 0 ? 1.15 : 1 / 1.15, point.x, point.y);
+    svg.setAttribute('viewBox', [battle.view.x, battle.view.y, battle.view.w, battle.view.h].join(' '));
+  }, { passive: false });
+
+  // стрелки двигают выбранную фишку на клетку
+  svg.querySelectorAll('[data-token]').forEach(el => {
+    el.addEventListener('keydown', event => {
+      const steps = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+      const token = tokenById(Number(el.dataset.token));
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        tokenClick(token, null);
+        return;
+      }
+      const step = steps[event.key];
+      if (!step || !token) return;
+      event.preventDefault();
+      moveToken(token, token.x + step[0], token.y + step[1]).then(() => {
+        const again = battle.stage && battle.stage.querySelector(`[data-token="${token.id}"]`);
+        if (again) again.focus();
+      });
+    });
+  });
+}
+
+async function toggleDoor(edge) {
+  try {
+    const response = await fetch(battle.url + '/door', { method: 'POST', body: new URLSearchParams({ edge }) });
+    if (!response.ok) battleError(await response.text());
+  } catch (e) {
+    battleError('Нет связи с сервером');
+  }
+  battle.lastChange = Date.now();
+  pollBattle();
+}
+
+const closeBattleMenu = () => {
+  const menu = document.querySelector('[data-battle-menu]');
+  if (menu) menu.hidden = true;
+};
+
+// Своя фишка выбирается, чужая при выбранной своей — атака: оружие, цель, расстояние и укрытие уже в диалоге
+async function tokenClick(token, event) {
+  if (!token) return;
+  const attacker = tokenById(battle.selected);
+  if (!attacker || attacker.id === token.id || attacker.x === null || token.x === null) {
+    closeBattleMenu();
+    selectToken(attacker && attacker.id === token.id ? null : token.id);
+    return;
+  }
+  const menu = document.querySelector('[data-battle-menu]');
+  if (!menu) return;
+  let sight = { meters: battleMeters(attacker.x, attacker.y, token.x, token.y), blocked: false, cover: null };
+  try {
+    const response = await fetch(`${battle.url}/sight?from=${attacker.id}&to=${token.id}`, { cache: 'no-store' });
+    if (response.ok) sight = await response.json();
+  } catch (e) { /* расстояние посчитано и здесь */ }
+  const row = document.getElementById('combatant-' + attacker.character);
+  const dialogs = row ? [...row.querySelectorAll('dialog[data-attack]')] : [];
+  let last = null;
+  try { last = localStorage.getItem('charka.battle.weapon.' + attacker.character); } catch (e) { /* только удобство */ }
+  dialogs.sort((a, b) => (b.dataset.attack === last) - (a.dataset.attack === last));
+
+  menu.replaceChildren();
+  const head = document.createElement('div');
+  head.className = 'battle-menu-head';
+  head.textContent = `${attacker.name} → ${token.name} · ${sight.meters} м`;
+  menu.appendChild(head);
+  if (sight.blocked) {
+    const warn = document.createElement('div');
+    warn.className = 'battle-menu-warn';
+    warn.textContent = 'Нет линии видимости';
+    menu.appendChild(warn);
+  } else if (sight.coverLabel) {
+    const cover = document.createElement('div');
+    cover.className = 'battle-menu-note';
+    cover.textContent = 'Укрытие: ' + sight.coverLabel;
+    menu.appendChild(cover);
+  }
+  dialogs.forEach(dialog => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'btn btn-sm' + (dialog.dataset.attack === last || dialogs.length === 1 ? ' btn-primary' : '');
+    const title = dialog.querySelector('h2');
+    button.textContent = title ? title.textContent.replace(/^[^:]*:\s*/, '') : 'Атака';
+    button.disabled = sight.blocked;
+    button.addEventListener('click', () => {
+      try { localStorage.setItem('charka.battle.weapon.' + attacker.character, dialog.dataset.attack); } catch (e) { /* только удобство */ }
+      closeBattleMenu();
+      openAttackFromMap(dialog, token, sight);
+    });
+    menu.appendChild(button);
+  });
+  if (!dialogs.length) {
+    const none = document.createElement('div');
+    none.className = 'battle-menu-note';
+    none.textContent = 'Атаковать нечем';
+    menu.appendChild(none);
+  }
+  const select = document.createElement('button');
+  select.type = 'button';
+  select.className = 'btn btn-sm btn-ghost';
+  select.textContent = 'Выбрать ' + token.name;
+  select.addEventListener('click', () => {
+    closeBattleMenu();
+    selectToken(token.id);
+  });
+  menu.appendChild(select);
+  const holder = menu.parentElement.getBoundingClientRect();
+  const x = event ? event.clientX - holder.left : holder.width / 2;
+  const y = event ? event.clientY - holder.top : holder.height / 2;
+  menu.style.left = Math.min(Math.max(8, x), holder.width - 220) + 'px';
+  menu.style.top = Math.max(8, y) + 'px';
+  menu.hidden = false;
+}
+
+// Тот же диалог, что в строке трекера: цель, расстояние и укрытие подставлены, всё можно поправить
+function openAttackFromMap(dialog, target, sight) {
+  const inputs = [...dialog.querySelectorAll('input[name="target"]')];
+  const chosen = inputs.find(input => input.value === String(target.character));
+  if (chosen) {
+    inputs.forEach(input => { input.checked = input === chosen; });
+    chosen.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+  // зона взрыва: отмечены все, кто в радиусе от цели
+  const radius = Number(dialog.dataset.radius || 0);
+  const mode = dialog.querySelector('[data-attack-mode]');
+  const multi = mode && mode.selectedOptions[0] && mode.selectedOptions[0].dataset.multi === 'true';
+  if (radius > 0 && multi && battle.data) {
+    battle.data.tokens.forEach(other => {
+      if (other.x === null || other.id === target.id) return;
+      const input = inputs.find(candidate => candidate.value === String(other.character));
+      if (input && battleMeters(target.x, target.y, other.x, other.y) <= radius) input.checked = true;
+    });
+  }
+  const distance = dialog.querySelector('input[name="distance"]');
+  if (distance) {
+    distance.value = sight.meters;
+    distance.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  const cover = dialog.querySelector('select[name="option.cover"]');
+  if (cover) cover.value = sight.cover || '';
+  if (cover && sight.cover) {
+    const more = cover.closest('details');
+    if (more) more.open = true;
+  }
+  dialog.showModal();
+}

@@ -41,6 +41,8 @@ public class EncounterController {
     private final DiceService diceService;
     private final GameSystemRegistry systemRegistry;
     private final AttackService attackService;
+    private final app.charka.map.BattleFieldService battleFieldService;
+    private final app.charka.map.BattleMapService battleMapService;
 
     @GetMapping
     public String page(@PathVariable Long campaignId, Model model) {
@@ -52,6 +54,7 @@ public class EncounterController {
         if (view.isPresent()) {
             model.addAttribute("view", view.get());
             model.addAttribute("attackObjects", attackService.objectTargets(campaign));
+            model.addAttribute("hasField", view.get().encounter().getMapDoc() != null);
             model.addAttribute("recentRolls", diceService.recentForCampaign(campaignId, JOURNAL_SIZE));
             model.addAttribute("difficultyPresets", systemRegistry.get(campaign.getSystem()).getCheckResolver().getDifficultyPresets());
             model.addAttribute("contests", systemRegistry.get(campaign.getSystem()).getCombatContests());
@@ -61,6 +64,7 @@ public class EncounterController {
         } else {
             model.addAttribute("candidates", encounterService.candidates(campaignId));
         }
+        model.addAttribute("maps", battleMapService.list(campaignId));
         return "encounter";
     }
 
@@ -69,8 +73,28 @@ public class EncounterController {
                         @RequestParam(required = false) List<Long> character,
                         @RequestParam(defaultValue = "false") boolean groupPlayers,
                         @RequestParam(defaultValue = "false") boolean groupNpcs,
+                        @RequestParam(required = false) Long map,
                         RedirectAttributes redirectAttributes) {
-        return attempt(campaignId, redirectAttributes, () -> encounterService.start(campaignId, character == null ? List.of() : character, groupPlayers, groupNpcs));
+        return attempt(campaignId, redirectAttributes, () -> encounterService.start(campaignId, character == null ? List.of() : character, groupPlayers, groupNpcs, map));
+    }
+
+    /** Положить карту под идущий бой: фишки расставляются заново */
+    @PostMapping("/attach")
+    public String attach(@PathVariable Long campaignId, @RequestParam Long map, RedirectAttributes redirectAttributes) {
+        return attempt(campaignId, redirectAttributes, () -> {
+            battleFieldService.attach(campaignId, map);
+            return null;
+        });
+    }
+
+    /** Копия карты боя становится заготовкой кампании */
+    @PostMapping("/save-map")
+    public String saveMap(@PathVariable Long campaignId, @RequestParam String name, RedirectAttributes redirectAttributes) {
+        return attempt(campaignId, redirectAttributes, () -> {
+            battleFieldService.saveAsMap(campaignId, name);
+            redirectAttributes.addFlashAttribute("mapSaved", name.strip());
+            return null;
+        });
     }
 
     @PostMapping("/next")

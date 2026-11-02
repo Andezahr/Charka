@@ -8,6 +8,10 @@ import app.charka.check.CheckService;
 import app.charka.check.OpposedCheckResult;
 import app.charka.exception.CharacterNotFoundException;
 import app.charka.exception.NotFoundException;
+import app.charka.map.MapDoc;
+import app.charka.map.MapGrid;
+import app.charka.map.TokenPlacer;
+import app.charka.model.BattleMap;
 import app.charka.model.Campaign;
 import app.charka.model.Character;
 import app.charka.model.CombatEffect;
@@ -109,6 +113,14 @@ public class EncounterService {
      */
     @Transactional
     public Encounter start(Long campaignId, List<Long> characterIds, boolean groupPlayers, boolean groupNpcs) {
+        return start(campaignId, characterIds, groupPlayers, groupNpcs, null);
+    }
+
+    /**
+     * @param mapId карта боя кампании: бой играет на её копии, фишки расставляются сами; null — без карты
+     */
+    @Transactional
+    public Encounter start(Long campaignId, List<Long> characterIds, boolean groupPlayers, boolean groupNpcs, Long mapId) {
         Campaign campaign = campaign(campaignId);
         if (encounterRepository.findByCampaignId(campaignId).isPresent()) {
             throw new IllegalArgumentException("Бой уже идёт");
@@ -130,6 +142,13 @@ public class EncounterService {
             encounter.getParticipants().add(participant);
         }
         sortByInitiative(encounter);
+        if (mapId != null) {
+            BattleMap map = campaign.getMaps().stream().filter(candidate -> candidate.getId().equals(mapId)).findFirst()
+                    .orElseThrow(NotFoundException.forId("BattleMap", mapId));
+            encounter.setMapDoc(map.getDoc());
+            encounter.setBattleMapId(map.getId());
+            TokenPlacer.place(encounter.getParticipants(), new MapGrid(MapDoc.parse(map.getDoc()), system.getMapRules()));
+        }
         return encounterRepository.save(encounter);
     }
 
@@ -318,6 +337,9 @@ public class EncounterService {
         order.add(place, added);
         renumber(order);
         encounter.getParticipants().add(added);
+        if (encounter.getMapDoc() != null) {
+            TokenPlacer.place(encounter.getParticipants(), new MapGrid(MapDoc.parse(encounter.getMapDoc()), system.getMapRules()));
+        }
     }
 
     /**

@@ -21,10 +21,18 @@ import java.util.List;
  * @param bands         расстояния одним нажатием, чтобы не набирать число
  * @param sections      модификаторы; редкие показываются по запросу
  * @param actionLabel   подпись кнопки: что случится с предметом
+ * @param radius        радиус зоны поражения одной единицы, м: на карте отмечаются все в нём; null — бьёт в точку
  */
 public record AttackForm(String damage, Integer range, String unavailable, List<Mode> modes, int maxRounds, int defaultRounds,
                          String roundsLabel, List<Option> skills, String locationLabel, List<Option> locations,
-                         String distanceLabel, List<Band> bands, List<Section> sections, String actionLabel) {
+                         String distanceLabel, List<Band> bands, List<Section> sections, String actionLabel, Integer radius) {
+
+    public AttackForm(String damage, Integer range, String unavailable, List<Mode> modes, int maxRounds, int defaultRounds,
+                      String roundsLabel, List<Option> skills, String locationLabel, List<Option> locations,
+                      String distanceLabel, List<Band> bands, List<Section> sections, String actionLabel) {
+        this(damage, range, unavailable, modes, maxRounds, defaultRounds, roundsLabel, skills, locationLabel, locations,
+                distanceLabel, bands, sections, actionLabel, null);
+    }
 
     /**
      * @param code           код режима

@@ -20,6 +20,7 @@
            th:text="${round != null} ? '⚔ Идёт бой · раунд ' + ${round} : '⚔ Бой'">⚔ Бой</a>
       </th:block>
       <a th:href="@{'/campaign/' + ${campaign.id} + '/gm'}" class="btn">👁 Экран мастера</a>
+      <a th:href="@{'/campaign/' + ${campaign.id} + '/maps'}" class="btn">🗺 Карты</a>
       <a th:href="@{'/api/campaigns/' + ${campaign.id} + '/download'}" class="btn" download>⬇ Скачать JSON</a>
     </div>
   </div>

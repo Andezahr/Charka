@@ -27,6 +27,15 @@
         <h2 class="card-title"><span class="dot red"></span>Кто участвует</h2>
         <button type="submit" class="btn btn-primary">⚔ Начать бой</button>
       </div>
+      <div class="card-body encounter-group" th:unless="${#lists.isEmpty(maps)}">
+        <label class="field">
+          <span class="label">Карта</span>
+          <select name="map" th:attr="data-remember=${'map.' + campaign.id}">
+            <option th:each="m : ${maps}" th:value="${m.id}" th:text="${m.name}">Бар</option>
+            <option value="">Без карты</option>
+          </select>
+        </label>
+      </div>
       <div class="card-body encounter-group">
         <span class="label">Один кубик инициативы на всех</span>
         <label class="check"><input type="checkbox" name="groupPlayers" value="true"><span>Игроки</span></label>
@@ -71,6 +80,38 @@
 
     <div class="grid grid-main">
       <div class="stack">
+        <!-- M-02: поле боя. Рисует app.js по JSON карты, обновляется опросом; строки трекера ниже не трогаются -->
+        <details th:if="${hasField}" class="card battle" data-battle-wrap open>
+          <summary class="card-head">
+            <h2 class="card-title"><span class="dot yellow"></span>Карта</h2>
+          </summary>
+          <div class="battle-tools">
+            <label class="field battle-me">
+              <span class="label">Я —</span>
+              <select data-battle-me aria-label="Кто смотрит на это устройство">
+                <option value="">мастер</option>
+                <option th:each="row : ${view.rows}" th:value="${row.character.id}" th:text="${row.character.name}">Колясик</option>
+              </select>
+            </label>
+            <button type="button" class="btn btn-sm btn-ghost" data-battle-pointer title="Показать клетку всем (Alt+нажатие, долгое нажатие)">👆 Указать</button>
+            <span class="battle-zoom">
+              <button type="button" class="btn btn-sm btn-ghost" data-battle-zoom="1.25" aria-label="Крупнее">＋</button>
+              <button type="button" class="btn btn-sm btn-ghost" data-battle-zoom="0.8" aria-label="Мельче">−</button>
+              <button type="button" class="btn btn-sm btn-ghost" data-battle-zoom="0" title="Вся карта">⤢</button>
+            </span>
+          </div>
+          <div class="battle-turn" data-battle-turn hidden>
+            <span>Ход сменился</span>
+            <a th:href="@{${base}}" class="btn btn-sm btn-primary">Обновить</a>
+          </div>
+          <div class="battle-holder">
+            <div class="battle-stage" th:attr="data-battle=@{${base} + '/map'},data-turn=${view.encounter.round + ':' + (view.current != null ? view.current.id : '')}"></div>
+            <div class="battle-menu" data-battle-menu hidden></div>
+          </div>
+          <div class="battle-tray" data-battle-tray hidden></div>
+          <p class="battle-hint" data-battle-hint
+             data-default="Тяните фишку · своя выбрана — нажмите врага для атаки · дверь — нажатием · колесо — масштаб, пустое место — сдвиг">Тяните фишку · своя выбрана — нажмите врага для атаки · дверь — нажатием · колесо — масштаб, пустое место — сдвиг</p>
+        </details>
         <!-- Предмет израсходован: своей строки у него нет -->
         <th:block th:if="${attackResult != null and attackResult.detached}">
           <div th:replace="~{fragments/attack :: result(${attackResult})}"></div>
@@ -157,6 +198,28 @@
               </select>
               <button type="submit" class="btn">＋ В бой</button>
             </form>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><h2 class="card-title"><span class="dot yellow"></span>Карта боя</h2></div>
+          <div class="card-body stack-sm">
+            <div th:if="${mapSaved != null}" class="alert alert-success" role="status">
+              <span class="alert-text" th:text="'Сохранено как карта «' + ${mapSaved} + '»'">Сохранено</span>
+              <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+            </div>
+            <form th:unless="${#lists.isEmpty(maps)}" th:action="@{${base} + '/attach'}" method="post" class="form-row"
+                  th:attr="data-confirm=${hasField ? 'Сменить карту? Фишки встанут заново.' : null}">
+              <select name="map" class="grow" aria-label="Карта">
+                <option th:each="m : ${maps}" th:value="${m.id}" th:text="${m.name}">Бар</option>
+              </select>
+              <button type="submit" class="btn btn-sm" th:text="${hasField} ? 'Сменить' : 'Положить карту'">Положить карту</button>
+            </form>
+            <form th:if="${hasField}" th:action="@{${base} + '/save-map'}" method="post" class="form-row">
+              <input type="text" name="name" class="grow" maxlength="100" required placeholder="Название" aria-label="Название новой карты">
+              <button type="submit" class="btn btn-sm btn-ghost" title="Открытые двери и правки этого боя станут новой картой">Сохранить как карту</button>
+            </form>
+            <a th:href="@{'/campaign/' + ${campaign.id} + '/maps'}" class="btn btn-sm btn-ghost">🗺 Карты кампании</a>
           </div>
         </section>
 

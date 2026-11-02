@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Карты: ' + ${campaign.name})}"></head>
+<body>
+<header th:replace="~{fragments/layout :: topbar(null, 'campaign')}"></header>
+
+<main class="page" th:with="base=${'/campaign/' + campaign.id + '/maps'}">
+  <div class="page-head">
+    <div>
+      <span class="eyebrow">Карты боя</span>
+      <h1 class="page-title" th:text="${campaign.name}">Кампания</h1>
+      <p class="page-sub">Заготовки: бой играет на копии, открытые двери и взорванные стены заготовку не меняют.</p>
+    </div>
+    <div class="page-actions">
+      <a th:href="@{'/campaign/' + ${campaign.id}}" class="btn btn-ghost">← К кампании</a>
+      <a th:href="@{'/campaign/' + ${campaign.id} + '/encounter'}" class="btn btn-primary">⚔ Бой</a>
+    </div>
+  </div>
+
+  <div th:if="${mapError != null}" class="alert alert-error" role="alert">
+    <span class="alert-text" th:text="${mapError}">Назовите карту</span>
+    <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+  </div>
+
+  <div class="grid grid-main">
+    <section class="card">
+      <div class="card-head">
+        <h2 class="card-title"><span class="dot yellow"></span>Карты кампании</h2>
+        <span class="badge" th:text="${#lists.size(maps)}">0</span>
+      </div>
+      <div class="card-body list">
+        <div th:each="m : ${maps}" class="row" th:id="'map-' + ${m.id}" data-editable>
+          <div class="row-main">
+            <a class="row-title" th:href="@{${base} + '/' + ${m.id} + '/edit'}" th:text="${m.name}">Бар</a>
+            <div class="row-meta" th:with="d=${docs.get(m.id)}">
+              <span th:text="${d.w} + ' × ' + ${d.h} + ' клеток по ' + ${d.cell} + ' м'">30 × 20 клеток</span>
+              <span th:text="'· стен ' + ${d.walls.size()} + ', предметов ' + ${d.stamps.size()}">· стен 12</span>
+            </div>
+          </div>
+          <a class="btn btn-sm" th:href="@{${base} + '/' + ${m.id} + '/edit'}">✎ Редактор</a>
+          <form th:action="@{${base} + '/' + ${m.id} + '/copy'}" method="post">
+            <button type="submit" class="btn btn-sm btn-ghost">Копия</button>
+          </form>
+          <button type="button" class="btn btn-sm btn-ghost" data-edit-toggle aria-label="Переименовать">Имя</button>
+          <form th:action="@{${base} + '/' + ${m.id} + '/delete'}" method="post" th:attr="data-confirm='Удалить карту «' + ${m.name} + '»? Идущий бой на ней останется.'">
+            <button type="submit" class="btn btn-sm btn-ghost" aria-label="Удалить карту">✕</button>
+          </form>
+          <div class="edit-panel">
+            <form th:action="@{${base} + '/' + ${m.id} + '/rename'}" method="post" class="form-row">
+              <input type="text" name="name" class="grow" maxlength="100" required th:value="${m.name}" aria-label="Название">
+              <button type="submit" class="btn btn-sm btn-primary">Сохранить</button>
+            </form>
+          </div>
+        </div>
+        <div th:if="${#lists.isEmpty(maps)}" class="empty">Карт пока нет</div>
+      </div>
+    </section>
+
+    <div class="stack">
+      <section class="card">
+        <div class="card-head"><h2 class="card-title"><span class="dot"></span>Новая карта</h2></div>
+        <div class="card-body">
+          <form th:action="@{${base}}" method="post" class="form">
+            <label class="field">
+              <span class="label">Название</span>
+              <input type="text" name="name" maxlength="100" required placeholder="Бар «Последний шанс»">
+            </label>
+            <div class="field-grid">
+              <label class="field">
+                <span class="label">Ширина, клеток</span>
+                <input type="number" name="width" min="1" max="200" th:value="${defaultWidth}">
+              </label>
+              <label class="field">
+                <span class="label">Высота, клеток</span>
+                <input type="number" name="height" min="1" max="200" th:value="${defaultHeight}">
+              </label>
+            </div>
+            <button type="submit" class="btn btn-primary">＋ Создать и открыть редактор</button>
+          </form>
+        </div>
+      </section>
+    </div>
+  </div>
+</main>
+</body>
+</html>

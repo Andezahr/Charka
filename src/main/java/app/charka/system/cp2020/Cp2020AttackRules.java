@@ -256,7 +256,8 @@ final class Cp2020AttackRules implements AttackRules {
                 defaultRounds(weapon), roundsLabel(weapon),
                 skillCodes(weapon).stream().map(code -> new Option(code, skillName(code))).toList(),
                 "Зона (выбор −4)", locations, "Расстояние, м", bands(range),
-                Cp2020AttackModifiers.sectionsFor(weapon), actionLabel(weapon));
+                Cp2020AttackModifiers.sectionsFor(weapon), actionLabel(weapon),
+                weapon.getProperties().containsKey(Cp2020ItemTypes.AREA) ? number(weapon, Cp2020ItemTypes.AREA) : null);
     }
 
     CheckRequest toHit(Character attacker, Item weapon, AttackRequest request, Map<String, StatValue> stats) {
