@@ -38,6 +38,7 @@ class Cp2020NetrunningTest {
     @Autowired private ItemService itemService;
     @Autowired private GameSystemRegistry registry;
     @Autowired private EntityManager entityManager;
+    @Autowired private app.charka.repository.CharacterRepository characterRepository;
     @Autowired private app.charka.service.MoneyService moneyService;
 
     @MockitoBean(answers = Answers.CALLS_REAL_METHODS) private DiceRoller dice;
@@ -125,6 +126,54 @@ class Cp2020NetrunningTest {
         assertThat(act(deck, Cp2020Netrunning.UPGRADE_MEMORY)).contains("10 → 20");
         assertThat(registry.get("CP2020").getItemSummary(itemService.findById(deck.getId())).main()).isEqualTo("MU 0/20");
         assertThatThrownBy(() -> act(deck, Cp2020Netrunning.UPGRADE_MEMORY)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("Сетевой бой (с. 151): Hellbolt против нетраннера без защиты — попадание, 1D10 урона в здоровье; инициатива в Сети")
+    void hellbolt() {
+        Character victim = new Character();
+        victim.setName("Жертва");
+        victim = characterService.createInCampaign(runner.getCampaign().getId(), victim);
+        Item deck = add("deck-standard");
+        Item hellbolt = add("program-hellbolt");
+        act(hellbolt, Cp2020Netrunning.LOAD);
+        when(dice.roll(anyInt())).thenReturn(5);
+
+        assertThat(act(deck, Cp2020Netrunning.NET_INITIATIVE)).contains("= 11");
+        String result = itemService.performAction(runner.getId(), hellbolt.getId(), Cp2020Netrunning.RUN,
+                Map.of("source", String.valueOf(victim.getId())));
+        flush();
+
+        // атака 4 + INT 6 + 0 + 5 = 15 против 0 + 6 + 0 + 5 = 11
+        assertThat(result).contains("Попадание").contains("1D10 = 5 урона");
+        assertThat(registry.get("CP2020").getHealthStatus(characterRepository.findById(victim.getId()).orElseThrow())).isNotNull();
+        assertThat(characterRepository.findById(victim.getId()).orElseThrow().getCounters())
+                .filteredOn(c -> Cp2020HealthStrategy.TYPE.equals(c.getType()))
+                .singleElement().satisfies(health -> assertThat(health.getValue()).isPositive());
+    }
+
+    @Test
+    @DisplayName("Защитная программа цели идёт в защиту: Reflector 5 отбивает")
+    void shielded() {
+        Character victim = new Character();
+        victim.setName("Защищённый");
+        victim = characterService.createInCampaign(runner.getCampaign().getId(), victim);
+        Long victimInventory = victim.getInventories().getFirst().getId();
+        add("deck-standard");
+        Item sword = add("program-sword");
+        act(sword, Cp2020Netrunning.LOAD);
+        itemService.addFromCatalog(victimInventory, "deck-standard", 1);
+        Item reflector = itemService.addFromCatalog(victimInventory, "program-reflector", 1);
+        flush();
+        itemService.performAction(victim.getId(), reflector.getId(), Cp2020Netrunning.LOAD, Map.of());
+        flush();
+        when(dice.roll(anyInt())).thenReturn(5);
+
+        String result = itemService.performAction(runner.getId(), sword.getId(), Cp2020Netrunning.RUN,
+                Map.of("source", String.valueOf(victim.getId())));
+
+        // 3 + 6 + 0 + 5 = 14 против 5 + 6 + 0 + 5 = 16
+        assertThat(result).contains("Reflector").contains("Отбито");
     }
 
     @Test

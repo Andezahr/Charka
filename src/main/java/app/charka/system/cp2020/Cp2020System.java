@@ -207,7 +207,7 @@ public class Cp2020System implements GameSystem {
             return Cp2020Vehicles.perform(item, action, params, getCurrentStats(item.getInventory().getCharacter()), getCheckResolver(), dice);
         }
         if (Cp2020Netrunning.isDeck(item) || Cp2020Netrunning.isProgram(item)) {
-            return Cp2020Netrunning.perform(item, action, params, getCurrentStats(item.getInventory().getCharacter()), getCheckResolver(), dice);
+            return Cp2020Netrunning.perform(item, action, params, getCurrentStats(item.getInventory().getCharacter()), net(), getCheckResolver(), dice);
         }
         return Cp2020WornArmor.isArmor(item) ? Cp2020ArmorActions.perform(item, action) : Cp2020WeaponActions.perform(item, action, params);
     }
@@ -400,6 +400,29 @@ public class Cp2020System implements GameSystem {
         return character.getCounters().stream()
                 .filter(counter -> Cp2020StatsStrategy.TYPE.equals(counter.getType()))
                 .findFirst();
+    }
+
+    /**
+     * Сетевой бой: статы цели и урон программы. HOMEBREW: урон из Сети идёт в торс без брони (с. 140: «physical damage»), BTM вычитается.
+     */
+    private Cp2020Netrunning.Net net() {
+        return new Cp2020Netrunning.Net() {
+            @Override
+            public Map<String, app.charka.skill.StatValue> stats(Character character) {
+                return getCurrentStats(character);
+            }
+
+            @Override
+            public String damage(Character character, int amount) {
+                return healthCounterService.applyDamage(character.getId(), app.charka.model.counters.strategy.health.DamageRequest.builder()
+                                .amount(amount)
+                                .location(Cp2020Location.TORSO.name())
+                                .damageType(Cp2020DamageType.BYPASS.name())
+                                .build())
+                        .map(app.charka.model.counters.strategy.health.HealthEvent::getSummary)
+                        .orElse(null);
+            }
+        };
     }
 
     @Override

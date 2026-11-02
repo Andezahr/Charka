@@ -43,6 +43,9 @@ public final class Cp2020Netrunning {
     public static final String LOAD = "LOAD";
     public static final String UNLOAD = "UNLOAD";
     public static final String RUN = "RUN";
+    public static final String NET_INITIATIVE = "NET_INITIATIVE";
+    /** Антиперсональная программа против цели без листа: только бросок атакующего */
+    static final String NO_SHEET = "NONE";
     public static final String UPGRADE_MEMORY = "UPGRADE_MEMORY";
     public static final String UPGRADE_SPEED = "UPGRADE_SPEED";
     public static final String UPGRADE_WALL = "UPGRADE_WALL";
@@ -278,6 +281,7 @@ public final class Cp2020Netrunning {
             int speed = number(item, SPEED, 0);
             int wall = number(item, DATA_WALL, 2);
             return List.of(
+                    ItemAction.simple(NET_INITIATIVE, "⚡ Инициатива в Сети", null).forCombat(),
                     ItemAction.simple(UPGRADE_MEMORY, "+10 MU · " + MEMORY_COST + " eb", memory >= MEMORY_MAX ? "Уже " + MEMORY_MAX + " MU: больше память не ставится" : null)
                             .withConfirm("Купить вторую память за " + MEMORY_COST + " eb?").asSecondary(),
                     ItemAction.simple(UPGRADE_SPEED, "Скорость +1 · " + SPEED_COST + " eb", speed >= SPEED_MAX ? "Скорость уже " + SPEED_MAX : null)
@@ -288,7 +292,10 @@ public final class Cp2020Netrunning {
         List<ItemAction> actions = new ArrayList<>();
         Optional<Item> deck = deckOf(item);
         if (deck.isPresent()) {
-            actions.add(ItemAction.simple(RUN, "▶ Запустить", null).forCombat());
+            List<Option> victims = programClass(item).roll == Roll.COMBAT ? victims(item) : List.of();
+            actions.add(victims.isEmpty()
+                    ? ItemAction.simple(RUN, "▶ Запустить", null).forCombat()
+                    : ItemAction.withSources(RUN, "▶ Запустить", null, victims).withLabels("По кому", null).forCombat());
             actions.add(ItemAction.simple(UNLOAD, "Выгрузить", null).asSecondary());
         } else {
             int mu = number(item, MEMORY, 0);
@@ -305,10 +312,21 @@ public final class Cp2020Netrunning {
         return actions;
     }
 
+    /**
+     * Что нужно сетевому бою от системы: текущие статы другого персонажа и урон в его здоровье.
+     */
+    interface Net {
+        Map<String, StatValue> stats(Character character);
+
+        /** Урон без брони; null — у цели нет счётчика здоровья */
+        String damage(Character character, int amount);
+    }
+
     static String perform(Item item, String action, Map<String, String> params, Map<String, StatValue> stats,
-                          CheckResolver resolver, DiceRoller dice) {
+                          Net net, CheckResolver resolver, DiceRoller dice) {
         if (isDeck(item)) {
             return switch (action) {
+                case NET_INITIATIVE -> netInitiative(item, stats, dice);
                 case UPGRADE_MEMORY -> upgrade(item, MEMORY, 10, MEMORY_STEP, MEMORY_MAX, MEMORY_COST, "память");
                 case UPGRADE_SPEED -> upgrade(item, SPEED, 0, 1, SPEED_MAX, SPEED_COST, "скорость");
                 case UPGRADE_WALL -> upgrade(item, DATA_WALL, 2, 1, WALL_MAX, WALL_COST, "Data Wall");
@@ -321,7 +339,7 @@ public final class Cp2020Netrunning {
                 item.getProperties().remove(LOADED_IN);
                 yield item.getName() + " выгружена";
             }
-            case RUN -> run(item, stats, resolver, dice);
+            case RUN -> run(item, params.get("source"), stats, net, resolver, dice);
             default -> throw new IllegalArgumentException("Неизвестное действие с программой: " + action);
         };
     }
@@ -366,9 +384,83 @@ public final class Cp2020Netrunning {
         return program.getName() + " в «" + deck.getName() + "»: MU " + (number(deck, MEMORY, 10) - free + mu) + "/" + number(deck, MEMORY, 10);
     }
 
-    private static String run(Item program, Map<String, StatValue> stats, CheckResolver resolver, DiceRoller dice) {
+    /** Кого можно атаковать антиперсональной программой: остальные персонажи кампании */
+    private static List<Option> victims(Item program) {
+        Character runner = program.getInventory().getCharacter();
+        if (runner.getCampaign() == null) {
+            return List.of();
+        }
+        List<Option> options = new ArrayList<>();
+        options.add(new Option(NO_SHEET, "Цель без листа"));
+        runner.getCampaign().getCharacters().stream()
+                .filter(other -> !other.getId().equals(runner.getId()))
+                .forEach(other -> options.add(new Option(String.valueOf(other.getId()), other.getName())));
+        return options;
+    }
+
+    /** С. 144: REF + скорость деки + 1D10; у компьютера — INT + 1D10 */
+    private static String netInitiative(Item deck, Map<String, StatValue> stats, DiceRoller dice) {
+        StatValue ref = stats.get(Cp2020StatsStrategy.REF);
+        int speed = number(deck, SPEED, 0);
+        int roll = dice.roll(10);
+        int total = (ref == null ? 0 : ref.value()) + speed + roll;
+        return "Инициатива в Сети: REF " + (ref == null ? 0 : ref.value()) + " + скорость " + speed + " + d10 " + roll + " = " + total;
+    }
+
+    /** Сильнейшая загруженная защитная программа персонажа: её сила — в защиту от антиперсональных */
+    private static Optional<Item> bestProtection(Character character) {
+        return items(character)
+                .filter(Cp2020Netrunning::isProgram)
+                .filter(program -> programClass(program) == ProgramClass.PROTECTION)
+                .filter(program -> deckOf(program).isPresent())
+                .max(java.util.Comparator.comparingInt(program -> number(program, STRENGTH, 0)));
+    }
+
+    private static int combatTotal(String side, Character character, int strength, Map<String, StatValue> stats,
+                                   CheckResolver resolver, DiceRoller dice, List<String> steps) {
+        StatValue intelligence = stats.get(Cp2020StatsStrategy.INT);
+        List<CheckRequest.Part> parts = List.of(new CheckRequest.Part("Сила", strength),
+                new CheckRequest.Part("INT", intelligence == null ? 0 : intelligence.value()),
+                new CheckRequest.Part("Интерфейс", skillLevel(character)));
+        CheckResult result = resolver.resolve(CheckRequest.ofParts(side, parts, null, null), dice);
+        steps.add(side + ": " + result.total() + " (" + String.join(", ", result.steps()) + ")");
+        return result.total();
+    }
+
+    /**
+     * Бой против нетраннера (с. 151): сила + INT + Interface + 1D10 с обеих сторон, у защитника сила — его защитная программа;
+     * равенство — за атакующим. Попала — эффект программы на цели.
+     */
+    private static String attackRunner(Item program, Character victim, Map<String, StatValue> stats, Net net,
+                                       CheckResolver resolver, DiceRoller dice) {
+        Character runner = program.getInventory().getCharacter();
+        List<String> steps = new ArrayList<>();
+        int attack = combatTotal(runner.getName() + ", " + program.getName(), runner, number(program, STRENGTH, 0), stats, resolver, dice, steps);
+        Optional<Item> shield = bestProtection(victim);
+        int defence = combatTotal(victim.getName() + shield.map(item -> ", " + item.getName()).orElse(""), victim,
+                shield.map(item -> number(item, STRENGTH, 0)).orElse(0), net.stats(victim), resolver, dice, steps);
+        if (attack < defence) {
+            steps.add("Отбито");
+            return String.join("; ", steps);
+        }
+        steps.add("Попадание");
+        steps.add(Cp2020NetEffects.apply(program.getName(), victim, net, dice));
+        return String.join("; ", steps);
+    }
+
+    private static String run(Item program, String target, Map<String, StatValue> stats, Net net, CheckResolver resolver, DiceRoller dice) {
         int strength = number(program, STRENGTH, 0);
         ProgramClass programClass = programClass(program);
+        if (programClass.roll == Roll.COMBAT && target != null && !target.isBlank() && !NO_SHEET.equals(target)) {
+            Character runner = program.getInventory().getCharacter();
+            Character victim = runner.getCampaign() == null ? null : runner.getCampaign().getCharacters().stream()
+                    .filter(other -> String.valueOf(other.getId()).equals(target))
+                    .findFirst().orElse(null);
+            if (victim == null) {
+                throw new IllegalArgumentException("Такого персонажа в кампании нет");
+            }
+            return attackRunner(program, victim, stats, net, resolver, dice);
+        }
         if (programClass.roll == Roll.UTILITY) {
             int roll = dice.roll(10);
             return program.getName() + ": 1D10 = " + roll + (roll <= strength ? " ≤ " : " > ") + "силы " + strength
