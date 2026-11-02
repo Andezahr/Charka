@@ -130,6 +130,24 @@
           <th:block th:each="blast : ${pendingBlasts}">
             <div th:replace="~{fragments/attack :: pending(${character.id}, ${blast}, ${attackTargets})}"></div>
           </th:block>
+          <!-- Без предмета: рукопашная и приёмы; итог — здесь же -->
+          <div th:if="${abilities != null and !#lists.isEmpty(abilities) and !#lists.isEmpty(attackTargets)}" class="abilities">
+            <div th:each="ability : ${abilities}" class="item-head">
+              <span class="row-title" th:text="${ability.name}">Рукопашная</span>
+              <span class="item-value" th:text="${ability.form.damage}">1D6/2 + BODY</span>
+              <span class="item-actions" th:with="attackUrl=${ability.url}">
+                <button type="button" class="btn btn-sm" th:attr="data-dialog-open='attack-' + ${ability.id}" th:text="${ability.form.actionLabel}">Атаковать</button>
+                <dialog th:replace="~{fragments/attack :: dialog(${character.id}, ${ability}, ${ability.form}, ${attackTargets})}"></dialog>
+              </span>
+            </div>
+            <th:block th:if="${attackResult != null and !attackResult.detached and actionItemId == null}">
+              <div th:replace="~{fragments/attack :: result(${attackResult})}"></div>
+            </th:block>
+            <div th:if="${encounterError != null}" class="alert alert-error item-result" role="alert">
+              <span class="alert-text" th:text="${encounterError}">Ошибка</span>
+              <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+            </div>
+          </div>
           <div th:if="${blastError != null}" class="alert alert-error item-result" role="alert">
             <span class="alert-text" th:text="${blastError}">Выберите, кого задело</span>
             <button type="button" class="alert-close" aria-label="Закрыть">×</button>

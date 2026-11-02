@@ -167,4 +167,16 @@ class Cp2020LuckTest {
         assertThat(result.initiator().result().steps()).anyMatch(step -> step.contains("Удача +2"));
         assertThat(luck()).isEqualTo(4);
     }
+
+    @Test
+    @DisplayName("T-08: рукопашная на листе вне боя — блок с ударом и целями из кампании; удар без трекера проходит")
+    void brawlOnSheet() throws Exception {
+        String page = mockMvc.perform(get("/character/" + lucky.getId()))
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        assertThat(page).contains("/attack/ability/BRAWL");
+
+        var result = attackService.attackWithAbility(lucky.getId(), "BRAWL",
+                new AttackRequest(List.of(other.getId()), null, 0, "TORSO", null, Set.of(), 0, "STRIKE", 0, 0, 0));
+        assertThat(result.title()).isNotBlank();
+    }
 }

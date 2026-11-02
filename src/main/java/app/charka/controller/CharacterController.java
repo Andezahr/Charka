@@ -122,6 +122,12 @@ public class CharacterController {
                     .sorted(Comparator.comparing(other -> other.isNpc() == character.isNpc()))
                     .toList());
             model.addAttribute("pendingBlasts", attackService.pendingBlasts(id));
+            // T-08: удар без предмета (CP2020: рукопашная, приёмы) и на листе, не только в трекере
+            model.addAttribute("abilities", attackRules.abilities(character).stream()
+                    .map(source -> new app.charka.encounter.EncounterView.Ability(source.ability() + "-" + character.getId(),
+                            "/character/" + character.getId() + "/attack/ability/" + source.ability(), source.name(),
+                            attackRules.form(source, currentStats)))
+                    .toList());
         }
         model.addAttribute("roles", system.rolesOf(character));
         model.addAttribute("quickDice", system.getQuickDice());
