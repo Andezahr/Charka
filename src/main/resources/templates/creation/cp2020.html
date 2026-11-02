@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Новый персонаж · ' + ${campaign.name})}"></head>
+<body>
+<header th:replace="~{fragments/layout :: topbar(null, 'campaign')}"></header>
+
+<!-- Мастер создания персонажа CP2020: одна страница, итоги считаются сразу (app.js, [data-creation]).
+     Правила и таблицы — Cp2020Creation; сервер проверяет всё ещё раз -->
+<main class="page" data-creation
+      th:attr="data-roll-url=@{'/campaign/' + ${campaign.id} + '/characters/new/roll'},data-btm=${#strings.listJoin(creation.btm, ',')}">
+  <div th:if="${errorMessage != null}" class="alert alert-error" role="alert">
+    <span class="alert-text" th:text="${errorMessage}">Ошибка</span>
+    <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+  </div>
+  <div class="page-head">
+    <div>
+      <span class="eyebrow">Новый персонаж · Cyberpunk 2020</span>
+      <h1 class="page-title" th:text="${campaign.name}">Кампания</h1>
+      <p class="page-sub">Очки, статы, роль и навыки по книге (с. 20, 44–45); деньги — по таблице занятий (с. 58)</p>
+    </div>
+    <div class="page-actions">
+      <a th:href="@{'/campaign/' + ${campaign.id}}" class="btn btn-ghost">← К кампании</a>
+    </div>
+  </div>
+
+  <form th:action="@{'/campaign/' + ${campaign.id} + '/characters/new'}" method="post" class="stack" data-creation-form>
+    <section class="card">
+      <div class="card-head"><h2 class="card-title"><span class="dot"></span>Имя</h2></div>
+      <div class="card-body">
+        <input type="text" name="name" class="grow" placeholder="Как его зовут на улице" required autocomplete="off" maxlength="255">
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2 class="card-title"><span class="dot"></span>Характеристики</h2>
+        <span class="badge" data-creation-left>0</span>
+      </div>
+      <div class="card-body">
+        <div class="form-row">
+          <select name="method" class="grow" required aria-label="Как определить очки" data-creation-method>
+            <option value="">Как определить очки…</option>
+            <option value="RANDOM">Случайно: 9D10</option>
+            <option value="FAST">Быстро: 1D10 на каждый стат, 2 и меньше — перебросить</option>
+            <optgroup label="Кинематографично (решает мастер)">
+              <option th:each="c : ${creation.cinematic}" th:value="${c.key}" th:attr="data-points=${c.value}"
+                      th:text="${c.key} + ' · ' + ${c.value}">Major Hero · 80</option>
+            </optgroup>
+            <option value="MANUAL">Вручную</option>
+          </select>
+          <input type="number" name="points" class="narrow" min="18" max="90" required readonly aria-label="Очков" data-creation-points>
+          <button type="button" class="btn btn-sm" data-creation-roll hidden>🎲 Бросить</button>
+        </div>
+        <p class="hint" data-creation-rolls hidden></p>
+        <div class="field-grid creation-stats">
+          <label th:each="stat : ${creation.stats}" class="field">
+            <span class="label" th:text="${creation.statNames.get(stat)}">INT</span>
+            <input type="number" th:name="'stat.' + ${stat}" min="2" max="10" value="2" required th:attr="data-stat=${stat}">
+          </label>
+        </div>
+        <p class="hint" data-creation-derived></p>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2 class="card-title"><span class="dot pink"></span>Роль и карьерные навыки</h2>
+        <span class="badge" data-creation-career-left>40</span>
+      </div>
+      <div class="card-body">
+        <select name="role" required class="grow" aria-label="Роль" data-creation-role>
+          <option value="">Роль…</option>
+          <option th:each="r : ${creation.roles}" th:value="${r.role.code}" th:text="${r.role.name}"
+                  th:attr="data-salaries=${#strings.listJoin(r.salaries, ',')}">Соло</option>
+        </select>
+        <div th:each="r : ${creation.roles}" class="creation-career" th:attr="data-creation-package=${r.role.code}" hidden>
+          <div th:each="slot, state : ${r.slots}" class="form-row creation-slot">
+            <span th:unless="${slot.choice}" class="grow" th:text="${slot.label} + (${state.first} ? ' — спецспособность' : '')">Боевое чутьё</span>
+            <select th:if="${slot.choice}" class="grow" th:name="'slot.' + ${state.index}" th:attr="aria-label=${slot.label}" disabled>
+              <option th:each="o : ${slot.options}" th:value="${o.code}" th:text="${o.name}">Драка</option>
+            </select>
+            <input type="number" class="narrow" min="0" max="10" value="0" th:name="'career.' + ${state.index}"
+                   th:attr="aria-label=${slot.label},data-special=${state.first}" disabled data-creation-career>
+          </div>
+        </div>
+        <p class="hint" data-creation-funds></p>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2 class="card-title"><span class="dot green"></span>Навыки хобби</h2>
+        <span class="badge" data-creation-pickup-left>0</span>
+      </div>
+      <div class="card-body" data-creation-pickups>
+        <template data-creation-pickup-row>
+          <div class="form-row">
+            <select class="grow" aria-label="Навык хобби">
+              <option value="">Навык…</option>
+              <option th:each="s : ${creation.pickupSkills}" th:value="${s.code}" th:text="${s.name} + ' · ' + ${#strings.toUpperCase(s.statCode)}">Скрытность</option>
+            </select>
+            <input type="number" class="narrow" min="0" max="10" value="0" aria-label="Уровень">
+          </div>
+        </template>
+        <p class="hint">Очков хобби — REF + INT. Карьерные навыки ими не поднимаются (с. 45).</p>
+        <button type="button" class="btn btn-sm" data-creation-add-pickup>＋ Навык хобби</button>
+      </div>
+    </section>
+
+    <div class="form-row">
+      <button type="submit" class="btn btn-primary" data-creation-submit>Создать персонажа</button>
+      <span class="hint" data-creation-problem></span>
+    </div>
+  </form>
+</main>
+</body>
+</html>

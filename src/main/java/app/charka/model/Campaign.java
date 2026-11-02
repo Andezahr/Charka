@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 @Data
@@ -26,10 +27,10 @@ public class Campaign {
 
     @JsonManagedReference
     @OneToMany(mappedBy = "campaign", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Chronicle> chronicles;
+    private List<Chronicle> chronicles = new ArrayList<>();
 
     @JsonManagedReference
     @OneToMany(mappedBy = "campaign", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Character> characters;
+    private List<Character> characters = new ArrayList<>();
 
 }

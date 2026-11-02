@@ -929,6 +929,9 @@ details.cp-more > summary:hover { color: var(--text-soft); }
 .add-buy { white-space: nowrap; }
 .cp-care .cp-muted-line::first-letter { text-transform: uppercase; }
 .luck-field .label { color: var(--accent); }
+.creation-stats { grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); margin-top: 10px; }
+.creation-career { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.creation-slot > span { align-self: center; }
 .award-label { align-self: center; font-weight: 600; }
 .award-result { margin: 10px 0 0; padding-left: 18px; color: var(--muted); font-size: 13px; }
 .add-entry.is-dear { opacity: .45; }

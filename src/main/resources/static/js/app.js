@@ -263,6 +263,103 @@ function initPage() {
     show(stored.get());
   });
 
+  // Мастер создания персонажа CP2020: остаток очков, производные, пакет роли, деньги. Сервер проверяет всё ещё раз (Cp2020Creation)
+  document.querySelectorAll('[data-creation]').forEach(page => {
+    const form = page.querySelector('[data-creation-form]');
+    const method = form.querySelector('[data-creation-method]');
+    const points = form.querySelector('[data-creation-points]');
+    const rollButton = form.querySelector('[data-creation-roll]');
+    const rollsText = form.querySelector('[data-creation-rolls]');
+    const stats = [...form.querySelectorAll('[data-stat]')];
+    const role = form.querySelector('[data-creation-role]');
+    const pickups = form.querySelector('[data-creation-pickups]');
+    const addButton = form.querySelector('[data-creation-add-pickup]');
+    const rowTemplate = form.querySelector('[data-creation-pickup-row]');
+    const submit = form.querySelector('[data-creation-submit]');
+    const problem = form.querySelector('[data-creation-problem]');
+    const btm = page.dataset.btm.split(',').map(Number);
+    const stat = code => Number(stats.find(input => input.dataset.stat === code).value) || 0;
+    const sum = inputs => inputs.reduce((total, input) => total + (Number(input.value) || 0), 0);
+    let pickupCount = 0;
+
+    const update = () => {
+      const problems = [];
+      const total = Number(points.value) || 0;
+      const left = total - sum(stats);
+      form.querySelector('[data-creation-left]').textContent = total ? 'осталось ' + left : '—';
+      if (!total) problems.push('определите очки');
+      else if (left !== 0) problems.push(left > 0 ? 'распределите ещё ' + left : 'лишних очков ' + (-left));
+      const run = stat('ma') * 3;
+      const body = stat('body');
+      form.querySelector('[data-creation-derived]').textContent =
+        'Бег ' + run + ' м · прыжок ' + Math.floor(run / 4) + ' м · переноска ' + body * 10 + ' кг · подъём ' + body * 40
+        + ' кг · BTM −' + (btm[Math.min(body, btm.length - 1)] || 0) + ' · спасбросок ' + body + ' · человечность ' + stat('emp') * 10;
+
+      const pack = form.querySelector('[data-creation-package]:not([hidden])');
+      const career = pack ? [...pack.querySelectorAll('[data-creation-career]')] : [];
+      const careerLeft = 40 - sum(career);
+      form.querySelector('[data-creation-career-left]').textContent = 'осталось ' + careerLeft;
+      if (!pack) problems.push('выберите роль');
+      if (careerLeft < 0) problems.push('карьерных очков больше 40');
+      const option = role.selectedOptions[0];
+      const funds = form.querySelector('[data-creation-funds]');
+      if (pack && option.dataset.salaries) {
+        const special = Number(career.find(input => input.dataset.special === 'true').value) || 0;
+        const salary = option.dataset.salaries.split(',')[Math.max(0, Math.min(special, 10) - 5)];
+        funds.textContent = 'Стартовые деньги: ' + salary + ' eb в месяц × 1D6/3 мес. — бросок при создании';
+      } else {
+        funds.textContent = '';
+      }
+
+      const pickupInputs = [...pickups.querySelectorAll('input[type=number]')];
+      const pickupLeft = stat('ref') + stat('int') - sum(pickupInputs);
+      form.querySelector('[data-creation-pickup-left]').textContent = 'осталось ' + pickupLeft;
+      if (pickupLeft < 0) problems.push('очков хобби больше REF + INT');
+      problem.textContent = problems.length ? 'Ещё: ' + problems.join(', ') : '';
+      submit.disabled = problems.length > 0;
+    };
+
+    method.addEventListener('change', () => {
+      const option = method.selectedOptions[0];
+      rollButton.hidden = !(method.value === 'RANDOM' || method.value === 'FAST');
+      rollsText.hidden = true;
+      points.readOnly = method.value !== 'MANUAL';
+      points.value = option.dataset.points || '';
+      update();
+    });
+    rollButton.addEventListener('click', async () => {
+      const response = await fetch(page.dataset.rollUrl, { method: 'POST', body: new URLSearchParams({ method: method.value }) });
+      if (!response.ok) return;
+      const roll = await response.json();
+      points.value = roll.total;
+      rollsText.hidden = false;
+      rollsText.textContent = 'Кубики: ' + roll.rolls.join(', ') + ' = ' + roll.total
+        + (method.value === 'FAST' ? '. Разложены по статам по порядку, можно переставить' : '');
+      if (method.value === 'FAST') stats.forEach((input, index) => { input.value = roll.rolls[index]; });
+      update();
+    });
+    role.addEventListener('change', () => {
+      form.querySelectorAll('[data-creation-package]').forEach(pack => {
+        const active = pack.dataset.creationPackage === role.value;
+        pack.hidden = !active;
+        pack.querySelectorAll('input, select').forEach(input => { input.disabled = !active; });
+      });
+      update();
+    });
+    const addPickup = () => {
+      const row = rowTemplate.content.firstElementChild.cloneNode(true);
+      row.querySelector('select').name = 'pickup.' + pickupCount + '.skill';
+      row.querySelector('input').name = 'pickup.' + pickupCount + '.level';
+      pickupCount++;
+      pickups.insertBefore(row, addButton.previousElementSibling);
+      update();
+    };
+    addButton.addEventListener('click', addPickup);
+    form.addEventListener('input', update);
+    addPickup();
+    update();
+  });
+
   // Регулярная трата из шаблона системы: заполняет название, сумму и период; у жилья — число комнат и зона-множитель
   document.querySelectorAll('[data-expense-form]').forEach(form => {
     const template = form.querySelector('[data-expense-template]');

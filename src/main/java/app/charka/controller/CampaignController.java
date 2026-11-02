@@ -29,9 +29,12 @@ public class CampaignController {
     private final GameSystemRegistry systemRegistry;
     private final DiceService diceService;
     private final CampaignAwardService awardService;
+    private final List<app.charka.creation.CharacterCreation> creations;
 
     public CampaignController(CampaignService campaignService, CharacterService characterService,
-                              GameSystemRegistry systemRegistry, DiceService diceService, CampaignAwardService awardService) {
+                              GameSystemRegistry systemRegistry, DiceService diceService, CampaignAwardService awardService,
+                              List<app.charka.creation.CharacterCreation> creations) {
+        this.creations = creations;
         this.campaignService = campaignService;
         this.characterService = characterService;
         this.systemRegistry = systemRegistry;
@@ -58,6 +61,7 @@ public class CampaignController {
         model.addAttribute("difficultyPresets", gameSystem.getCheckResolver().getDifficultyPresets());
         model.addAttribute("recentRolls", diceService.recentForCampaign(campaignId, 20));
         model.addAttribute("awardCounters", awardService.awardableCounters(campaignId));
+        model.addAttribute("hasCreation", creations.stream().anyMatch(creation -> creation.getSystemCode().equals(campaign.getSystem())));
 
         return "campaign";
     }

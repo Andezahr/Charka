@@ -36,6 +36,7 @@
           <input type="text" name="name" class="grow" placeholder="Имя нового персонажа" required autocomplete="off">
           <button type="submit" class="btn btn-primary">＋ Добавить</button>
         </form>
+        <a th:if="${hasCreation}" th:href="@{'/campaign/' + ${campaign.id} + '/characters/new'}" class="btn btn-sm btn-ghost">🧬 Создать по правилам: статы, роль, навыки, деньги</a>
       </div>
       <div class="card-body list">
         <div th:each="character : ${players}" class="char-card">
