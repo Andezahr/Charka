@@ -4,11 +4,15 @@ import app.charka.creation.CharacterCreation;
 import app.charka.model.Campaign;
 import app.charka.model.Character;
 import app.charka.model.Money;
+import app.charka.model.notes.Note;
+import app.charka.model.notes.NoteCategory;
 import app.charka.model.counters.Counter;
 import app.charka.model.counters.strategy.health.DiceRoller;
 import app.charka.repository.CounterRepository;
 import app.charka.service.CharacterService;
 import app.charka.service.MoneyService;
+import app.charka.service.notes.NoteCategoryService;
+import app.charka.service.notes.NoteService;
 import app.charka.skill.CharacterRole;
 import app.charka.skill.SkillDefinition;
 import app.charka.skill.SkillService;
@@ -38,6 +42,11 @@ public class Cp2020Creation implements CharacterCreation {
     static final int CAREER_POINTS = 40;
     private static final int MAX_LEVEL = 10;
     private static final int STATS_COUNT = 9;
+    /** Родной язык — на +8 (с. 34) */
+    private static final int NATIVE_LANGUAGE = 8;
+    private static final String LIFEPATH_CATEGORY = "Лайфпас";
+    /** Колонка text заметки — 1000 символов */
+    private static final int MAX_NOTE_TEXT = 1000;
 
     static final String RANDOM = "RANDOM";
     static final String FAST = "FAST";
@@ -124,6 +133,9 @@ public class Cp2020Creation implements CharacterCreation {
     private final MoneyService moneyService;
     private final DiceRoller dice;
     private final CounterRepository counterRepository;
+    private final NoteService noteService;
+    private final NoteCategoryService noteCategoryService;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     @Override
     public String getSystemCode() {
@@ -190,6 +202,12 @@ public class Cp2020Creation implements CharacterCreation {
             default -> throw new IllegalArgumentException("Такого способа нет: " + method);
         }
         return new Roll(rolls.stream().mapToInt(Integer::intValue).sum(), rolls);
+    }
+
+    /** Лайфпас, с. 34–39 */
+    @Override
+    public Cp2020Lifepath.Result background(Campaign campaign, Integer age) {
+        return Cp2020Lifepath.generate(age, dice);
     }
 
     @Override
@@ -279,7 +297,79 @@ public class Cp2020Creation implements CharacterCreation {
         funds.setName("Стартовые деньги: " + months + " мес. × " + salary);
         funds.setAmount((long) salary * months);
         moneyService.create(created.getId(), funds);
+        applyLifepath(created, statsCounter, params);
         return created;
+    }
+
+    /**
+     * Лайфпас со страницы: заметки в категории «Лайфпас», родной язык на +8, деньги и потерянные статы.
+     * HOMEBREW: стат от событий не опускается ниже 1, книга о нижней границе молчит.
+     */
+    private void applyLifepath(Character character, Counter statsCounter, Map<String, String> params) {
+        String json = params.getOrDefault("lifepath", "").strip();
+        if (json.isEmpty()) {
+            return;
+        }
+        Cp2020Lifepath.Result lifepath;
+        try {
+            lifepath = objectMapper.readValue(json, Cp2020Lifepath.Result.class);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new IllegalArgumentException("Лайфпас не прочитать: бросьте его ещё раз");
+        }
+        NoteCategory category = noteCategoryService.getAllCategories().stream()
+                .filter(existing -> LIFEPATH_CATEGORY.equals(existing.getName()))
+                .findFirst()
+                .orElseGet(() -> {
+                    NoteCategory created = new NoteCategory();
+                    created.setName(LIFEPATH_CATEGORY);
+                    return noteCategoryService.createCategory(created);
+                });
+        for (Cp2020Lifepath.Section section : lifepath.sections()) {
+            List<String> chunk = new ArrayList<>();
+            int part = 1;
+            for (String line : section.lines()) {
+                if (!chunk.isEmpty() && String.join("\n", chunk).length() + line.length() + 1 > MAX_NOTE_TEXT) {
+                    note(character, section.title() + " " + part++, chunk, category);
+                    chunk = new ArrayList<>();
+                }
+                chunk.add(line.length() > MAX_NOTE_TEXT ? line.substring(0, MAX_NOTE_TEXT) : line);
+            }
+            note(character, part > 1 ? section.title() + " " + part : section.title(), chunk, category);
+        }
+        for (Cp2020Lifepath.Effect effect : lifepath.effects()) {
+            if (effect.stat() != null && STATS.contains(effect.stat())) {
+                int before = statsCounter.getAttribute(effect.stat(), Cp2020StatsStrategy.DEFAULT_STAT);
+                statsCounter.getAttributes().put(effect.stat(), Math.max(1, before + effect.delta()));
+            }
+            if (effect.money() != 0) {
+                Money money = new Money();
+                money.setName("Лайфпас: " + effect.label());
+                money.setAmount(effect.money());
+                moneyService.create(character.getId(), money);
+            }
+        }
+        String language = params.getOrDefault("nativeLanguage", "");
+        lifepath.languages().stream()
+                .filter(candidate -> (candidate.name() + "|" + candidate.family()).equals(language))
+                .findFirst()
+                .ifPresent(native_ -> skillService.addCustom(character.getId(), "language_" + native_.family(),
+                        capitalize(native_.name()), NATIVE_LANGUAGE));
+    }
+
+    private void note(Character character, String title, List<String> lines, NoteCategory category) {
+        if (lines.isEmpty()) {
+            return;
+        }
+        Note note = new Note();
+        note.setCharacter(character);
+        note.setName(title);
+        note.setText(String.join("\n", lines));
+        note.getCategories().add(category);
+        noteService.createNote(note);
+    }
+
+    private static String capitalize(String text) {
+        return text.isEmpty() ? text : java.lang.Character.toUpperCase(text.charAt(0)) + text.substring(1);
     }
 
     static int salary(Role role, int specialLevel) {

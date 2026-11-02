@@ -29,6 +29,16 @@ public interface CharacterCreation {
     Roll roll(Campaign campaign, String method);
 
     /**
+     * Бросок предыстории (CP2020: лайфпас): ответ странице; при создании он возвращается полем формы.
+     *
+     * @param age возраст; null — по правилам системы
+     * @return null — у системы предыстории нет
+     */
+    default Object background(Campaign campaign, Integer age) {
+        return null;
+    }
+
+    /**
      * Создать персонажа из полей формы.
      *
      * @return созданный персонаж

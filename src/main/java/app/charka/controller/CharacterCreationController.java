@@ -54,6 +54,15 @@ public class CharacterCreationController {
                 .roll(campaign, method);
     }
 
+    /** Бросок предыстории: ответ странице, без перезагрузки */
+    @PostMapping("/background")
+    @ResponseBody
+    public Object background(@PathVariable Long campaignId, @RequestParam(required = false) Integer age) {
+        Campaign campaign = campaignService.getById(campaignId);
+        return creationFor(campaign).orElseThrow(() -> new IllegalArgumentException("В этой системе нет мастера создания"))
+                .background(campaign, age);
+    }
+
     /**
      * Создание: ошибка ввода возвращает на страницу мастера с сообщением, введённое браузер сохраняет сам — форма шлётся без перезагрузки.
      */

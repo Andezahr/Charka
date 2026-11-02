@@ -166,4 +166,51 @@ class Cp2020CreationTest {
         var bad = post("/campaign/" + campaign.getId() + "/characters/new").param("name", "Без всего");
         mockMvc.perform(bad).andExpect(flash().attributeExists("errorMessage"));
     }
+
+    @Autowired private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+
+    @Test
+    @DisplayName("Лайфпас: возраст 2D6+16 или свой, событие на каждый год после 16, языки происхождения")
+    void lifepath() {
+        when(dice.roll(anyInt())).thenReturn(4);
+        Cp2020Lifepath.Result chosen = Cp2020Lifepath.generate(20, dice);
+        assertThat(chosen.age()).isEqualTo(20);
+        assertThat(chosen.sections()).extracting(Cp2020Lifepath.Section::title)
+                .containsExactly("Стиль", "Происхождение", "Семья", "Мотивация", "События, возраст 20");
+        assertThat(chosen.sections().get(4).lines()).hasSize(4);
+        assertThat(chosen.languages()).isNotEmpty();
+
+        when(dice.roll(anyInt())).thenReturn(1);
+        assertThat(Cp2020Lifepath.generate(null, dice).age()).isEqualTo(18);
+    }
+
+    @Test
+    @DisplayName("Создание с лайфпасом: заметки «Лайфпас», родной язык +8, деньги и потеря стата")
+    void createWithLifepath() throws Exception {
+        Cp2020Lifepath.Result lifepath = new Cp2020Lifepath.Result(18,
+                java.util.List.of(new Cp2020Lifepath.Section("Стиль", java.util.List.of("Одежда: джинсы")),
+                        new Cp2020Lifepath.Section("События, возраст 18", java.util.List.of("17: Ничего", "18: Удача: 300 eb."))),
+                java.util.List.of(new Cp2020Lifepath.Language("русский", "slavic")),
+                java.util.List.of(new Cp2020Lifepath.Effect("Удачное дело", null, 0, 300),
+                        new Cp2020Lifepath.Effect("Болезнь", Cp2020StatsStrategy.REF, -1, 0)));
+        Map<String, String> params = solo();
+        params.put("lifepath", objectMapper.writeValueAsString(lifepath));
+        params.put("nativeLanguage", "русский|slavic");
+        when(dice.roll(anyInt())).thenReturn(6);
+
+        Character created = creation.create(campaign, params);
+        entityManager.flush();
+        entityManager.clear();
+
+        Character loaded = characterRepository.findById(created.getId()).orElseThrow();
+        assertThat(loaded.getNotes()).extracting(app.charka.model.notes.Note::getName).containsExactlyInAnyOrder("Стиль", "События, возраст 18");
+        assertThat(loaded.getNotes()).allSatisfy(note -> assertThat(note.getCategories()).extracting("name").containsExactly("Лайфпас"));
+        assertThat(loaded.getSkills()).anySatisfy(skill -> {
+            assertThat(skill.getCustomName()).isEqualTo("Русский");
+            assertThat(skill.getLevel()).isEqualTo(8);
+        });
+        assertThat(loaded.getMoneyList()).extracting(Money::getAmount).containsExactlyInAnyOrder(6000L, 300L);
+        Counter stats = loaded.getCounters().stream().filter(c -> Cp2020StatsStrategy.TYPE.equals(c.getType())).findFirst().orElseThrow();
+        assertThat(stats.getAttribute(Cp2020StatsStrategy.REF, 0)).isEqualTo(9);
+    }
 }

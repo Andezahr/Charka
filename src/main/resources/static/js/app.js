@@ -355,6 +355,27 @@ function initPage() {
       update();
     };
     addButton.addEventListener('click', addPickup);
+    form.querySelector('[data-creation-lifepath]').addEventListener('click', async () => {
+      const age = form.querySelector('[data-creation-age]').value;
+      const response = await fetch(page.dataset.lifepathUrl, { method: 'POST', body: new URLSearchParams(age ? { age } : {}) });
+      if (!response.ok) return;
+      const lifepath = await response.json();
+      form.querySelector('[data-creation-lifepath-json]').value = JSON.stringify(lifepath);
+      const view = form.querySelector('[data-creation-lifepath-view]');
+      view.replaceChildren(...lifepath.sections.map(section => {
+        const block = document.createElement('div');
+        const title = document.createElement('strong');
+        title.textContent = section.title;
+        const list = document.createElement('ul');
+        list.append(...section.lines.map(line => { const item = document.createElement('li'); item.textContent = line; return item; }));
+        block.append(title, list);
+        return block;
+      }));
+      const language = form.querySelector('[data-creation-language]');
+      language.replaceChildren(...lifepath.languages.map(choice =>
+        new Option('Родной язык +8: ' + choice.name, choice.name + '|' + choice.family)));
+      language.hidden = false;
+    });
     form.addEventListener('input', update);
     addPickup();
     update();

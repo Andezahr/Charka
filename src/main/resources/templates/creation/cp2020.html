@@ -7,7 +7,7 @@
 <!-- Мастер создания персонажа CP2020: одна страница, итоги считаются сразу (app.js, [data-creation]).
      Правила и таблицы — Cp2020Creation; сервер проверяет всё ещё раз -->
 <main class="page" data-creation
-      th:attr="data-roll-url=@{'/campaign/' + ${campaign.id} + '/characters/new/roll'},data-btm=${#strings.listJoin(creation.btm, ',')}">
+      th:attr="data-roll-url=@{'/campaign/' + ${campaign.id} + '/characters/new/roll'},data-lifepath-url=@{'/campaign/' + ${campaign.id} + '/characters/new/background'},data-btm=${#strings.listJoin(creation.btm, ',')}">
   <div th:if="${errorMessage != null}" class="alert alert-error" role="alert">
     <span class="alert-text" th:text="${errorMessage}">Ошибка</span>
     <button type="button" class="alert-close" aria-label="Закрыть">×</button>
@@ -104,6 +104,20 @@
         </template>
         <p class="hint">Очков хобби — REF + INT. Карьерные навыки ими не поднимаются (с. 45).</p>
         <button type="button" class="btn btn-sm" data-creation-add-pickup>＋ Навык хобби</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2 class="card-title"><span class="dot pink"></span>Лайфпас</h2></div>
+      <div class="card-body">
+        <div class="form-row">
+          <input type="number" class="narrow" min="16" max="99" placeholder="Возраст" aria-label="Возраст: пусто — 2D6+16" title="Пусто — 2D6 + 16" data-creation-age>
+          <button type="button" class="btn btn-sm" data-creation-lifepath>🎲 Бросить лайфпас</button>
+          <select name="nativeLanguage" class="grow" aria-label="Родной язык на +8" hidden data-creation-language></select>
+        </div>
+        <input type="hidden" name="lifepath" data-creation-lifepath-json>
+        <div class="creation-lifepath" data-creation-lifepath-view></div>
+        <p class="hint">Необязательно. Уйдёт в заметки «Лайфпас»; деньги и потерянные статы событий применятся сами (с. 34–39).</p>
       </div>
     </section>
 
