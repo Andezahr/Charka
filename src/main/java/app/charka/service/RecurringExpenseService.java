@@ -74,9 +74,10 @@ public class RecurringExpenseService {
     }
 
     /**
-     * Списать всё, что наступило к {@code upTo}: каждое списание — отдельная операция своей датой.
+     * Списать всё, что наступило к {@code upTo}. За одну промотку трата пишется одной операцией датой последнего списания:
+     * месяц ночёвок в капсуле — «Coffin ×30», а не тридцать строк.
      *
-     * @return сколько операций записано
+     * @return сколько списаний сделано
      */
     @Transactional
     public int chargeDue(Campaign campaign, LocalDate upTo) {
@@ -84,14 +85,18 @@ public class RecurringExpenseService {
         for (Character character : campaign.getCharacters()) {
             for (RecurringExpense expense : expenseRepository.findByCharacterIdOrderByNextDate(character.getId())) {
                 int times = 0;
+                LocalDate last = null;
                 while (!expense.getNextDate().isAfter(upTo) && times < MAX_CHARGES) {
-                    Money money = new Money();
-                    money.setName(expense.getName());
-                    money.setAmount(-expense.getAmount());
-                    money.setOperationDate(expense.getNextDate());
-                    moneyService.create(character.getId(), money);
+                    last = expense.getNextDate();
                     expense.setNextDate(expense.getNextDate().plusDays(expense.getPeriodDays()));
                     times++;
+                }
+                if (times > 0) {
+                    Money money = new Money();
+                    money.setName(times > 1 ? expense.getName() + " ×" + times : expense.getName());
+                    money.setAmount(-expense.getAmount() * times);
+                    money.setOperationDate(last);
+                    moneyService.create(character.getId(), money);
                 }
                 charged += times;
             }

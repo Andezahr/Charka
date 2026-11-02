@@ -323,4 +323,11 @@ public interface GameSystem {
     default String getContestLoserEffect(String code, Character winner) {
         return null;
     }
+
+    /**
+     * Типичные регулярные траты (еда, жильё) для формы на листе. Пусто — только своя трата.
+     */
+    default List<ExpenseTemplate> getExpenseTemplates() {
+        return List.of();
+    }
 }

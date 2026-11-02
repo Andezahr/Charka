@@ -14,11 +14,14 @@ spring:
     # схему создаёт и меняет только Flyway (src/main/resources/db/migration), Hibernate лишь сверяет
     hibernate:
       ddl-auto: validate
-  resources:
-    cache:
-      period: 0
-    chain:
-      cache: false
+  web:
+    resources:
+      # в адрес app.js и app.css подставляется хэш содержимого (th:src="@{...}"): после обновления браузер берёт новый файл
+      chain:
+        strategy:
+          content:
+            enabled: true
+            paths: /**
   thymeleaf:
     # без кэша лист персонажа рендерится в 6 раз дольше (1,2 с против 0,2 с). Править шаблоны без перезапуска: THYMELEAF_CACHE=false
     cache: ${THYMELEAF_CACHE:true}

@@ -263,6 +263,44 @@ function initPage() {
     show(stored.get());
   });
 
+  // Регулярная трата из шаблона системы: заполняет название, сумму и период; у жилья — число комнат и зона-множитель
+  document.querySelectorAll('[data-expense-form]').forEach(form => {
+    const template = form.querySelector('[data-expense-template]');
+    if (!template) return;
+    const units = form.querySelector('[data-expense-units]');
+    const multiplier = form.querySelector('[data-expense-multiplier]');
+    const name = form.querySelector('input[name=name]');
+    const amount = form.querySelector('input[name=amount]');
+    const period = form.querySelector('input[name=periodDays]');
+    const fill = () => {
+      const option = template.selectedOptions[0];
+      if (!option || !option.value) return;
+      const count = Number(units.value) || 1;
+      const factor = multiplier.hidden ? 1 : Number(multiplier.value) || 1;
+      const zone = multiplier.hidden ? '' : ', ' + multiplier.selectedOptions[0].dataset.label;
+      name.value = option.dataset.name + (option.dataset.unit ? ', ' + count + ' ' + option.dataset.unit : '') + zone;
+      amount.value = Number(option.dataset.amount) * count * factor;
+      period.value = option.dataset.period;
+    };
+    template.addEventListener('change', () => {
+      const option = template.selectedOptions[0];
+      const pairs = option.value && option.dataset.multipliers ? option.dataset.multipliers.split('|') : [];
+      multiplier.innerHTML = '';
+      pairs.forEach(pair => {
+        const [label, factor] = pair.split(':');
+        const choice = new Option(label + ' ×' + factor, factor);
+        choice.dataset.label = label;
+        multiplier.add(choice);
+      });
+      multiplier.hidden = pairs.length === 0;
+      units.hidden = !(option.value && option.dataset.unit);
+      units.value = 1;
+      if (option.value) fill(); else { name.value = ''; amount.value = ''; period.value = 30; }
+    });
+    units.addEventListener('input', fill);
+    multiplier.addEventListener('change', fill);
+  });
+
   // Страница навыков. Видимость строк: изученные и спецспособности ролей; «Все навыки», прокачка, ручная правка
   // и поиск показывают весь каталог. Без JS видно всё, но проверка и правка требуют JS.
   document.querySelectorAll('[data-skills]').forEach(page => {

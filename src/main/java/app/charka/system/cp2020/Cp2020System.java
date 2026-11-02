@@ -322,6 +322,11 @@ public class Cp2020System implements GameSystem {
     }
 
     @Override
+    public List<app.charka.system.ExpenseTemplate> getExpenseTemplates() {
+        return Cp2020Lifestyle.TEMPLATES;
+    }
+
+    @Override
     public List<app.charka.encounter.CombatContest> getCombatContests() {
         return List.of(Cp2020Facedown.CONTEST);
     }

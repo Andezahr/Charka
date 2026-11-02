@@ -18,6 +18,7 @@ import app.charka.model.Money;
 import app.charka.service.CharacterService;
 import app.charka.service.MoneyService;
 import app.charka.service.RecurringExpenseService;
+import app.charka.system.ExpenseTemplate;
 import app.charka.system.GameSystem;
 import app.charka.system.GameSystemRegistry;
 import lombok.RequiredArgsConstructor;
@@ -61,6 +62,8 @@ public class CharacterController {
         model.addAttribute("moneySum", moneySum);
         model.addAttribute("expenses", recurringExpenseService.getByCharacter(id));
         GameSystem system = systemRegistry.forCharacter(character);
+        model.addAttribute("expenseTemplates", system.getExpenseTemplates().stream()
+                .collect(Collectors.groupingBy(ExpenseTemplate::group, LinkedHashMap::new, Collectors.toList())));
         model.addAttribute("currency", system.getCurrency());
         model.addAttribute("itemTypes", system.getItemTypes());
         model.addAttribute("itemTypeByCode", system.getItemTypes().stream()

@@ -197,7 +197,16 @@
           </div>
           <details class="add-own">
             <summary>Регулярная трата</summary>
-            <form th:action="@{'/character/' + ${character.id} + '/expenses'}" method="post" class="form-row">
+            <form th:action="@{'/character/' + ${character.id} + '/expenses'}" method="post" class="form-row" data-expense-form>
+              <select th:unless="${#maps.isEmpty(expenseTemplates)}" class="grow" data-expense-template aria-label="Типичная трата">
+                <option value="">Своя трата</option>
+                <optgroup th:each="group : ${expenseTemplates}" th:label="${group.key}">
+                  <option th:each="t : ${group.value}" th:text="${t.name} + ' · ' + ${t.amount} + ' ' + ${currency.symbol} + (${t.unitLabel != null} ? ' за ед.' : '') + ' / ' + ${t.periodDays} + ' дн.'"
+                          th:attr="data-name=${t.name},data-amount=${t.amount},data-period=${t.periodDays},data-unit=${t.unitLabel},data-multipliers=${t.multiplierText}">Kibble</option>
+                </optgroup>
+              </select>
+              <input type="number" class="narrow" min="1" value="1" data-expense-units hidden aria-label="Сколько единиц">
+              <select data-expense-multiplier hidden aria-label="Множитель"></select>
               <input type="text" name="name" class="grow" placeholder="Аренда, еда" required autocomplete="off">
               <input type="number" name="amount" class="narrow" min="1" th:placeholder="${currency.symbol}" required aria-label="Сумма за период">
               <input type="number" name="periodDays" class="narrow" min="1" value="30" required aria-label="Раз в сколько дней" title="Раз в сколько дней">

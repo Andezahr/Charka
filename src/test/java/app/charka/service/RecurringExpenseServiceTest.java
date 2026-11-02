@@ -74,7 +74,7 @@ class RecurringExpenseServiceTest {
     }
 
     @Test
-    @DisplayName("Первое списание через период; промотка списывает каждое наступившее своей датой")
+    @DisplayName("Первое списание через период; наступившие за промотку — одной строкой")
     void charges() {
         RecurringExpense rent = expenseService.create(character.getId(), "Аренда", 500, 30);
         assertThat(rent.getNextDate()).isEqualTo(START.plusDays(30));
@@ -86,10 +86,11 @@ class RecurringExpenseServiceTest {
 
         timelineService.proceedDate(campaign.getId(), 40, "Ещё месяц с лишним");
         flush();
-        assertThat(expenses()).extracting(Money::getOperationDate).containsExactly(START.plusDays(30), START.plusDays(60));
-        assertThat(expenses()).allSatisfy(money -> {
-            assertThat(money.getAmount()).isEqualTo(-500);
-            assertThat(money.getName()).isEqualTo("Аренда");
+        // два периода за одну промотку — одна строка датой последнего списания
+        assertThat(expenses()).singleElement().satisfies(money -> {
+            assertThat(money.getAmount()).isEqualTo(-1000);
+            assertThat(money.getName()).isEqualTo("Аренда ×2");
+            assertThat(money.getOperationDate()).isEqualTo(START.plusDays(60));
         });
         assertThat(expenseService.getByCharacter(character.getId())).singleElement()
                 .satisfies(expense -> assertThat(expense.getNextDate()).isEqualTo(START.plusDays(90)));
@@ -123,5 +124,18 @@ class RecurringExpenseServiceTest {
         String page = mockMvc.perform(get("/character/" + character.getId()))
                 .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
         assertThat(page).contains("Аренда").contains("раз в 30 дн.").contains("/expenses");
+    }
+
+    @Test
+    @DisplayName("CP2020: шаблоны еды и жилья по книге, жильё — с комнатами и зоной")
+    void templates() throws Exception {
+        List<app.charka.system.ExpenseTemplate> templates = new app.charka.system.cp2020.Cp2020System(null, null).getExpenseTemplates();
+        assertThat(templates).filteredOn(t -> t.name().equals("Kibble")).singleElement()
+                .satisfies(t -> assertThat(t.amount()).isEqualTo(50));
+        assertThat(templates).filteredOn(t -> t.name().equals("Apt./Condo")).singleElement().satisfies(t -> {
+            assertThat(t.amount()).isEqualTo(200);
+            assertThat(t.unitLabel()).isEqualTo("комн.");
+            assertThat(t.getMultiplierText()).isEqualTo("Combat Zone:1|Moderate Zone:2|Corporate Zone:4|Executive Zone:6");
+        });
     }
 }
