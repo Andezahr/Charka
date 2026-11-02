@@ -37,6 +37,14 @@
       </span>
     </div>
     <div class="editor-options" data-editor-options></div>
+    <!-- M-08: другой вариант той же карты; прежний заменится -->
+    <form th:unless="${inFight}" th:action="@{'/campaign/' + ${campaign.id} + '/maps/' + ${map.id} + '/regenerate'}" method="post"
+          class="form-row editor-generate" data-confirm="Заменить карту новым вариантом? Правки этой карты пропадут.">
+      <select name="template" aria-label="Шаблон" data-remember="map-template">
+        <option th:each="t : ${templates}" th:value="${t.code}" th:text="${t.label}">Улица</option>
+      </select>
+      <button type="submit" class="btn btn-sm btn-ghost">🎲 Ещё вариант</button>
+    </form>
     <div class="battle-stage editor-stage" data-editor-stage></div>
     <p class="battle-hint" data-editor-hint>R комната · W стена · F заливка · B кисть · O предмет · L ряд · S россыпь · Z зона · T подпись · V выделение · X ластик · 1–9 материал · Q/E поворот · Ctrl+Z/Y · колесо — масштаб, пробел + тянуть — сдвиг</p>
   </section>

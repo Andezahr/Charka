@@ -1517,6 +1517,39 @@ async function tokenClick(token, event) {
   menu.hidden = false;
 }
 
+// M-10: кого задевает. Взрыв — радиус зоны × единиц заряда от цели, зона огня — половина ширины от цели.
+// HOMEBREW: за стеной от точки взрыва не отмечается (книга о стенах и взрыве молчит), мастер может отметить сам
+async function pickArea(dialog, target) {
+  const mode = dialog.querySelector('[data-attack-mode]');
+  const option = mode && mode.selectedOptions[0];
+  if (!option || option.dataset.multi !== 'true' || !battle.data) return;
+  const rounds = dialog.querySelector('input[name="rounds"]');
+  const width = dialog.querySelector('input[name="zoneWidth"]');
+  let area = 0;
+  if (option.dataset.width === 'true') area = Number(width && width.value || 0) / 2;
+  else if (Number(dialog.dataset.radius || 0) > 0) {
+    const units = option.dataset.rounds === 'true' && rounds ? Math.max(1, Number(rounds.value || 1)) : 1;
+    area = Number(dialog.dataset.radius) * units;
+  }
+  if (!area) return;
+  const inputs = [...dialog.querySelectorAll('input[name="target"]')];
+  const candidates = battle.data.tokens.filter(other => other.x !== null && other.id !== target.id && !other.out
+    && battleMeters(target.x, target.y, other.x, other.y) <= area);
+  inputs.forEach(input => {
+    if (input.value !== String(target.character) && !('attackObject' in input.dataset)) input.checked = false;
+  });
+  for (const other of candidates) {
+    const input = inputs.find(candidate => candidate.value === String(other.character));
+    if (!input) continue;
+    let shielded = false;
+    try {
+      const response = await fetch(`${battle.url}/sight?from=${target.id}&to=${other.id}`, { cache: 'no-store' });
+      if (response.ok) shielded = (await response.json()).blocked;
+    } catch (e) { /* без проверки стены — отмечаем */ }
+    input.checked = !shielded;
+  }
+}
+
 // Тот же диалог, что в строке трекера: цель, расстояние и укрытие подставлены, всё можно поправить
 function openAttackFromMap(dialog, target, sight) {
   const inputs = [...dialog.querySelectorAll('input[name="target"]')];
@@ -1525,17 +1558,15 @@ function openAttackFromMap(dialog, target, sight) {
     inputs.forEach(input => { input.checked = input === chosen; });
     chosen.dispatchEvent(new Event('change', { bubbles: true }));
   }
-  // зона взрыва: отмечены все, кто в радиусе от цели
-  const radius = Number(dialog.dataset.radius || 0);
-  const mode = dialog.querySelector('[data-attack-mode]');
-  const multi = mode && mode.selectedOptions[0] && mode.selectedOptions[0].dataset.multi === 'true';
-  if (radius > 0 && multi && battle.data) {
-    battle.data.tokens.forEach(other => {
-      if (other.x === null || other.id === target.id) return;
-      const input = inputs.find(candidate => candidate.value === String(other.character));
-      if (input && battleMeters(target.x, target.y, other.x, other.y) <= radius) input.checked = true;
+  dialog.mapTarget = target;
+  if (!dialog.dataset.mapBound) {
+    dialog.dataset.mapBound = '1';
+    ['[data-attack-mode]', 'input[name="rounds"]', 'input[name="zoneWidth"]'].forEach(selector => {
+      const field = dialog.querySelector(selector);
+      if (field) field.addEventListener('change', () => { if (dialog.mapTarget) pickArea(dialog, dialog.mapTarget); });
     });
   }
+  pickArea(dialog, target);
   const distance = dialog.querySelector('input[name="distance"]');
   if (distance) {
     distance.value = sight.meters;
@@ -1580,7 +1611,8 @@ function initEditor() {
   holder.querySelectorAll('[data-tool]').forEach(button => button.addEventListener('click', () => setTool(button.dataset.tool)));
   holder.querySelector('[data-editor-undo]').addEventListener('click', undoEdit);
   holder.querySelector('[data-editor-redo]').addEventListener('click', redoEdit);
-  if (editor.data) {
+  // правка ещё не сохранена — рисуем своё; иначе берём с сервера: «Ещё вариант» заменил карту там
+  if (editor.data && editor.saveTimer) {
     renderEditor();
     return;
   }
@@ -1639,6 +1671,7 @@ const editDone = () => {
 
 async function saveEditor() {
   clearTimeout(editor.saveTimer);
+  editor.saveTimer = null;
   editorStatus('Сохраняю…');
   try {
     const response = await fetch(editor.url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editor.doc) });

@@ -58,6 +58,17 @@
 
     <div class="stack">
       <section class="card">
+        <div class="card-head"><h2 class="card-title"><span class="dot pink"></span>Сгенерировать</h2></div>
+        <div class="card-body">
+          <form th:action="@{${base} + '/generate'}" method="post" class="form-row">
+            <select name="template" class="grow" aria-label="Шаблон" data-remember="map-template">
+              <option th:each="t : ${templates}" th:value="${t.code}" th:text="${t.label} + ' · ' + ${t.width} + '×' + ${t.height}">Улица</option>
+            </select>
+            <button type="submit" class="btn btn-primary">🎲 Создать</button>
+          </form>
+        </div>
+      </section>
+      <section class="card">
         <div class="card-head"><h2 class="card-title"><span class="dot"></span>Новая карта</h2></div>
         <div class="card-body">
           <form th:action="@{${base}}" method="post" class="form">

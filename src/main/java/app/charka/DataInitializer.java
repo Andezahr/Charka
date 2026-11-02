@@ -20,11 +20,16 @@ public class DataInitializer implements CommandLineRunner {
     private final CampaignRepository campaignRepository;
     private final CounterService counterService;
     private final GameSystemRegistry systemRegistry;
+    private final app.charka.map.BattleMapService battleMapService;
+    private final app.charka.map.MapGenerator mapGenerator;
 
-    public DataInitializer(CampaignRepository campaignRepository, CounterService counterService, GameSystemRegistry systemRegistry) {
+    public DataInitializer(CampaignRepository campaignRepository, CounterService counterService, GameSystemRegistry systemRegistry,
+                           app.charka.map.BattleMapService battleMapService, app.charka.map.MapGenerator mapGenerator) {
         this.campaignRepository = campaignRepository;
         this.counterService = counterService;
         this.systemRegistry = systemRegistry;
+        this.battleMapService = battleMapService;
+        this.mapGenerator = mapGenerator;
     }
 
     @Override
@@ -56,6 +61,13 @@ public class DataInitializer implements CommandLineRunner {
         // счётчики системы сразу: иначе демо-персонажи не могут ни стрелять, ни получать урон
         List<String> counters = systemRegistry.get(Cp2020System.CODE).getDefaultCounterTypes();
         saved.getCharacters().forEach(character -> counterService.createDefaults(character.getId(), counters));
+        // M-08: готовые карты боя — бой можно начать сразу
+        app.charka.map.MapRules rules = systemRegistry.get(Cp2020System.CODE).getMapRules();
+        List.of("street", "bar", "warehouse", "parking").forEach(code -> {
+            app.charka.map.MapGenerator.Template template = app.charka.map.MapGenerator.template(code);
+            battleMapService.save(saved.getId(), template.label(),
+                    mapGenerator.generate(code, template.width(), template.height(), 2037, rules));
+        });
     }
 
     private static Inventory createInventory(String name, Character owner, String itemName) {

@@ -27,6 +27,7 @@ public class MapController {
 
     private final BattleMapService battleMapService;
     private final CampaignService campaignService;
+    private final app.charka.map.MapGenerator mapGenerator;
 
     @GetMapping
     public String list(@PathVariable Long campaignId, Model model) {
@@ -37,6 +38,7 @@ public class MapController {
         model.addAttribute("docs", docs);
         model.addAttribute("defaultWidth", BattleMapService.DEFAULT_WIDTH);
         model.addAttribute("defaultHeight", BattleMapService.DEFAULT_HEIGHT);
+        model.addAttribute("templates", app.charka.map.MapGenerator.TEMPLATES);
         return "maps";
     }
 
@@ -61,7 +63,41 @@ public class MapController {
         model.addAttribute("docUrl", "/campaign/" + campaignId + "/maps/" + mapId + "/doc");
         model.addAttribute("backUrl", "/campaign/" + campaignId + "/maps");
         model.addAttribute("inFight", false);
+        model.addAttribute("templates", app.charka.map.MapGenerator.TEMPLATES);
         return "map-editor";
+    }
+
+    /**
+     * Новая карта генератором; размер — шаблона, если не задан.
+     */
+    @PostMapping("/generate")
+    public String generate(@PathVariable Long campaignId, @RequestParam String template,
+                           @RequestParam(required = false) Integer width, @RequestParam(required = false) Integer height,
+                           @RequestParam(required = false) Long seed, RedirectAttributes redirectAttributes) {
+        try {
+            app.charka.map.MapGenerator.Template chosen = app.charka.map.MapGenerator.template(template);
+            MapDoc doc = mapGenerator.generate(template, width == null ? chosen.width() : width, height == null ? chosen.height() : height,
+                    seed == null ? new java.util.Random().nextLong() : seed, battleMapService.rules(campaignId));
+            BattleMap map = battleMapService.save(campaignId, chosen.label(), doc);
+            return "redirect:/campaign/" + campaignId + "/maps/" + map.getId() + "/edit";
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("mapError", e.getMessage());
+            return "redirect:/campaign/" + campaignId + "/maps";
+        }
+    }
+
+    /** «🎲 Ещё вариант»: тот же размер, новое зерно; прежний вариант заменяется */
+    @PostMapping("/{mapId}/regenerate")
+    public String regenerate(@PathVariable Long campaignId, @PathVariable Long mapId, @RequestParam String template,
+                             RedirectAttributes redirectAttributes) {
+        try {
+            MapDoc old = MapDoc.parse(battleMapService.get(campaignId, mapId).getDoc());
+            MapDoc doc = mapGenerator.generate(template, old.w(), old.h(), new java.util.Random().nextLong(), battleMapService.rules(campaignId));
+            battleMapService.updateDoc(campaignId, mapId, doc.toJson());
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("mapError", e.getMessage());
+        }
+        return "redirect:/campaign/" + campaignId + "/maps/" + mapId + "/edit";
     }
 
     @PostMapping("/{mapId}/copy")
