@@ -19,7 +19,9 @@ public final class Cp2020Cyberware {
     private static final String SOCKET = "Chipware Socket";
     private static final String OPTIC = "Cyberoptic";
     private static final String AUDIO = "Cyberaudio";
-    private static final String LIMB = "Cyberarm|Cyberleg";
+    private static final String ARM = Cp2020Cyberlimbs.ARM;
+    private static final String LEG = Cp2020Cyberlimbs.LEG;
+    private static final String LIMB = ARM + "|" + LEG;
 
     private static final String FASHION = "Модная";
     private static final String NEURAL = "Нейроware";
@@ -135,34 +137,37 @@ public final class Cp2020Cyberware {
             option(AUDIOS, AUDIO, "Digital Recording Link", 100, "0.5", "Передаёт на цифровую запись"),
             option(AUDIOS, AUDIO, "Level Damper", 300, "0.5", "Гасит громкий звук"),
 
-            cyber(LIMBS, "Cyberarm", "CR", 3000, "2D6", "До 4 опций. 20 урона — не работает, 30 — уничтожена"),
-            cyber(LIMBS, "Cyberleg", "CR", 2000, "2D6", "До 3 опций. 20 урона — не работает, 30 — уничтожена"),
+            cyber(LIMBS, Cp2020Cyberlimbs.ARM, "CR", 3000, "2D6", "До 4 опций, удар 1D6. Без опций: 20 урона — не работает, 30 — уничтожена"),
+            cyber(LIMBS, Cp2020Cyberlimbs.LEG, "CR", 2000, "2D6", "До 3 опций, пинок 2D6. Без опций: 20 урона — не работает, 30 — уничтожена"),
             option(LIMBS, LIMB, "Quick Change Mount", 200, "2", "Смена кибера за ход"),
-            option(LIMBS, LIMB, "Hydraulic Rams", 200, "3", "Прочность 30, урон ×3"),
-            option(LIMBS, LIMB, "Thickened Myomar", 250, "2", "Прочность 25, урон ×2, прыжок +50%"),
-            option(LIMBS, LIMB, "Reinforced Joints", 200, "1", "Прочность +5"),
-            requires(cyber(LIMBS, "Artificial Shoulder Mount", "CR", 1500, "2D6", "Ещё 2 руки ниже первой пары"), LIMB),
+            power(with(option(LIMBS, LIMB, "Hydraulic Rams", 200, "3", "Прочность 30 и 40, удар ×3"), Cp2020ItemTypes.LIMB_HYDRAULIC, "1"), 3),
+            power(sdp(option(LIMBS, LIMB, "Thickened Myomar", 250, "2", "Прочность +5, удар ×2, прыжок +50%")), 2),
+            sdp(option(LIMBS, LIMB, "Reinforced Joints", 200, "1", "Прочность +5")),
+            // с. 89: плечи крепятся к раме на спине, своей руки не требуют
+            cyber(LIMBS, "Artificial Shoulder Mount", "CR", 1500, "2D6", "Ещё 2 руки на поясе, прочность 25"),
             option(LIMBS, LIMB, "Microwave/EMP Shielding", 300, "1", "Не страдает от микроволн"),
-            option(LIMBS, LIMB, "Plastic Covering", 1, "1", "Цветной, прозрачный. Цена 1–200"),
-            option(LIMBS, LIMB, "RealSkinn", 200, "0", "Как настоящая, снижает потерю на 1D6/2"),
-            option(LIMBS, LIMB, "Superchrome", 200, "3", "Блестящий металл"),
-            option(LIMBS, LIMB, "Limb Armor", 200, "1D6", "Конечность SP 20"),
+            covering(option(LIMBS, LIMB, "Plastic Covering", 1, "1", "Цветной, прозрачный. Цена 1–200")),
+            covering(option(LIMBS, LIMB, "RealSkinn", 200, "0", "Как настоящая, снижает потерю на 1D6/2")),
+            covering(option(LIMBS, LIMB, "Superchrome", 200, "3", "Блестящий металл")),
+            covering(armor(option(LIMBS, LIMB, "Limb Armor", 200, "1D6", "Конечность SP 20, покрывать и хромировать нельзя"),
+                    Cp2020Cyberlimbs.ARMOR_SP, Cp2020ItemTypes.HARD)),
 
-            option(HANDS, LIMB, "Standard Hand", 150, "0", "Обычная кисть"),
-            weapon(option(HANDS, LIMB, "Ripper Hand", 600, "2D6", "Кисть с лезвиями, против брони как нож"), "1D6+3", BLADE, false),
-            weapon(option(HANDS, LIMB, "HammerHand", 600, "2D6", "Гидравлический кулак"), "1D10", null, false),
-            weapon(option(HANDS, LIMB, "BuzzHand", 600, "2D6", "Пила, −2 SP мягкой брони за удар: снимите вручную"), "2D6+2", null, false),
-            option(HANDS, LIMB, "Tool Hand", 200, "2", "Инструменты в пальцах"),
-            option(HANDS, LIMB, "Grapple Hand", 350, "3", "Кошка на 30 м"),
-            option(HANDS, LIMB, "Extension Hand", 350, "2", "Кисть выдвигается на 1 м"),
-            weapon(option(HANDS, LIMB, "Spike Hand", 500, "2D6", "Шип из ладони"), "1D6+3", null, true),
-            option(HANDS, LIMB, "Modular Hand", 600, "2", "4 инструмента на выбор"),
-            option(HANDS, LIMB, "Standard Foot", 200, "0", "Обычная стопа"),
-            weapon(option(HANDS, LIMB, "Talon Foot", 600, "2D6", "Лезвия в пальцах, против брони как нож"), "1D6", BLADE, false),
-            option(HANDS, LIMB, "Tool Foot", 300, "2", "Инструменты в пальцах"),
-            option(HANDS, LIMB, "Web Foot", 500, "2", "Плавание вдвое быстрее, +3 к Плаванию"),
-            option(HANDS, LIMB, "Grip Foot", 500, "2", "+2 к Лазанию"),
-            weapon(option(HANDS, LIMB, "Spike Heel Foot", 500, "2D6", "Шип в пятке"), "2D6", null, true),
+            // с. 90: кисть только на руку, стопа только на ногу, одна на конечность
+            hand(option(HANDS, ARM, "Standard Hand", 150, "0", "Обычная кисть")),
+            hand(weapon(option(HANDS, ARM, "Ripper Hand", 600, "2D6", "Кисть с лезвиями, против брони как нож"), "1D6+3", BLADE, false)),
+            hand(weapon(option(HANDS, ARM, "HammerHand", 600, "2D6", "Гидравлический кулак"), "1D10", null, false)),
+            hand(weapon(option(HANDS, ARM, "BuzzHand", 600, "2D6", "Пила, −2 SP мягкой брони за удар: снимите вручную"), "2D6+2", null, false)),
+            hand(option(HANDS, ARM, "Tool Hand", 200, "2", "Инструменты в пальцах")),
+            hand(option(HANDS, ARM, "Grapple Hand", 350, "3", "Кошка на 30 м")),
+            hand(option(HANDS, ARM, "Extension Hand", 350, "2", "Кисть выдвигается на 1 м")),
+            hand(weapon(option(HANDS, ARM, "Spike Hand", 500, "2D6", "Шип из ладони"), "1D6+3", null, true)),
+            hand(option(HANDS, ARM, "Modular Hand", 600, "2", "4 инструмента на выбор")),
+            hand(option(HANDS, LEG, "Standard Foot", 200, "0", "Обычная стопа")),
+            hand(weapon(option(HANDS, LEG, "Talon Foot", 600, "2D6", "Лезвия в пальцах, против брони как нож"), "1D6", BLADE, false)),
+            hand(option(HANDS, LEG, "Tool Foot", 300, "2", "Инструменты в пальцах")),
+            hand(option(HANDS, LEG, "Web Foot", 500, "2", "Плавание вдвое быстрее, +3 к Плаванию")),
+            hand(option(HANDS, LEG, "Grip Foot", 500, "2", "+2 к Лазанию")),
+            hand(weapon(option(HANDS, LEG, "Spike Heel Foot", 500, "2D6", "Шип в пятке"), "2D6", null, true)),
 
             option(BUILT_IN, LIMB, "AV Tape Recorder", 250, "1", "2 часа записи, нужен внешний приёмник"),
             option(BUILT_IN, LIMB, "Cybermodem", 3000, "1", "Встроенная кибердека. Сотовая версия 5000"),
@@ -170,14 +175,14 @@ public final class Cp2020Cyberware {
             option(BUILT_IN, LIMB, "Storage Space", 50, "0.5", "Тайник 5×15 см"),
             option(BUILT_IN, LIMB, "MiniCam", 200, "2", "Камера на 20 снимков"),
             option(BUILT_IN, LIMB, "MiniVid", 400, "2", "Видео 30 минут"),
-            option(BUILT_IN, LIMB, "Hidden Holster", 100, "1", "Размер оружия по BODY"),
+            option(BUILT_IN, LEG, "Hidden Holster", 100, "1", "Только в ноге. Размер оружия по BODY"),
             option(BUILT_IN, LIMB, "LCD Screen Readout", 200, "1", "Экран для любого устройства"),
             option(BUILT_IN, LIMB, "Techscanner", 400, "3", "Как сканер, с. 59"),
 
             // Оружие в конечности стреляет как обычное: заведите его отдельным предметом
             option(LIMB_WEAPONS, LIMB, "Limb Grenade Launcher", 500, "2D6", "1 граната любого типа"),
             option(LIMB_WEAPONS, LIMB, "Micro-Missile Launcher", 900, "2D6", "4 микроракеты, 4D6 каждая"),
-            option(LIMB_WEAPONS, LIMB, "Popup Gun", 2, "2D6", "Размер по BODY. Цена 2–800"),
+            option(LIMB_WEAPONS, ARM, "Popup Gun", 2, "2D6", "Только в руке. Размер по BODY. Цена 2–800"),
             option(LIMB_WEAPONS, LIMB, "Limb Flame Thrower", 600, "2D6", "2D6, затем 1D6/2 ещё 2 хода"),
             option(LIMB_WEAPONS, LIMB, "Weapon Mount & Link", 100, "3", "Крепление и нейросвязь на 1 оружие"),
             option(LIMB_WEAPONS, LIMB, "2 Shot Capacitor Laser", 800, "2D6", "Лазер в плече, 3D6, 2 выстрела"),
@@ -228,6 +233,22 @@ public final class Cp2020Cyberware {
 
     private static CatalogItem strength(CatalogItem item, int value) {
         return with(item, Cp2020ItemTypes.STRENGTH, String.valueOf(value));
+    }
+
+    private static CatalogItem sdp(CatalogItem item) {
+        return with(item, Cp2020ItemTypes.LIMB_SDP, "5");
+    }
+
+    private static CatalogItem power(CatalogItem item, int multiplier) {
+        return with(item, Cp2020ItemTypes.LIMB_POWER, String.valueOf(multiplier));
+    }
+
+    private static CatalogItem hand(CatalogItem item) {
+        return with(item, Cp2020ItemTypes.LIMB_END, "1");
+    }
+
+    private static CatalogItem covering(CatalogItem item) {
+        return with(item, Cp2020ItemTypes.LIMB_COVERING, "1");
     }
 
     private static CatalogItem armor(CatalogItem item, int sp, String hardness, Cp2020Location... zones) {

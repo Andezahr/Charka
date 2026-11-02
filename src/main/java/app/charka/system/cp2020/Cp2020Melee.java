@@ -25,6 +25,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -85,6 +86,15 @@ final class Cp2020Melee {
 
     static AttackSource brawl() {
         return AttackSource.ability(BRAWL, BRAWL_NAME);
+    }
+
+    /** С киберрукой или киберногой урон удара другой: видно в названии, раз форма персонажа не знает */
+    static AttackSource brawl(Character attacker) {
+        List<String> blows = Stream.of(false, true)
+                .flatMap(kick -> Cp2020Cyberlimbs.blow(attacker, kick).stream())
+                .map(blow -> blow.label().toLowerCase() + " " + blow.text())
+                .toList();
+        return blows.isEmpty() ? brawl() : AttackSource.ability(BRAWL, BRAWL_NAME + " · " + String.join(", ", blows));
     }
 
     /** Эта атака — ближний бой: у ножа есть и бросок, и удар */
@@ -348,13 +358,23 @@ final class Cp2020Melee {
             location = Cp2020Location.fromRoll(roll);
             steps.add("Бросок зоны: d10 = " + roll);
         }
-        String damage = weapon != null ? weapon.getProperties().get("damage") : KICK.equals(request.mode()) ? KICK_DAMAGE : STRIKE_DAMAGE;
+        boolean kick = KICK.equals(request.mode());
+        Optional<Cp2020Cyberlimbs.Blow> blow = weapon == null && (kick || STRIKE.equals(request.mode()))
+                ? Cp2020Cyberlimbs.blow(context.attacker(), kick) : Optional.empty();
+        String damage = weapon != null ? weapon.getProperties().get("damage")
+                : blow.map(Cp2020Cyberlimbs.Blow::dice).orElse(kick ? KICK_DAMAGE : STRIKE_DAMAGE);
         Cp2020AttackRules.RolledDamage rolled = Cp2020AttackRules.rollText(damage, steps, dice);
         if (rolled == null) {
             return new AttackHit(location.getLabel(), null, steps, null);
         }
-        // С. 25: значение с модификатором не меньше 1
-        int amount = Math.max(1, rolled.amount() + damageBonus(context, steps));
+        int dealt = rolled.amount();
+        if (blow.isPresent()) {
+            // с. 89: гидравлика и утолщённый миомер умножают урон удара и пинка
+            dealt *= blow.get().multiplier();
+            steps.add(blow.get().label() + " " + blow.get().text() + " → " + dealt);
+        }
+        // С. 25: значение с модификатором не меньше 1. HOMEBREW: сила тела прибавляется и к удару киберконечностью, книга молчит
+        int amount = Math.max(1, dealt + damageBonus(context, steps));
         if (mono && result.critical()) {
             amount *= 2;
             steps.add("Естественная 10: моно-лезвие удваивает урон → " + amount);

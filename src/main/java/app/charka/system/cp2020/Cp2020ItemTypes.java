@@ -70,6 +70,22 @@ public final class Cp2020ItemTypes {
     public static final String INITIATIVE = "initiative";
     public static final String STRENGTH = "strength";
     public static final String SPEEDWARE = "speedware";
+    /** Киберконечность (с. 89): какую зону заняла — состояние */
+    public static final String LIMB_ZONE = "limbZone";
+    /** Опция конечности: id конечности, в которой стоит — состояние */
+    public static final String LIMB_HOST = "limbHost";
+    /** Урон в прочность конечности — состояние */
+    public static final String LIMB_DAMAGE = "limbDamage";
+    /** Опция прибавляет прочность конечности: Reinforced, Thickened +5 */
+    public static final String LIMB_SDP = "limbSdp";
+    /** Гидравлика: прочность 30 и 40 */
+    public static final String LIMB_HYDRAULIC = "limbHydraulic";
+    /** Множитель удара и пинка: Thickened ×2, гидравлика ×3 */
+    public static final String LIMB_POWER = "limbPower";
+    /** Кисть или стопа: одна на конечность */
+    public static final String LIMB_END = "limbEnd";
+    /** Покрытие: места опции не занимает, одно на конечность */
+    public static final String LIMB_COVERING = "limbCovering";
     /** Слой брони без штрафа к REF (Skinweave, с. 101) */
     public static final String NO_LAYER_PENALTY = "noLayerPenalty";
 
@@ -198,13 +214,19 @@ public final class Cp2020ItemTypes {
                             ItemField.number(ARMOR_SP, "SP", "SP ", "", 0, 60).asAdvanced(),
                             ItemField.number(ENCUMBRANCE, "Штраф EV", "EV ", "", 0, 10).asAdvanced(),
                             ItemField.choice(HARDNESS, "Жёсткость", false, new Option(SOFT, "Мягкая"), new Option(HARD, "Жёсткая")).asAdvanced(),
-                            ItemField.flag(NO_LAYER_PENALTY, "Слой без штрафа к REF", "").asAdvanced()),
+                            ItemField.flag(NO_LAYER_PENALTY, "Слой без штрафа к REF", "").asAdvanced(),
+                            ItemField.number(LIMB_SDP, "Прочность конечности +", "прочн. +", "", 1, 20).asAdvanced(),
+                            ItemField.flag(LIMB_HYDRAULIC, "Гидравлика: прочность 30 и 40", "").asAdvanced(),
+                            ItemField.number(LIMB_POWER, "Множитель удара конечностью", "удар ×", "", 2, 5).asAdvanced(),
+                            ItemField.flag(LIMB_END, "Кисть или стопа: одна на конечность", "").asAdvanced(),
+                            ItemField.flag(LIMB_COVERING, "Покрытие конечности: без места опции", "").asAdvanced()),
                     Arrays.stream(Cp2020Location.values())
                             .map(location -> ItemField.flag(zoneKey(location), location.getLabel(), location.getShortLabel()).asAdvanced()))
                     .toList(),
             values -> {
             },
-            Stream.concat(Stream.of(WORN, HUMANITY_LOST), Arrays.stream(Cp2020Location.values()).map(Cp2020ItemTypes::wearKey)).toList()).inSection("Киберware");
+            Stream.concat(Stream.of(WORN, HUMANITY_LOST, LIMB_ZONE, LIMB_HOST, LIMB_DAMAGE),
+                    Arrays.stream(Cp2020Location.values()).map(Cp2020ItemTypes::wearKey)).toList()).inSection("Киберware");
 
     public static final List<ItemTypeDefinition> ALL = List.of(WEAPON_TYPE, ARMOR_TYPE, ItemTypeDefinition.GENERIC, MAGAZINE_TYPE, AMMO_TYPE, CYBER_TYPE);
 

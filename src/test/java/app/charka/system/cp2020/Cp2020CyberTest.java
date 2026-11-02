@@ -13,10 +13,12 @@ import app.charka.model.Character;
 import app.charka.model.Item;
 import app.charka.model.counters.Counter;
 import app.charka.model.counters.strategy.health.DiceRoller;
+import app.charka.model.counters.strategy.health.DamageRequest;
 import app.charka.repository.CampaignRepository;
 import app.charka.repository.CharacterRepository;
 import app.charka.service.CharacterService;
 import app.charka.service.ItemService;
+import app.charka.service.counter.HealthCounterService;
 import app.charka.system.GameSystemRegistry;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -478,6 +480,151 @@ class Cp2020CyberTest {
         @DisplayName("В кампании без киберware блока нет")
         void otherSystems() {
             assertThat(registry.getGeneric().getInstalled(owner())).isNull();
+        }
+    }
+
+    @Nested
+    @DisplayName("Киберконечности (с. 89–90)")
+    class Limbs {
+
+        @Autowired private HealthCounterService healthCounterService;
+        @Autowired private Cp2020ArmorStrategy armorStrategy;
+
+        private Item installed(String name) {
+            Item item = buy(name);
+            itemService.performAction(owner.getId(), item.getId(), "INSTALL", Map.of());
+            flush();
+            return itemService.findById(item.getId());
+        }
+
+        private String hit(String location, int amount) {
+            String summary = healthCounterService.applyDamage(owner.getId(), DamageRequest.builder()
+                    .amount(amount).location(location).damageType(Cp2020DamageType.NORMAL.name()).build()).orElseThrow().getSummary();
+            flush();
+            return summary;
+        }
+
+        @Test
+        @DisplayName("Рука занимает первую свободную сторону, третьей нет; на место потерянной снимает отметку потери")
+        void sides() {
+            Counter health = counter(Cp2020HealthStrategy.TYPE);
+            health.setFlag(Cp2020HealthStrategy.LOST_PREFIX + "R_ARM", true);
+            flush();
+
+            assertThat(install("Cyberarm")).contains("(Правая рука)");
+            assertThat(install("Cyberarm")).contains("(Левая рука)");
+            assertThat(counter(Cp2020HealthStrategy.TYPE).getFlag(Cp2020HealthStrategy.LOST_PREFIX + "R_ARM")).isFalse();
+            assertThatThrownBy(() -> install("Cyberarm")).hasMessageContaining("Обе руки уже кибер");
+        }
+
+        @Test
+        @DisplayName("Опций в руке не больше 4, кисть одна; кисть на ногу не ставится; покрытие места не занимает")
+        void optionLimit() {
+            installed("Cyberleg");
+            assertThatThrownBy(() -> install("Standard Hand")).hasMessageContaining("Cyberarm");
+
+            installed("Cyberarm");
+            install("Ripper Hand");
+            assertThatThrownBy(() -> install("Spike Hand")).hasMessageContaining("Нет места");
+            install("Reinforced Joints");
+            install("MiniCam");
+            install("RealSkinn");
+            install("Storage Space");
+            // рука полна: опция для любой конечности уходит в ногу, а там 3 места
+            assertThat(install("Techscanner")).contains("(Правая нога)");
+            install("LCD Screen Readout");
+            install("MiniVid");
+            assertThatThrownBy(() -> install("AV Tape Recorder")).hasMessageContaining("Нет места");
+        }
+
+        @Test
+        @DisplayName("Попадание: урон в прочность, тело не ранено; 20 — не работает, 30 — уничтожена, дальше не растёт")
+        void damage() {
+            Item arm = installed("Cyberarm");
+            int wounds = counter(Cp2020HealthStrategy.TYPE).getValue();
+
+            assertThat(hit("R_ARM", 12)).contains("Cyberarm").doesNotContain("не работает");
+            assertThat(counter(Cp2020HealthStrategy.TYPE).getValue()).isEqualTo(wounds);
+            assertThat(counter(Cp2020HealthStrategy.TYPE).getFlag(Cp2020HealthStrategy.LOST_PREFIX + "R_ARM")).isFalse();
+            assertThat(hit("R_ARM", 10)).contains("не работает");
+            assertThat(hit("R_ARM", 15)).contains("уничтожена");
+            assertThat(Cp2020Cyberlimbs.damage(itemService.findById(arm.getId()))).isEqualTo(30);
+            assertThat(counter(Cp2020HealthStrategy.TYPE).getValue()).isEqualTo(wounds);
+
+            hit("L_ARM", 5);
+            assertThat(counter(Cp2020HealthStrategy.TYPE).getValue()).isEqualTo(wounds + 3);
+        }
+
+        @Test
+        @DisplayName("Reinforced и Thickened +5 каждая, гидравлика 30 и 40")
+        void structure() {
+            Item arm = installed("Cyberarm");
+            install("Reinforced Joints");
+            install("Thickened Myomar");
+            Item reinforced = itemService.findById(arm.getId());
+            assertThat(Cp2020Cyberlimbs.disabledAt(reinforced)).isEqualTo(30);
+            assertThat(Cp2020Cyberlimbs.destroyedAt(reinforced)).isEqualTo(40);
+
+            Item leg = installed("Cyberleg");
+            install("Hydraulic Rams");
+            assertThat(Cp2020Cyberlimbs.disabledAt(itemService.findById(leg.getId()))).isEqualTo(30);
+            assertThat(Cp2020Cyberlimbs.destroyedAt(itemService.findById(leg.getId()))).isEqualTo(40);
+        }
+
+        @Test
+        @DisplayName("Повреждённую чинят, уничтоженную — нет")
+        void repair() {
+            Item arm = installed("Cyberarm");
+            hit("R_ARM", 12);
+            assertThat(registry.forCharacter(owner()).getItemActions(itemService.findById(arm.getId())))
+                    .extracting(ItemAction::code).contains("REPAIR");
+
+            assertThat(itemService.performAction(owner.getId(), arm.getId(), "REPAIR", Map.of())).contains("Cybertech");
+            flush();
+            assertThat(Cp2020Cyberlimbs.damage(itemService.findById(arm.getId()))).isZero();
+
+            hit("R_ARM", 40);
+            assertThat(registry.forCharacter(owner()).getItemActions(itemService.findById(arm.getId())))
+                    .extracting(ItemAction::code).doesNotContain("REPAIR");
+        }
+
+        @Test
+        @DisplayName("Снятая рука уносит опции с собой")
+        void removeWithOptions() {
+            Item arm = installed("Cyberarm");
+            Item hand = installed("Ripper Hand");
+
+            assertThat(itemService.performAction(owner.getId(), arm.getId(), "REMOVE", Map.of())).contains("вместе с Ripper Hand");
+            flush();
+            assertThat(Cp2020Cyber.isInstalled(itemService.findById(hand.getId()))).isFalse();
+        }
+
+        @Test
+        @DisplayName("Limb Armor: SP 20 на зоне своей руки — последней поставленной")
+        void armor() {
+            installed("Cyberarm");
+            installed("Cyberarm");
+            installed("Limb Armor");
+
+            Counter armor = counter(Cp2020ArmorStrategy.TYPE);
+            assertThat(armorStrategy.sp(armor, Cp2020Location.L_ARM)).isEqualTo(20);
+            assertThat(armorStrategy.sp(armor, Cp2020Location.R_ARM)).isZero();
+        }
+
+        @Test
+        @DisplayName("Удар киберрукой с гидравликой: 1D6 ×3, в названии атаки")
+        void blow() {
+            installed("Cyberarm");
+            install("Hydraulic Rams");
+            encounterService.start(campaign.getId(), List.of(owner.getId(), other.getId()));
+            flush();
+
+            when(dice.roll(anyInt())).thenReturn(1, 9, 2);
+            AttackResult result = attackService.attackWithAbility(owner.getId(), "BRAWL",
+                    new AttackRequest(List.of(other.getId()), null, 0, "TORSO", null, Set.of(), 0, "STRIKE", 0, 0));
+
+            assertThat(result.steps()).anyMatch(step -> step.contains("Киберудар 1D6×3 → 6"));
+            assertThat(Cp2020Melee.brawl(owner())).extracting(source -> source.name()).asString().contains("киберудар 1D6×3");
         }
     }
 }

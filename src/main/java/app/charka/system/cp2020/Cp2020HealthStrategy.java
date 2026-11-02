@@ -1,5 +1,6 @@
 package app.charka.system.cp2020;
 
+import app.charka.model.Item;
 import app.charka.model.counters.Counter;
 import app.charka.model.counters.strategy.AbstractCounterStrategy;
 import app.charka.model.counters.strategy.CounterContext;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.Map;
 import java.util.Set;
 
@@ -232,6 +234,12 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
                 worn = armorStrategy.wear(armor, location);
             }
             event.step("Броня пробита и изношена: SP «" + location.getLabel() + "» " + sp + " → " + worn);
+        }
+
+        // Киберконечность принимает урон сама, как машина (с. 89): тело не ранено
+        Optional<Item> cyberlimb = location.isLimb() ? Cp2020Cyberlimbs.at(counter.getCharacter(), location) : Optional.empty();
+        if (cyberlimb.isPresent()) {
+            return event.summary(Cp2020Cyberlimbs.hit(cyberlimb.get(), damage, event::step));
         }
 
         // 2. Голова

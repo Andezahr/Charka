@@ -75,7 +75,7 @@ final class Cp2020AttackRules implements AttackRules {
 
     @Override
     public List<AttackSource> abilities(Character attacker) {
-        return List.of(Cp2020Melee.brawl());
+        return List.of(Cp2020Melee.brawl(attacker));
     }
 
     @Override

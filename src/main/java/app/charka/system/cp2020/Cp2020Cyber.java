@@ -76,7 +76,7 @@ final class Cp2020Cyber {
             return List.of(ItemAction.simple(INSTALL, "Установить", blockedReason(item)).withConfirm(CONFIRM));
         }
         List<ItemAction> actions = new ArrayList<>();
-        if (Cp2020WornArmor.isDamaged(item)) {
+        if (Cp2020WornArmor.isDamaged(item) || Cp2020Cyberlimbs.isRepairable(item)) {
             actions.add(ItemAction.simple(REPAIR, "Починить", null).asSecondary());
         }
         actions.add(ItemAction.simple(REMOVE, "Снять", null).asSecondary());
@@ -93,6 +93,10 @@ final class Cp2020Cyber {
                 return "Сначала установите: " + String.join(" или ", parents);
             }
         }
+        String limb = Cp2020Cyberlimbs.blockedReason(item);
+        if (limb != null) {
+            return limb;
+        }
         return Cp2020WornArmor.sp(item) > 0 ? Cp2020ArmorActions.wearBlockedReason(item) : null;
     }
 
@@ -102,6 +106,9 @@ final class Cp2020Cyber {
      */
     static String perform(Item item, String action, DiceRoller dice, HealthCounterService health) {
         if (GRANT.equals(action)) {
+            if (Cp2020Cyberlimbs.blockedReason(item) == null) {
+                Cp2020Cyberlimbs.attach(item);
+            }
             markInstalled(item);
             return item.getName();
         }
@@ -111,12 +118,18 @@ final class Cp2020Cyber {
         return switch (action) {
             case INSTALL -> install(item, dice, health);
             case REPAIR -> {
+                if (Cp2020Cyberlimbs.isRepairable(item)) {
+                    Cp2020Cyberlimbs.repair(item);
+                    yield item.getName() + ": отремонтирована. Проверку Cybertech бросает мастер";
+                }
                 Cp2020WornArmor.repair(item);
                 yield item.getName() + ": отремонтирован, SP восстановлен";
             }
             default -> {
+                List<String> withIt = Cp2020Cyberlimbs.detach(item);
                 item.getProperties().remove(Cp2020ItemTypes.WORN);
-                yield item.getName() + ": снят, человечность не возвращается: терапия, с. 74";
+                yield item.getName() + ": снят" + (withIt.isEmpty() ? "" : " вместе с " + String.join(", ", withIt))
+                        + ", человечность не возвращается: терапия, с. 74";
             }
         };
     }
@@ -132,7 +145,8 @@ final class Cp2020Cyber {
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("У персонажа нет счётчика характеристик: создайте его на вкладке «Счётчики»"));
         List<String> parts = new ArrayList<>();
-        parts.add(item.getName() + ": установлен");
+        String where = Cp2020Cyberlimbs.attach(item);
+        parts.add(item.getName() + ": установлен" + (where != null ? " (" + where + ")" : ""));
         // HOMEBREW: снятое и поставленное обратно потери не бросает: книга говорит о потере за установку нового
         if (!item.getProperties().containsKey(Cp2020ItemTypes.HUMANITY_LOST)) {
             int lost = rollHumanity(item, parts, dice);
@@ -350,6 +364,10 @@ final class Cp2020Cyber {
         if (item.getProperties().containsKey(Cp2020ItemTypes.STRENGTH)) {
             values.add("сила " + item.getProperties().get(Cp2020ItemTypes.STRENGTH));
         }
+        String limb = Cp2020Cyberlimbs.chipSuffix(item);
+        if (!limb.isEmpty()) {
+            values.add(limb);
+        }
         // в названии уже есть прибавка: «Kerenzikov +1 · иниц. +1» было бы повтором
         String name = item.getName().replaceAll(" \\+\\d$", "");
         return values.isEmpty() ? name : name + " · " + String.join(" · ", values);
@@ -360,6 +378,7 @@ final class Cp2020Cyber {
         if (item.getDescription() != null && !item.getDescription().isBlank()) {
             details.add(item.getDescription());
         }
+        Cp2020Cyberlimbs.details(item).ifPresent(details::add);
         String lost = item.getProperties().get(Cp2020ItemTypes.HUMANITY_LOST);
         details.add("Человечность −" + (lost != null ? lost : "0") + " · хирургия " + surgery(item).map(Surgery::label).orElse("—"));
         return details;
