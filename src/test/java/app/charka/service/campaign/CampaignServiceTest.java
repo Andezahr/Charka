@@ -31,7 +31,8 @@ class CampaignServiceTest {
     @BeforeEach
     void setUp() {
         campaignService = new CampaignService(campaignRepository,
-                new GameSystemRegistry(List.of(new GenericSystem(), new Cp2020System(null, null))));
+                new GameSystemRegistry(List.of(new GenericSystem(), new Cp2020System(null, null))),
+                new app.charka.security.AccessService(null, false));
     }
 
     @Test

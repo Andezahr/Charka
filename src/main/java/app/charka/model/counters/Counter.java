@@ -23,6 +23,7 @@ public class Counter {
 
     @ManyToOne
     @JsonBackReference
+    @lombok.ToString.Exclude
     private Character character;
 
     private String type;

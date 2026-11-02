@@ -40,6 +40,7 @@ public class EncounterController {
     private final app.charka.map.BattleFieldService battleFieldService;
     private final app.charka.map.BattleMapService battleMapService;
     private final app.charka.chat.ChatService chatService;
+    private final app.charka.security.AccessService accessService;
 
     @GetMapping
     public String page(@PathVariable Long campaignId, Model model) {
@@ -53,6 +54,9 @@ public class EncounterController {
             model.addAttribute("attackObjects", attackService.objectTargets(campaign));
             model.addAttribute("hasField", view.get().encounter().getMapDoc() != null);
             model.addAttribute("feed", chatService.feed(campaignId, ChatController.FEED_SIZE));
+            // U-03: игрок действует своими персонажами, остальные строки — только смотрит
+            model.addAttribute("controllable", view.get().rows().stream().map(row -> row.character())
+                    .filter(accessService::canControl).map(app.charka.model.Character::getId).collect(java.util.stream.Collectors.toSet()));
             model.addAttribute("difficultyPresets", systemRegistry.get(campaign.getSystem()).getCheckResolver().getDifficultyPresets());
             model.addAttribute("contests", systemRegistry.get(campaign.getSystem()).getCombatContests());
             app.charka.system.GameSystem system = systemRegistry.get(campaign.getSystem());
@@ -62,6 +66,8 @@ public class EncounterController {
             model.addAttribute("candidates", encounterService.candidates(campaignId));
         }
         model.addAttribute("maps", battleMapService.list(campaignId));
+        model.addAttribute("isGm", accessService.isGm(campaign));
+        model.addAttribute("chatCharacters", accessService.visible(campaign));
         return "encounter";
     }
 

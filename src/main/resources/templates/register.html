@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Регистрация')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: topbar(null, 'home')}"></header>
+<main class="page page-narrow">
+  <section class="card">
+    <div class="card-head"><h1 class="card-title"><span class="dot"></span>Регистрация</h1></div>
+    <div class="card-body">
+      <p class="page-sub">Мастер создаёт кампании и отдаёт персонажей игрокам по логину. Игрок видит своих персонажей, бой, карту и чат кампании.</p>
+      <div th:if="${error != null}" class="alert alert-error" role="alert"><span class="alert-text" th:text="${error}">Логин занят</span></div>
+      <form th:action="@{/register}" method="post" class="form">
+        <label class="field"><span class="label">Логин</span>
+          <input type="text" name="username" required autofocus autocomplete="username" autocapitalize="none" minlength="3" maxlength="32"
+                 pattern="[A-Za-z0-9_.\-]+" th:value="${username}" title="Латинские буквы, цифры, точка, дефис, подчёркивание"></label>
+        <label class="field"><span class="label">Пароль</span>
+          <input type="password" name="password" required minlength="6" autocomplete="new-password"></label>
+        <label class="field"><span class="label">Ещё раз</span>
+          <input type="password" name="repeat" required minlength="6" autocomplete="new-password"></label>
+        <button type="submit" class="btn btn-primary">Создать и войти</button>
+      </form>
+      <p class="page-sub">Уже есть? <a th:href="@{/login}">Войти</a></p>
+    </div>
+  </section>
+</main>
+</body>
+</html>

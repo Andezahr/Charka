@@ -16,17 +16,22 @@ import java.util.List;
 import java.util.Set;
 
 @Data
+// коротко: ссылки детей на персонажа и персонажа на кампанию иначе зацикливают toString
+@ToString(onlyExplicitlyIncluded = true)
 @Entity
 public class Character {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @ToString.Include
     private Long id;
 
+    @ToString.Include
     private String name;
 
     private LocalDate birthDate;
 
     /** Персонаж мастера, а не игрока */
+    @ToString.Include
     private boolean npc;
 
     /** Коды ролей/классов из {@code GameSystem.getRoles()}; ролей может быть несколько */
@@ -38,6 +43,14 @@ public class Character {
     @ManyToOne
     @JsonBackReference
     private Campaign campaign;
+
+    /** Игрок (U-03): видит этого персонажа; null — персонаж мастера или ещё не отдан */
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    @lombok.ToString.Exclude
+    @lombok.EqualsAndHashCode.Exclude
+    @ManyToOne
+    @JoinColumn(name = "player_user_id")
+    private AppUser player;
 
     @JsonManagedReference
     @OneToMany(mappedBy = "character", cascade = CascadeType.ALL, orphanRemoval = true)

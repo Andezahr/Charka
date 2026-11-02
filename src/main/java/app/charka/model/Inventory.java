@@ -24,5 +24,6 @@ public class Inventory {
     @ManyToOne
     @JoinColumn(name = "character_id")
     @JsonBackReference
+    @lombok.ToString.Exclude
     private Character character;
 }

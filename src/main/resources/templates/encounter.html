@@ -21,7 +21,10 @@
   </div>
 
   <!-- Боя нет: кто участвует. Отмечены все живые, начать бой — одно нажатие -->
-  <section th:if="${view == null}" class="card">
+  <section th:if="${view == null and !isGm}" class="card">
+    <div class="card-body empty">Боя нет: его начинает мастер</div>
+  </section>
+  <section th:if="${view == null and isGm}" class="card">
     <form th:action="@{${base} + '/start'}" method="post">
       <div class="card-head">
         <h2 class="card-title"><span class="dot red"></span>Кто участвует</h2>
@@ -89,8 +92,8 @@
             <label class="field battle-me">
               <span class="label">Я —</span>
               <select data-battle-me aria-label="Кто смотрит на это устройство">
-                <option value="">мастер</option>
-                <option th:each="row : ${view.rows}" th:value="${row.character.id}" th:text="${row.character.name}">Колясик</option>
+                <option th:if="${isGm}" value="">мастер</option>
+                <option th:each="row : ${view.rows}" th:if="${controllable.contains(row.character.id)}" th:value="${row.character.id}" th:text="${row.character.name}">Колясик</option>
               </select>
             </label>
             <button type="button" class="btn btn-sm btn-ghost" data-battle-pointer title="Показать клетку всем (Alt+нажатие, долгое нажатие)">👆 Указать</button>
@@ -175,10 +178,11 @@
               </div>
 
               <!-- Кто ходит, у того всё открыто; у остальных — за одним нажатием: урон и атака вне очереди редки -->
-              <th:block th:if="${row.current}">
+              <!-- U-03: действия — у своих персонажей; мастеру — у всех -->
+              <th:block th:if="${row.current and controllable.contains(row.character.id)}">
                 <div th:replace="~{fragments/encounter :: actions(${row}, ${base})}"></div>
               </th:block>
-              <details th:unless="${row.current or row.card.out}" class="cp-more item-more">
+              <details th:unless="${row.current or row.card.out or !controllable.contains(row.character.id)}" class="cp-more item-more">
                 <summary>Действия</summary>
                 <div th:replace="~{fragments/encounter :: actions(${row}, ${base})}"></div>
               </details>
@@ -189,7 +193,7 @@
       </div>
 
       <div class="stack">
-        <section class="card" th:unless="${#lists.isEmpty(view.addable)}">
+        <section class="card" th:unless="${!isGm or #lists.isEmpty(view.addable)}">
           <div class="card-head"><h2 class="card-title"><span class="dot yellow"></span>Вступает в бой</h2></div>
           <div class="card-body">
             <form th:action="@{${base} + '/participants'}" method="post" class="form-row">
@@ -201,7 +205,7 @@
           </div>
         </section>
 
-        <section class="card">
+        <section class="card" th:if="${isGm}">
           <div class="card-head"><h2 class="card-title"><span class="dot yellow"></span>Карта боя</h2></div>
           <div class="card-body stack-sm">
             <div th:if="${mapSaved != null}" class="alert alert-success" role="status">
@@ -225,9 +229,9 @@
         </section>
 
         <!-- Журнал: итог атаки и урон остаются на экране, когда сообщение в строке уже ушло; рядом — чат стола (U-06) -->
-        <section th:replace="~{fragments/chat :: card(${campaign.id}, ${base}, ${campaign.characters})}"></section>
+        <section th:replace="~{fragments/chat :: card(${campaign.id}, ${base}, ${chatCharacters})}"></section>
 
-        <form th:action="@{${base} + '/end'}" method="post" data-confirm="Закончить бой? Раны и расход патронов останутся.">
+        <form th:if="${isGm}" th:action="@{${base} + '/end'}" method="post" data-confirm="Закончить бой? Раны и расход патронов останутся.">
           <button type="submit" class="btn btn-danger encounter-end">Закончить бой</button>
         </form>
       </div>

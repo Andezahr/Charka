@@ -20,5 +20,6 @@ public class Money {
 
     @ManyToOne
     @JsonBackReference
+    @lombok.ToString.Exclude
     private Character character;
 }

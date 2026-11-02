@@ -40,6 +40,7 @@ public class CampaignImportService {
     private final CampaignRepository campaignRepository;
     private final GameSystemRegistry systemRegistry;
     private final EntityManager entityManager;
+    private final app.charka.security.AccessService accessService;
 
     /**
      * @return новая кампания
@@ -86,6 +87,8 @@ public class CampaignImportService {
 
         Map<String, Item> itemsByOldId = new HashMap<>();
         campaign.setId(null);
+        // мастер не экспортируется: импортировавший сам становится мастером
+        accessService.current().ifPresent(campaign::setGm);
         campaign.getChronicles().forEach(chronicle -> {
             chronicle.setId(null);
             chronicle.setCampaign(campaign);

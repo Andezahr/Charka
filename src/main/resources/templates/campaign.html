@@ -19,9 +19,11 @@
         <a th:href="@{'/campaign/' + ${campaign.id} + '/encounter'}" class="btn btn-primary"
            th:text="${round != null} ? '⚔ Идёт бой · раунд ' + ${round} : '⚔ Бой'">⚔ Бой</a>
       </th:block>
-      <a th:href="@{'/campaign/' + ${campaign.id} + '/gm'}" class="btn">👁 Экран мастера</a>
-      <a th:href="@{'/campaign/' + ${campaign.id} + '/maps'}" class="btn">🗺 Карты</a>
-      <a th:href="@{'/api/campaigns/' + ${campaign.id} + '/download'}" class="btn" download>⬇ Скачать JSON</a>
+      <th:block th:if="${isGm}">
+        <a th:href="@{'/campaign/' + ${campaign.id} + '/gm'}" class="btn">👁 Экран мастера</a>
+        <a th:href="@{'/campaign/' + ${campaign.id} + '/maps'}" class="btn">🗺 Карты</a>
+        <a th:href="@{'/api/campaigns/' + ${campaign.id} + '/download'}" class="btn" download>⬇ Скачать JSON</a>
+      </th:block>
     </div>
   </div>
 
@@ -33,7 +35,7 @@
         <h2 class="card-title"><span class="dot"></span>Персонажи кампании</h2>
         <span class="badge" th:text="${#lists.size(players)}">0</span>
       </div>
-      <div class="card-body">
+      <div class="card-body" th:if="${isGm}">
         <form th:action="@{'/campaign/' + ${campaign.id} + '/characters'}" method="post" class="form-row">
           <input type="text" name="name" class="grow" placeholder="Имя нового персонажа" required autocomplete="off">
           <button type="submit" class="btn btn-primary">＋ Добавить</button>
@@ -49,6 +51,14 @@
             </a>
             <a th:href="@{'/character/' + ${character.id}}" class="btn btn-sm btn-ghost">Открыть →</a>
           </div>
+          <!-- U-03: мастер отдаёт персонажа игроку по логину; пусто — персонаж мастера -->
+          <form th:if="${isGm and securityOn}" th:action="@{'/campaign/' + ${campaign.id} + '/characters/' + ${character.id} + '/player'}"
+                method="post" class="form-row char-player">
+            <span class="label">Игрок</span>
+            <input type="text" name="username" class="grow" maxlength="32" autocapitalize="none" placeholder="логин"
+                   th:value="${character.player != null ? character.player.username : ''}" aria-label="Логин игрока">
+            <button type="submit" class="btn btn-sm btn-ghost">Отдать</button>
+          </form>
           <div class="chips">
             <span th:each="line : ${briefs[character.id]}" class="chip" th:text="${line}">Соло</span>
             <span th:each="wound : ${character.wounds}" class="chip red">
@@ -60,7 +70,8 @@
         <div th:if="${#lists.isEmpty(players)}" class="empty">В кампании пока нет персонажей</div>
       </div>
       <!-- Начислить всем: опыт, IP. Галочки — игроки, NPC по умолчанию не получают -->
-      <div class="card-body" id="award" th:unless="${#lists.isEmpty(awardCounters) or #lists.isEmpty(players)}">
+      <div th:if="${playerError != null}" class="card-body"><p class="field-error" th:text="${playerError}">Нет такого логина</p></div>
+      <div class="card-body" id="award" th:unless="${!isGm or #lists.isEmpty(awardCounters) or #lists.isEmpty(players)}">
         <form th:action="@{'/campaign/' + ${campaign.id} + '/award'}" method="post" class="form">
           <div class="form-row">
             <select th:if="${#lists.size(awardCounters) > 1}" name="counter" class="grow" aria-label="Что начислить">
@@ -85,7 +96,7 @@
     </section>
 
     <!-- NPC мастера -->
-    <section class="card" id="npcs">
+    <section class="card" id="npcs" th:if="${isGm}">
       <div class="card-head">
         <h2 class="card-title"><span class="dot red"></span>NPC</h2>
         <span class="badge" th:text="${#lists.size(npcs)}">0</span>
@@ -153,7 +164,7 @@
           </div>
         </div>
         <div class="card-body">
-          <form th:action="@{'/campaign/' + ${campaign.id} + '/chronicles'}" method="post" class="form">
+          <form th:if="${isGm}" th:action="@{'/campaign/' + ${campaign.id} + '/chronicles'}" method="post" class="form">
             <div class="field">
               <label for="chronicle-name">Время летит…</label>
               <input id="chronicle-name" type="text" name="name" placeholder="Что произошло за это время" required autocomplete="off">
@@ -163,7 +174,7 @@
               <button type="submit" class="btn btn-pink">⏩ Промотать</button>
             </div>
           </form>
-          <form th:if="${gameSystem.hasLuck()}" th:action="@{'/campaign/' + ${campaign.id} + '/session'}" method="post" class="form-row">
+          <form th:if="${isGm and gameSystem.hasLuck()}" th:action="@{'/campaign/' + ${campaign.id} + '/session'}" method="post" class="form-row">
             <button type="submit" class="btn btn-sm btn-ghost" title="Потраченная Удача возвращается всем">🍀 Новая сессия</button>
           </form>
           <ul th:if="${timeReport != null and !#lists.isEmpty(timeReport)}" class="award-result">
@@ -184,8 +195,8 @@
       </section>
 
       <!-- Кубики мастера и последние броски кампании -->
-      <section th:replace="~{fragments/dice :: card('/campaign/' + ${campaign.id}, true)}"></section>
-      <section th:replace="~{fragments/chat :: card(${campaign.id}, '/campaign/' + ${campaign.id}, ${campaign.characters})}"></section>
+      <th:block th:if="${isGm}"><section th:replace="~{fragments/dice :: card('/campaign/' + ${campaign.id}, true)}"></section></th:block>
+      <section th:replace="~{fragments/chat :: card(${campaign.id}, '/campaign/' + ${campaign.id}, ${chatCharacters})}"></section>
     </div>
   </div>
 </main>

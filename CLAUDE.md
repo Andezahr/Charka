@@ -23,6 +23,7 @@
 
 - Java 24 (в `pom.xml`; локально стоит JDK 25), Spring Boot 3.5.3
 - Spring Web MVC + **Thymeleaf** (серверный рендеринг, формы с POST + redirect; `app.js` выполняет их без перезагрузки). Кэш шаблонов включён: правка шаблона видна после перезапуска или с `THYMELEAF_CACHE=false`
+- Spring Security (U-03): вход по логину и паролю, права по кампаниям — `AccessInterceptor`; `charka.security.enabled=false` (профиль тестов) — без входа. CSRF-токен в cookie `XSRF-TOKEN`, `app.js` шлёт его заголовком
 - Spring Data JPA / Hibernate, **PostgreSQL 17 в Docker** (`compose.yaml`: контейнер `charka-postgres`, `localhost:5433/charka`, `charka`/`charka_dev_pw`; переопределяется `DB_URL`/`DB_USER`/`DB_PASSWORD`). `spring-boot-docker-compose` поднимает контейнер сам при `spring-boot:run` — нужен запущенный Docker Desktop. Установленный в системе PostgreSQL (5432) не используется
 - **Flyway**: схема только миграциями `src/main/resources/db/migration/V<n>__*.sql`, Hibernate `ddl-auto=validate` → любое изменение сущности = новая миграция
 - Тесты: H2 в режиме PostgreSQL на тех же миграциях (`application-test.yml`, `@ActiveProfiles("test")` у `@SpringBootTest`) — SQL миграций держать переносимым
@@ -35,7 +36,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 956 тестов, на 2026-11-02 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 964 теста, на 2026-11-02 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -55,6 +56,7 @@ dice/         DiceExpression (разбор NdM±K), DiceResult, DiceService (б�
 attack/       AttackRules (контракт системы: form, plan, spend, outcome, effectHit, isObjectTarget/damageObject — цель-предмет), AttackSource (предмет или способность), ObjectTarget (машина в списке целей), AttackContext, AttackPlan, AttackOutcome, AttackForm, AttackRequest, AttackHit, AreaDamage (урон по площади), LingeringEffect (что остаётся на цели на следующие раунды), AttackResult, AttackService (один ход для всех атак, урон цели, лог, заряды PendingBlast)
 creation/     CharacterCreation (мастер создания персонажа: форма, бросок очков, создание; реализует система)
 npc/          NpcTemplate, NpcSheet (что выбросила система), NpcService (создание по шаблону, копии, удаление)
+security/     SecurityConfig, UserService (регистрация, вход), AccessService (кто что видит: мастер кампании, игрок персонажа), AccessInterceptor (чужое — 404), AuthController
 chat/         ChatService (чат кампании: сообщения и броски одной лентой)
 map/          MapDoc (документ карты: стены-грани, клетки, предметы, зоны, подписи, подложка), MapRules (правила карты системы), MapObject, Material, MapGrid (что в клетке, линия взгляда, досягаемость), TokenPlacer, BattleMapService (карты кампании, подложка), BattleFieldService (поле идущего боя), PointerBoard (указатели в памяти), MapGenerator, EditableMap
 encounter/    EncounterService (бой кампании: очередь, раунды, ожидание, урон, противостояния), CombatContest (противостояние от системы), EncounterView (страница боя), Initiative, InitiativeDeclaration и CombatCard (что отдаёт система)
@@ -77,13 +79,14 @@ TODO.txt       список планов автора (см. ниже)
 ## Доменная модель
 
 ```
-Campaign (name, system, startDate, currentDate)   — system: код GameSystem (колонка game_system)
+AppUser (username, passwordHash) — пользователь; мастер своих кампаний, игрок своих персонажей
+Campaign (name, system, startDate, currentDate, gm?)   — system: код GameSystem (колонка game_system); gm — мастер (U-03)
  ├─ RollLog* (character?, expression, details, total, label, gameDate, createdAt) — без коллекции в Campaign, не экспортируется
  ├─ ChatMessage* (character?, author, text, gameDate, createdAt) — чат, как лог: без коллекции, не экспортируется
  ├─ BattleMap* (name, doc JSON, background) — карта боя, заготовка
  ├─ Encounter (round, groupPlayers, groupNpcs, mapDoc — копия карты, battleMapId) └─ EncounterParticipant* (character, initiative, initiativeDetails, turnOrder, done, waiting, declaration, posX, posY) └─ CombatEffect* (label, roundsLeft, damage, attackOption, data) — идущий бой, один на кампанию; закончился — удаляется
  ├─ Chronicle* (name, startDate, endDate)     — запись о прошедшем периоде
- └─ Character* (name, birthDate, npc, roles)  — npc: персонаж мастера; roles: коды из GameSystem.getRoles(), таблица character_role; уровень роли = уровень спецспособности
+ └─ Character* (name, birthDate, npc, roles, player?)  — npc: персонаж мастера; roles: коды из GameSystem.getRoles(), таблица character_role; уровень роли = уровень спецспособности
      ├─ CharacterSkill* (skillCode, level, customName?) — код из каталога системы; уровень 0 у обычного навыка не хранится
      ├─ Wound*     (name, severity, date) — журнал здоровья: ручные записи и автозаписи `HealthCounterService` (урон, смерть, медпомощь)
      ├─ Inventory* (name) └─ Item* (name, quantity, cost, description, type, properties) — type: код из GameSystem.getItemTypes()
@@ -118,7 +121,9 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 
 | Метод | Путь | Что делает |
 |---|---|---|
-| GET | `/` | список персонажей и кампаний |
+| GET, POST | `/login`, `/register`; POST `/logout` | вход, регистрация (сразу вход), выход |
+| GET | `/` | свои кампании (мастер или игрок) и свои персонажи |
+| POST | `/campaign/{id}/characters/{cid}/player` | `username` → отдать персонажа игроку (пусто — мастеру) |
 | POST | `/campaigns` | `name`, `system`, `startDate?` → новая кампания |
 | GET | `/campaign/{id}` | страница кампании; `?rolls=N` — страница лога бросков (по 10, новые сверху) |
 | POST | `/campaign/{id}/characters` | добавить персонажа (инвентарь «Backpack» + счётчики по умолчанию системы) |
@@ -191,7 +196,7 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 - Сервисы ходят в чужие репозитории напрямую (Money/Wound/Inventory → `CharacterRepository`).
 - Принадлежность ресурса персонажу проверяет `OwnershipInterceptor` (U-02) по переменным адреса.
 - Стратегии счётчиков работают через `String`/`Object`, тип — строка; стратегии лежат в `model/` и знают имена шаблонов.
-- Нет авторизации/пользователей.
+- Пользователи есть (U-03), но один мастер на кампанию и нет смены пароля.
 
 ## Планы автора (`TODO.txt`)
 

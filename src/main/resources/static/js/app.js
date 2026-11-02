@@ -1,5 +1,20 @@
 // Общий JS для всех страниц Charka
 
+// U-03: CSRF. Сервер кладёт токен в cookie XSRF-TOKEN; каждый запрос, кроме чтения, несёт его заголовком —
+// формы обновления на месте, ход фишки, автосохранение карты
+(() => {
+  const plain = window.fetch.bind(window);
+  window.fetch = (input, init = {}) => {
+    const method = (init.method || 'GET').toUpperCase();
+    if (method === 'GET' || method === 'HEAD') return plain(input, init);
+    const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/);
+    if (!match) return plain(input, init);
+    const headers = new Headers(init.headers || {});
+    headers.set('X-XSRF-TOKEN', decodeURIComponent(match[1]));
+    return plain(input, { ...init, headers });
+  };
+})();
+
 // Обработчики элементов страницы: вызывается при загрузке и после каждого обновления на месте.
 // Обработчики на document сюда не класть, они накопятся: они в конце файла
 function initPage() {
@@ -1767,7 +1782,8 @@ function redoEdit() {
 // Уходим, пока не сохранено: отправить сразу
 window.addEventListener('pagehide', () => {
   if (editor.url && editor.saveTimer && editor.doc) {
-    navigator.sendBeacon && navigator.sendBeacon(editor.url, new Blob([JSON.stringify(editor.doc)], { type: 'application/json' }));
+    // keepalive вместо sendBeacon: маяку не задать заголовок CSRF
+    fetch(editor.url, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editor.doc) });
   }
 });
 

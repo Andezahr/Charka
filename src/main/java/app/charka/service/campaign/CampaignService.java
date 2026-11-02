@@ -17,10 +17,11 @@ public class CampaignService {
 
     private final CampaignRepository campaignRepository;
     private final GameSystemRegistry systemRegistry;
+    private final app.charka.security.AccessService accessService;
 
     /**
      * Сохраняет кампанию. Система должна быть зарегистрирована; без даты начала — сегодняшняя,
-     * текущая игровая дата по умолчанию равна дате начала.
+     * текущая игровая дата по умолчанию равна дате начала. Мастер — кто создал (U-03).
      *
      * @throws IllegalArgumentException если система неизвестна
      */
@@ -32,6 +33,9 @@ public class CampaignService {
         }
         if (campaign.getCurrentDate() == null) {
             campaign.setCurrentDate(campaign.getStartDate());
+        }
+        if (campaign.getGm() == null) {
+            accessService.current().ifPresent(campaign::setGm);
         }
         return campaignRepository.save(campaign);
     }

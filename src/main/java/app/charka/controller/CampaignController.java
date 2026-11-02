@@ -33,11 +33,13 @@ public class CampaignController {
     private final DiceService diceService;
     private final CampaignAwardService awardService;
     private final app.charka.chat.ChatService chatService;
+    private final app.charka.security.AccessService accessService;
+    private final app.charka.repository.AppUserRepository userRepository;
     private final List<app.charka.creation.CharacterCreation> creations;
 
     public CampaignController(CampaignService campaignService, CharacterService characterService,
                               GameSystemRegistry systemRegistry, DiceService diceService, CampaignAwardService awardService,
-                              List<app.charka.creation.CharacterCreation> creations, app.charka.chat.ChatService chatService) {
+                              List<app.charka.creation.CharacterCreation> creations, app.charka.chat.ChatService chatService, app.charka.security.AccessService accessService, app.charka.repository.AppUserRepository userRepository) {
         this.creations = creations;
         this.campaignService = campaignService;
         this.characterService = characterService;
@@ -45,6 +47,8 @@ public class CampaignController {
         this.diceService = diceService;
         this.awardService = awardService;
         this.chatService = chatService;
+        this.accessService = accessService;
+        this.userRepository = userRepository;
     }
 
     @GetMapping
@@ -54,8 +58,13 @@ public class CampaignController {
         LocalDate currentDate = campaign.getCurrentDate();
 
         model.addAttribute("campaign", campaign);
-        model.addAttribute("players", campaign.getCharacters().stream().filter(character -> !character.isNpc()).toList());
-        model.addAttribute("npcs", campaign.getCharacters().stream().filter(Character::isNpc).toList());
+        // U-03: игрок видит своих персонажей, мастер — всех и свои инструменты
+        List<Character> visible = accessService.visible(campaign);
+        model.addAttribute("players", visible.stream().filter(character -> !character.isNpc()).toList());
+        model.addAttribute("npcs", visible.stream().filter(Character::isNpc).toList());
+        model.addAttribute("isGm", accessService.isGm(campaign));
+        model.addAttribute("securityOn", accessService.isEnabled());
+        model.addAttribute("chatCharacters", visible);
         model.addAttribute("currentDate", currentDate);
         GameSystem gameSystem = systemRegistry.find(campaign.getSystem()).orElseGet(systemRegistry::getGeneric);
         model.addAttribute("gameSystem", gameSystem);
@@ -72,6 +81,26 @@ public class CampaignController {
         model.addAttribute("hasCreation", creations.stream().anyMatch(creation -> creation.getSystemCode().equals(campaign.getSystem())));
 
         return "campaign";
+    }
+
+    /**
+     * U-03: отдать персонажа игроку по логину; пустой логин — персонаж снова у мастера.
+     */
+    @PostMapping("/characters/{characterId}/player")
+    @org.springframework.transaction.annotation.Transactional
+    public String assignPlayer(@PathVariable Long campaignId, @PathVariable Long characterId, @RequestParam(defaultValue = "") String username,
+                               RedirectAttributes redirectAttributes) {
+        Character character = campaignService.getById(campaignId).getCharacters().stream()
+                .filter(candidate -> candidate.getId().equals(characterId)).findFirst()
+                .orElseThrow(app.charka.exception.NotFoundException.forId("Character", characterId));
+        String login = username.strip().toLowerCase(java.util.Locale.ROOT);
+        if (login.isEmpty()) {
+            character.setPlayer(null);
+        } else {
+            userRepository.findByUsername(login).ifPresentOrElse(character::setPlayer,
+                    () -> redirectAttributes.addFlashAttribute("playerError", "Нет пользователя «" + login + "»: пусть сначала зарегистрируется"));
+        }
+        return "redirect:/campaign/" + campaignId;
     }
 
     /**

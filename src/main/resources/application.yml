@@ -49,3 +49,9 @@ logging:
     org:
       springframework:
         web: INFO
+
+charka:
+  security:
+    # U-03: вход по логину и паролю; ключ cookie «запомнить меня» — свой на каждом сервере
+    enabled: ${CHARKA_SECURITY:true}
+    remember-key: ${REMEMBER_KEY:charka-remember-dev}

@@ -11,7 +11,7 @@
       <input type="hidden" name="returnTo" th:value="${returnTo}">
       <div class="form-row">
         <select name="character" class="chat-me" data-me aria-label="Кто пишет">
-          <option value="">Мастер</option>
+          <option th:if="${isGm == null or isGm}" value="">Мастер</option>
           <option th:each="c : ${characters}" th:value="${c.id}" th:text="${c.name}">Колясик</option>
         </select>
         <input type="text" name="text" class="grow" maxlength="500" required autocomplete="off" placeholder="Сообщение"

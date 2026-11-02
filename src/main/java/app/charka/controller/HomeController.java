@@ -20,19 +20,24 @@ public class HomeController {
     private final CampaignService campaignService;
     private final GameSystemRegistry systemRegistry;
     private final app.charka.service.campaign.CampaignImportService importService;
+    private final app.charka.security.AccessService accessService;
 
     public HomeController(CharacterService characterService, CampaignService campaignService,
-                          GameSystemRegistry systemRegistry, app.charka.service.campaign.CampaignImportService importService) {
+                          GameSystemRegistry systemRegistry, app.charka.service.campaign.CampaignImportService importService,
+                          app.charka.security.AccessService accessService) {
         this.characterService = characterService;
         this.campaignService = campaignService;
         this.systemRegistry = systemRegistry;
         this.importService = importService;
+        this.accessService = accessService;
     }
 
     @GetMapping("/")
     public String home(Model model) {
-        model.addAttribute("characters", characterService.getAll().stream().filter(character -> !character.isNpc()).toList());
-        model.addAttribute("campaigns", campaignService.getAll());
+        // U-03: только свои кампании (мастер или игрок) и свои персонажи
+        model.addAttribute("characters", characterService.getAll().stream()
+                .filter(character -> !character.isNpc() && accessService.canControl(character)).toList());
+        model.addAttribute("campaigns", campaignService.getAll().stream().filter(accessService::canOpen).toList());
         model.addAttribute("systems", systemRegistry.getAll());
         model.addAttribute("systemNames", systemRegistry.getDisplayNames());
         return "home";

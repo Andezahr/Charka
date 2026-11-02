@@ -23,6 +23,14 @@ public class Campaign {
     @Column(name = "game_system", nullable = false, length = 32)
     private String system = "GENERIC";
 
+    /** Мастер (U-03): видит и меняет всё в кампании; в экспорт не идёт — импортировавший сам становится мастером */
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @ManyToOne
+    @JoinColumn(name = "gm_user_id")
+    private AppUser gm;
+
     private LocalDate startDate;
     @Column(name = "current_date_value")
     private LocalDate currentDate;

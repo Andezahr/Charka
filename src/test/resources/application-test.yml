@@ -4,3 +4,8 @@ spring:
     url: jdbc:h2:mem:charka;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1
     username: sa
     password:
+
+# U-03: пользователи выключены — тесты ходят без входа; права проверяет SecurityTest, включая их сам
+charka:
+  security:
+    enabled: false
