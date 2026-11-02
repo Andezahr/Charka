@@ -33,7 +33,11 @@ final class Cp2020Cover {
             new Cover("cover_concrete_pole", "Бетонный столб", 35),
             new Cover("cover_hydrant", "Гидрант", 35),
             new Cover("cover_armored_car", "Бронемашина", 40),
-            new Cover("cover_av4", "Корпус AV-4", 40));
+            new Cover("cover_av4", "Корпус AV-4", 40),
+            // HOMEBREW: предметы карты, которых нет в таблице с. 103; прочность подобрана по похожим строкам
+            new Cover("cover_crate", "Деревянный ящик", 5),
+            new Cover("cover_dumpster", "Мусорный бак", 10),
+            new Cover("cover_bar", "Стойка бара", 10));
 
     private Cp2020Cover() {
     }
@@ -41,6 +45,11 @@ final class Cp2020Cover {
     static AttackForm.Choice choice() {
         return new AttackForm.Choice(CHOICE, "Укрытие цели",
                 ALL.stream().map(cover -> new Option(cover.code(), cover.label() + " SP " + cover.sp())).toList());
+    }
+
+    /** Код, название и SP каждой строки: материалы карты */
+    static List<String[]> rows() {
+        return ALL.stream().map(cover -> new String[]{cover.code(), cover.label(), String.valueOf(cover.sp())}).toList();
     }
 
     static boolean isCover(String code) {

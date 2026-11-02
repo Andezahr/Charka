@@ -217,6 +217,13 @@ public class Cp2020System implements GameSystem {
         return ATTACK_RULES;
     }
 
+    private static final app.charka.map.MapRules MAP_RULES = new Cp2020MapRules();
+
+    @Override
+    public app.charka.map.MapRules getMapRules() {
+        return MAP_RULES;
+    }
+
     @Override
     public List<CheckRequest.Part> getSkillBonuses(Character character, SkillDefinition definition, CharacterSkill skill) {
         return Cp2020SkillRules.bonuses(character, definition, skill);

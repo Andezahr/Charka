@@ -46,6 +46,13 @@ public class EncounterParticipant {
     /** Что объявлено в этом раунде: код из {@code GameSystem.getInitiativeDeclarations}; новый раунд сбрасывает */
     private String declaration;
 
+    /** Клетка фишки на карте боя; null — ещё не на поле */
+    @Column(name = "pos_x")
+    private Integer posX;
+
+    @Column(name = "pos_y")
+    private Integer posY;
+
     @OneToMany(mappedBy = "participant", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id ASC")
     private List<CombatEffect> effects = new ArrayList<>();

@@ -35,6 +35,14 @@ public class Encounter {
     @Column(name = "group_npcs")
     private boolean groupNpcs;
 
+    /** Копия карты боя ({@code MapDoc} в JSON); null — бой без карты */
+    @Column(name = "map_doc", columnDefinition = "TEXT")
+    private String mapDoc;
+
+    /** С какой карты скопировано; карта может быть уже удалена */
+    @Column(name = "battle_map_id")
+    private Long battleMapId;
+
     @OneToMany(mappedBy = "encounter", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("turnOrder ASC")
     private List<EncounterParticipant> participants = new ArrayList<>();

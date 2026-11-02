@@ -33,4 +33,10 @@ public class Campaign {
     @OneToMany(mappedBy = "campaign", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Character> characters = new ArrayList<>();
 
+    /** Карты боя (M-01): заготовки, бой играет на копии */
+    @JsonManagedReference
+    @OneToMany(mappedBy = "campaign", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("name ASC")
+    private List<BattleMap> maps = new ArrayList<>();
+
 }

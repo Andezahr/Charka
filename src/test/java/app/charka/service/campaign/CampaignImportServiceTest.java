@@ -49,6 +49,7 @@ class CampaignImportServiceTest {
     @Autowired private NoteCategoryService categoryService;
     @Autowired private CampaignImportService importService;
     @Autowired private EntityManager entityManager;
+    @Autowired private app.charka.map.BattleMapService battleMapService;
 
     @Test
     @DisplayName("Экспорт → импорт: новая кампания с персонажем, счётчиками, программой в деке и заметкой в категории")
@@ -75,6 +76,9 @@ class CampaignImportServiceTest {
         note.setCharacter(character);
         note = noteService.createNote(note);
         noteService.addCategoriesToNote(note.getId(), Set.of(category.getId()));
+        app.charka.map.MapDoc doc = app.charka.map.MapDoc.empty(10, 8, 2);
+        doc.walls().put(app.charka.map.MapDoc.top(1, 1), "cover_brick");
+        battleMapService.save(campaign.getId(), "Бар", doc);
         entityManager.flush();
         entityManager.clear();
 
@@ -99,6 +103,11 @@ class CampaignImportServiceTest {
         Item deck = copy.getInventories().getFirst().getContent().stream().filter(Cp2020Netrunning::isDeck).findFirst().orElseThrow();
         Item program = copy.getInventories().getFirst().getContent().stream().filter(Cp2020Netrunning::isProgram).findFirst().orElseThrow();
         assertThat(program.getProperties().get(Cp2020Netrunning.LOADED_IN)).isEqualTo(String.valueOf(deck.getId()));
+
+        assertThat(imported.getMaps()).singleElement().satisfies(map -> {
+            assertThat(map.getName()).isEqualTo("Бар");
+            assertThat(app.charka.map.MapDoc.parse(map.getDoc()).walls()).containsEntry("1,1,h", "cover_brick");
+        });
 
         Note copiedNote = copy.getNotes().getFirst();
         assertThat(copiedNote.getCategories()).singleElement().satisfies(found -> {

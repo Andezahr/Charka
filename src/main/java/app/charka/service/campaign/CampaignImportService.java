@@ -90,6 +90,11 @@ public class CampaignImportService {
             chronicle.setId(null);
             chronicle.setCampaign(campaign);
         });
+        campaign.getMaps().forEach(map -> {
+            map.setId(null);
+            map.setCampaign(campaign);
+            app.charka.map.MapDoc.parse(map.getDoc());
+        });
         for (int index = 0; index < campaign.getCharacters().size(); index++) {
             Character character = campaign.getCharacters().get(index);
             character.setId(null);

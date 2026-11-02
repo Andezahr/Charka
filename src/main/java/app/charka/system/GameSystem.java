@@ -185,6 +185,10 @@ public interface GameSystem {
     /**
      * Правила атаки оружием; null — у системы их нет.
      */
+    default app.charka.map.MapRules getMapRules() {
+        return app.charka.map.MapRules.GENERIC;
+    }
+
     default AttackRules getAttackRules() {
         return null;
     }
