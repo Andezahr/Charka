@@ -33,6 +33,7 @@ class HealthCounterServiceTest {
 
     @Mock private CounterService counterService;
     @Mock private CounterRepository counterRepository;
+    @Mock private app.charka.repository.WoundRepository woundRepository;
 
     private HealthCounterService healthCounterService;
     private Cp2020ArmorStrategy armorStrategy;
@@ -47,7 +48,7 @@ class HealthCounterServiceTest {
         healthStrategy = new Cp2020HealthStrategy(new RandomDiceRoller(), armorStrategy);
         CounterStrategyFactory factory = new CounterStrategyFactory(
                 List.of(new SimpleIntegerCounterStrategy(), healthStrategy, statsStrategy, armorStrategy));
-        healthCounterService = new HealthCounterService(counterService, counterRepository, factory, null, null, null);
+        healthCounterService = new HealthCounterService(counterService, counterRepository, factory, null, null, null, woundRepository);
         character = new Character();
         character.setId(1L);
     }

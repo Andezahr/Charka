@@ -35,7 +35,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 864 теста, на 2026-11-02 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 865 тестов, на 2026-11-02 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -80,7 +80,7 @@ Campaign (name, system, startDate, currentDate)   — system: код GameSystem 
  ├─ Chronicle* (name, startDate, endDate)     — запись о прошедшем периоде
  └─ Character* (name, birthDate, npc, roles)  — npc: персонаж мастера; roles: коды из GameSystem.getRoles(), таблица character_role; уровень роли = уровень спецспособности
      ├─ CharacterSkill* (skillCode, level, customName?) — код из каталога системы; уровень 0 у обычного навыка не хранится
-     ├─ Wound*     (name, severity, date)
+     ├─ Wound*     (name, severity, date) — журнал здоровья: ручные записи и автозаписи `HealthCounterService` (урон, смерть, медпомощь)
      ├─ Inventory* (name) └─ Item* (name, quantity, cost, description, type, properties) — type: код из GameSystem.getItemTypes()
      ├─ Money*     (name, amount, operationDate) — журнал операций, баланс = сумма amount
      ├─ RecurringExpense* (name, amount, periodDays, nextDate) — регулярная трата, `proceedDate` пишет её в Money

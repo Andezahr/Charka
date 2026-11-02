@@ -38,7 +38,11 @@
       <div class="stat-value accent" th:text="${moneySum} + ' ' + ${currency.symbol}"
            th:title="${currency.name}">0</div>
     </div>
-    <div class="stat">
+    <div class="stat" th:if="${healthStatus != null}">
+      <div class="stat-label">Здоровье</div>
+      <div class="stat-value" th:classappend="${healthStatus != 'Цел'} ? 'danger'" th:text="${healthStatus}">Цел</div>
+    </div>
+    <div class="stat" th:if="${healthStatus == null}">
       <div class="stat-label">Ран</div>
       <div class="stat-value" th:classappend="${!#lists.isEmpty(character.wounds)} ? 'danger'"
            th:text="${#lists.size(character.wounds)}">0</div>
@@ -54,22 +58,24 @@
       <!-- РАНЫ -->
       <section class="card">
         <div class="card-head">
-          <h2 class="card-title"><span class="dot red"></span>Раны</h2>
+          <h2 class="card-title"><span class="dot red"></span><span th:text="${healthStatus != null} ? 'Журнал здоровья' : 'Раны'">Раны</span></h2>
           <span class="badge" th:text="${#lists.size(character.wounds)}">0</span>
         </div>
         <div class="card-body">
           <form th:action="@{'/character/' + ${character.id} + '/wounds'}" method="post" class="form-row">
-            <input type="text" name="name" class="grow" placeholder="Описание раны" required autocomplete="off">
+            <input type="text" name="name" class="grow" th:placeholder="${healthStatus != null} ? 'Запись: сломано ребро' : 'Описание раны'" required autocomplete="off">
             <input type="number" name="severity" class="narrow" placeholder="Тяжесть" min="1" step="1">
             <button type="submit" class="btn btn-primary">＋ Добавить</button>
           </form>
         </div>
         <div class="card-body list">
-          <div th:each="wound : ${character.wounds}" class="row" data-editable>
+          <!-- Журнал: новые сверху; видно 8, старые свёрнуты -->
+          <th:block th:each="wound, state : ${woundLog}" th:if="${state.index < 8}">
+          <div class="row" data-editable>
             <div class="row-main">
               <div class="row-title" th:text="${wound.name}">Название</div>
               <div class="row-meta">
-                <span th:if="${wound.severity != null}" class="chip red" th:text="'Тяжесть ' + ${wound.severity}">Тяжесть 1</span>
+                <span th:if="${wound.severity != null}" class="chip red" th:text="(${healthStatus != null} ? 'Урон ' : 'Тяжесть ') + ${wound.severity}">Тяжесть 1</span>
                 <span th:if="${wound.date != null}" th:text="${wound.date}">дата</span>
               </div>
             </div>
@@ -89,6 +95,19 @@
               </div>
             </form>
           </div>
+          </th:block>
+          <details th:if="${#lists.size(woundLog) > 8}" class="add-own">
+            <summary th:text="'Раньше: ещё ' + ${#lists.size(woundLog) - 8}">Раньше</summary>
+            <div th:each="wound, state : ${woundLog}" th:if="${state.index >= 8}" class="row">
+              <div class="row-main">
+                <div class="row-title" th:text="${wound.name}">Запись</div>
+                <div class="row-meta"><span th:if="${wound.date != null}" th:text="${wound.date}">дата</span></div>
+              </div>
+              <form th:action="@{'/character/' + ${character.id} + '/wounds/' + ${wound.id} + '/delete'}" method="post" class="inline">
+                <button type="submit" class="icon-btn danger" title="Удалить">✕</button>
+              </form>
+            </div>
+          </details>
           <div th:if="${#lists.isEmpty(character.wounds)}" class="empty">Нет ран — персонаж цел</div>
         </div>
       </section>

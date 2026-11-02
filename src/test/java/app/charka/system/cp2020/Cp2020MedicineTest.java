@@ -124,4 +124,25 @@ class Cp2020MedicineTest {
         assertThat(page).contains("без лечения: +2 урона в день").contains("/health/care").contains("Лечить: Медицинская техника");
         assertThat(page.indexOf(">Медик</option>")).isLessThan(page.indexOf(">Раненый</option>"));
     }
+
+    @Test
+    @DisplayName("Журнал здоровья (G-09): прошедший урон и успешная помощь пишутся сами; лист — состояние в шапке")
+    void journal() throws Exception {
+        healthCounterService.applyDamage(patient.getId(), app.charka.model.counters.strategy.health.DamageRequest.builder()
+                .amount(7).location("TORSO").damageType("NORMAL").autoSave(false).build());
+        // урон теперь 17: 6 + 5 + 3 + больница 5 = 19 > 17
+        when(dice.roll(anyInt())).thenReturn(3);
+        healthCounterService.care(patient.getId(), health(patient).getId(), medic.getId(), "TREAT_MED", 5);
+        flush();
+
+        List<app.charka.model.Wound> log = characterRepository.findById(patient.getId()).orElseThrow().getWounds();
+        assertThat(log).hasSize(2);
+        assertThat(log.get(0).getSeverity()).isEqualTo(5L);
+        assertThat(log.get(0).getDate()).isEqualTo(LocalDate.of(2037, 1, 1));
+        assertThat(log.get(1).getName()).startsWith("Медик: ");
+
+        String sheet = mockMvc.perform(get("/character/" + patient.getId()))
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        assertThat(sheet).contains("Журнал здоровья").contains("Смертельное").contains("Урон 5");
+    }
 }

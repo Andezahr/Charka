@@ -66,6 +66,11 @@ public class CharacterController {
                 .collect(Collectors.groupingBy(ExpenseTemplate::group, LinkedHashMap::new, Collectors.toList())));
         model.addAttribute("currency", system.getCurrency());
         model.addAttribute("luckLeft", java.util.Map.of(character.getId(), system.getLuck(character)));
+        model.addAttribute("healthStatus", system.getHealthStatus(character));
+        // журнал здоровья: новые записи сверху
+        model.addAttribute("woundLog", character.getWounds().stream()
+                .sorted(java.util.Comparator.comparing(app.charka.model.Wound::getId, java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())))
+                .toList());
         model.addAttribute("itemTypes", system.getItemTypes());
         model.addAttribute("itemTypeByCode", system.getItemTypes().stream()
                 .collect(Collectors.toMap(ItemTypeDefinition::code, Function.identity())));

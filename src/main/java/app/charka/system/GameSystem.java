@@ -363,4 +363,11 @@ public interface GameSystem {
     static app.charka.check.CheckRequest.Part luckPart(int points) {
         return new app.charka.check.CheckRequest.Part("Удача", points);
     }
+
+    /**
+     * Состояние здоровья одной строкой для шапки листа: «Серьёзное · урон 6». null — счётчика здоровья нет, на листе — число ран.
+     */
+    default String getHealthStatus(Character character) {
+        return null;
+    }
 }

@@ -1,5 +1,7 @@
 package app.charka.service.counter;
 
+import app.charka.repository.WoundRepository;
+import app.charka.model.Wound;
 import app.charka.system.GameSystemRegistry;
 import app.charka.system.GameSystem;
 import org.springframework.beans.factory.ObjectProvider;
@@ -38,6 +40,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class HealthCounterService {
 
+    /** Колонка name — 255 символов */
+    private static final int MAX_LOG_TEXT = 255;
+
     private final CounterService counterService;
     private final CounterRepository counterRepository;
     private final CounterStrategyFactory strategyFactory;
@@ -46,6 +51,7 @@ public class HealthCounterService {
     private final ObjectProvider<SkillService> skillService;
     /** Тоже через провайдер: реестр собирает системы, а система CP2020 зависит от этого сервиса */
     private final ObjectProvider<GameSystemRegistry> systemRegistry;
+    private final WoundRepository woundRepository;
 
     @Transactional
     public HealthEvent applyDamage(Long characterId, Long counterId, HealthDamageRequestDto requestDto) {
@@ -56,9 +62,11 @@ public class HealthCounterService {
                 .damageType(requestDto.getDamageType())
                 .autoSave(requestDto.isAutoSave())
                 .build();
+        int before = context.getCounter().getValue();
         HealthEvent event = strategyFor(context).applyDamage(context, request);
         // урон изнашивает броню — сохраняем и соседние счётчики
         counterRepository.saveAll(context.getSiblings());
+        logDamage(context, before, event);
         return event;
     }
 
@@ -76,8 +84,10 @@ public class HealthCounterService {
                 if (health.isDead(context)) {
                     return Optional.of(new HealthEvent().step("Цель уже мертва").summary("Цель уже мертва"));
                 }
+                int before = counter.getValue();
                 HealthEvent event = health.applyDamage(context, request);
                 counterRepository.saveAll(siblings);
+                logDamage(context, before, event);
                 return Optional.of(event);
             }
         }
@@ -179,6 +189,9 @@ public class HealthCounterService {
         HealthEvent result = strategy.applyCare(context, option, Boolean.TRUE.equals(check.result().success()));
         result.getSteps().forEach(event::step);
         counterRepository.save(context.getCounter());
+        if (Boolean.TRUE.equals(check.result().success())) {
+            log(patient, healer.getName() + ": " + result.getSummary(), null);
+        }
         return event.summary(result.getSummary());
     }
 
@@ -243,12 +256,39 @@ public class HealthCounterService {
                     HealthEvent event = health.healOverTime(new CounterContext(counter, siblings), days);
                     if (event.getSummary() != null) {
                         results.add(event.getSummary());
+                        log(counter.getCharacter(), event.getSummary(), null);
                     }
                     counterRepository.save(counter);
                 }
             }
         }
         return results;
+    }
+
+    /**
+     * Журнал здоровья ({@link Wound}): урон, который прошёл, и смерть. Броня выдержала — записи нет.
+     */
+    private void logDamage(CounterContext context, int before, HealthEvent event) {
+        Counter counter = context.getCounter();
+        int dealt = counter.getValue() - before;
+        HealthCounterStrategy strategy = strategyFor(context);
+        if (event.getSummary() != null && (dealt > 0 || strategy.isDead(context))) {
+            log(counter.getCharacter(), event.getSummary(), dealt > 0 ? (long) dealt : null);
+        }
+    }
+
+    private void log(Character character, String text, Long severity) {
+        if (character == null || text == null) {
+            return;
+        }
+        Wound entry = new Wound();
+        entry.setCharacter(character);
+        entry.setName(text.length() > MAX_LOG_TEXT ? text.substring(0, MAX_LOG_TEXT - 1) + "…" : text);
+        entry.setSeverity(severity);
+        entry.setDate(character.getCampaign() != null && character.getCampaign().getCurrentDate() != null
+                ? character.getCampaign().getCurrentDate() : java.time.LocalDate.now());
+        character.getWounds().add(entry);
+        woundRepository.save(entry);
     }
 
     private CounterContext contextFor(Long characterId, Long counterId) {

@@ -205,6 +205,15 @@ public class Cp2020System implements GameSystem {
         return brief;
     }
 
+    @Override
+    public String getHealthStatus(Character character) {
+        return character.getCounters().stream()
+                .filter(counter -> Cp2020HealthStrategy.TYPE.equals(counter.getType()))
+                .findFirst()
+                .map(Cp2020System::healthBrief)
+                .orElse(null);
+    }
+
     private static String healthBrief(Counter health) {
         if (health.getFlag(Cp2020HealthStrategy.DEAD)) {
             return "Мёртв";
