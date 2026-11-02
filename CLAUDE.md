@@ -35,7 +35,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 861 тест, на 2026-11-02 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 864 теста, на 2026-11-02 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -117,6 +117,7 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 | POST | `/campaigns` | `name`, `system`, `startDate?` → новая кампания |
 | GET | `/campaign/{id}` | страница кампании |
 | POST | `/campaign/{id}/characters` | добавить персонажа (инвентарь «Backpack» + счётчики по умолчанию системы) |
+| POST | `/campaign/{id}/session` | новая игровая сессия: потраченная Удача возвращается (`GameSystem.restoreLuck`) |
 | POST | `/campaign/{id}/award` | `counter` (название), `amount`, `character` (несколько) → начислить всем выбранным (IP, опыт), итог во flash `awardResult` |
 | POST | `/campaign/{id}/chronicles` | `name`, `duration` → промотать время |
 | POST | `/campaign/{id}/npcs` | `template?`, `name?`, `count`, `advanced` → NPC по шаблону системы или пустой |

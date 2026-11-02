@@ -4,6 +4,7 @@ import app.charka.model.Campaign;
 import app.charka.model.Chronicle;
 import app.charka.service.ChronicleService;
 import app.charka.service.RecurringExpenseService;
+import app.charka.system.GameSystem;
 import app.charka.system.GameSystemRegistry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -66,5 +67,14 @@ public class CampaignTimelineService {
         }
         return report;
     }
-}
 
+    /**
+     * Новая игровая сессия: то, что система возвращает к началу сессии (CP2020: Удача).
+     */
+    @Transactional
+    public void newSession(Long campaignId) {
+        Campaign campaign = campaignService.getById(campaignId);
+        GameSystem system = systemRegistry.get(campaign.getSystem());
+        campaign.getCharacters().forEach(system::restoreLuck);
+    }
+}

@@ -1,5 +1,6 @@
 package app.charka.attack;
 
+import app.charka.check.CheckRequest;
 import app.charka.check.CheckResult;
 import app.charka.check.CheckService;
 import app.charka.dice.DiceService;
@@ -75,6 +76,9 @@ public class AttackService {
         }
         List<Character> targets = targets(attacker, request.targetIds());
         AttackContext context = new AttackContext(attacker, source, targets, request, system::getCurrentStats, this::effectsOf);
+        if (request.luck() > 0) {
+            system.spendLuck(attacker, request.luck());
+        }
         AttackResult result = perform(context, rules);
         // израсходованный предмет ушёл из инвентаря: его строки на листе больше нет
         boolean spentUp = source.item() == null || source.item().getInventory().getContent().stream().noneMatch(item -> item == source.item());
@@ -108,6 +112,8 @@ public class AttackService {
         AttackOutcome last = null;
         String lastSummary = null;
         int hitTargets = 0;
+        // удача — к первому броску самого атакующего: спасброски целей в зоне огня её не получают
+        int luck = context.request().luck();
         if (plan.checks().isEmpty()) {
             last = rules.outcome(context, plan, null, null, diceRoller);
             lastSummary = apply(context, last, steps);
@@ -116,9 +122,14 @@ public class AttackService {
             if (planned.intro() != null) {
                 steps.add(planned.intro());
             }
+            CheckRequest request = planned.request();
+            if (luck > 0 && planned.roller() != null && planned.roller().getId().equals(context.attacker().getId())) {
+                request = request.withPart(GameSystem.luckPart(luck));
+                luck = 0;
+            }
             CheckResult check = planned.roller() != null
-                    ? checkService.checkForCharacter(planned.roller().getId(), planned.request())
-                    : checkService.checkForCampaign(context.attacker().getCampaign().getId(), planned.request());
+                    ? checkService.checkForCharacter(planned.roller().getId(), request)
+                    : checkService.checkForCampaign(context.attacker().getCampaign().getId(), request);
             steps.addAll(check.steps());
             last = rules.outcome(context, plan, planned, check, diceRoller);
             String summary = apply(context, last, steps);

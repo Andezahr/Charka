@@ -372,10 +372,15 @@ public class EncounterService {
      */
     @Transactional
     public SkillCheck check(Long campaignId, Long participantId, String skill, Integer difficulty, int modifier) {
+        return check(campaignId, participantId, skill, difficulty, modifier, 0);
+    }
+
+    @Transactional
+    public SkillCheck check(Long campaignId, Long participantId, String skill, Integer difficulty, int modifier, int luck) {
         Character character = participant(campaignId, participantId).getCharacter();
         return skill.startsWith(CUSTOM_SKILL)
-                ? skillService.check(character.getId(), null, Long.valueOf(skill.substring(CUSTOM_SKILL.length())), modifier, difficulty)
-                : skillService.check(character.getId(), skill, null, modifier, difficulty);
+                ? skillService.check(character.getId(), null, Long.valueOf(skill.substring(CUSTOM_SKILL.length())), modifier, difficulty, luck)
+                : skillService.check(character.getId(), skill, null, modifier, difficulty, luck);
     }
 
     /**

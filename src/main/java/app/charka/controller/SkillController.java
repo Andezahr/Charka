@@ -49,6 +49,7 @@ public class SkillController {
         model.addAttribute("character", character);
         model.addAttribute("sheet", skillService.getSheet(characterId));
         model.addAttribute("difficultyPresets", resolver.getDifficultyPresets());
+        model.addAttribute("luck", systemRegistry.forCharacter(character).getLuck(character));
         model.addAttribute("opponents", character.getCampaign() == null
                 ? List.of()
                 : characterService.getCampaignCharacters(character.getCampaign()).stream()

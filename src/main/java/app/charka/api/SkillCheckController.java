@@ -40,8 +40,9 @@ public class SkillCheckController {
                           @RequestParam(required = false) String code,
                           @RequestParam(required = false) Long skillId,
                           @RequestParam(defaultValue = "0") int modifier,
-                          @RequestParam(required = false) Integer difficulty) {
-        SkillCheck check = skillService.check(characterId, code, skillId, modifier, difficulty);
+                          @RequestParam(required = false) Integer difficulty,
+                          @RequestParam(defaultValue = "0") int luck) {
+        SkillCheck check = skillService.check(characterId, code, skillId, modifier, difficulty, luck);
         CheckResult result = check.result();
         return new Response(check.label(), result.total(), result.outcome(), result.steps(), result.success());
     }
@@ -89,9 +90,10 @@ public class SkillCheckController {
                                         @RequestParam(required = false) String opponentCode,
                                         @RequestParam(required = false) Long opponentSkillId,
                                         @RequestParam(required = false) String opponentName,
-                                        @RequestParam(defaultValue = "0") int opponentModifier) {
+                                        @RequestParam(defaultValue = "0") int opponentModifier,
+                                        @RequestParam(defaultValue = "0") int luck) {
         OpposedCheckResult result = skillService.checkOpposed(characterId, code, skillId, modifier,
-                new SkillOpponent(opponentId, opponentCode, opponentSkillId, opponentName, opponentModifier));
+                new SkillOpponent(opponentId, opponentCode, opponentSkillId, opponentName, opponentModifier), luck);
         return new OpposedResponse(
                 side(result.initiator(), result.winner() == OpposedCheckResult.Winner.INITIATOR),
                 side(result.opponent(), result.winner() == OpposedCheckResult.Winner.OPPONENT),

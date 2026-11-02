@@ -65,6 +65,7 @@ public class CharacterController {
         model.addAttribute("expenseTemplates", system.getExpenseTemplates().stream()
                 .collect(Collectors.groupingBy(ExpenseTemplate::group, LinkedHashMap::new, Collectors.toList())));
         model.addAttribute("currency", system.getCurrency());
+        model.addAttribute("luckLeft", java.util.Map.of(character.getId(), system.getLuck(character)));
         model.addAttribute("itemTypes", system.getItemTypes());
         model.addAttribute("itemTypeByCode", system.getItemTypes().stream()
                 .collect(Collectors.toMap(ItemTypeDefinition::code, Function.identity())));

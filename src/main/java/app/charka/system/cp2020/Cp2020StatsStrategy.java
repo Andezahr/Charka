@@ -34,6 +34,8 @@ public class Cp2020StatsStrategy extends AbstractCounterStrategy {
     public static final String COOL = "cool";
     public static final String ATTR = "attr";
     public static final String LUCK = "luck";
+    /** Сколько Удачи потрачено в этой сессии (с. 26) */
+    public static final String LUCK_SPENT = "luckSpent";
     public static final String MA = "ma";
     public static final String BODY = "body";
     public static final String EMP = "emp";

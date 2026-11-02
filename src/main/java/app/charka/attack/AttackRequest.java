@@ -16,13 +16,19 @@ import java.util.Set;
  * @param mode       код режима огня; пусто — одиночный выстрел
  * @param rounds     сколько патронов выпустить или единиц израсходовать, если режим это спрашивает
  * @param zoneWidth  ширина зоны огня, м
+ * @param luck       удача, объявленная до броска: тратится и прибавляется к броску атакующего
  */
 public record AttackRequest(List<Long> targetIds, String targetName, Integer distance, String location, String skillCode,
-                            Set<String> options, int modifier, String mode, int rounds, int zoneWidth) {
+                            Set<String> options, int modifier, String mode, int rounds, int zoneWidth, int luck) {
 
     public AttackRequest {
         targetIds = List.copyOf(targetIds);
         options = Set.copyOf(options);
+    }
+
+    public AttackRequest(List<Long> targetIds, String targetName, Integer distance, String location, String skillCode,
+                         Set<String> options, int modifier, String mode, int rounds, int zoneWidth) {
+        this(targetIds, targetName, distance, location, skillCode, options, modifier, mode, rounds, zoneWidth, 0);
     }
 
     /** Одиночный выстрел */

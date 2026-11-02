@@ -80,6 +80,13 @@
           <input type="number" name="modifier" value="0">
         </label>
       </details>
+      <!-- th:if выполняется раньше th:with, поэтому переменная — снаружи -->
+      <th:block th:with="left=${luckLeft != null ? luckLeft[T(java.lang.Long).valueOf('' + characterId)] : null}">
+        <label th:if="${left != null and left > 0}" class="field luck-field">
+          <span class="label" th:text="'Удача: есть ' + ${left}">Удача: есть 7</span>
+          <input type="number" name="luck" value="0" min="0" th:max="${left}" aria-label="Сколько Удачи прибавить">
+        </label>
+      </th:block>
     </div>
 
     <div class="form-row dialog-actions">

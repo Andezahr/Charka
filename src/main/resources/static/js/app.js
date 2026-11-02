@@ -519,6 +519,7 @@ function initPage() {
         form.elements.skillId.value = btn.dataset.skillId || '';
         form.elements.modifier.value = 0;
         form.elements.opponentModifier.value = 0;
+        if (form.elements.luck) form.elements.luck.value = 0;
         dialog.querySelector('.dialog-more').open = false;
         dialog.querySelector('[data-check-title]').textContent = btn.dataset.name;
         dialog.querySelector('[data-check-sum]').textContent = btn.dataset.sum;

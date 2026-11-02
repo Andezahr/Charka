@@ -39,6 +39,7 @@ public class AttackController {
                          @RequestParam(required = false) String location,
                          @RequestParam(required = false) String skill,
                          @RequestParam(defaultValue = "0") int modifier,
+                         @RequestParam(defaultValue = "0") int luck,
                          @RequestParam(required = false) String mode,
                          @RequestParam(defaultValue = "0") int rounds,
                          @RequestParam(defaultValue = "0") int zoneWidth,
@@ -49,7 +50,7 @@ public class AttackController {
         String anchor = "#item-" + itemId;
         try {
             AttackResult result = attackService.attack(characterId, itemId,
-                    new AttackRequest(targets(target), targetName, distance, location, skill, options(params), modifier, mode, rounds, zoneWidth));
+                    new AttackRequest(targets(target), targetName, distance, location, skill, options(params), modifier, mode, rounds, zoneWidth, luck));
             redirectAttributes.addFlashAttribute("attackResult", result);
             if (result.detached()) {
                 anchor = "#inventories";
@@ -71,13 +72,14 @@ public class AttackController {
                                     @RequestParam(required = false) String location,
                                     @RequestParam(required = false) String skill,
                                     @RequestParam(defaultValue = "0") int modifier,
+                         @RequestParam(defaultValue = "0") int luck,
                                     @RequestParam(required = false) String mode,
                                     @RequestParam(required = false) Long returnCampaign,
                                     @RequestParam Map<String, String> params,
                                     RedirectAttributes redirectAttributes) {
         try {
             redirectAttributes.addFlashAttribute("attackResult", attackService.attackWithAbility(characterId, code,
-                    new AttackRequest(targets(target), targetName, null, location, skill, options(params), modifier, mode, 0, 0)));
+                    new AttackRequest(targets(target), targetName, null, location, skill, options(params), modifier, mode, 0, 0, luck)));
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("encounterError", e.getMessage());
         }

@@ -206,6 +206,10 @@
         <summary class="label">Доп. модификатор</summary>
         <input type="number" name="modifier" step="1" value="0" aria-label="Дополнительный модификатор">
       </details>
+      <label th:if="${luck > 0}" class="field luck-field">
+        <span class="label" th:text="'Удача: есть ' + ${luck} + ', прибавить до броска'">Удача</span>
+        <input type="number" name="luck" step="1" value="0" min="0" th:max="${luck}" aria-label="Сколько Удачи прибавить">
+      </label>
       <div class="form-row dialog-actions">
         <button type="button" class="btn btn-ghost" data-dialog-close>Закрыть</button>
         <button type="submit" class="btn btn-primary" autofocus data-check-submit>🎲 Бросить</button>

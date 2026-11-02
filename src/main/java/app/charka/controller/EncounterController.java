@@ -52,6 +52,9 @@ public class EncounterController {
             model.addAttribute("recentRolls", diceService.recentForCampaign(campaignId, JOURNAL_SIZE));
             model.addAttribute("difficultyPresets", systemRegistry.get(campaign.getSystem()).getCheckResolver().getDifficultyPresets());
             model.addAttribute("contests", systemRegistry.get(campaign.getSystem()).getCombatContests());
+            app.charka.system.GameSystem system = systemRegistry.get(campaign.getSystem());
+            model.addAttribute("luckLeft", view.get().rows().stream().collect(java.util.stream.Collectors.toMap(
+                    row -> row.character().getId(), row -> system.getLuck(row.character()), (first, second) -> first)));
         } else {
             model.addAttribute("candidates", encounterService.candidates(campaignId));
         }
@@ -129,11 +132,11 @@ public class EncounterController {
     @PostMapping("/participants/{participantId}/check")
     public String check(@PathVariable Long campaignId, @PathVariable Long participantId, @RequestParam String skill,
                         @RequestParam(required = false) Integer difficulty, @RequestParam(defaultValue = "0") int modifier,
-                        RedirectAttributes redirectAttributes) {
+                        @RequestParam(defaultValue = "0") int luck, RedirectAttributes redirectAttributes) {
         Long character = encounterService.characterOf(campaignId, participantId);
         redirectAttributes.addFlashAttribute("resultCharacterId", character);
         try {
-            SkillCheck check = encounterService.check(campaignId, participantId, skill, difficulty, modifier);
+            SkillCheck check = encounterService.check(campaignId, participantId, skill, difficulty, modifier, luck);
             redirectAttributes.addFlashAttribute("combatResult", new AttackResult(check.label(), check.result().outcome(),
                     !Boolean.FALSE.equals(check.result().success()), check.result().steps()));
         } catch (IllegalArgumentException e) {

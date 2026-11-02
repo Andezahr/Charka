@@ -928,6 +928,7 @@ details.cp-more > summary:hover { color: var(--text-soft); }
 .add-catalog { display: flex; flex-direction: column; gap: 6px; }
 .add-buy { white-space: nowrap; }
 .cp-care .cp-muted-line::first-letter { text-transform: uppercase; }
+.luck-field .label { color: var(--accent); }
 .award-label { align-self: center; font-weight: 600; }
 .award-result { margin: 10px 0 0; padding-left: 18px; color: var(--muted); font-size: 13px; }
 .add-entry.is-dear { opacity: .45; }

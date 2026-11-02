@@ -61,6 +61,10 @@
       <option value="">Без сложности</option>
       <option th:each="d : ${difficultyPresets}" th:value="${d.value}" th:text="${d.key}">Средне</option>
     </select>
+    <th:block th:with="left=${luckLeft != null ? luckLeft[row.character.id] : null}">
+      <input th:if="${left != null and left > 0}" type="number" name="luck" class="narrow" min="0" th:max="${left}"
+             th:title="'Удача: есть ' + ${left}" th:placeholder="'🍀 ' + ${left}" aria-label="Удача">
+    </th:block>
     <button type="submit" class="btn btn-sm">🎲 Проверка</button>
   </form>
 

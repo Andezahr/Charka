@@ -250,8 +250,27 @@ public class SkillService {
      */
     @Transactional
     public SkillCheck check(Long characterId, String code, Long skillId, int modifier, Integer difficulty) {
-        CheckRequest request = skillRequest(getCharacter(characterId), code, skillId, modifier, difficulty);
+        return check(characterId, code, skillId, modifier, difficulty, 0);
+    }
+
+    /**
+     * Проверка с удачей: очки объявлены до броска, тратятся и прибавляются к нему.
+     *
+     * @throws IllegalArgumentException если столько удачи нет
+     */
+    @Transactional
+    public SkillCheck check(Long characterId, String code, Long skillId, int modifier, Integer difficulty, int luck) {
+        Character character = getCharacter(characterId);
+        CheckRequest request = withLuck(character, skillRequest(character, code, skillId, modifier, difficulty), luck);
         return new SkillCheck(request.label(), checkService.checkForCharacter(characterId, request));
+    }
+
+    private CheckRequest withLuck(Character character, CheckRequest request, int luck) {
+        if (luck <= 0) {
+            return request;
+        }
+        systemRegistry.forCharacter(character).spendLuck(character, luck);
+        return request.withPart(GameSystem.luckPart(luck));
     }
 
     /**
@@ -262,8 +281,14 @@ public class SkillService {
      */
     @Transactional
     public OpposedCheckResult checkOpposed(Long characterId, String code, Long skillId, int modifier, SkillOpponent opponent) {
+        return checkOpposed(characterId, code, skillId, modifier, opponent, 0);
+    }
+
+    /** То же с удачей инициатора */
+    @Transactional
+    public OpposedCheckResult checkOpposed(Long characterId, String code, Long skillId, int modifier, SkillOpponent opponent, int luck) {
         Character character = getCharacter(characterId);
-        CheckRequest request = skillRequest(character, code, skillId, modifier, null);
+        CheckRequest request = withLuck(character, skillRequest(character, code, skillId, modifier, null), luck);
         if (opponent.characterId() == null) {
             String name = opponent.name() == null || opponent.name().isBlank()
                     ? DEFAULT_OPPONENT_NAME
