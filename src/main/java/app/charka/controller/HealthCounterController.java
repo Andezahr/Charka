@@ -74,9 +74,10 @@ public class HealthCounterController {
                        @RequestParam Long healer,
                        @RequestParam String option,
                        @RequestParam(defaultValue = "0") int modifier,
+                       @RequestParam(defaultValue = "0") int luck,
                        RedirectAttributes redirectAttributes) {
         return perform(characterId, redirectAttributes, "Медпомощь",
-                () -> healthCounterService.care(characterId, counterId, healer, option, modifier));
+                () -> healthCounterService.care(characterId, counterId, healer, option, modifier, luck));
     }
 
     private String perform(Long characterId, RedirectAttributes redirectAttributes,

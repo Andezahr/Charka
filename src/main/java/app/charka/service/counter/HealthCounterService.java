@@ -140,8 +140,14 @@ public class HealthCounterService {
      */
     @Transactional
     public HealthEvent save(Long characterId, Long counterId, String saveType, Integer roll) {
+        return save(characterId, counterId, saveType, roll, 0);
+    }
+
+    /** Спасбросок с удачей; удачу тратит вызывающий */
+    @Transactional
+    public HealthEvent save(Long characterId, Long counterId, String saveType, Integer roll, int luck) {
         CounterContext context = contextFor(characterId, counterId);
-        HealthEvent event = strategyFor(context).save(context, saveType, roll);
+        HealthEvent event = strategyFor(context).save(context, saveType, roll, 0, luck);
         counterRepository.save(context.getCounter());
         return event;
     }
@@ -162,6 +168,12 @@ public class HealthCounterService {
      */
     @Transactional
     public HealthEvent care(Long characterId, Long counterId, Long healerId, String optionCode, int modifier) {
+        return care(characterId, counterId, healerId, optionCode, modifier, 0);
+    }
+
+    /** То же с удачей медика: тратится и прибавляется к его броску */
+    @Transactional
+    public HealthEvent care(Long characterId, Long counterId, Long healerId, String optionCode, int modifier, int luck) {
         CounterContext context = contextFor(characterId, counterId);
         HealthCounterStrategy strategy = strategyFor(context);
         CareOption option = strategy.getCareOptions().stream()
@@ -182,7 +194,7 @@ public class HealthCounterService {
         if (difficulty == null) {
             throw new IllegalArgumentException("Сейчас это не нужно");
         }
-        SkillCheck check = skillService.getObject().check(healerId, option.skillCode(), null, modifier, difficulty);
+        SkillCheck check = skillService.getObject().check(healerId, option.skillCode(), null, modifier, difficulty, Math.max(0, luck));
         HealthEvent event = new HealthEvent();
         event.step(healer.getName() + ", " + check.label() + ": " + check.result().outcome());
         check.result().steps().forEach(step -> event.step("  " + step));

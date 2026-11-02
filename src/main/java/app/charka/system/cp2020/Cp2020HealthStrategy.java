@@ -314,7 +314,7 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
 
         // 5. Оглушение
         if (request.isAutoSave()) {
-            rollStunSave(context, null, 0, event);
+            rollStunSave(context, null, 0, 0, event);
         }
         return event.summary(summary + ". " + statusLabel(counter));
     }
@@ -463,6 +463,14 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
 
     @Override
     public HealthEvent save(CounterContext context, String saveType, Integer roll, int modifier) {
+        return save(context, saveType, roll, modifier, 0);
+    }
+
+    /**
+     * HOMEBREW: спасбросок бросают «не выше» числа, поэтому удача (с. 26: прибавить к важному броску) прибавляется к порогу, а не к кубику.
+     */
+    @Override
+    public HealthEvent save(CounterContext context, String saveType, Integer roll, int modifier, int luck) {
         ensureAlive(context.getCounter());
         if (roll != null && (roll < 1 || roll > 10)) {
             throw new IllegalArgumentException("Бросок d10 должен быть от 1 до 10");
@@ -470,8 +478,8 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
         HealthEvent event = new HealthEvent();
         String type = saveType == null ? "" : saveType.trim().toUpperCase();
         return switch (type) {
-            case SAVE_STUN -> rollStunSave(context, roll, modifier, event);
-            case SAVE_DEATH -> rollDeathSave(context, roll, event);
+            case SAVE_STUN -> rollStunSave(context, roll, modifier, luck, event);
+            case SAVE_DEATH -> rollDeathSave(context, roll, luck, event);
             default -> throw new IllegalArgumentException("Неизвестный спасбросок: " + saveType);
         };
     }
@@ -547,12 +555,13 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
     // ---------- спасброски ----------
 
     /** Спасбросок от оглушения: d10 ≤ BODY − штраф уровня ранения */
-    private HealthEvent rollStunSave(CounterContext context, Integer roll, int modifier, HealthEvent event) {
+    private HealthEvent rollStunSave(CounterContext context, Integer roll, int modifier, int luck, HealthEvent event) {
         Counter counter = context.getCounter();
-        int target = body(context) - stunPenalty(woundLevel(counter.getValue())) + modifier;
+        int target = body(context) - stunPenalty(woundLevel(counter.getValue())) + modifier + luck;
         int result = roll != null ? roll : dice.d10();
         boolean success = result <= target;
-        event.step("Спасбросок от оглушения" + (modifier != 0 ? " с " + modifier : "") + ": d10 = " + result + ", нужно ≤ " + target
+        event.step("Спасбросок от оглушения" + (modifier != 0 ? " с " + modifier : "") + (luck > 0 ? ", Удача +" + luck : "")
+                + ": d10 = " + result + ", нужно ≤ " + target
                 + (success ? " — успех" : " — провал"));
         boolean wasStunned = counter.getFlag(STUNNED);
         // спасбросок с модификатором — от нового удара: уже оглушённого он в себя не приводит
@@ -570,15 +579,15 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
     }
 
     /** Спасбросок от смерти: d10 ≤ BODY − номер смертельного уровня */
-    private HealthEvent rollDeathSave(CounterContext context, Integer roll, HealthEvent event) {
+    private HealthEvent rollDeathSave(CounterContext context, Integer roll, int luck, HealthEvent event) {
         Counter counter = context.getCounter();
         if (!deathSaveRequired(counter)) {
             throw new IllegalStateException("Спасбросок от смерти нужен только смертельно раненым без стабилизации");
         }
-        int target = deathTarget(body(context), counter.getValue());
+        int target = deathTarget(body(context), counter.getValue()) + luck;
         int result = roll != null ? roll : dice.d10();
         boolean success = result <= target;
-        event.step("Спасбросок от смерти: d10 = " + result + ", нужно ≤ " + target
+        event.step("Спасбросок от смерти" + (luck > 0 ? ", Удача +" + luck : "") + ": d10 = " + result + ", нужно ≤ " + target
                 + (success ? " — успех" : " — провал"));
         counter.setFlag(DEATH_SAVE_PENDING, false);
         if (!success) {

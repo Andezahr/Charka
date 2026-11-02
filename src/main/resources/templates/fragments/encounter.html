@@ -5,7 +5,10 @@
 <div th:fragment="actions(row, base)" class="encounter-actions"
      th:with="url=${base + '/participants/' + row.participant.id}, presetOptions=${row.attackOptions()}">
   <div th:if="${!#lists.isEmpty(row.card.saves) or row.card.stabilizable}" class="encounter-saves">
-    <form th:each="save : ${row.card.saves}" th:action="@{${url} + '/save/' + ${save.code}}" method="post">
+    <form th:each="save : ${row.card.saves}" th:action="@{${url} + '/save/' + ${save.code}}" method="post" class="form-row"
+          th:with="left=${luckLeft != null ? luckLeft.get(row.character.id) : null}">
+      <input th:if="${left != null and left > 0}" type="number" name="luck" value="0" min="0" th:max="${left}" class="narrow"
+             th:title="'Удача к спасброску: есть ' + ${left}" aria-label="Удача к спасброску">
       <button type="submit" class="btn btn-sm btn-danger" th:text="'🎲 ' + ${save.label}">🎲 Спасбросок</button>
     </form>
     <form th:if="${row.card.stabilizable}" th:action="@{${url} + '/stabilize'}" method="post">
@@ -73,6 +76,8 @@
     <select name="target" class="grow" aria-label="Против кого">
       <option th:each="t : ${row.targets}" th:value="${t.id}" th:text="${t.name}">Олежа</option>
     </select>
+    <input th:if="${luckLeft != null and luckLeft.get(row.character.id) != null and luckLeft.get(row.character.id) > 0}" type="number" name="luck"
+           value="0" min="0" th:max="${luckLeft.get(row.character.id)}" class="narrow" title="Удача к броску" aria-label="Удача к броску">
     <button type="submit" class="btn btn-sm" th:text="'🎲 ' + ${contest.label}">🎲 Facedown</button>
   </form>
 

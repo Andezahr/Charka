@@ -150,11 +150,11 @@ public class EncounterController {
      */
     @PostMapping("/participants/{participantId}/contest/{code}")
     public String contest(@PathVariable Long campaignId, @PathVariable Long participantId, @PathVariable String code,
-                          @RequestParam Long target, RedirectAttributes redirectAttributes) {
+                          @RequestParam Long target, @RequestParam(defaultValue = "0") int luck, RedirectAttributes redirectAttributes) {
         Long character = encounterService.characterOf(campaignId, participantId);
         redirectAttributes.addFlashAttribute("resultCharacterId", character);
         try {
-            OpposedCheckResult result = encounterService.contest(campaignId, participantId, code, target);
+            OpposedCheckResult result = encounterService.contest(campaignId, participantId, code, target, luck);
             List<String> steps = new ArrayList<>();
             steps.add(result.initiator().title() + ": " + result.initiator().result().outcome());
             result.initiator().result().steps().forEach(step -> steps.add("  " + step));
@@ -198,8 +198,8 @@ public class EncounterController {
 
     @PostMapping("/participants/{participantId}/save/{code}")
     public String save(@PathVariable Long campaignId, @PathVariable Long participantId, @PathVariable String code,
-                       RedirectAttributes redirectAttributes) {
-        return health(campaignId, participantId, "Спасбросок", redirectAttributes, () -> encounterService.save(campaignId, participantId, code));
+                       @RequestParam(defaultValue = "0") int luck, RedirectAttributes redirectAttributes) {
+        return health(campaignId, participantId, "Спасбросок", redirectAttributes, () -> encounterService.save(campaignId, participantId, code, luck));
     }
 
     @PostMapping("/participants/{participantId}/stabilize")

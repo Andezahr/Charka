@@ -45,6 +45,11 @@ public interface HealthCounterStrategy extends CounterStrategy {
         return save(context, saveType, roll);
     }
 
+    /** То же с удачей, объявленной до броска; у систем без удачи она не учитывается */
+    default HealthEvent save(CounterContext context, String saveType, Integer roll, int modifier, int luck) {
+        return save(context, saveType, roll, modifier);
+    }
+
     /** Стабилизировать умирающего (результат медицинской помощи) */
     HealthEvent stabilize(CounterContext context);
 

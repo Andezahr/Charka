@@ -94,6 +94,7 @@
       <select name="modifier" aria-label="Условия">
         <option th:each="m : ${h.careModifiers}" th:value="${m.code}" th:text="${m.label}">Без условий</option>
       </select>
+      <input type="number" name="luck" value="0" min="0" max="10" class="narrow" title="Удача медика к броску" aria-label="Удача медика">
       <button type="submit" class="btn btn-sm">🎲 Медик</button>
     </form>
     <form th:if="${h.medicalTech}" th:action="${base} + '/attributes'" method="post" class="form-row">

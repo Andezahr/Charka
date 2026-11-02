@@ -391,6 +391,14 @@ public class EncounterService {
      */
     @Transactional
     public OpposedCheckResult contest(Long campaignId, Long participantId, String code, Long targetId) {
+        return contest(campaignId, participantId, code, targetId, 0);
+    }
+
+    /**
+     * Противостояние с удачей начавшего: тратится до броска.
+     */
+    @Transactional
+    public OpposedCheckResult contest(Long campaignId, Long participantId, String code, Long targetId, int luck) {
         EncounterParticipant initiator = participant(campaignId, participantId);
         EncounterParticipant target = encounter(campaignId).getParticipants().stream()
                 .filter(candidate -> candidate.getCharacter().getId().equals(targetId))
@@ -400,7 +408,12 @@ public class EncounterService {
         if (system.getCombatContests().stream().noneMatch(contest -> contest.code().equals(code))) {
             throw new IllegalArgumentException("Такого противостояния нет: " + code);
         }
-        OpposedCheckResult result = checkService.checkOpposed(initiator.getCharacter(), system.getContestRequest(code, initiator.getCharacter()),
+        app.charka.check.CheckRequest own = system.getContestRequest(code, initiator.getCharacter());
+        if (luck > 0) {
+            system.spendLuck(initiator.getCharacter(), luck);
+            own = own.withPart(GameSystem.luckPart(luck));
+        }
+        OpposedCheckResult result = checkService.checkOpposed(initiator.getCharacter(), own,
                 target.getCharacter(), null, system.getContestRequest(code, target.getCharacter()));
         if (result.initiator().result().total() == result.opponent().result().total()
                 || result.winner() == OpposedCheckResult.Winner.NONE) {
@@ -470,8 +483,21 @@ public class EncounterService {
      */
     @Transactional
     public HealthEvent save(Long campaignId, Long participantId, String code) {
+        return save(campaignId, participantId, code, 0);
+    }
+
+    /**
+     * Спасбросок участника с удачей: очки тратятся до броска.
+     *
+     * @throws IllegalArgumentException если столько удачи нет
+     */
+    @Transactional
+    public HealthEvent save(Long campaignId, Long participantId, String code, int luck) {
         Character character = participant(campaignId, participantId).getCharacter();
-        return healthCounterService.save(character.getId(), healthCounter(character), code, null);
+        if (luck > 0) {
+            system(character.getCampaign()).spendLuck(character, luck);
+        }
+        return healthCounterService.save(character.getId(), healthCounter(character), code, null, Math.max(0, luck));
     }
 
     /**

@@ -56,6 +56,7 @@ class Cp2020LuckTest {
     @Autowired private EncounterService encounterService;
     @Autowired private GameSystemRegistry registry;
     @Autowired private EntityManager entityManager;
+    @Autowired private app.charka.repository.EncounterRepository encounterRepository;
 
     @MockitoBean(answers = Answers.CALLS_REAL_METHODS) private DiceRoller dice;
 
@@ -132,5 +133,38 @@ class Cp2020LuckTest {
         mockMvc.perform(post("/campaign/" + campaign.getId() + "/session"));
         flush();
         assertThat(luck()).isEqualTo(6);
+    }
+
+    private Long participantOf(Character character) {
+        return encounterRepository.findByCampaignId(campaign.getId()).orElseThrow().getParticipants().stream()
+                .filter(participant -> participant.getCharacter().getId().equals(character.getId()))
+                .findFirst().orElseThrow().getId();
+    }
+
+    @Test
+    @DisplayName("Спасбросок в трекере: удача тратится и прибавляется к порогу (HOMEBREW)")
+    void save() {
+        encounterService.start(campaign.getId(), List.of(lucky.getId(), other.getId()));
+        flush();
+        when(dice.roll(anyInt())).thenReturn(9);
+
+        var event = encounterService.save(campaign.getId(), participantOf(lucky), "STUN", 3);
+        flush();
+
+        assertThat(event.getSteps()).anyMatch(step -> step.contains("Удача +3") && step.contains("нужно ≤ 9") && step.contains("успех"));
+        assertThat(luck()).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("Facedown: удача начавшего прибавляется к его броску")
+    void facedown() {
+        encounterService.start(campaign.getId(), List.of(lucky.getId(), other.getId()));
+        flush();
+
+        var result = encounterService.contest(campaign.getId(), participantOf(lucky), "FACEDOWN", other.getId(), 2);
+        flush();
+
+        assertThat(result.initiator().result().steps()).anyMatch(step -> step.contains("Удача +2"));
+        assertThat(luck()).isEqualTo(4);
     }
 }
