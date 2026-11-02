@@ -71,21 +71,16 @@
     </form>
   </div>
 
-  <div class="card-body list" th:unless="${#lists.isEmpty(recentRolls)}">
-    <div th:each="r : ${recentRolls}" class="row roll-row">
-      <div class="row-main">
-        <div class="row-title">
-          <span th:if="${showAuthor}" th:text="${r.character != null ? r.character.name : 'Мастер'}">Колясик</span>
-          <span th:if="${showAuthor and r.label != null}"> · </span>
-          <span th:if="${r.label != null}" th:text="${r.label}">Атака</span>
-          <span th:if="${!showAuthor and r.label == null}">Бросок</span>
-        </div>
-        <div class="row-meta">
-          <span th:text="${r.expression} + ': ' + ${r.details}">2d6: [3, 5] = 8</span>
-          <span th:if="${r.gameDate != null}" th:text="'· ' + ${r.gameDate}">· 2037-10-27</span>
-        </div>
-      </div>
-      <span class="amount" th:text="${r.total}">8</span>
+  <!-- Лог: строка на бросок; расчёт обрезан, целиком — во всплывающей подсказке -->
+  <div class="card-body roll-log" th:unless="${#lists.isEmpty(recentRolls)}">
+    <div th:each="r : ${recentRolls}" class="roll-row"
+         th:title="${r.expression} + ': ' + ${r.details} + (${r.gameDate != null} ? ' · ' + ${r.gameDate} : '')">
+      <span class="roll-who"><th:block th:if="${showAuthor}" th:text="${r.character != null ? r.character.name : 'Мастер'}">Колясик</th:block><th:block
+            th:if="${showAuthor and r.label != null}"> · </th:block><th:block
+            th:if="${r.label != null}" th:text="${r.label}">Атака</th:block><th:block
+            th:if="${!showAuthor and r.label == null}">Бросок</th:block></span>
+      <span class="roll-details" th:text="${r.expression} + ': ' + ${r.details}">2d6: [3, 5] = 8</span>
+      <span class="roll-total" th:text="${r.total}">8</span>
     </div>
   </div>
   <!-- Листалка лога: только там, где контроллер дал страницу (кампания) -->

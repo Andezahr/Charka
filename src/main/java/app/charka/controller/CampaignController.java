@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 public class CampaignController {
 
     /** Бросков на странице лога */
-    private static final int ROLLS_PER_PAGE = 20;
+    private static final int ROLLS_PER_PAGE = 10;
 
     private final CampaignService campaignService;
     private final CharacterService characterService;

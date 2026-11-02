@@ -54,20 +54,20 @@ class CampaignRollPagingTest {
     }
 
     @Test
-    @DisplayName("Первая страница: 20 новых, ссылка «Старее»; вторая: оставшиеся 5, ссылка «Новее»")
+    @DisplayName("По 10 на странице: первая — 25…16 и «Старее»; последняя — 5…1 и «Новее»")
     void pages() throws Exception {
         String first = page("");
-        assertThat(first).contains("Бросок 25").contains("Бросок 6").doesNotContain("Бросок 5<")
-                .contains("1 из 2").contains("rolls=1").doesNotContain("← Новее");
+        assertThat(first).contains("Бросок 25<").contains("Бросок 16<").doesNotContain("Бросок 15<")
+                .contains("1 из 3").contains("rolls=1").doesNotContain("← Новее");
 
-        String second = page("?rolls=1");
-        assertThat(second).contains("Бросок 5<").contains("Бросок 1<").doesNotContain("Бросок 25")
-                .contains("2 из 2").contains("← Новее").doesNotContain("Старее →");
+        String last = page("?rolls=2");
+        assertThat(last).contains("Бросок 5<").contains("Бросок 1<").doesNotContain("Бросок 25<")
+                .contains("3 из 3").contains("← Новее").doesNotContain("Старее →");
     }
 
     @Test
     @DisplayName("Номер за пределами — последняя страница")
     void beyond() throws Exception {
-        assertThat(page("?rolls=9")).contains("2 из 2").contains("Бросок 1<");
+        assertThat(page("?rolls=9")).contains("3 из 3").contains("Бросок 1<");
     }
 }
