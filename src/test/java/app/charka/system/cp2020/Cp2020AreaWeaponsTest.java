@@ -280,7 +280,7 @@ class Cp2020AreaWeaponsTest {
         }
 
         @Test
-        @DisplayName("Газ не бросает урон: эффект применяет мастер")
+        @DisplayName("Несмертельный газ не бросает урон: штраф вешается каждой цели при атаке (T-03)")
         void effectOnly() {
             AreaDamage blast = Cp2020AreaAttacks.areaDamage(weapon("grenade_gas_nausea", 1), attack("THROW", 5, 0), sides -> {
                 throw new AssertionError("урон не бросается");
@@ -289,7 +289,7 @@ class Cp2020AreaWeaponsTest {
             assertThat(blast.amount()).isNull();
             AttackHit hit = Cp2020AreaAttacks.hit(blast, sides -> 1);
             assertThat(hit.damage()).isNull();
-            assertThat(hit.steps()).anyMatch(step -> step.contains("мастер"));
+            assertThat(hit.steps()).noneMatch(step -> step.contains("мастер"));
         }
 
         @Test

@@ -186,14 +186,14 @@ class Cp2020EffectsTest {
         }
 
         @Test
-        @DisplayName("Газ со штрафом пока ведёт мастер: штрафы к статам — P-03")
+        @DisplayName("Газ со штрафом: эффект «тошнота», раундов в облаке нет — штраф идёт на лист (T-03)")
         void gas() {
             AreaDamage blast = blast("grenade_gas_nausea", "THROW");
             AttackHit hit = Cp2020AreaAttacks.hit(blast, sides -> 1);
 
             assertThat(blast.radius()).isEqualTo(3);
+            assertThat(blast.data()).containsEntry(Cp2020ItemTypes.EFFECT, Cp2020Gas.NAUSEA);
             assertThat(hit.hasEffect()).isFalse();
-            assertThat(hit.steps()).anyMatch(step -> step.contains("мастер"));
         }
 
         @Test
