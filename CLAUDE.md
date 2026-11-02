@@ -142,6 +142,9 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 | POST | `/character/{id}/money`, `.../money/{mid}/delete` | деньги |
 | POST | `/character/{id}/expenses`, `.../expenses/{eid}/delete` | `name`, `amount`, `periodDays` → регулярная трата, списывается при промотке времени |
 | POST | `/character/{id}/installed/{action}` | действие блока вживлённого (CP2020: `THERAPY`, `source`, `amount`), итог в блоке |
+| GET | `/campaign/{id}/gm` | экран мастера: все персонажи — состояние, броня, статы, эффекты, деньги |
+| POST | `/character/{id}/effects`, `.../effects/{eid}/delete` | `template` (готовый эффект системы) или `name`, `stat`, `modifier`, `duration`, `unit` → временный эффект; раунды идут в трекере, дни — при промотке |
+| POST | `/character/{id}/contacts`, `.../{cid}/edit\|delete` | контакты: `name`, `role`, `relation`, `owes`, `note` |
 | GET | `/character/{id}/notes/` | заметки (фильтр `?categoryId=`) |
 | POST | `/character/{id}/notes`, `.../{noteId}/edit|delete`; GET `.../{noteId}/edit` | заметки |
 | POST | `/character/{id}/categories`, `.../{catId}/edit|delete` | категории заметок |
@@ -178,7 +181,7 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 **Архитектура**
 - Сущности отдаются прямо в шаблоны и в JSON; DTO есть только у счётчиков.
 - Сервисы ходят в чужие репозитории напрямую (Money/Wound/Inventory → `CharacterRepository`).
-- Нет проверки принадлежности ресурса персонажу (кроме счётчиков и удаления ран): можно удалить/переместить чужой предмет, подставив id.
+- Принадлежность ресурса персонажу проверяет `OwnershipInterceptor` (U-02) по переменным адреса.
 - Стратегии счётчиков работают через `String`/`Object`, тип — строка; стратегии лежат в `model/` и знают имена шаблонов.
 - Нет авторизации/пользователей.
 

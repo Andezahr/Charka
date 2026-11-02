@@ -1161,3 +1161,8 @@ html:has(.is-editing) {
 .installed-menu .item-action select { flex: 1 1 100%; }
 .installed-menu .item-action .btn { width: auto; }
 .installed-menu .item-note { margin: 0; color: var(--text-soft); white-space: normal; }
+
+/* Экран мастера (U-01) */
+.gm-row.is-out { opacity: 0.55; }
+.gm-stats span { font-variant-numeric: tabular-nums; }
+.gm-side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
