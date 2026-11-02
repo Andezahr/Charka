@@ -46,9 +46,20 @@ function initPage() {
       dialog.querySelector('[data-attack-width]').hidden = option.dataset.width !== 'true';
       dialog.querySelector('[data-attack-target-label]').textContent = multi ? 'Цели в зоне' : 'Цель';
       targets.forEach(input => { input.type = multi ? 'checkbox' : 'radio'; });
+      // машину бьют не всем: при ударе её нет в списке, выбранная цель переходит на первого человека
+      const objects = dialog.querySelector('[data-attack-objects]');
+      if (objects) {
+        const allowed = option.dataset.objects === 'true';
+        objects.hidden = !allowed;
+        if (!allowed && objects.querySelector('input:checked')) {
+          objects.querySelectorAll('input').forEach(input => { input.checked = false; });
+          if (!targets.some(input => input.checked) && targets[0]) targets[0].checked = true;
+        }
+      }
       syncName();
       if (location) {
-        const canChoose = option.dataset.location === 'true';
+        // у машины зон нет (с. 113)
+        const canChoose = option.dataset.location === 'true' && !targets.some(input => input.checked && 'attackObject' in input.dataset);
         dialog.querySelector('[data-attack-location-field]').hidden = !canChoose;
         location.disabled = !canChoose;
         if (!canChoose) location.value = '';
@@ -73,7 +84,7 @@ function initPage() {
         });
       });
     }
-    targets.forEach(input => input.addEventListener('change', syncName));
+    targets.forEach(input => input.addEventListener('change', update));
     mode.addEventListener('change', update);
     form.addEventListener('submit', () => {
       try {

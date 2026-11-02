@@ -15,9 +15,11 @@ import java.util.function.Function;
  * @param targets цели с листом: от них зависит сложность там, где её задаёт цель
  * @param statsOf текущие статы любого участника
  * @param effectsOf что сейчас длится на участнике боя: названия эффектов; вне боя пусто
+ * @param targetItem цель-предмет: машина; null — нет
  */
 public record AttackContext(Character attacker, AttackSource source, List<Character> targets, AttackRequest request,
-                            Function<Character, Map<String, StatValue>> statsOf, Function<Character, Set<String>> effectsOf) {
+                            Function<Character, Map<String, StatValue>> statsOf, Function<Character, Set<String>> effectsOf,
+                            Item targetItem) {
 
     private static final String DEFAULT_TARGET = "Цель";
 
@@ -37,8 +39,11 @@ public record AttackContext(Character attacker, AttackSource source, List<Charac
         return statsOf.apply(character);
     }
 
-    /** Имя цели без листа */
+    /** Имя цели без листа или цели-предмета */
     public String targetName() {
+        if (targetItem != null) {
+            return targetItem.getName();
+        }
         String name = request.targetName();
         return name == null || name.isBlank() ? DEFAULT_TARGET : name.strip();
     }

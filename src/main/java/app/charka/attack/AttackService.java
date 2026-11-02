@@ -6,6 +6,7 @@ import app.charka.check.CheckService;
 import app.charka.dice.DiceService;
 import app.charka.exception.CharacterNotFoundException;
 import app.charka.exception.NotFoundException;
+import app.charka.model.Campaign;
 import app.charka.model.Character;
 import app.charka.model.CombatEffect;
 import app.charka.model.EncounterParticipant;
@@ -25,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -75,7 +77,8 @@ public class AttackService {
             throw new IllegalArgumentException("Этим нельзя атаковать: " + source.name());
         }
         List<Character> targets = targets(attacker, request.targetIds());
-        AttackContext context = new AttackContext(attacker, source, targets, request, system::getCurrentStats, this::effectsOf);
+        Item targetItem = request.targetItemId() == null ? null : targetItem(attacker, rules, request.targetItemId());
+        AttackContext context = new AttackContext(attacker, source, targets, request, system::getCurrentStats, this::effectsOf, targetItem);
         if (request.luck() > 0) {
             system.spendLuck(attacker, request.luck());
         }
@@ -116,7 +119,7 @@ public class AttackService {
         int luck = context.request().luck();
         if (plan.checks().isEmpty()) {
             last = rules.outcome(context, plan, null, null, diceRoller);
-            lastSummary = apply(context, last, steps);
+            lastSummary = apply(context, rules, last, steps);
         }
         for (AttackPlan.PlannedCheck planned : plan.checks()) {
             if (planned.intro() != null) {
@@ -132,7 +135,7 @@ public class AttackService {
                     : checkService.checkForCampaign(context.attacker().getCampaign().getId(), request);
             steps.addAll(check.steps());
             last = rules.outcome(context, plan, planned, check, diceRoller);
-            String summary = apply(context, last, steps);
+            String summary = apply(context, rules, last, steps);
             lastSummary = summary != null ? summary : lastSummary;
             hitTargets += last.hits().isEmpty() ? 0 : 1;
         }
@@ -150,17 +153,57 @@ public class AttackService {
     /**
      * @return итог последнего попадания; null — попаданий нет
      */
-    private String apply(AttackContext context, AttackOutcome outcome, List<String> steps) {
+    private String apply(AttackContext context, AttackRules rules, AttackOutcome outcome, List<String> steps) {
         steps.addAll(outcome.steps());
         String summary = null;
+        // в зоне взрыва и люди, и машина: подпись у каждого
+        boolean several = context.targets().size() + (context.targetItem() == null ? 0 : 1) > 1;
         for (AttackOutcome.TargetedHit targeted : outcome.hits()) {
-            if (context.targets().size() > 1 && targeted.target() != null && context.item() != null) {
-                steps.add(targeted.target().getName() + ":");
+            if (several && context.item() != null && (targeted.target() != null || targeted.object() != null)) {
+                steps.add((targeted.object() != null ? targeted.object().getName() : targeted.target().getName()) + ":");
             }
             steps.addAll(targeted.hit().steps());
-            summary = applyHit(context.attacker(), context.source().name(), targeted.target(), context.targetName(), targeted.hit(), steps);
+            summary = targeted.object() != null
+                    ? applyObjectHit(context.attacker(), context.source().name(), rules, targeted.object(), targeted.hit(), steps)
+                    : applyHit(context.attacker(), context.source().name(), targeted.target(), context.targetName(), targeted.hit(), steps);
         }
         return summary;
+    }
+
+    /** Урон в прочность предмета: машины нет в бою и ран у неё нет */
+    private String applyObjectHit(Character attacker, String weapon, AttackRules rules, Item object, AttackHit hit, List<String> steps) {
+        if (hit.damage() == null) {
+            return "Попадание: " + object.getName() + ", урон определяет мастер";
+        }
+        diceService.log(attacker.getCampaign(), attacker, hit.expression(), String.join("; ", hit.steps()), hit.damage().getAmount(),
+                "Урон: " + weapon + " → " + object.getName());
+        String summary = rules.damageObject(object, hit);
+        steps.add(summary);
+        return summary;
+    }
+
+    /**
+     * Предметы кампании, которые можно выбрать целью атаки: машины. По владельцу, затем по названию.
+     */
+    @Transactional(readOnly = true)
+    public List<ObjectTarget> objectTargets(Campaign campaign) {
+        GameSystem system = campaign == null ? null : systemRegistry.get(campaign.getSystem());
+        AttackRules rules = system == null ? null : system.getAttackRules();
+        if (rules == null) {
+            return List.of();
+        }
+        return campaign.getCharacters().stream()
+                .sorted(Comparator.comparing(Character::getName))
+                .flatMap(character -> character.getInventories().stream())
+                .flatMap(inventory -> inventory.getContent().stream().sorted(Comparator.comparing(Item::getName)))
+                .filter(rules::isObjectTarget)
+                .map(item -> {
+                    Character owner = item.getInventory().getCharacter();
+                    String state = system.getItemSummary(item).main();
+                    return new ObjectTarget("item-" + item.getId(), owner.getId(),
+                            item.getName() + " · " + owner.getName() + (state == null ? "" : " · " + state));
+                })
+                .toList();
     }
 
     /** Заряд упал мимо: ждёт решения мастера на листе, урон уже брошен и остаётся на сервере */
@@ -318,6 +361,20 @@ public class AttackService {
         }
         steps.addAll(event.get().getSteps());
         return event.get().getSummary();
+    }
+
+    private Item targetItem(Character attacker, AttackRules rules, Long itemId) {
+        Item item = itemRepository.findById(itemId).orElseThrow(NotFoundException.forId("Item", itemId));
+        Character owner = item.getInventory().getCharacter();
+        boolean sameCampaign = attacker.getCampaign() != null && owner.getCampaign() != null
+                && attacker.getCampaign().getId().equals(owner.getCampaign().getId());
+        if (!sameCampaign) {
+            throw new IllegalArgumentException("Цель должна быть из той же кампании");
+        }
+        if (!rules.isObjectTarget(item)) {
+            throw new IllegalArgumentException("Это нельзя выбрать целью: " + item.getName());
+        }
+        return item;
     }
 
     private List<Character> targets(Character attacker, List<Long> targetIds) {

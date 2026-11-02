@@ -4,6 +4,7 @@ import app.charka.check.CheckResult;
 import app.charka.dice.DiceExpression;
 import app.charka.dice.DiceResult;
 import app.charka.model.Character;
+import app.charka.model.Item;
 import app.charka.model.counters.strategy.health.DamageRequest;
 import app.charka.model.counters.strategy.health.DiceRoller;
 import app.charka.skill.StatValue;
@@ -51,6 +52,22 @@ public interface AttackRules {
      */
     default List<AttackSource> abilities(Character attacker) {
         return List.of();
+    }
+
+    /**
+     * Можно ли выбрать этот предмет целью атаки: машина с прочностью.
+     */
+    default boolean isObjectTarget(Item item) {
+        return false;
+    }
+
+    /**
+     * Попадание по цели-предмету: урон в его прочность.
+     *
+     * @return итог для показа: сколько прочности осталось
+     */
+    default String damageObject(Item target, AttackHit hit) {
+        throw new IllegalArgumentException("Эта система не атакует предметы");
     }
 
     /**

@@ -78,8 +78,22 @@ final class Cp2020AttackRules implements AttackRules {
         return List.of(Cp2020Melee.brawl(attacker));
     }
 
+    /** Машина с SDP, ещё на ходу (с. 113) */
+    @Override
+    public boolean isObjectTarget(Item item) {
+        return Cp2020Vehicles.isVehicle(item) && Cp2020Vehicles.sdp(item).filter(sdp -> Cp2020Vehicles.damage(item) < sdp).isPresent();
+    }
+
+    @Override
+    public String damageObject(Item target, AttackHit hit) {
+        return Cp2020Vehicles.hit(target, hit.damage().getAmount());
+    }
+
     @Override
     public AttackPlan plan(AttackContext context, DiceRoller dice) {
+        if (context.targetItem() != null) {
+            requireObjectTarget(context);
+        }
         if (Cp2020Melee.applies(context)) {
             return Cp2020Melee.plan(context, dice);
         }
@@ -111,6 +125,26 @@ final class Cp2020AttackRules implements AttackRules {
         }
         CheckRequest toHit = Cp2020Facedown.withPenalty(toHit(context.attacker(), weapon, request, context.stats(context.attacker())), context);
         return new AttackPlan(title, List.of(new AttackPlan.PlannedCheck(toHit, context.attacker(), null, null)), null);
+    }
+
+    /**
+     * По машине стреляют как обычно, но без прицеливания и зон (с. 113). HOMEBREW: ближний бой и подавляющий огонь по машине
+     * не идут — книга о них молчит; урон кулаком или монтировкой вносится кнопкой «Урон машине».
+     */
+    private void requireObjectTarget(AttackContext context) {
+        AttackRequest request = context.request();
+        if (Cp2020Melee.applies(context)) {
+            throw new IllegalArgumentException("Машину бьют стрельбой или взрывом, урон удара — кнопкой «Урон машине»");
+        }
+        if (isZoneFire(request)) {
+            throw new IllegalArgumentException("Подавляющий огонь — по людям, машине — обычный выстрел");
+        }
+        if (request.hasChosenLocation()) {
+            throw new IllegalArgumentException("У машины нет зон: прицельный выстрел не нужен");
+        }
+        if (!context.targets().isEmpty() && !Cp2020AreaAttacks.isArea(context.item())) {
+            throw new IllegalArgumentException("Машина и люди вместе — только во взрыве");
+        }
     }
 
     @Override
@@ -148,8 +182,9 @@ final class Cp2020AttackRules implements AttackRules {
         Character target = planned.target() != null ? planned.target() : context.targets().isEmpty() ? null : context.targets().get(0);
         AttackRequest forTarget = context.targets().size() > 1 && AUTO.equals(mode(request))
                 ? withRounds(request, request.rounds() / context.targets().size()) : request;
-        List<AttackOutcome.TargetedHit> hits = hits(weapon, forTarget, result, dice).stream()
-                .map(hit -> new AttackOutcome.TargetedHit(target, hit)).toList();
+        Item object = context.targetItem();
+        List<AttackOutcome.TargetedHit> hits = hits(weapon, forTarget, result, object != null, dice).stream()
+                .map(hit -> new AttackOutcome.TargetedHit(target, hit, object)).toList();
         return AttackOutcome.hits(steps, hits, hits.isEmpty() ? result.outcome() + ", но ни одна пуля не дошла" : null, !hits.isEmpty());
     }
 
@@ -157,6 +192,9 @@ final class Cp2020AttackRules implements AttackRules {
         steps.addAll(blast.steps());
         List<AttackOutcome.TargetedHit> hits = new ArrayList<>();
         context.targets().forEach(target -> hits.add(new AttackOutcome.TargetedHit(target, Cp2020AreaAttacks.hit(blast, dice))));
+        if (context.targetItem() != null) {
+            hits.add(new AttackOutcome.TargetedHit(null, Cp2020AreaAttacks.hit(blast, dice), context.targetItem()));
+        }
         // несмертельный газ: спасбросок и штраф на лист каждой цели
         String effect = blast.data().get(Cp2020ItemTypes.EFFECT);
         if (Cp2020Gas.isGas(effect)) {
@@ -164,7 +202,7 @@ final class Cp2020AttackRules implements AttackRules {
         }
         // цель без листа названа по имени; если никого не выбрали, урон только брошен
         boolean named = context.request().targetName() != null && !context.request().targetName().isBlank();
-        if (hits.isEmpty() && named) {
+        if (hits.isEmpty() && named && context.targetItem() == null) {
             hits.add(new AttackOutcome.TargetedHit(null, Cp2020AreaAttacks.hit(blast, dice)));
         }
         return AttackOutcome.hits(steps, hits, "Зона " + blast.radius() + " м, задето целей: " + hits.size(), true);
@@ -269,6 +307,13 @@ final class Cp2020AttackRules implements AttackRules {
     }
 
     List<AttackHit> hits(Item weapon, AttackRequest request, CheckResult check, DiceRoller dice) {
+        return hits(weapon, request, check, false, dice);
+    }
+
+    /**
+     * @param object цель — машина: зоны не бросаются (с. 113)
+     */
+    List<AttackHit> hits(Item weapon, AttackRequest request, CheckResult check, boolean object, DiceRoller dice) {
         List<String> intro = new ArrayList<>();
         int count = switch (mode(request)) {
             case BURST -> {
@@ -285,7 +330,7 @@ final class Cp2020AttackRules implements AttackRules {
             }
             default -> 1;
         };
-        return manyHits(weapon, request, intro, count, dice);
+        return manyHits(weapon, request, intro, count, object, dice);
     }
 
     List<String> onFumble(Item weapon, DiceRoller dice) {
@@ -323,7 +368,7 @@ final class Cp2020AttackRules implements AttackRules {
 
     private static AttackRequest withRounds(AttackRequest request, int rounds) {
         return new AttackRequest(request.targetIds(), request.targetName(), request.distance(), request.location(), request.skillCode(),
-                request.options(), request.modifier(), request.mode(), rounds, request.zoneWidth(), request.luck());
+                request.options(), request.modifier(), request.mode(), rounds, request.zoneWidth(), request.luck(), request.targetItemId());
     }
 
     boolean isZoneFire(AttackRequest request) {
@@ -354,11 +399,11 @@ final class Cp2020AttackRules implements AttackRules {
 
     List<AttackHit> zoneHits(Item weapon, AttackRequest request, DiceRoller dice) {
         int roll = dice.roll(6);
-        return manyHits(weapon, request, List.of("Под огонь: d6 = " + roll + " пуль"), roll, dice);
+        return manyHits(weapon, request, List.of("Под огонь: d6 = " + roll + " пуль"), roll, false, dice);
     }
 
     /** Каждое попадание со своей зоной и своим уроном; первому достаются шаги о числе попаданий */
-    private List<AttackHit> manyHits(Item weapon, AttackRequest request, List<String> intro, int count, DiceRoller dice) {
+    private List<AttackHit> manyHits(Item weapon, AttackRequest request, List<String> intro, int count, boolean object, DiceRoller dice) {
         List<AttackHit> hits = new ArrayList<>();
         for (int i = 0; i < count; i++) {
             List<String> steps = new ArrayList<>();
@@ -368,7 +413,7 @@ final class Cp2020AttackRules implements AttackRules {
             if (count > 1) {
                 steps.add("Попадание " + (i + 1) + " из " + count);
             }
-            hits.add(oneHit(weapon, request, steps, dice));
+            hits.add(object ? objectHit(weapon, request, steps, dice) : oneHit(weapon, request, steps, dice));
         }
         return hits;
     }
@@ -394,6 +439,13 @@ final class Cp2020AttackRules implements AttackRules {
                 .extras(Map.of(Cp2020HealthStrategy.ARMOR_WEAR, armorWear(weapon), Cp2020HealthStrategy.COVER_SP, Cp2020Cover.sp(request.options())))
                 .build();
         return new AttackHit(location.getLabel(), rolled.notation(), steps, damageRequest);
+    }
+
+    /** Попадание в машину: без зоны и брони цели, SP машины вычтет {@link #damageObject} */
+    private AttackHit objectHit(Item weapon, AttackRequest request, List<String> steps, DiceRoller dice) {
+        RolledDamage rolled = rollDamage(weapon, request, steps, dice);
+        return new AttackHit("корпус", rolled == null ? null : rolled.notation(), steps,
+                rolled == null ? null : DamageRequest.builder().amount(rolled.amount()).build());
     }
 
     record RolledDamage(String notation, int amount) {
@@ -491,7 +543,7 @@ final class Cp2020AttackRules implements AttackRules {
         return List.of(single,
                 new AttackForm.Mode(BURST, "Очередь из 3", false, false, false, false, false),
                 new AttackForm.Mode(AUTO, "Автоогонь", true, false, true, false, false),
-                new AttackForm.Mode(SUPPRESS, "Подавляющий огонь", true, true, true, false, false));
+                new AttackForm.Mode(SUPPRESS, "Подавляющий огонь", true, true, true, false, false, false, false));
     }
 
     private static List<AttackForm.Mode> consumableModes(Item weapon) {

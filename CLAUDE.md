@@ -35,7 +35,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 910 тестов, на 2026-11-02 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 914 тестов, на 2026-11-02 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -52,7 +52,7 @@ service/       бизнес-логика; campaign/, counter/, notes/ — под
 controller/    MVC-контроллеры, возвращают имена шаблонов или redirect
 api/           REST: CampaignExportController, SkillCheckController (проверка навыка)
 dice/         DiceExpression (разбор NdM±K), DiceResult, DiceService (броски + лог RollLog)
-attack/       AttackRules (контракт системы: form, plan, spend, outcome, effectHit), AttackSource (предмет или способность), AttackContext, AttackPlan, AttackOutcome, AttackForm, AttackRequest, AttackHit, AreaDamage (урон по площади), LingeringEffect (что остаётся на цели на следующие раунды), AttackResult, AttackService (один ход для всех атак, урон цели, лог, заряды PendingBlast)
+attack/       AttackRules (контракт системы: form, plan, spend, outcome, effectHit, isObjectTarget/damageObject — цель-предмет), AttackSource (предмет или способность), ObjectTarget (машина в списке целей), AttackContext, AttackPlan, AttackOutcome, AttackForm, AttackRequest, AttackHit, AreaDamage (урон по площади), LingeringEffect (что остаётся на цели на следующие раунды), AttackResult, AttackService (один ход для всех атак, урон цели, лог, заряды PendingBlast)
 creation/     CharacterCreation (мастер создания персонажа: форма, бросок очков, создание; реализует система)
 npc/          NpcTemplate, NpcSheet (что выбросила система), NpcService (создание по шаблону, копии, удаление)
 encounter/    EncounterService (бой кампании: очередь, раунды, ожидание, урон, противостояния), CombatContest (противостояние от системы), EncounterView (страница боя), Initiative, InitiativeDeclaration и CombatCard (что отдаёт система)
@@ -137,7 +137,7 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 | POST | `/character/{id}/wounds`, `.../wounds/{wid}/delete` | раны |
 | POST | `/character/{id}/inventories`, `.../{invId}/edit`, `.../{invId}/delete` | инвентари |
 | POST | `/character/{id}/inventories/{invId}/items` (+ `/{itemId}/edit|delete|move`) | предметы; `itemType`, `prop.<ключ>` — тип и его поля; `anchor` — куда вернуться; `/catalog` (`catalogKey`, `quantity`, `anchor`, `thenAction?`) — из справочника системы, `thenAction` — сразу действие над новым предметом; `buy=true` (и у своего предмета) — купить: цена × количество списывается записью в деньгах, не хватает — отказ, итог `Purchase` в строке предмета; `/{itemId}/quantity` (`delta`, `returnTo`) — кнопки − и ＋, ноль убирает предмет; `/{itemId}/action/{action}` (`source`, `amount`, `returnTo`) — действие системы (CP2020: `FIRE`, `BURST`, `RELOAD`, `EJECT`, `ADD_MAGAZINE`, `LOAD`, `LOAD_ALL`, `UNLOAD`, `UNJAM`, у брони `WEAR`, `TAKE_OFF`, `REPAIR`, у киберware `INSTALL`, `REMOVE`, `REPAIR`), итог во flash для строки предмета или `returnTo` |
-| POST | `/character/{id}/items/{itemId}/attack` | `target` (в зоне огня несколько) или `targetName`, `distance`, `location?`, `skill?`, `modifier`, `mode`, `rounds`, `zoneWidth`, `option.<выбор>`, `returnCampaign?` (вернуться в трекер; то же у действий предмета и зарядов) → атака оружием, итог во flash `attackResult` в строке предмета (предмет израсходован — в начале блока инвентарей) |
+| POST | `/character/{id}/items/{itemId}/attack` | `target` (в зоне огня несколько; `item-<id>` — машина, CP2020: урон в SDP через SP) или `targetName`, `distance`, `location?`, `skill?`, `modifier`, `mode`, `rounds`, `zoneWidth`, `option.<выбор>`, `returnCampaign?` (вернуться в трекер; то же у действий предмета и зарядов) → атака оружием, итог во flash `attackResult` в строке предмета (предмет израсходован — в начале блока инвентарей) |
 | POST | `/character/{id}/attack/ability/{code}` | то же без предмета, кодом способности системы (CP2020: `BRAWL`, режимы `STRIKE`, `KICK`, `GRAPPLE`, `BODY_THROW`, `HOLD`, `CHOKE`, `SWEEP`, `DISARM`, `ESCAPE`); только из трекера, итог над строками боя |
 | POST | `/character/{id}/attack/blast/{blastId}`, `.../dismiss` | `target` (несколько) → заряд упал мимо (`PendingBlast`): урон выбранным целям; `dismiss` — никого не задело |
 | POST | `/character/{id}/money`, `.../money/{mid}/delete` | деньги |

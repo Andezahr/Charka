@@ -1,6 +1,7 @@
 package app.charka.controller;
 
 import app.charka.attack.AttackResult;
+import app.charka.attack.AttackService;
 import app.charka.dice.DiceService;
 import app.charka.encounter.EncounterService;
 import app.charka.encounter.EncounterView;
@@ -39,6 +40,7 @@ public class EncounterController {
     private final CampaignService campaignService;
     private final DiceService diceService;
     private final GameSystemRegistry systemRegistry;
+    private final AttackService attackService;
 
     @GetMapping
     public String page(@PathVariable Long campaignId, Model model) {
@@ -49,6 +51,7 @@ public class EncounterController {
         Optional<EncounterView> view = encounterService.view(campaignId);
         if (view.isPresent()) {
             model.addAttribute("view", view.get());
+            model.addAttribute("attackObjects", attackService.objectTargets(campaign));
             model.addAttribute("recentRolls", diceService.recentForCampaign(campaignId, JOURNAL_SIZE));
             model.addAttribute("difficultyPresets", systemRegistry.get(campaign.getSystem()).getCheckResolver().getDifficultyPresets());
             model.addAttribute("contests", systemRegistry.get(campaign.getSystem()).getCombatContests());

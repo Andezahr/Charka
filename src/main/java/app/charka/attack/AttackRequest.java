@@ -17,13 +17,19 @@ import java.util.Set;
  * @param rounds     сколько патронов выпустить или единиц израсходовать, если режим это спрашивает
  * @param zoneWidth  ширина зоны огня, м
  * @param luck       удача, объявленная до броска: тратится и прибавляется к броску атакующего
+ * @param targetItemId цель-предмет из той же кампании (машина): у неё прочность вместо здоровья; null — нет
  */
 public record AttackRequest(List<Long> targetIds, String targetName, Integer distance, String location, String skillCode,
-                            Set<String> options, int modifier, String mode, int rounds, int zoneWidth, int luck) {
+                            Set<String> options, int modifier, String mode, int rounds, int zoneWidth, int luck, Long targetItemId) {
 
     public AttackRequest {
         targetIds = List.copyOf(targetIds);
         options = Set.copyOf(options);
+    }
+
+    public AttackRequest(List<Long> targetIds, String targetName, Integer distance, String location, String skillCode,
+                         Set<String> options, int modifier, String mode, int rounds, int zoneWidth, int luck) {
+        this(targetIds, targetName, distance, location, skillCode, options, modifier, mode, rounds, zoneWidth, luck, null);
     }
 
     public AttackRequest(List<Long> targetIds, String targetName, Integer distance, String location, String skillCode,

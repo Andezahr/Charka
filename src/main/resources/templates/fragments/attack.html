@@ -18,13 +18,23 @@
       <span class="label">Режим</span>
       <select name="mode" data-attack-mode>
         <option th:each="m : ${form.modes}" th:value="${m.code}" th:text="${m.label}"
-                th:attr="data-rounds=${m.rounds},data-width=${m.width},data-multi=${m.multiTarget},data-noroll=${m.noRoll},data-location=${m.chooseLocation},data-nodistance=${m.noDistance}">Одиночный</option>
+                th:attr="data-rounds=${m.rounds},data-width=${m.width},data-multi=${m.multiTarget},data-noroll=${m.noRoll},data-location=${m.chooseLocation},data-nodistance=${m.noDistance},data-objects=${m.objects}">Одиночный</option>
       </select>
     </label>
 
     <div class="field">
       <span class="label" data-attack-target-label>Цель</span>
       <th:block th:replace="~{fragments/attack :: target-checks(${targets}, null)}"></th:block>
+      <!-- T-10: машины кампании, кроме своих; режим без них (удар, подавляющий огонь) их прячет -->
+      <th:block th:with="objects=${attackObjects == null ? null : attackObjects.?[ownerId != __${characterId}__]}">
+        <div th:if="${objects != null and !#lists.isEmpty(objects)}" class="target-picker" data-attack-objects>
+          <span class="target-group">Транспорт</span>
+          <label class="check" th:each="o : ${objects}">
+            <input type="checkbox" name="target" th:value="${o.value}" data-attack-object>
+            <span th:text="${o.label}">Седан · Олежа · SDP 26/30</span>
+          </label>
+        </div>
+      </th:block>
       <label class="check">
         <input type="checkbox" name="target" value="" data-attack-unlisted>
         <span>Без листа</span>

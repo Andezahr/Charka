@@ -1,6 +1,7 @@
 package app.charka.attack;
 
 import app.charka.model.Character;
+import app.charka.model.Item;
 
 import java.util.List;
 
@@ -18,9 +19,14 @@ public record AttackOutcome(List<String> steps, List<TargetedHit> hits, AreaDama
                             String headline, boolean hit) {
 
     /**
-     * @param target цель; null — цель без листа
+     * @param target цель; null — цель без листа или предмет
+     * @param object цель-предмет (машина): урон идёт в его прочность; null — нет
      */
-    public record TargetedHit(Character target, AttackHit hit) {
+    public record TargetedHit(Character target, AttackHit hit, Item object) {
+
+        public TargetedHit(Character target, AttackHit hit) {
+            this(target, hit, null);
+        }
     }
 
     public AttackOutcome {

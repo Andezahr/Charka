@@ -14,9 +14,11 @@ import app.charka.service.ItemService;
 import app.charka.system.cp2020.Cp2020ArmorStrategy;
 import app.charka.system.cp2020.Cp2020HealthStrategy;
 import app.charka.system.cp2020.Cp2020ItemTypes;
+import app.charka.system.cp2020.Cp2020Vehicles;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.Answers;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -356,5 +359,93 @@ class AttackServiceTest {
         assertThatThrownBy(() -> attackService.attack(shooter.getId(), minami.getId(),
                 new AttackRequest(stranger.getId(), null, 5, null, null, Set.of(), 0)))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("кампании");
+    }
+
+    @Nested
+    @DisplayName("Машина как цель (T-10, с. 113)")
+    class VehicleTarget {
+
+        private Item car;
+
+        @BeforeEach
+        void parkCar() {
+            Long victimInventory = characterRepository.findById(victim.getId()).orElseThrow().getInventories().get(0).getId();
+            Item item = new Item();
+            item.setName("Седан");
+            item.setQuantity(1);
+            car = itemService.create(victimInventory, item, Cp2020Vehicles.TYPE,
+                    Map.of(Cp2020Vehicles.KIND, "CAR", Cp2020Vehicles.SDP, "30", Cp2020Vehicles.SP, "10"));
+            entityManager.flush();
+            entityManager.clear();
+        }
+
+        private AttackRequest atCar(String location, String mode, int rounds) {
+            return new AttackRequest(List.of(), null, 5, location, null, Set.of(), 0, mode, rounds, 0, 0, car.getId());
+        }
+
+        private String sdpLost() {
+            return itemRepository.findById(car.getId()).orElseThrow().getProperties().get(Cp2020Vehicles.DAMAGE);
+        }
+
+        @Test
+        @DisplayName("Выстрел без броска зоны: урон − SP машины уходит в SDP, людям ничего")
+        void shotGoesToSdp() {
+            when(dice.roll(anyInt())).thenReturn(9, 6, 6);
+            // REF 6 + 9 = 15 против 15 (близко); урон 6 + 6 + 3 = 15 − SP 10 = 5
+            AttackResult result = attackService.attack(shooter.getId(), minami.getId(), atCar(null, "SINGLE", 0));
+            entityManager.flush();
+            entityManager.clear();
+
+            assertThat(result.title()).isEqualTo("Arasaka Minami 10 → Седан");
+            assertThat(result.outcome()).contains("= 5").contains("SDP 25/30");
+            assertThat(result.steps()).noneMatch(step -> step.contains("Бросок зоны"));
+            assertThat(sdpLost()).isEqualTo("5");
+            assertThat(counter(victim, Cp2020HealthStrategy.TYPE).getValue()).isZero();
+        }
+
+        @Test
+        @DisplayName("Граната по машине и человеку рядом: урон каждому, машина разрушена")
+        void grenadeHitsBoth() {
+            Long inventoryId = characterRepository.findById(shooter.getId()).orElseThrow().getInventories().get(0).getId();
+            Item grenade = itemService.addFromCatalog(inventoryId, "grenade_fragmentation", 1);
+            entityManager.flush();
+            entityManager.clear();
+            when(dice.roll(anyInt())).thenReturn(9);
+
+            AttackResult result = attackService.attack(shooter.getId(), grenade.getId(),
+                    new AttackRequest(List.of(victim.getId()), null, 5, null, null, Set.of(), 0, "THROW", 1, 0, 0, car.getId()));
+            entityManager.flush();
+            entityManager.clear();
+
+            assertThat(result.steps()).contains("Седан:", "Цель:");
+            assertThat(sdpLost()).isEqualTo("30");
+            assertThat(counter(victim, Cp2020HealthStrategy.TYPE).getValue()).isPositive();
+        }
+
+        @Test
+        @DisplayName("Прицельный выстрел и машина вместе с человеком — отказ: зон у машины нет")
+        void refused() {
+            assertThatThrownBy(() -> attackService.attack(shooter.getId(), minami.getId(), atCar("HEAD", "SINGLE", 0)))
+                    .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("зон");
+            assertThatThrownBy(() -> attackService.attack(shooter.getId(), minami.getId(),
+                    new AttackRequest(List.of(victim.getId()), null, 5, null, null, Set.of(), 0, "SINGLE", 0, 0, 0, car.getId())))
+                    .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("взрыве");
+            assertThatThrownBy(() -> attackService.attack(shooter.getId(), minami.getId(),
+                    new AttackRequest(List.of(), null, 5, null, null, Set.of(), 0, "SINGLE", 0, 0, 0, minami.getId())))
+                    .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("целью");
+        }
+
+        @Test
+        @DisplayName("В списке целей — машины кампании с SDP и прочностью; разрушенной нет")
+        void listed() {
+            Campaign campaign = characterRepository.findById(shooter.getId()).orElseThrow().getCampaign();
+
+            assertThat(attackService.objectTargets(campaign)).extracting(ObjectTarget::label).containsExactly("Седан · Цель · SDP 30/30");
+
+            Item wreck = itemRepository.findById(car.getId()).orElseThrow();
+            wreck.getProperties().put(Cp2020Vehicles.DAMAGE, "30");
+            entityManager.flush();
+            assertThat(attackService.objectTargets(campaign)).isEmpty();
+        }
     }
 }

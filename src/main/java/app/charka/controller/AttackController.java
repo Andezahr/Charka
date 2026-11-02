@@ -24,6 +24,8 @@ import java.util.Set;
 public class AttackController {
 
     private static final String OPTION_PREFIX = "option.";
+    /** Цель-предмет в списке целей: «item-42» */
+    private static final String ITEM_TARGET = "item-";
 
     private final AttackService attackService;
 
@@ -33,7 +35,7 @@ public class AttackController {
     @PostMapping("/character/{characterId}/items/{itemId}/attack")
     public String attack(@PathVariable Long characterId,
                          @PathVariable Long itemId,
-                         @RequestParam(required = false) List<Long> target,
+                         @RequestParam(required = false) List<String> target,
                          @RequestParam(required = false) String targetName,
                          @RequestParam(required = false) Integer distance,
                          @RequestParam(required = false) String location,
@@ -49,8 +51,8 @@ public class AttackController {
         redirectAttributes.addFlashAttribute("actionItemId", itemId);
         String anchor = "#item-" + itemId;
         try {
-            AttackResult result = attackService.attack(characterId, itemId,
-                    new AttackRequest(targets(target), targetName, distance, location, skill, options(params), modifier, mode, rounds, zoneWidth, luck));
+            AttackResult result = attackService.attack(characterId, itemId, new AttackRequest(characterTargets(target), targetName, distance,
+                    location, skill, options(params), modifier, mode, rounds, zoneWidth, luck, itemTarget(target)));
             redirectAttributes.addFlashAttribute("attackResult", result);
             if (result.detached()) {
                 anchor = "#inventories";
@@ -115,6 +117,24 @@ public class AttackController {
         return returnCampaign != null
                 ? "redirect:/campaign/" + returnCampaign + "/encounter#combatant-" + characterId
                 : "redirect:/character/" + characterId + anchor;
+    }
+
+    /** Персонажи из выбранных целей; пустой пункт «Без листа» пропускается */
+    private static List<Long> characterTargets(List<String> target) {
+        return target == null ? List.of() : target.stream()
+                .filter(value -> value != null && !value.isBlank() && !value.startsWith(ITEM_TARGET))
+                .map(Long::valueOf).toList();
+    }
+
+    /** Цель-предмет: одна */
+    private static Long itemTarget(List<String> target) {
+        List<Long> items = target == null ? List.of() : target.stream()
+                .filter(value -> value != null && value.startsWith(ITEM_TARGET))
+                .map(value -> Long.valueOf(value.substring(ITEM_TARGET.length()))).toList();
+        if (items.size() > 1) {
+            throw new IllegalArgumentException("Машину можно выбрать только одну");
+        }
+        return items.isEmpty() ? null : items.get(0);
     }
 
     /** Пустой пункт «Без листа» приходит как null */
