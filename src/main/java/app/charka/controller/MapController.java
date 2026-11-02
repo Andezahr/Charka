@@ -59,7 +59,9 @@ public class MapController {
     @GetMapping("/{mapId}/edit")
     public String edit(@PathVariable Long campaignId, @PathVariable Long mapId, Model model) {
         model.addAttribute("campaign", campaignService.getById(campaignId));
-        model.addAttribute("map", battleMapService.get(campaignId, mapId));
+        BattleMap map = battleMapService.get(campaignId, mapId);
+        model.addAttribute("map", map);
+        model.addAttribute("hasBackground", map.getBackground() != null);
         model.addAttribute("docUrl", "/campaign/" + campaignId + "/maps/" + mapId + "/doc");
         model.addAttribute("backUrl", "/campaign/" + campaignId + "/maps");
         model.addAttribute("inFight", false);
@@ -98,6 +100,38 @@ public class MapController {
             redirectAttributes.addFlashAttribute("mapError", e.getMessage());
         }
         return "redirect:/campaign/" + campaignId + "/maps/" + mapId + "/edit";
+    }
+
+    /** M-11: подложка карты */
+    @PostMapping("/{mapId}/background")
+    public String uploadBackground(@PathVariable Long campaignId, @PathVariable Long mapId,
+                                   @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+                                   RedirectAttributes redirectAttributes) {
+        try {
+            battleMapService.setBackground(campaignId, mapId, file.getBytes(), file.getContentType());
+        } catch (IllegalArgumentException | java.io.IOException e) {
+            redirectAttributes.addFlashAttribute("mapError", e.getMessage());
+        }
+        return "redirect:/campaign/" + campaignId + "/maps/" + mapId + "/edit";
+    }
+
+    @PostMapping("/{mapId}/background/delete")
+    public String removeBackground(@PathVariable Long campaignId, @PathVariable Long mapId) {
+        battleMapService.removeBackground(campaignId, mapId);
+        return "redirect:/campaign/" + campaignId + "/maps/" + mapId + "/edit";
+    }
+
+    /** Картинка подложки; адрес с версией, поэтому кэшируется надолго */
+    @GetMapping("/{mapId}/background")
+    public org.springframework.http.ResponseEntity<byte[]> background(@PathVariable Long campaignId, @PathVariable Long mapId) {
+        BattleMap map = battleMapService.get(campaignId, mapId);
+        if (map.getBackground() == null) {
+            return org.springframework.http.ResponseEntity.notFound().build();
+        }
+        return org.springframework.http.ResponseEntity.ok()
+                .contentType(org.springframework.http.MediaType.parseMediaType(map.getBackgroundType()))
+                .cacheControl(org.springframework.http.CacheControl.maxAge(java.time.Duration.ofDays(30)))
+                .body(map.getBackground());
     }
 
     @PostMapping("/{mapId}/copy")

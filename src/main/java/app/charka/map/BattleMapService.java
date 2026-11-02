@@ -99,6 +99,55 @@ public class BattleMapService {
         return map;
     }
 
+    /** Подложка до 5 МБ */
+    public static final int BACKGROUND_LIMIT = 5 * 1024 * 1024;
+    private static final java.util.Set<String> IMAGE_TYPES = java.util.Set.of("image/png", "image/jpeg", "image/webp", "image/gif");
+
+    /**
+     * Положить подложку. Если её ещё не размещали — растянуть по ширине карты, высота по пропорциям картинки.
+     *
+     * @throws IllegalArgumentException если не картинка или больше 5 МБ
+     */
+    @Transactional
+    public BattleMap setBackground(Long campaignId, Long mapId, byte[] data, String type) {
+        if (data == null || data.length == 0) {
+            throw new IllegalArgumentException("Выберите картинку");
+        }
+        if (data.length > BACKGROUND_LIMIT) {
+            throw new IllegalArgumentException("Картинка больше 5 МБ");
+        }
+        if (type == null || !IMAGE_TYPES.contains(type)) {
+            throw new IllegalArgumentException("Нужна картинка PNG, JPEG, WebP или GIF");
+        }
+        BattleMap map = get(campaignId, mapId);
+        MapDoc doc = MapDoc.parse(map.getDoc());
+        double height = doc.h();
+        try {
+            java.awt.image.BufferedImage image = javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(data));
+            if (image != null && image.getWidth() > 0) {
+                height = (double) doc.w() * image.getHeight() / image.getWidth();
+            }
+        } catch (java.io.IOException e) {
+            // WebP ImageIO не читает: высота по карте, калибровка поправит
+        }
+        String ver = Integer.toHexString(java.util.Arrays.hashCode(data));
+        MapDoc.Background old = doc.bg();
+        MapDoc.Background placed = old == null ? new MapDoc.Background(0, 0, doc.w(), height, 0.8, ver)
+                : new MapDoc.Background(old.x(), old.y(), old.w(), old.h(), old.opacity(), ver);
+        map.setBackground(data);
+        map.setBackgroundType(type);
+        map.setDoc(doc.withBackground(placed).toJson());
+        return map;
+    }
+
+    @Transactional
+    public void removeBackground(Long campaignId, Long mapId) {
+        BattleMap map = get(campaignId, mapId);
+        map.setBackground(null);
+        map.setBackgroundType(null);
+        map.setDoc(MapDoc.parse(map.getDoc()).withBackground(null).toJson());
+    }
+
     @Transactional
     public void delete(Long campaignId, Long mapId) {
         BattleMap map = get(campaignId, mapId);

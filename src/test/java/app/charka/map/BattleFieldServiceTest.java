@@ -236,5 +236,25 @@ class BattleFieldServiceTest {
                     .andExpect(content().string(org.hamcrest.Matchers.containsString("занята")))
                     .andExpect(header().doesNotExist("ETag"));
         }
+
+        @Test
+        @DisplayName("Мастер правит копию боя: заготовка не меняется, фишка в новой стене уходит в лоток")
+        void editCopy() throws Exception {
+            start();
+            BattleFieldService.Token placed = token(player);
+            MapDoc doc = MapDoc.parse(field.editable(campaign.getId()).doc().toJson());
+            doc.stamps().add(new MapDoc.Stamp("crate", placed.x(), placed.y(), 0));
+            field.updateDoc(campaign.getId(), doc.toJson());
+            entityManager.flush();
+            entityManager.clear();
+
+            assertThat(token(player).x()).isNull();
+            assertThat(MapDoc.parse(maps.get(campaign.getId(), map.getId()).getDoc()).stamps()).hasSize(1);
+            mockMvc.perform(get("/campaign/" + campaign.getId() + "/encounter/edit-map")).andExpect(status().isOk())
+                    .andExpect(content().string(org.hamcrest.Matchers.containsString("/encounter/map/doc")));
+
+            field.saveAsMap(campaign.getId(), "Бар после драки");
+            assertThat(maps.list(campaign.getId())).extracting(BattleMap::getName).contains("Бар после драки");
+        }
     }
 }

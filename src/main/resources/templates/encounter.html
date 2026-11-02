@@ -219,6 +219,7 @@
               <input type="text" name="name" class="grow" maxlength="100" required placeholder="Название" aria-label="Название новой карты">
               <button type="submit" class="btn btn-sm btn-ghost" title="Открытые двери и правки этого боя станут новой картой">Сохранить как карту</button>
             </form>
+            <a th:if="${hasField}" th:href="@{${base} + '/edit-map'}" class="btn btn-sm btn-ghost" title="Взорвали стену, сдвинули ящик: правится копия этого боя">✎ Править карту боя</a>
             <a th:href="@{'/campaign/' + ${campaign.id} + '/maps'}" class="btn btn-sm btn-ghost">🗺 Карты кампании</a>
           </div>
         </section>

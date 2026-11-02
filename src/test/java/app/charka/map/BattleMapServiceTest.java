@@ -158,5 +158,37 @@ class BattleMapServiceTest {
             mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(base))
                     .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("Склад")));
         }
+
+        @Test
+        @DisplayName("Подложка: PNG растягивается по ширине карты, отдаётся с версией; не картинка — отказ")
+        void background() throws Exception {
+            BattleMap map = service.create(campaign.getId(), "План", 10, 5);
+            java.awt.image.BufferedImage image = new java.awt.image.BufferedImage(200, 50, java.awt.image.BufferedImage.TYPE_INT_RGB);
+            java.io.ByteArrayOutputStream png = new java.io.ByteArrayOutputStream();
+            javax.imageio.ImageIO.write(image, "png", png);
+            String base = "/campaign/" + campaign.getId() + "/maps/" + map.getId();
+
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart(base + "/background")
+                            .file(new org.springframework.mock.web.MockMultipartFile("file", "plan.png", "image/png", png.toByteArray())))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().is3xxRedirection());
+            entityManager.flush();
+            entityManager.clear();
+
+            MapDoc doc = MapDoc.parse(service.get(campaign.getId(), map.getId()).getDoc());
+            assertThat(doc.bg().w()).isEqualTo(10);
+            assertThat(doc.bg().h()).isEqualTo(2.5);
+            String url = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(base + "/doc"))
+                    .andReturn().getResponse().getContentAsString();
+            assertThat(url).contains("/background?v=" + doc.bg().ver());
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(base + "/background"))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().contentType("image/png"));
+
+            assertThatThrownBy(() -> service.setBackground(campaign.getId(), map.getId(), new byte[]{1, 2}, "text/plain"))
+                    .hasMessageContaining("картинка");
+            assertThatThrownBy(() -> service.setBackground(campaign.getId(), map.getId(), new byte[BattleMapService.BACKGROUND_LIMIT + 1], "image/png"))
+                    .hasMessageContaining("5 МБ");
+            service.removeBackground(campaign.getId(), map.getId());
+            assertThat(MapDoc.parse(service.get(campaign.getId(), map.getId()).getDoc()).bg()).isNull();
+        }
     }
 }

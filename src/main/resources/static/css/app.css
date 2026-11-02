@@ -1260,3 +1260,4 @@ html:has(.is-editing) {
 .editor-selection { fill: rgba(34, 211, 238, 0.08); stroke: var(--accent); stroke-width: 2; pointer-events: none; }
 .battle-edge.gap { stroke: #475569; stroke-width: 2; stroke-dasharray: 2 5; }
 .editor-generate { padding: 0 16px 10px; }
+.editor-background { margin: 0 16px 10px; }

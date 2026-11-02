@@ -18,6 +18,11 @@
     </div>
   </div>
 
+  <div th:if="${mapError != null}" class="alert alert-error" role="alert">
+    <span class="alert-text" th:text="${mapError}">Картинка больше 5 МБ</span>
+    <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+  </div>
+
   <section class="card editor" th:attr="data-map-editor=@{${docUrl}}">
     <div class="editor-tools" role="toolbar" aria-label="Инструменты">
       <button type="button" class="btn btn-sm btn-ghost" data-tool="room" title="Комната: протянуть прямоугольник. Alt — слить, стены внутри уходят">▭ Комната <kbd>R</kbd></button>
@@ -45,6 +50,22 @@
       </select>
       <button type="submit" class="btn btn-sm btn-ghost">🎲 Ещё вариант</button>
     </form>
+    <!-- M-11: подложка — план или скан; калибровка «протянуть по одной клетке картинки» -->
+    <details th:unless="${inFight}" class="cp-more item-more editor-background">
+      <summary>🖼 Подложка</summary>
+      <div class="form-row">
+        <form th:action="@{'/campaign/' + ${campaign.id} + '/maps/' + ${map.id} + '/background'}" method="post" enctype="multipart/form-data" class="form-row">
+          <input type="file" name="file" accept="image/png,image/jpeg,image/webp,image/gif" required aria-label="Картинка до 5 МБ">
+          <button type="submit" class="btn btn-sm">Загрузить</button>
+        </form>
+        <th:block th:if="${hasBackground}">
+          <button type="button" class="btn btn-sm btn-ghost" data-tool="calibrate" title="Протяните рамку точно по одной клетке картинки">📐 Калибровка <kbd>K</kbd></button>
+          <form th:action="@{'/campaign/' + ${campaign.id} + '/maps/' + ${map.id} + '/background/delete'}" method="post" data-confirm="Убрать подложку?">
+            <button type="submit" class="btn btn-sm btn-ghost">Убрать</button>
+          </form>
+        </th:block>
+      </div>
+    </details>
     <div class="battle-stage editor-stage" data-editor-stage></div>
     <p class="battle-hint" data-editor-hint>R комната · W стена · F заливка · B кисть · O предмет · L ряд · S россыпь · Z зона · T подпись · V выделение · X ластик · 1–9 материал · Q/E поворот · Ctrl+Z/Y · колесо — масштаб, пробел + тянуть — сдвиг</p>
   </section>

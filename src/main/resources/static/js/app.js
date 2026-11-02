@@ -1073,13 +1073,20 @@ const MATERIAL_COLORS = { WALL: '#c7cfdb', DOOR: '#b7834a', WINDOW: '#7dd3fc', O
 
 // Карта без фишек: пол, сетка, зоны, местность, предметы, стены, подписи. Общая для поля боя и редактора.
 // under(svg) рисует то, что ложится под стены (досягаемость); editing — показать проёмы, двери не нажимаются
-function drawMapLayers(svg, doc, materials, objects, under, editing) {
+function drawMapLayers(svg, doc, materials, objects, under, editing, backgroundUrl) {
   const width = doc.w * CELL;
   const height = doc.h * CELL;
   const defs = svgEl('defs', {}, svg);
   const pattern = svgEl('pattern', { id: 'battle-grid', width: CELL, height: CELL, patternUnits: 'userSpaceOnUse' }, defs);
   svgEl('path', { d: `M ${CELL} 0 L 0 0 0 ${CELL}`, class: 'battle-gridline' }, pattern);
   svgEl('rect', { x: 0, y: 0, width, height, class: 'battle-floor' }, svg);
+  // подложка (M-11) под сеткой: стены обводятся поверх
+  if (backgroundUrl && doc.bg) {
+    svgEl('image', {
+      href: backgroundUrl, x: doc.bg.x * CELL, y: doc.bg.y * CELL, width: doc.bg.w * CELL, height: doc.bg.h * CELL,
+      preserveAspectRatio: 'none', opacity: doc.bg.opacity || 0.8, class: 'battle-background'
+    }, svg);
+  }
   svgEl('rect', { x: 0, y: 0, width, height, fill: 'url(#battle-grid)' }, svg);
 
   doc.zones.forEach(zone => svgEl('rect', {
@@ -1176,7 +1183,7 @@ function renderBattle() {
         svgEl('rect', { x: x * CELL, y: y * CELL, width: CELL, height: CELL }, group);
       });
     }
-  });
+  }, false, data.backgroundUrl);
 
   const now = Date.now();
   data.pointers.forEach(pointer => {
@@ -1586,7 +1593,7 @@ function openAttackFromMap(dialog, target, sight) {
 const editor = { url: null, data: null, doc: null, undo: [], redo: [], tool: 'room', size: 1, rot: 0, zone: 'players', gap: 1,
   density: 15, saveTimer: null, view: null, selection: null, clipboard: null, hover: null, space: false };
 
-const EDITOR_TOOLS = { r: 'room', w: 'wall', f: 'fill', b: 'brush', o: 'object', l: 'row', s: 'scatter', z: 'zone', t: 'label', v: 'select', x: 'eraser' };
+const EDITOR_TOOLS = { k: 'calibrate', r: 'room', w: 'wall', f: 'fill', b: 'brush', o: 'object', l: 'row', s: 'scatter', z: 'zone', t: 'label', v: 'select', x: 'eraser' };
 // какой слой материалов у инструмента: цифры 1–9 выбирают из него
 const TOOL_LAYERS = { room: 'WALL', wall: 'WALL', fill: 'TERRAIN', brush: 'TERRAIN' };
 
@@ -2064,7 +2071,7 @@ function renderEditor() {
   const materials = new Map(editor.data.materials.map(material => [material.code, material]));
   const objects = new Map(editor.data.objects.map(object => [object.code, object]));
   const svg = svgEl('svg', { viewBox: [editor.view.x, editor.view.y, editor.view.w, editor.view.h].join(' '), class: 'battle-svg editor-svg' });
-  drawMapLayers(svg, doc, materials, objects, null, true);
+  drawMapLayers(svg, doc, materials, objects, null, true, editor.data.backgroundUrl);
   if (editor.selection) {
     const sel = editor.selection;
     svgEl('rect', { x: sel.x * CELL, y: sel.y * CELL, width: sel.w * CELL, height: sel.h * CELL, class: 'editor-selection' }, svg);
@@ -2072,6 +2079,28 @@ function renderEditor() {
   editor.preview = svgEl('g', { class: 'editor-preview' }, svg);
   stage.replaceChildren(svg);
   wireEditorSvg(svg);
+}
+
+// Калибровка подложки: рамка по одной клетке картинки становится клеткой сетки, её угол — узлом сетки
+function calibrate(a, b) {
+  const bg = editor.doc.bg;
+  const rw = Math.abs(b.x - a.x) / CELL;
+  const rh = Math.abs(b.y - a.y) / CELL;
+  if (!bg || rw < 0.05 || rh < 0.05) {
+    editorStatus('Протяните рамку по одной клетке картинки', true);
+    return false;
+  }
+  beginEdit();
+  const left = Math.min(a.x, b.x) / CELL;
+  const top = Math.min(a.y, b.y) / CELL;
+  const sx = 1 / rw;
+  const sy = 1 / rh;
+  // точка рамки после растяжения картинки от её угла должна встать на ближний узел
+  const scaledLeft = bg.x + (left - bg.x) * sx;
+  const scaledTop = bg.y + (top - bg.y) * sy;
+  editor.doc.bg = { ...bg, w: bg.w * sx, h: bg.h * sy, x: bg.x + Math.round(scaledLeft) - scaledLeft, y: bg.y + Math.round(scaledTop) - scaledTop };
+  editorStatus('Сетка подогнана под картинку');
+  return true;
 }
 
 // Где указатель: клетка, ближний узел сетки и ближняя грань
@@ -2098,6 +2127,10 @@ function editorPreview(start, hit) {
     width: (Math.abs(a.x - b.x) + 1) * CELL, height: (Math.abs(a.y - b.y) + 1) * CELL, class: cls
   }, group);
   if (start && ['room', 'zone', 'scatter', 'select'].includes(tool)) rect(start, hit, 'editor-ghost');
+  if (start && tool === 'calibrate') {
+    svgEl('rect', { x: Math.min(start.point.x, hit.point.x), y: Math.min(start.point.y, hit.point.y),
+      width: Math.abs(hit.point.x - start.point.x), height: Math.abs(hit.point.y - start.point.y), class: 'editor-ghost' }, group);
+  }
   if (start && tool === 'wall') {
     const b = Math.abs(hit.node.x - start.node.x) >= Math.abs(hit.node.y - start.node.y) ? { x: hit.node.x, y: start.node.y } : { x: start.node.x, y: hit.node.y };
     svgEl('line', { x1: start.node.x * CELL, y1: start.node.y * CELL, x2: b.x * CELL, y2: b.y * CELL, class: 'editor-ghost-line' }, group);
@@ -2210,6 +2243,11 @@ function wireEditorSvg(svg) {
         ? { x: Math.min(start.x, hit.x), y: Math.min(start.y, hit.y), w: Math.abs(hit.x - start.x) + 1, h: Math.abs(hit.y - start.y) + 1 }
         : null;
       renderEditor();
+      return;
+    }
+    if (tool === 'calibrate') {
+      if (!calibrate(start.point, hit.point)) return;
+      editDone();
       return;
     }
     beginEdit();

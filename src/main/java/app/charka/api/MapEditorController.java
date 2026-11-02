@@ -26,7 +26,7 @@ public class MapEditorController {
     @GetMapping
     public EditableMap get(@PathVariable Long campaignId, @PathVariable Long mapId) {
         BattleMap map = battleMapService.get(campaignId, mapId);
-        return EditableMap.of(map.getId(), map.getName(), MapDoc.parse(map.getDoc()), battleMapService.rules(campaignId));
+        return EditableMap.of(campaignId, map.getId(), map.getName(), MapDoc.parse(map.getDoc()), battleMapService.rules(campaignId));
     }
 
     @PostMapping(consumes = "application/json")

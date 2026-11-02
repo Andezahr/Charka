@@ -27,10 +27,11 @@ import java.util.Map;
  * @param stamps предметы: машина, ящик
  * @param zones  зоны старта
  * @param labels подписи
+ * @param bg     где лежит подложка, в клетках; null — подложки нет или она не размещена
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record MapDoc(int v, int w, int h, int cell, Map<String, String> walls, Map<String, String> cells,
-                     List<Stamp> stamps, List<Zone> zones, List<Label> labels) {
+                     List<Stamp> stamps, List<Zone> zones, List<Label> labels, Background bg) {
 
     public static final int VERSION = 1;
     public static final int MAX_SIZE = 200;
@@ -47,6 +48,25 @@ public record MapDoc(int v, int w, int h, int cell, Map<String, String> walls, M
         stamps = stamps == null ? new ArrayList<>() : new ArrayList<>(stamps);
         zones = zones == null ? new ArrayList<>() : new ArrayList<>(zones);
         labels = labels == null ? new ArrayList<>() : new ArrayList<>(labels);
+    }
+
+    public MapDoc(int v, int w, int h, int cell, Map<String, String> walls, Map<String, String> cells,
+                  List<Stamp> stamps, List<Zone> zones, List<Label> labels) {
+        this(v, w, h, cell, walls, cells, stamps, zones, labels, null);
+    }
+
+    /**
+     * Подложка на сетке: левый верхний угол и размер в клетках, дробные — после калибровки.
+     *
+     * @param opacity прозрачность 0..1
+     * @param ver     версия картинки: в адресе, чтобы браузер брал новую, а опрос не читал её из БД
+     */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record Background(double x, double y, double w, double h, double opacity, String ver) {
+    }
+
+    public MapDoc withBackground(Background background) {
+        return new MapDoc(v, w, h, cell, walls, cells, stamps, zones, labels, background);
     }
 
     /**

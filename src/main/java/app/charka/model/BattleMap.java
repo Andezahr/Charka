@@ -32,6 +32,13 @@ public class BattleMap {
     @Column(columnDefinition = "TEXT")
     private String doc;
 
+    /** Подложка (M-11): план здания, скан карты; едет с экспортом кампании */
+    private byte[] background;
+
+    /** MIME-тип подложки: image/png, image/jpeg, image/webp, image/gif */
+    @Column(name = "background_type")
+    private String backgroundType;
+
     @JsonBackReference
     @ManyToOne(optional = false)
     @JoinColumn(name = "campaign_id")

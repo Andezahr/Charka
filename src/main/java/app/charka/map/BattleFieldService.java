@@ -56,7 +56,7 @@ public class BattleFieldService {
      * @param objects   готовые предметы системы
      */
     public record Field(Long mapId, String turn, MapDoc doc, String metric, List<Material> materials, List<MapObject> objects,
-                        List<Token> tokens, List<PointerBoard.Pointer> pointers) {
+                        List<Token> tokens, List<PointerBoard.Pointer> pointers, String backgroundUrl) {
     }
 
     /**
@@ -77,8 +77,9 @@ public class BattleFieldService {
                     row.card().out(), row.card().alarming(), row.card().status());
         }).toList();
         String turn = encounter.getRound() + ":" + (view.get().current() == null ? "" : view.get().current().getId());
-        return Optional.of(new Field(encounter.getBattleMapId(), turn, MapDoc.parse(encounter.getMapDoc()), rules.metric(),
-                rules.materials(), rules.objects(), tokens, pointerBoard.live(campaignId)));
+        MapDoc doc = MapDoc.parse(encounter.getMapDoc());
+        return Optional.of(new Field(encounter.getBattleMapId(), turn, doc, rules.metric(), rules.materials(), rules.objects(), tokens,
+                pointerBoard.live(campaignId), EditableMap.backgroundUrl(campaignId, encounter.getBattleMapId(), doc)));
     }
 
     /**
@@ -202,7 +203,7 @@ public class BattleFieldService {
     @Transactional(readOnly = true)
     public EditableMap editable(Long campaignId) {
         Encounter encounter = withMap(campaignId);
-        return EditableMap.of(encounter.getBattleMapId(), "Карта боя", MapDoc.parse(encounter.getMapDoc()), rules(encounter));
+        return EditableMap.of(campaignId, encounter.getBattleMapId(), "Карта боя", MapDoc.parse(encounter.getMapDoc()), rules(encounter));
     }
 
     /** «Сохранить как новую карту»: копия боя становится заготовкой */
