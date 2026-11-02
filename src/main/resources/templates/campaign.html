@@ -185,6 +185,7 @@
 
       <!-- Кубики мастера и последние броски кампании -->
       <section th:replace="~{fragments/dice :: card('/campaign/' + ${campaign.id}, true)}"></section>
+      <section th:replace="~{fragments/chat :: card(${campaign.id}, '/campaign/' + ${campaign.id}, ${campaign.characters})}"></section>
     </div>
   </div>
 </main>

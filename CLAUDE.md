@@ -35,7 +35,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 953 теста, на 2026-11-02 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 956 тестов, на 2026-11-02 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -55,6 +55,7 @@ dice/         DiceExpression (разбор NdM±K), DiceResult, DiceService (б�
 attack/       AttackRules (контракт системы: form, plan, spend, outcome, effectHit, isObjectTarget/damageObject — цель-предмет), AttackSource (предмет или способность), ObjectTarget (машина в списке целей), AttackContext, AttackPlan, AttackOutcome, AttackForm, AttackRequest, AttackHit, AreaDamage (урон по площади), LingeringEffect (что остаётся на цели на следующие раунды), AttackResult, AttackService (один ход для всех атак, урон цели, лог, заряды PendingBlast)
 creation/     CharacterCreation (мастер создания персонажа: форма, бросок очков, создание; реализует система)
 npc/          NpcTemplate, NpcSheet (что выбросила система), NpcService (создание по шаблону, копии, удаление)
+chat/         ChatService (чат кампании: сообщения и броски одной лентой)
 map/          MapDoc (документ карты: стены-грани, клетки, предметы, зоны, подписи, подложка), MapRules (правила карты системы), MapObject, Material, MapGrid (что в клетке, линия взгляда, досягаемость), TokenPlacer, BattleMapService (карты кампании, подложка), BattleFieldService (поле идущего боя), PointerBoard (указатели в памяти), MapGenerator, EditableMap
 encounter/    EncounterService (бой кампании: очередь, раунды, ожидание, урон, противостояния), CombatContest (противостояние от системы), EncounterView (страница боя), Initiative, InitiativeDeclaration и CombatCard (что отдаёт система)
 check/        CheckRequest/CheckResult/CheckResolver (GenericCheckResolver: d20), OpposedCheckResult, CheckService (правила системы + лог)
@@ -78,6 +79,7 @@ TODO.txt       список планов автора (см. ниже)
 ```
 Campaign (name, system, startDate, currentDate)   — system: код GameSystem (колонка game_system)
  ├─ RollLog* (character?, expression, details, total, label, gameDate, createdAt) — без коллекции в Campaign, не экспортируется
+ ├─ ChatMessage* (character?, author, text, gameDate, createdAt) — чат, как лог: без коллекции, не экспортируется
  ├─ BattleMap* (name, doc JSON, background) — карта боя, заготовка
  ├─ Encounter (round, groupPlayers, groupNpcs, mapDoc — копия карты, battleMapId) └─ EncounterParticipant* (character, initiative, initiativeDetails, turnOrder, done, waiting, declaration, posX, posY) └─ CombatEffect* (label, roundsLeft, damage, attackOption, data) — идущий бой, один на кампанию; закончился — удаляется
  ├─ Chronicle* (name, startDate, endDate)     — запись о прошедшем периоде
@@ -147,6 +149,7 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 | POST | `/character/{id}/installed/{action}` | действие блока вживлённого (CP2020: `THERAPY`, `source`, `amount`), итог в блоке |
 | GET, POST | `/campaign/{id}/maps`, `.../generate`, `.../{mapId}/edit\|copy\|rename\|delete\|regenerate\|background` | карты кампании, генератор, редактор, подложка; GET/POST `.../{mapId}/doc` — документ (JSON, автосохранение) |
 | GET, POST | `/campaign/{id}/encounter/map`, `.../participants/{pid}/move\|lift\|reach`, `.../sight`, `.../door`, `.../pointer`, `.../doc` | поле боя: JSON с ETag (опрос), ход фишки (204/400 текстом), досягаемость, линия взгляда, дверь, указатель, правка копии; POST `/encounter/attach`, `/save-map`, GET `/edit-map` |
+| GET, POST | `/campaign/{id}/chat` | лента чата и бросков (фрагмент, ETag, опрос); POST `character?`, `text`, `returnTo` → сообщение |
 | GET | `/campaign/{id}/gm` | экран мастера: все персонажи — состояние, броня, статы, эффекты, деньги |
 | POST | `/character/{id}/effects`, `.../effects/{eid}/delete` | `template` (готовый эффект системы) или `name`, `stat`, `modifier`, `duration`, `unit` → временный эффект; раунды идут в трекере, дни — при промотке |
 | POST | `/character/{id}/contacts`, `.../{cid}/edit\|delete` | контакты: `name`, `role`, `relation`, `owes`, `note` |
@@ -199,6 +202,6 @@ Default-методы стратегии: `getSystems()` (пусто = униве
    - **Мана / ячейки заклинаний** (D&D), **вдохновение**, **броня** (CP2020 SP/абляция).
 2. Периодические траты (привязать к `proceedDate`).
 3. ~~Броски кубиков с сохранением истории.~~ (D-01..D-03)
-4. Возможно — чат кампании.
+4. ~~Возможно — чат кампании.~~ (U-06)
 
 Сделано из TODO: заметки, хроники, раны как отдельная сущность, смена даты, окно трат, базовые счётчики.

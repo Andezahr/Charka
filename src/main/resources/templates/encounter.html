@@ -224,23 +224,8 @@
           </div>
         </section>
 
-        <!-- Журнал: итог атаки и урон остаются на экране, когда сообщение в строке уже ушло -->
-        <section class="card">
-          <div class="card-head"><h2 class="card-title"><span class="dot pink"></span>Последние броски</h2></div>
-          <div class="card-body list">
-            <div th:each="r : ${recentRolls}" class="row roll-row">
-              <div class="row-main">
-                <div class="row-title">
-                  <span th:text="${r.character != null ? r.character.name : 'Мастер'}">Колясик</span>
-                  <span th:if="${r.label != null}" th:text="'· ' + ${r.label}">· Атака</span>
-                </div>
-                <div class="row-meta"><span th:text="${r.expression} + ': ' + ${r.details}">d10: 7</span></div>
-              </div>
-              <span class="amount" th:text="${r.total}">8</span>
-            </div>
-            <div th:if="${#lists.isEmpty(recentRolls)}" class="empty">Бросков пока нет</div>
-          </div>
-        </section>
+        <!-- Журнал: итог атаки и урон остаются на экране, когда сообщение в строке уже ушло; рядом — чат стола (U-06) -->
+        <section th:replace="~{fragments/chat :: card(${campaign.id}, ${base}, ${campaign.characters})}"></section>
 
         <form th:action="@{${base} + '/end'}" method="post" data-confirm="Закончить бой? Раны и расход патронов останутся.">
           <button type="submit" class="btn btn-danger encounter-end">Закончить бой</button>

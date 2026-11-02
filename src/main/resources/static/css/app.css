@@ -1261,3 +1261,14 @@ html:has(.is-editing) {
 .battle-edge.gap { stroke: #475569; stroke-width: 2; stroke-dasharray: 2 5; }
 .editor-generate { padding: 0 16px 10px; }
 .editor-background { margin: 0 16px 10px; }
+
+/* ===== Чат кампании (U-06) ===== */
+.chat-me { max-width: 140px; }
+.chat-feed { max-height: 420px; overflow-y: auto; }
+.chat-row { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+.chat-row:last-child { border-bottom: none; }
+.chat-who { font-weight: 600; color: var(--accent); white-space: nowrap; }
+.chat-row.is-roll { color: var(--text-soft); font-size: 13px; }
+.chat-row.is-roll .chat-who { color: var(--muted); font-weight: 500; }
+.chat-text { overflow-wrap: anywhere; }
+.field-error { color: var(--danger); font-size: 13px; margin: 4px 0 0; }

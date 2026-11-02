@@ -737,6 +737,59 @@ function initPage() {
 
   initBattle();
   initEditor();
+  initChat();
+}
+
+// Чат кампании (U-06): лента опрашивается раз в 3 с (раз в 10 с после минуты тишины) с ETag и подменяется целиком,
+// форма отправляется как обычно; после отправки курсор снова в поле
+const chat = { url: null, etag: null, timer: null, quietSince: 0, refocus: false };
+
+function initChat() {
+  const card = document.querySelector('[data-chat]');
+  clearTimeout(chat.timer);
+  if (!card) {
+    chat.url = null;
+    return;
+  }
+  if (chat.url !== card.dataset.chat) Object.assign(chat, { url: card.dataset.chat, etag: null, quietSince: Date.now() });
+  const me = card.querySelector('[data-me]');
+  const key = meKey(chat.url);
+  if (me) {
+    try {
+      const stored = localStorage.getItem(key);
+      if (stored !== null && [...me.options].some(option => option.value === stored)) me.value = stored;
+    } catch (e) { /* только удобство */ }
+    me.addEventListener('change', () => {
+      try { localStorage.setItem(key, me.value); } catch (e) { /* только удобство */ }
+    });
+  }
+  const form = card.querySelector('form');
+  form.addEventListener('submit', () => { chat.refocus = true; });
+  if (chat.refocus) {
+    chat.refocus = false;
+    const input = form.querySelector('input[name="text"]');
+    if (input) input.focus({ preventScroll: true });
+  }
+  chat.timer = setTimeout(pollChat, 3000);
+}
+
+async function pollChat() {
+  const card = document.querySelector('[data-chat]');
+  if (!card || card.dataset.chat !== chat.url) return;
+  if (!document.hidden) {
+    try {
+      const response = await fetch(chat.url, { cache: 'no-store', headers: chat.etag ? { 'If-None-Match': chat.etag } : {} });
+      if (response.status === 200) {
+        // первый ответ после загрузки тоже подставляем: между отрисовкой страницы и опросом могли написать
+        const changed = chat.etag !== null;
+        chat.etag = response.headers.get('ETag');
+        const feed = card.querySelector('[data-chat-feed]');
+        if (feed) feed.innerHTML = await response.text();
+        if (changed) chat.quietSince = Date.now();
+      }
+    } catch (e) { /* сеть пропала: попробуем позже */ }
+  }
+  chat.timer = setTimeout(pollChat, Date.now() - chat.quietSince > 60000 ? 10000 : 3000);
 }
 
 // Выбор из нескольких вариантов у фишки: второе нажатие мимо закрывает меню
@@ -917,8 +970,13 @@ const svgEl = (name, attrs, parent) => {
   return el;
 };
 
+// «Я — …» одно на кампанию: им подписаны сообщения чата и выбрана своя фишка
+const meKey = url => {
+  const match = /\/campaign\/(\d+)/.exec(url || '');
+  return 'charka.me.campaign.' + (match ? match[1] : '');
+};
 const battleMe = () => {
-  try { return localStorage.getItem('charka.battle.me.' + battle.url) || ''; } catch (e) { return ''; }
+  try { return localStorage.getItem(meKey(battle.url)) || ''; } catch (e) { return ''; }
 };
 
 // Мера «прямая»: та же формула, что MapRules.distance на сервере
@@ -954,7 +1012,7 @@ function initBattle() {
     me.value = battleMe();
     if (me.selectedIndex < 0) me.value = '';
     me.addEventListener('change', () => {
-      try { localStorage.setItem('charka.battle.me.' + battle.url, me.value); } catch (e) { /* только удобство */ }
+      try { localStorage.setItem(meKey(battle.url), me.value); } catch (e) { /* только удобство */ }
       battle.selected = undefined;
       renderBattle();
     });

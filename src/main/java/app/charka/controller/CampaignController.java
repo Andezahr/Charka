@@ -32,17 +32,19 @@ public class CampaignController {
     private final GameSystemRegistry systemRegistry;
     private final DiceService diceService;
     private final CampaignAwardService awardService;
+    private final app.charka.chat.ChatService chatService;
     private final List<app.charka.creation.CharacterCreation> creations;
 
     public CampaignController(CampaignService campaignService, CharacterService characterService,
                               GameSystemRegistry systemRegistry, DiceService diceService, CampaignAwardService awardService,
-                              List<app.charka.creation.CharacterCreation> creations) {
+                              List<app.charka.creation.CharacterCreation> creations, app.charka.chat.ChatService chatService) {
         this.creations = creations;
         this.campaignService = campaignService;
         this.characterService = characterService;
         this.systemRegistry = systemRegistry;
         this.diceService = diceService;
         this.awardService = awardService;
+        this.chatService = chatService;
     }
 
     @GetMapping
@@ -65,6 +67,7 @@ public class CampaignController {
         org.springframework.data.domain.Page<app.charka.model.RollLog> rollPage = diceService.pageForCampaign(campaignId, rolls, ROLLS_PER_PAGE);
         model.addAttribute("recentRolls", rollPage.getContent());
         model.addAttribute("rollPage", rollPage);
+        model.addAttribute("feed", chatService.feed(campaignId, ChatController.FEED_SIZE));
         model.addAttribute("awardCounters", awardService.awardableCounters(campaignId));
         model.addAttribute("hasCreation", creations.stream().anyMatch(creation -> creation.getSystemCode().equals(campaign.getSystem())));
 
