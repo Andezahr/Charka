@@ -326,6 +326,13 @@ public interface GameSystem {
     }
 
     /**
+     * Свойства предметов, в которых хранится id другого предмета (программа в деке): при импорте кампании их переводят на новые id.
+     */
+    default java.util.Set<String> getItemReferenceKeys() {
+        return java.util.Set.of();
+    }
+
+    /**
      * Готовые временные эффекты (препараты, стимуляторы) для блока «Эффекты» на листе. Пусто — только свой эффект.
      */
     default List<app.charka.effect.EffectTemplate> getEffectTemplates() {

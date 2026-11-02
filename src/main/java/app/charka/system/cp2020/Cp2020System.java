@@ -403,6 +403,11 @@ public class Cp2020System implements GameSystem {
     }
 
     @Override
+    public java.util.Set<String> getItemReferenceKeys() {
+        return java.util.Set.of(Cp2020Netrunning.LOADED_IN, Cp2020ItemTypes.LIMB_HOST);
+    }
+
+    @Override
     public List<app.charka.effect.EffectTemplate> getEffectTemplates() {
         return Cp2020Drugs.TEMPLATES;
     }

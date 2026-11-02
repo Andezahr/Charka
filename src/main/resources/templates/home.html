@@ -5,6 +5,10 @@
 <header th:replace="~{fragments/layout :: topbar(null, 'home')}"></header>
 
 <main class="page">
+  <div th:if="${errorMessage != null}" class="alert alert-error" role="alert">
+    <span class="alert-text" th:text="${errorMessage}">Ошибка</span>
+    <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+  </div>
   <div class="page-head">
     <div>
       <span class="eyebrow">Менеджер персонажей</span>
@@ -37,6 +41,12 @@
                    title="Дата начала (по умолчанию — сегодня)">
             <button type="submit" class="btn btn-primary">＋ Создать</button>
           </div>
+        </form>
+      </div>
+      <div class="card-body">
+        <form th:action="@{/campaigns/import}" method="post" enctype="multipart/form-data" class="form-row">
+          <input type="file" name="file" accept=".json,application/json" class="grow" required aria-label="JSON экспорта кампании">
+          <button type="submit" class="btn btn-sm">⬆ Импорт</button>
         </form>
       </div>
       <div class="card-body list">

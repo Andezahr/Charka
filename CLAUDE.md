@@ -35,7 +35,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 871 тест, на 2026-11-02 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 897 тестов, на 2026-11-02 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -130,6 +130,7 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 | POST | `/campaign/{id}/encounter/participants/{pid}/wait\|join\|remove\|initiative\|damage\|stabilize`, `.../save/{code}`, `.../effects/{eid}/remove`, `.../declare/{code}`, `.../check` | ожидание, вступление, убрать, инициатива вручную, урон (`amount`, `location?`, `damageType?`), спасбросок, снять эффект, объявить (CP2020: `FAST_DRAW`), проверка навыка (`skill`, `difficulty?`); итог во flash в строке участника |
 | POST | `/character/{id}/npc/copy`, `.../npc/delete` | `count` → копии NPC без ран; удаление только NPC |
 | GET | `/api/campaigns/{id}/download` | экспорт кампании в JSON-файл |
+| POST | `/campaigns/import` | `file` — JSON экспорта → новая кампания (id новые, ссылки предметов переводятся) |
 | POST | `/campaign/{id}/roll`, `/character/{id}/roll` | `expression` или `quick`, `label?` → бросок в лог, результат во flash |
 | POST | `/campaign/{id}/check`, `/character/{id}/check` | `modifier`, `difficulty?`, `label?` → проверка по правилам системы, `checkResult` во flash |
 | GET | `/character/{id}` | лист персонажа (раны, инвентари, деньги, кубики) |

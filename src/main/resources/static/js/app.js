@@ -834,7 +834,8 @@ document.addEventListener('submit', async e => {
   const method = (form.getAttribute('method') || 'get').toLowerCase();
   if (method === 'dialog') return;
   e.preventDefault();
-  const data = new URLSearchParams(new FormData(form, e.submitter));
+  // файлы (импорт кампании) уходят как multipart, остальное — обычной формой
+  const data = form.enctype === 'multipart/form-data' ? new FormData(form, e.submitter) : new URLSearchParams(new FormData(form, e.submitter));
   if (method === 'get') {
     const url = new URL(action, location.href);
     url.search = data.toString();

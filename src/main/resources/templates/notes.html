@@ -5,6 +5,10 @@
 <header th:replace="~{fragments/layout :: topbar(${character.id}, 'notes')}"></header>
 
 <main class="page">
+  <div th:if="${errorMessage != null}" class="alert alert-error" role="alert">
+    <span class="alert-text" th:text="${errorMessage}">Ошибка</span>
+    <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+  </div>
   <div class="page-head">
     <div>
       <span class="eyebrow">Заметки</span>
