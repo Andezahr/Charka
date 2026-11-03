@@ -267,7 +267,10 @@ public class Cp2020System implements GameSystem {
         return Cp2020Initiative.roll(character, getCurrentStats(character), dice);
     }
 
-    /** «Every round... The order of the round is based on an initiative roll» (книга, с. 97) */
+    /**
+     * С. 97: «Every round, each player gets to do something. The order of the round is based on an initiative roll of 1D10
+     * plus the players REF stat». Автор решил (A-13): каждый раунд. Кампания может переключить ({@code Campaign.initiativeEachRound}).
+     */
     @Override
     public boolean rollsInitiativeEachRound() {
         return true;

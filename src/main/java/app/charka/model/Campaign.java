@@ -36,6 +36,13 @@ public class Campaign {
     @Column(name = "invite_token", length = 64)
     private String inviteToken;
 
+    /**
+     * A-13: инициатива бросается заново каждый раунд; иначе раз за бой. Новой кампании ставится по системе
+     * ({@code GameSystem.rollsInitiativeEachRound}), дальше мастер переключает в бою.
+     */
+    @Column(name = "initiative_each_round")
+    private boolean initiativeEachRound = true;
+
     private LocalDate startDate;
     @Column(name = "current_date_value")
     private LocalDate currentDate;

@@ -40,6 +40,7 @@
       </form>
     </div>
     <div class="card-body empty" th:if="${#lists.isEmpty(scenes)}">Подготовьте бой заранее: карта, NPC, засада — и он начнётся одним нажатием</div>
+    <div class="card-body encounter-group" th:replace="~{::initiative-mode}"></div>
   </section>
   <section th:if="${view == null and isGm}" class="card">
     <form th:action="@{${base} + '/start'}" method="post">
@@ -273,6 +274,17 @@
                 <option th:each="c : ${view.addable}" th:value="${c.id}" th:text="${c.name}">Бустер 2</option>
               </select>
               <button type="submit" class="btn">＋ В бой</button>
+            </form>
+          </div>
+        </section>
+
+        <section class="card" th:if="${isGm}">
+          <div class="card-body encounter-group" th:fragment="initiative-mode">
+            <!-- A-13: книга (с. 97) не говорит однозначно; выбор кампании, действует с нового раунда -->
+            <span class="label">Инициатива</span>
+            <form th:action="@{'/campaign/' + ${campaign.id} + '/encounter/initiative-mode'}" method="post" class="form-row">
+              <button type="submit" name="eachRound" value="false" class="btn btn-sm" th:classappend="${campaign.initiativeEachRound} ? 'btn-ghost' : 'btn-primary'">Раз за бой</button>
+              <button type="submit" name="eachRound" value="true" class="btn btn-sm" th:classappend="${campaign.initiativeEachRound} ? 'btn-primary' : 'btn-ghost'">Каждый раунд</button>
             </form>
           </div>
         </section>

@@ -28,6 +28,7 @@ public class CampaignService {
     @Transactional
     public Campaign create(Campaign campaign) {
         campaign.setSystem(systemRegistry.get(campaign.getSystem()).getCode());
+        campaign.setInitiativeEachRound(systemRegistry.get(campaign.getSystem()).rollsInitiativeEachRound());
         if (campaign.getStartDate() == null) {
             campaign.setStartDate(LocalDate.now());
         }

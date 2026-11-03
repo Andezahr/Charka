@@ -256,7 +256,8 @@ public interface GameSystem {
     }
 
     /**
-     * Очередь бросается заново каждый раунд; иначе один раз за бой.
+     * Очередь бросается заново каждый раунд; иначе один раз за бой. Это значение по умолчанию для новой кампании:
+     * дальше решает {@code Campaign.initiativeEachRound} (A-13).
      */
     default boolean rollsInitiativeEachRound() {
         return false;

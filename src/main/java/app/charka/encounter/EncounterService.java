@@ -578,23 +578,72 @@ public class EncounterService {
         return report;
     }
 
-    /** Новый раунд: все снова ходят; очередь бросается заново, если так велит система */
+    /**
+     * Новый раунд: все снова ходят; очередь бросается заново, если так решила кампания (A-13). Без нового броска
+     * прибавка объявления прошлого раунда (быстрое выхватывание +3) снимается: она была на один раунд.
+     */
     private void startRound(Encounter encounter, GameSystem system) {
         encounter.setRound(encounter.getRound() + 1);
         RoundDice dice = new RoundDice(encounter);
+        boolean reroll = encounter.getCampaign().isInitiativeEachRound();
         encounter.getParticipants().forEach(participant -> {
+            if (!reroll) {
+                if (participant.getDeclaration() != null) {
+                    withdrawDeclaration(participant, system);
+                }
+                applyEffectBonus(participant);
+            }
             participant.setDone(false);
             participant.setWaiting(false);
             participant.setDeclaration(null);
             participant.setMovedMeters(0);
             participant.setActions(0);
-            if (system.rollsInitiativeEachRound()) {
+            if (reroll) {
                 roll(participant, system, dice);
             }
         });
-        if (system.rollsInitiativeEachRound()) {
-            sortByInitiative(encounter);
+        sortByInitiative(encounter);
+    }
+
+    private static void withdrawDeclaration(EncounterParticipant participant, GameSystem system) {
+        system.getInitiativeDeclarations(participant.getCharacter()).stream()
+                .filter(declaration -> declaration.code().equals(participant.getDeclaration()))
+                .findFirst()
+                .ifPresent(declaration -> {
+                    participant.setInitiative(participant.getInitiative() - declaration.bonus());
+                    String tail = " + " + declaration.label() + " " + declaration.bonus();
+                    String details = participant.getInitiativeDetails();
+                    if (details != null && details.endsWith(tail)) {
+                        participant.setInitiativeDetails(details.substring(0, details.length() - tail.length()));
+                    }
+                });
+    }
+
+    private static final java.util.regex.Pattern EFFECT_BONUS = java.util.regex.Pattern.compile(" [+] эффекты (-?[0-9]+)$");
+
+    /**
+     * Без нового броска прибавки эффектов к инициативе (Speedware +3 на 5 раундов) меняют её сами: то, что прибавлено
+     * при прошлом броске или раунде, записано в конце расшифровки «+ эффекты N».
+     */
+    private static void applyEffectBonus(EncounterParticipant participant) {
+        int bonus = participant.getEffects().stream()
+                .mapToInt(effect -> Integer.parseInt(effect.getData().getOrDefault(INITIATIVE_BONUS, "0")))
+                .sum();
+        String details = participant.getInitiativeDetails() == null ? "" : participant.getInitiativeDetails();
+        java.util.regex.Matcher applied = EFFECT_BONUS.matcher(details);
+        int old = applied.find() ? Integer.parseInt(applied.group(1)) : 0;
+        if (bonus == old) {
+            return;
         }
+        String base = applied.find(0) ? details.substring(0, applied.start()) : details;
+        participant.setInitiative(participant.getInitiative() - old + bonus);
+        participant.setInitiativeDetails(base + (bonus != 0 ? " + эффекты " + bonus : ""));
+    }
+
+    /** A-13: мастер переключает, бросать ли инициативу каждый раунд; действует с нового раунда */
+    @Transactional
+    public void setInitiativeEachRound(Long campaignId, boolean eachRound) {
+        campaign(campaignId).setInitiativeEachRound(eachRound);
     }
 
     /** Первый, кто ещё не ходил; ждавшие получают ход, когда больше ходить некому */

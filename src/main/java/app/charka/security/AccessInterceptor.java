@@ -31,7 +31,8 @@ public class AccessInterceptor implements HandlerInterceptor {
 
     /** Бой — для всех за столом, но начать, закончить и править карту может только мастер */
     private static final Set<String> GM_ONLY_IN_FIGHT = Set.of("/encounter/start", "/encounter/end", "/encounter/attach",
-            "/encounter/save-map", "/encounter/edit-map", "/encounter/map/doc", "/encounter/participants", "/encounter/map/tokens");
+            "/encounter/save-map", "/encounter/edit-map", "/encounter/map/doc", "/encounter/participants", "/encounter/map/tokens",
+            "/encounter/initiative-mode");
 
     private final AccessService accessService;
     private final CampaignRepository campaignRepository;

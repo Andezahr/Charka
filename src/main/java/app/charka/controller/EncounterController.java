@@ -147,6 +147,13 @@ public class EncounterController {
                 .orElse(java.util.Map.of("turn", "", "current", "", "name", ""));
     }
 
+    /** A-13: инициатива каждый раунд или раз за бой — выбор кампании, с нового раунда */
+    @PostMapping("/initiative-mode")
+    public String initiativeMode(@PathVariable Long campaignId, @RequestParam boolean eachRound) {
+        encounterService.setInitiativeEachRound(campaignId, eachRound);
+        return redirect(campaignId, null);
+    }
+
     /** «Следующий ход» у мастера; игрок передаёт ход только на своём ходу («Закончить ход») */
     @PostMapping("/next")
     public String next(@PathVariable Long campaignId, RedirectAttributes redirectAttributes) {

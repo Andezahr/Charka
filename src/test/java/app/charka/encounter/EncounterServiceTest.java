@@ -66,6 +66,8 @@ class EncounterServiceTest {
         Campaign created = new Campaign();
         created.setName("Тест");
         created.setSystem(system);
+        // как у новой кампании: по системе (A-13)
+        created.setInitiativeEachRound("CP2020".equals(system));
         created.setStartDate(LocalDate.of(2037, 1, 1));
         created.setCurrentDate(LocalDate.of(2037, 1, 1));
         return campaignRepository.save(created);
@@ -248,6 +250,7 @@ class EncounterServiceTest {
         @Test
         @DisplayName("десятка не даёт дополнительного кубика: это не проверка")
         void tenDoesNotExplode() {
+            encounterService.setInitiativeEachRound(campaign.getId(), true);
             when(dice.roll(10)).thenReturn(10);
             start(anna);
             int withTen = participant(anna).getInitiative();
@@ -258,8 +261,9 @@ class EncounterServiceTest {
         }
 
         @Test
-        @DisplayName("новый раунд: инициатива бросается заново")
+        @DisplayName("A-13: кампания «каждый раунд» — новый раунд бросает инициативу заново")
         void rerollsEachRound() {
+            encounterService.setInitiativeEachRound(campaign.getId(), true);
             when(dice.roll(10)).thenReturn(5);
             start(anna);
             int first = participant(anna).getInitiative();
@@ -269,6 +273,25 @@ class EncounterServiceTest {
 
             assertThat(view().encounter().getRound()).isEqualTo(2);
             assertThat(participant(anna).getInitiative()).isEqualTo(first + 4);
+        }
+
+        @Test
+        @DisplayName("A-13: кампания «раз за бой» — новый раунд очередь не бросает, выхватывание +3 снимается")
+        void oncePerFight() {
+            encounterService.setInitiativeEachRound(campaign.getId(), false);
+            when(dice.roll(10)).thenReturn(5);
+            start(anna);
+            int first = participant(anna).getInitiative();
+            String details = participant(anna).getInitiativeDetails();
+            encounterService.declare(campaign.getId(), participant(anna).getId(), "FAST_DRAW");
+            assertThat(participant(anna).getInitiative()).isEqualTo(first + 3);
+            when(dice.roll(10)).thenReturn(9);
+
+            encounterService.next(campaign.getId());
+
+            assertThat(view().encounter().getRound()).isEqualTo(2);
+            assertThat(participant(anna).getInitiative()).isEqualTo(first);
+            assertThat(participant(anna).getInitiativeDetails()).isEqualTo(details);
         }
     }
 
