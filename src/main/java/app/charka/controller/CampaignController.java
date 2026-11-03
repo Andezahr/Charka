@@ -36,14 +36,11 @@ public class CampaignController {
     private final app.charka.security.AccessService accessService;
     private final app.charka.repository.AppUserRepository userRepository;
     private final List<app.charka.creation.CharacterCreation> creations;
-    private final app.charka.security.InviteService inviteService;
 
     public CampaignController(CampaignService campaignService, CharacterService characterService,
                               GameSystemRegistry systemRegistry, DiceService diceService, CampaignAwardService awardService,
-                              List<app.charka.creation.CharacterCreation> creations, app.charka.chat.ChatService chatService, app.charka.security.AccessService accessService, app.charka.repository.AppUserRepository userRepository,
-                              app.charka.security.InviteService inviteService) {
+                              List<app.charka.creation.CharacterCreation> creations, app.charka.chat.ChatService chatService, app.charka.security.AccessService accessService, app.charka.repository.AppUserRepository userRepository) {
         this.creations = creations;
-        this.inviteService = inviteService;
         this.campaignService = campaignService;
         this.characterService = characterService;
         this.systemRegistry = systemRegistry;
@@ -97,15 +94,7 @@ public class CampaignController {
         model.addAttribute("feed", chatService.feed(campaignId, ChatController.FEED_SIZE, accessService.isGm(campaign)));
         model.addAttribute("awardCounters", awardService.awardableCounters(campaignId));
         model.addAttribute("hasCreation", creations.stream().anyMatch(creation -> creation.getSystemCode().equals(campaign.getSystem())));
-        // A-02: ссылка-приглашение и QR-код — мастеру, по адресу ноутбука в локальной сети
-        if (accessService.isEnabled() && accessService.isGm(campaign)) {
-            String path = "/join/" + inviteService.token(campaignId);
-            model.addAttribute("invitePort", request.getServerPort());
-            model.addAttribute("invites", inviteService.addresses(request.getScheme(), request.getServerName(), request.getServerPort()).stream()
-                    .map(address -> java.util.Map.of("url", address.url() + path, "svg", inviteService.qrSvg(address.url() + path),
-                            "label", address.label(), "recommended", address.recommended()))
-                    .toList());
-        }
+        // A-02: приглашение — во вкладке «Настройки» (R-13)
 
         return "campaign";
     }
@@ -116,7 +105,7 @@ public class CampaignController {
     @PostMapping("/characters/{characterId}/player")
     @org.springframework.transaction.annotation.Transactional
     public String assignPlayer(@PathVariable Long campaignId, @PathVariable Long characterId, @RequestParam(defaultValue = "") String username,
-                               RedirectAttributes redirectAttributes) {
+                               RedirectAttributes redirectAttributes, jakarta.servlet.http.HttpServletRequest request) {
         Character character = campaignService.getById(campaignId).getCharacters().stream()
                 .filter(candidate -> candidate.getId().equals(characterId)).findFirst()
                 .orElseThrow(app.charka.exception.NotFoundException.forId("Character", characterId));
@@ -127,7 +116,7 @@ public class CampaignController {
             userRepository.findByUsername(login).ifPresentOrElse(character::setPlayer,
                     () -> redirectAttributes.addFlashAttribute("playerError", "Нет пользователя «" + login + "»: пусть сначала зарегистрируется"));
         }
-        return "redirect:/campaign/" + campaignId;
+        return "redirect:" + Referers.back(request, "/campaign/" + campaignId);
     }
 
     /**

@@ -19,7 +19,6 @@
       <th:block th:replace="~{fragments/reference :: open-button(${campaign.id})}"></th:block>
       <th:block th:if="${isGm}">
         <a th:href="@{'/campaign/' + ${campaign.id} + '/print'}" target="_blank" class="btn btn-ghost" title="Листы всех игроков, каждый с новой страницы">🖨 Распечатать всех</a>
-        <a th:href="@{'/api/campaigns/' + ${campaign.id} + '/download'}" class="btn" download>⬇ Скачать JSON</a>
       </th:block>
     </div>
   </div>
@@ -51,38 +50,6 @@
       <div th:if="${playerError != null}" class="card-body"><p class="field-error" th:text="${playerError}">Нет такого логина</p></div>
     </section>
 
-    <!-- A-02: приглашение игроков — QR-код с телефона, ссылка; адресов несколько — выбор -->
-    <section class="card" id="invite" th:if="${invites != null}" data-invite>
-      <div class="card-head">
-        <h2 class="card-title"><span class="dot"></span>Пригласить игроков</h2>
-      </div>
-      <div class="card-body">
-        <p class="page-sub">Наведите камеру телефона: вход или регистрация — и игрок забирает свободного персонажа сам.</p>
-        <select th:if="${#lists.size(invites) > 1}" data-invite-select aria-label="Адрес ноутбука в сети">
-          <option th:each="invite, i : ${invites}" th:value="${i.index}"
-                  th:text="${(invite.get('recommended') ? '✓ ' : '') + invite.get('url').replaceAll('/join/.*', '') + ' — ' + invite.get('label')}">✓ http://192.168.1.5:8080 — Wi-Fi или кабель</option>
-        </select>
-        <div th:each="invite, i : ${invites}" class="invite" data-invite-qr th:hidden="${i.index > 0}">
-          <div class="invite-qr" th:utext="${invite.get('svg')}"></div>
-          <a class="invite-link" th:href="${invite.get('url')}" th:text="${invite.get('url')}">http://192.168.1.5:8080/join/…</a>
-          <span class="invite-net" th:classappend="${invite.get('recommended')} ? 'is-good'" th:text="${invite.get('label')}">Wi-Fi или кабель</span>
-        </div>
-        <!-- Телефон в той же сети, а страница не открывается — почти всегда брандмауэр Windows: он закрывает порт в «общественной» сети -->
-        <details class="cp-more item-more">
-          <summary>Телефон не открывает ссылку?</summary>
-          <ol class="invite-help">
-            <li>Телефон — в той же Wi-Fi-сети, что ноутбук (не мобильный интернет), адрес — с ✓.</li>
-            <li>Брандмауэр Windows пропускает порт: PowerShell от имени администратора —
-              <code th:text="'New-NetFirewallRule -DisplayName &quot;Charka&quot; -Direction Inbound -Protocol TCP -LocalPort ' + ${invitePort} + ' -Action Allow -Profile Private,Public'">New-NetFirewallRule …</code></li>
-            <li>Или в параметрах Windows сделайте эту сеть «Частной» и разрешите Java при первом запросе брандмауэра.</li>
-          </ol>
-        </details>
-        <form th:action="@{'/campaign/' + ${campaign.id} + '/invite/reset'}" method="post" class="form-row"
-              data-confirm="Старая ссылка перестанет работать. Сбросить?">
-          <button type="submit" class="btn btn-sm btn-ghost">Новая ссылка</button>
-        </form>
-      </div>
-    </section>
 
     <!-- NPC мастера -->
     <section class="card" id="npcs" th:if="${isGm}">

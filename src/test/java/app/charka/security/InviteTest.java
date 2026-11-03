@@ -153,7 +153,7 @@ class InviteTest {
         @Test
         @DisplayName("На странице кампании QR-код и ссылка; игрок их не видит")
         void card() throws Exception {
-            String page = mockMvc.perform(get("/campaign/" + campaign.getId()).with(user("master")))
+            String page = mockMvc.perform(get("/campaign/" + campaign.getId() + "/settings").with(user("master")))
                     .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
             assertThat(page).contains("Пригласить игроков", "<svg", "/join/" + token);
         }
@@ -162,7 +162,7 @@ class InviteTest {
         @DisplayName("Новая ссылка: старая — 404")
         void reset() throws Exception {
             mockMvc.perform(post("/campaign/" + campaign.getId() + "/invite/reset").with(user("master")).with(csrf()))
-                    .andExpect(redirectedUrl("/campaign/" + campaign.getId() + "#invite"));
+                    .andExpect(redirectedUrl("/campaign/" + campaign.getId() + "/settings#invite"));
             mockMvc.perform(get("/join/" + token).with(user("olya"))).andExpect(status().isNotFound());
             assertThat(inviteService.token(campaign.getId())).isNotEqualTo(token);
         }

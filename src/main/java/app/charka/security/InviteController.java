@@ -61,7 +61,7 @@ public class InviteController {
     @PostMapping("/campaign/{campaignId}/invite/reset")
     public String reset(@PathVariable Long campaignId) {
         inviteService.reset(campaignId);
-        return "redirect:/campaign/" + campaignId + "#invite";
+        return "redirect:/campaign/" + campaignId + "/settings#invite";
     }
 
     @SuppressWarnings("unchecked")

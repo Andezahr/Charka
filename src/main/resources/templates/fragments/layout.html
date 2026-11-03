@@ -98,6 +98,7 @@
         <!-- R-10: вкладки «Мастер» нет — его строки на обзоре; /campaign/{id}/gm перенаправляет туда -->
         <a th:href="@{'/campaign/' + ${c.id} + '/scenes'}" th:classappend="${active == 'scenes'} ? 'is-active'">Сцены</a>
         <a th:href="@{'/campaign/' + ${c.id} + '/maps'}" th:classappend="${active == 'maps'} ? 'is-active'">Карты</a>
+        <a th:href="@{'/campaign/' + ${c.id} + '/settings'}" th:classappend="${active == 'settings'} ? 'is-active'">Настройки</a>
       </th:block>
     </nav>
   </div>
