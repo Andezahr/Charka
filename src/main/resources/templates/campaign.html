@@ -31,13 +31,17 @@
       <div class="card-head">
         <h2 class="card-title"><span class="dot"></span>Персонажи</h2>
         <span class="badge" th:text="${#lists.size(players)}">0</span>
-      </div>
-      <div class="card-body" th:if="${isGm}">
-        <form th:action="@{'/campaign/' + ${campaign.id} + '/characters'}" method="post" class="form-row">
-          <input type="text" name="name" class="grow" placeholder="Имя нового персонажа" required autocomplete="off">
-          <button type="submit" class="btn btn-primary">＋ Добавить</button>
-        </form>
-        <a th:if="${hasCreation}" th:href="@{'/campaign/' + ${campaign.id} + '/characters/new'}" class="btn btn-sm btn-ghost">🧬 Создать по правилам: статы, роль, навыки, деньги</a>
+        <!-- R-12: добавить — по кнопке: по правилам системы или быстро, по имени -->
+        <details th:if="${isGm}" class="item-chip-menu roster-menu add-menu" data-menu>
+          <summary class="btn btn-sm btn-primary">＋ Персонаж ▾</summary>
+          <div class="item-chip-options">
+            <a th:if="${hasCreation}" th:href="@{'/campaign/' + ${campaign.id} + '/characters/new'}" class="btn btn-sm">🧬 По правилам: статы, роль, навыки, деньги</a>
+            <form th:action="@{'/campaign/' + ${campaign.id} + '/characters'}" method="post" class="form-row">
+              <input type="text" name="name" class="grow" placeholder="Быстро: имя" required autocomplete="off" aria-label="Имя нового персонажа">
+              <button type="submit" class="btn btn-sm">＋</button>
+            </form>
+          </div>
+        </details>
       </div>
       <div class="card-body list gm-list">
         <!-- R-10: строки бывшего экрана мастера: состояние, SP, статы, эффекты, деньги, удача; ⋯ — открыть, отдать игроку -->
@@ -85,8 +89,32 @@
       <div class="card-head">
         <h2 class="card-title"><span class="dot red"></span>NPC</h2>
         <span class="badge" th:text="${#lists.size(npcs)}">0</span>
+        <!-- R-12: новый NPC — в диалоге; шаблон запоминается (data-remember) -->
+        <button type="button" class="btn btn-sm btn-primary add-btn" data-dialog-open="npc-dialog">＋ NPC</button>
+        <dialog class="dialog" id="npc-dialog">
+          <h2 class="card-title">Новый NPC</h2>
+          <form th:action="@{'/campaign/' + ${campaign.id} + '/npcs'}" method="post" class="form">
+            <select name="template" th:unless="${#lists.isEmpty(npcTemplates)}" aria-label="Шаблон" class="grow"
+                    th:attr="data-remember=${'npc-template.' + campaign.id}">
+              <option th:each="t : ${npcTemplates}" th:value="${t.code}" th:text="${t.label}">Бустер</option>
+              <option value="">Пустой</option>
+            </select>
+            <div class="form-row">
+              <input type="number" name="count" class="narrow" min="1" max="20" value="1" required aria-label="Сколько" title="Сколько">
+              <input type="text" name="name" class="grow" maxlength="100" placeholder="Имя, если нужно" autocomplete="off" aria-label="Имя">
+            </div>
+            <label class="check" th:unless="${#lists.isEmpty(npcTemplates)}">
+              <input type="checkbox" name="advanced" value="true">
+              <span>Продвинутый</span>
+            </label>
+            <div class="form-row dialog-actions">
+              <button type="button" class="btn btn-ghost" data-dialog-close>Отмена</button>
+              <button type="submit" class="btn btn-primary">＋ Создать</button>
+            </div>
+          </form>
+        </dialog>
       </div>
-      <div class="card-body">
+      <div class="card-body" th:if="${npcMessage != null or npcError != null}">
         <div th:if="${npcMessage != null}" class="alert alert-success" role="status">
           <span class="alert-text" th:text="${npcMessage}">Создано: Бустер 1</span>
           <button type="button" class="alert-close" aria-label="Закрыть">×</button>
@@ -95,19 +123,6 @@
           <span class="alert-text" th:text="${npcError}">Нет такого шаблона</span>
           <button type="button" class="alert-close" aria-label="Закрыть">×</button>
         </div>
-        <form th:action="@{'/campaign/' + ${campaign.id} + '/npcs'}" method="post" class="form-row npc-create">
-          <select name="template" th:unless="${#lists.isEmpty(npcTemplates)}" aria-label="Шаблон">
-            <option th:each="t : ${npcTemplates}" th:value="${t.code}" th:text="${t.label}">Бустер</option>
-            <option value="">Пустой</option>
-          </select>
-          <input type="number" name="count" class="narrow" min="1" max="20" value="1" required aria-label="Сколько">
-          <input type="text" name="name" class="grow" maxlength="100" placeholder="Имя, если нужно" autocomplete="off">
-          <label class="check" th:unless="${#lists.isEmpty(npcTemplates)}">
-            <input type="checkbox" name="advanced" value="true">
-            <span>Продвинутый</span>
-          </label>
-          <button type="submit" class="btn btn-primary">＋ NPC</button>
-        </form>
       </div>
       <div class="card-body list gm-list">
         <th:block th:each="row : ${npcRows}"><div th:replace="~{fragments/roster :: row(${row})}"></div></th:block>

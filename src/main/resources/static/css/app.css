@@ -1314,6 +1314,11 @@ html:has(.is-editing) {
 .roster-menu .item-chip-options { left: auto; right: 0; min-width: 230px; }
 .roster-menu > summary { list-style: none; }
 .roster-role { color: var(--text-soft); }
+/* R-12: «＋ Персонаж ▾» в заголовке карточки */
+.add-menu, .card-head > .add-btn { margin-left: auto; }
+.add-menu > summary { list-style: none; }
+.add-menu .item-chip-options { min-width: 280px; }
+#npc-dialog .form { margin-top: 12px; }
 .roster-menu > summary::-webkit-details-marker { display: none; }
 
 /* Листалка лога бросков */
