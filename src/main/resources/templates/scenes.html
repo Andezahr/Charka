@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Сцены: ' + ${campaign.name})}"></head>
+<body>
+<header th:replace="~{fragments/layout :: topbar(null, 'campaign')}"></header>
+
+<!-- A-06: заготовки боя. Карта сцены — карта кампании: где встают игроки и NPC, задают её зоны старта в редакторе -->
+<main class="page" th:with="base=${'/campaign/' + campaign.id + '/scenes'}">
+  <div class="page-head">
+    <div>
+      <span class="eyebrow">Заготовки боя</span>
+      <h1 class="page-title" th:text="${campaign.name}">Кампания</h1>
+      <p class="page-sub">Сцена: карта, NPC и засада. «Начать» создаёт NPC, ставит фишки в зоны старта карты и бросает инициативу. После боя сцена остаётся.</p>
+    </div>
+    <div class="page-actions">
+      <a th:href="@{'/campaign/' + ${campaign.id}}" class="btn btn-ghost">← К кампании</a>
+      <a th:href="@{'/campaign/' + ${campaign.id} + '/maps'}" class="btn btn-ghost">🗺 Карты</a>
+      <a th:href="@{'/campaign/' + ${campaign.id} + '/encounter'}" class="btn btn-primary">⚔ Бой</a>
+    </div>
+  </div>
+
+  <div th:if="${sceneError != null}" class="alert alert-error" role="alert">
+    <span class="alert-text" th:text="${sceneError}">Назовите сцену</span>
+    <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+  </div>
+
+  <section class="card">
+    <div class="card-body">
+      <form th:action="@{${base}}" method="post" class="form-row">
+        <input type="text" name="name" class="grow" maxlength="100" required placeholder="Новая сцена: засада у бара" aria-label="Название сцены">
+        <select name="map" aria-label="Карта">
+          <option th:each="m : ${maps}" th:value="${m.id}" th:text="${m.name}">Бар</option>
+          <option value="">Без карты</option>
+        </select>
+        <button type="submit" class="btn btn-primary">＋ Сцена</button>
+      </form>
+    </div>
+  </section>
+
+  <div class="stack scenes-list">
+    <section th:each="scene : ${scenes}" class="card scene" th:id="'scene-' + ${scene.id}">
+      <div class="card-head">
+        <h2 class="card-title"><span class="dot red"></span><th:block th:text="${scene.name}">Засада у бара</th:block></h2>
+        <form th:action="@{${base} + '/' + ${scene.id} + '/start'}" method="post">
+          <button type="submit" class="btn btn-primary" th:disabled="${fightGoing}"
+                  th:title="${fightGoing} ? 'Бой уже идёт' : 'NPC создаются, фишки встают, инициатива бросается'">▶ Начать</button>
+        </form>
+      </div>
+      <div class="card-body">
+        <form th:action="@{${base} + '/' + ${scene.id} + '/edit'}" method="post" class="form-row scene-edit">
+          <input type="text" name="name" class="grow" maxlength="100" required th:value="${scene.name}" aria-label="Название">
+          <select name="map" aria-label="Карта">
+            <option th:each="m : ${maps}" th:value="${m.id}" th:text="${m.name}" th:selected="${m.id == scene.battleMapId}">Бар</option>
+            <option value="" th:selected="${scene.battleMapId == null}">Без карты</option>
+          </select>
+          <label class="check"><input type="checkbox" name="withPlayers" value="true" th:checked="${scene.withPlayers}"><span>Все игроки</span></label>
+          <label class="check" title="Один кубик инициативы на всех игроков"><input type="checkbox" name="groupPlayers" value="true" th:checked="${scene.groupPlayers}"><span>Кубик игрокам</span></label>
+          <label class="check" title="Один кубик инициативы на всех NPC"><input type="checkbox" name="groupNpcs" value="true" th:checked="${scene.groupNpcs}"><span>Кубик NPC</span></label>
+          <button type="submit" class="btn btn-sm">Сохранить</button>
+        </form>
+        <a th:if="${scene.battleMapId != null}" class="btn btn-sm btn-ghost" th:href="@{'/campaign/' + ${campaign.id} + '/maps/' + ${scene.battleMapId} + '/edit'}"
+           title="Зоны старта: инструмент «Зона», игроки и NPC">✎ Зоны старта на карте</a>
+      </div>
+      <div class="card-body list">
+        <div th:each="npc : ${scene.npcs}" class="row scene-npc">
+          <div class="row-main">
+            <span class="row-title" th:if="${npc.character != null}" th:text="${npc.character.name}">Бустер 1</span>
+            <span class="row-title" th:if="${npc.character == null}"
+                  th:text="${(npc.name != null ? npc.name : (npc.templateCode != null ? templateLabels.get(npc.templateCode) : 'Пустой NPC')) + (npc.count > 1 ? ' × ' + npc.count : '')}">Бандит × 3</span>
+            <span class="chips">
+              <span th:if="${npc.character == null and npc.templateCode != null}" class="chip muted" th:text="${npc.advanced} ? 'по шаблону, продвинутый' : 'по шаблону'">по шаблону</span>
+              <span th:if="${npc.character != null}" class="chip muted">из кампании</span>
+            </span>
+          </div>
+          <form th:action="@{${base} + '/' + ${scene.id} + '/npcs/' + ${npc.id} + '/ambush'}" method="post">
+            <button type="submit" class="btn btn-sm" th:classappend="${npc.ambush} ? 'btn-primary' : 'btn-ghost'"
+                    th:title="${npc.ambush} ? 'В засаде: ждёт и вступает, когда скажет мастер' : 'Нажмите, чтобы посадить в засаду'"
+                    th:text="${npc.ambush} ? 'В засаде' : 'Засада'">Засада</button>
+          </form>
+          <form th:action="@{${base} + '/' + ${scene.id} + '/npcs/' + ${npc.id} + '/delete'}" method="post">
+            <button type="submit" class="icon-btn danger" title="Убрать из сцены">×</button>
+          </form>
+        </div>
+        <div th:if="${#lists.isEmpty(scene.npcs)}" class="empty">NPC пока нет</div>
+      </div>
+      <div class="card-body">
+        <form th:action="@{${base} + '/' + ${scene.id} + '/npcs'}" method="post" class="form-row">
+          <select name="who" required aria-label="Кто" data-remember="scene-npc">
+            <optgroup label="Новые по шаблону" th:unless="${#lists.isEmpty(npcTemplates)}">
+              <option th:each="t : ${npcTemplates}" th:value="'t:' + ${t.code}" th:text="${t.label}">Бандит</option>
+            </optgroup>
+            <option value="t:">Пустой NPC</option>
+            <optgroup label="Из кампании" th:unless="${#lists.isEmpty(campaignNpcs)}">
+              <option th:each="c : ${campaignNpcs}" th:value="'c:' + ${c.id}" th:text="${c.name}">Бустер 1</option>
+            </optgroup>
+          </select>
+          <input type="number" name="count" class="narrow" value="1" min="1" max="20" aria-label="Сколько" title="Сколько новых">
+          <input type="text" name="name" class="grow" maxlength="100" placeholder="Имя, если нужно" aria-label="Имя">
+          <label class="check"><input type="checkbox" name="advanced" value="true"><span>Продвинутый</span></label>
+          <label class="check"><input type="checkbox" name="ambush" value="true"><span>Засада</span></label>
+          <button type="submit" class="btn btn-sm">＋ NPC</button>
+        </form>
+      </div>
+      <div class="card-body">
+        <form th:action="@{${base} + '/' + ${scene.id} + '/delete'}" method="post" th:attr="data-confirm='Удалить сцену «' + ${scene.name} + '»?'">
+          <button type="submit" class="btn btn-sm btn-ghost">Удалить сцену</button>
+        </form>
+      </div>
+    </section>
+    <div th:if="${#lists.isEmpty(scenes)}" class="card"><div class="card-body empty">Сцен пока нет</div></div>
+  </div>
+</main>
+</body>
+</html>

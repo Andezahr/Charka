@@ -41,6 +41,7 @@ public class EncounterController {
     private final app.charka.map.BattleMapService battleMapService;
     private final app.charka.chat.ChatService chatService;
     private final app.charka.security.AccessService accessService;
+    private final app.charka.encounter.SceneService sceneService;
 
     @GetMapping
     public String page(@PathVariable Long campaignId, Model model) {
@@ -70,6 +71,8 @@ public class EncounterController {
             }
         } else {
             model.addAttribute("candidates", encounterService.candidates(campaignId));
+            // A-06: заготовки — бой одним нажатием
+            model.addAttribute("scenes", sceneService.list(campaignId));
         }
         model.addAttribute("maps", battleMapService.list(campaignId));
         model.addAttribute("isGm", accessService.isGm(campaign));

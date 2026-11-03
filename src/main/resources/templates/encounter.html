@@ -24,6 +24,23 @@
   <section th:if="${view == null and !isGm}" class="card">
     <div class="card-body empty">Боя нет: его начинает мастер</div>
   </section>
+  <!-- A-06: подготовленные сцены — бой одним нажатием -->
+  <section th:if="${view == null and isGm}" class="card">
+    <div class="card-head">
+      <h2 class="card-title"><span class="dot yellow"></span>Сцены</h2>
+      <a th:href="@{'/campaign/' + ${campaign.id} + '/scenes'}" class="btn btn-sm btn-ghost">✎ Сцены</a>
+    </div>
+    <div class="card-body list" th:unless="${#lists.isEmpty(scenes)}">
+      <form th:each="scene : ${scenes}" th:action="@{'/campaign/' + ${campaign.id} + '/scenes/' + ${scene.id} + '/start'}" method="post" class="row">
+        <div class="row-main">
+          <span class="row-title" th:text="${scene.name}">Засада у бара</span>
+          <span class="row-meta" th:text="'NPC: ' + ${#lists.isEmpty(scene.npcs) ? 0 : #aggregates.sum(scene.npcs.![character != null ? 1 : count])} + (${scene.withPlayers} ? ' · все игроки' : '')">NPC: 5 · все игроки</span>
+        </div>
+        <button type="submit" class="btn btn-primary">▶ Начать</button>
+      </form>
+    </div>
+    <div class="card-body empty" th:if="${#lists.isEmpty(scenes)}">Подготовьте бой заранее: карта, NPC, засада — и он начнётся одним нажатием</div>
+  </section>
   <section th:if="${view == null and isGm}" class="card">
     <form th:action="@{${base} + '/start'}" method="post">
       <div class="card-head">

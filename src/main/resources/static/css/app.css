@@ -1316,3 +1316,7 @@ html:has(.is-editing) {
 .turn-panels .battle-turn { margin: 0; }
 .turn-queue > summary { cursor: pointer; list-style: none; }
 .turn-queue > summary::-webkit-details-marker { display: none; }
+
+/* ---------- A-06: сцены ---------- */
+.scenes-list { margin-top: 16px; }
+.scene-edit .check { white-space: nowrap; }
