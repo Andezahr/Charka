@@ -31,7 +31,9 @@ public class UndoInterceptor implements HandlerInterceptor {
     private static final List<String> SKIPPED = List.of("/notes", "/categories", "/contacts", "/chat", "/maps", "/undo",
             "/roll", "/npc/", "/characters", "/player", "/encounter/map", "/encounter/attach", "/encounter/save-map",
             // A-06: заготовки — не игра; начало сцены создаёт NPC, их отмена не уберёт
-            "/scenes", "/invite");
+            "/scenes", "/invite",
+            // A-07: бросок по запросу — как бросок; запрос уже брошен, отменять его нечем
+            "/requests");
     private static final Pattern SKIPPED_EXACT = Pattern.compile("^/(check|edit)$");
 
     private static final String BEFORE = UndoInterceptor.class.getName() + ".before";

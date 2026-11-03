@@ -1317,6 +1317,17 @@ html:has(.is-editing) {
 .turn-queue > summary { cursor: pointer; list-style: none; }
 .turn-queue > summary::-webkit-details-marker { display: none; }
 
+/* ---------- A-07: запросы бросков ---------- */
+.requests-slot:empty { display: none; }
+.requests-slot { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.request-card { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-sm);
+  background: var(--accent-2-soft); border: 1px solid rgba(244, 114, 182, 0.4); }
+.request-card.is-gm { background: var(--surface-2); border-color: var(--border); }
+.request-text { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 6px; font-size: 15px; }
+.request-who { font-weight: 600; }
+.request-card form { margin: 0; }
+.undo-toast { flex-wrap: wrap; }
+
 /* ---------- A-06: сцены ---------- */
 .scenes-list { margin-top: 16px; }
 .scene-edit .check { white-space: nowrap; }

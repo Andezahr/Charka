@@ -5,6 +5,8 @@
 <header th:replace="~{fragments/layout :: topbar(${character.id}, 'sheet')}"></header>
 
 <main class="page">
+  <!-- A-07: запросы бросков от мастера: карточка с одной кнопкой, приходит опросом -->
+  <th:block th:if="${character.campaign != null}"><div th:replace="~{fragments/requests :: slot(${character.campaign.id}, ${character.id})}"></div></th:block>
   <div th:if="${errorMessage != null}" class="alert alert-error" role="alert">
     <span class="alert-text" th:text="${errorMessage}">Ошибка</span>
     <button type="button" class="alert-close" aria-label="Закрыть">×</button>

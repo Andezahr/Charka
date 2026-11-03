@@ -73,6 +73,13 @@ public interface GameSystem {
     /**
      * Каталог навыков; пусто — у системы нет навыков и вкладка «Навыки» не показывается.
      */
+    /**
+     * Спасброски, которые мастер может попросить у игрока (A-07): код для {@code HealthCounterService.save} и подпись.
+     */
+    default List<app.charka.item.ItemField.Option> getRequestableSaves() {
+        return List.of();
+    }
+
     default List<SkillDefinition> getSkillCatalog() {
         return List.of();
     }

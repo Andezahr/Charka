@@ -647,6 +647,7 @@ function initPage() {
   initEditor();
   initChat();
   initTurnWatch();
+  initRequests();
 }
 
 // A-04: «мой ход» на телефоне игрока. Опрос /turn раз в 2 с; ход сменился — если подошла очередь игрока,
@@ -728,6 +729,36 @@ function beep() {
       tone.stop(audio.currentTime + start + 0.17);
     });
   } catch (e) { /* звук не поддерживается */ }
+}
+
+// A-07: запросы бросков от мастера — карточки опрашиваются раз в 3 с (10 с в фоне), подмена только при изменении
+const requestsPoll = { timer: null };
+
+function initRequests() {
+  clearTimeout(requestsPoll.timer);
+  if (!document.querySelector('[data-requests]')) return;
+  pollRequests();
+}
+
+async function pollRequests() {
+  const slots = [...document.querySelectorAll('[data-requests]')];
+  if (!slots.length) return;
+  for (const slot of slots) {
+    try {
+      const response = await fetch(slot.dataset.requests, { cache: 'no-store' });
+      if (response.ok) {
+        const html = (await response.text()).trim();
+        if (slot.dataset.html !== html) {
+          const had = slot.dataset.html !== undefined && slot.dataset.html !== '';
+          slot.dataset.html = html;
+          slot.innerHTML = html;
+          // новый запрос у игрока — как подошедший ход: короткая вибрация
+          if (html && !had && slot.querySelector('.request-card:not(.is-gm)') && navigator.vibrate) navigator.vibrate(150);
+        }
+      }
+    } catch (e) { /* сеть пропала: попробуем позже */ }
+  }
+  requestsPoll.timer = setTimeout(pollRequests, document.hidden ? 10000 : 3000);
 }
 
 // Чат кампании (U-06): лента опрашивается раз в 3 с (раз в 10 с после минуты тишины) с ETag и подменяется целиком,

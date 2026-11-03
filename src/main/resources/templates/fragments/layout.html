@@ -51,7 +51,7 @@
   </div>
 </header>
   <!-- A-01: отменить только что сделанное. Вне header: его backdrop-filter держит position: fixed внутри себя. undoOffer кладёт UndoInterceptor после любого действия игры -->
-  <div th:if="${undoOffer != null or undoDone != null or undoError != null}" class="undo-toast" role="status">
+  <div th:if="${undoOffer != null or undoDone != null or undoError != null or requestResults != null or requestError != null}" class="undo-toast" role="status">
     <form th:if="${undoOffer != null}" method="post" class="undo-form"
           th:action="@{'/campaign/' + ${undoOffer.campaignId()} + '/undo/' + ${undoOffer.id()}}">
       <span class="undo-label" th:text="${undoOffer.label()}">Колясик: выстрел — Militech Avenger</span>
@@ -59,6 +59,9 @@
     </form>
     <span th:if="${undoDone != null}" class="undo-label is-done" th:text="${undoDone}">Отменено: …</span>
     <span th:if="${undoError != null}" class="undo-label is-error" th:text="${undoError}">Отменить нельзя</span>
+    <!-- A-07: итог броска по запросу мастера -->
+    <span th:each="line : ${requestResults}" class="undo-label is-done" th:text="'🎲 ' + ${line}">Колясик: Внимательность 15: 17 — успех</span>
+    <span th:if="${requestError != null}" class="undo-label is-error" th:text="${requestError}">Уже брошено</span>
     <button type="button" class="undo-close" data-undo-close aria-label="Закрыть">×</button>
   </div>
 </th:block>

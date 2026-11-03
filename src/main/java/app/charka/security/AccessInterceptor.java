@@ -80,6 +80,8 @@ public class AccessInterceptor implements HandlerInterceptor {
                 || rest.equals("/chat")
                 // A-01: своё действие игрок отменяет сам, чьё оно — проверяет UndoService
                 || rest.startsWith("/undo/")
+                // A-07: свои запросы бросков игрок видит и бросает; чей запрос — проверяет контроллер
+                || (rest.equals("/requests") && "GET".equals(method)) || rest.matches("/requests/\\d+/roll")
                 || ((rest.equals("/encounter") || rest.startsWith("/encounter/")) && !GM_ONLY_IN_FIGHT.contains(rest));
         if (!playerPath || !accessService.isPlayer(campaign)) {
             throw NotFoundException.forId("Campaign", id).get();

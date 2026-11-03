@@ -308,6 +308,13 @@ public class Cp2020System implements GameSystem {
         return List.of("awareness");
     }
 
+    /** A-07: оглушение и смерть — по запросу мастера */
+    @Override
+    public List<app.charka.item.ItemField.Option> getRequestableSaves() {
+        return List.of(new app.charka.item.ItemField.Option(Cp2020HealthStrategy.SAVE_STUN, "Спасбросок от оглушения"),
+                new app.charka.item.ItemField.Option(Cp2020HealthStrategy.SAVE_DEATH, "Спасбросок от смерти"));
+    }
+
     @Override
     public CombatCard getCombatCard(Character character) {
         CounterContext context = new CounterContext(null, character.getCounters());

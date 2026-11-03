@@ -80,6 +80,8 @@
 
   <th:block th:if="${view != null}">
     <!-- Чей ход и главная кнопка всегда на экране -->
+    <!-- A-07: запросы бросков от мастера: карточка с одной кнопкой, приходит опросом -->
+    <div th:replace="~{fragments/requests :: slot(${campaign.id}, null)}"></div>
     <div class="encounter-bar">
       <div class="encounter-now">
         <span class="encounter-round" th:text="'Раунд ' + ${view.encounter.round}">Раунд 1</span>
@@ -313,6 +315,7 @@
         </section>
 
         <!-- Журнал: итог атаки и урон остаются на экране, когда сообщение в строке уже ушло; рядом — чат стола (U-06) -->
+        <th:block th:if="${isGm}"><section th:replace="~{fragments/requests :: ask-form(${campaign})}"></section></th:block>
         <section th:replace="~{fragments/chat :: card(${campaign.id}, ${base}, ${chatCharacters})}"></section>
 
         <form th:if="${isGm}" th:action="@{${base} + '/end'}" method="post" data-confirm="Закончить бой? Раны и расход патронов останутся.">

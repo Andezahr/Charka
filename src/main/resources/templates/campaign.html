@@ -5,6 +5,8 @@
 <header th:replace="~{fragments/layout :: topbar(null, 'campaign')}"></header>
 
 <main class="page">
+  <!-- A-07: запросы бросков от мастера: карточка с одной кнопкой, приходит опросом -->
+  <div th:replace="~{fragments/requests :: slot(${campaign.id}, null)}"></div>
   <div class="page-head">
     <div>
       <span class="eyebrow">Кампания · <span th:text="${gameSystem.displayName}">Система</span></span>
@@ -217,6 +219,7 @@
 
       <!-- Кубики мастера и последние броски кампании -->
       <th:block th:if="${isGm}"><section th:replace="~{fragments/dice :: card('/campaign/' + ${campaign.id}, true)}"></section></th:block>
+      <th:block th:if="${isGm}"><section th:replace="~{fragments/requests :: ask-form(${campaign})}"></section></th:block>
       <section th:replace="~{fragments/chat :: card(${campaign.id}, '/campaign/' + ${campaign.id}, ${chatCharacters})}"></section>
     </div>
   </div>
