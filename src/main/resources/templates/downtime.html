@@ -2,7 +2,7 @@
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head('Даунтайм: ' + ${campaign.name})}"></head>
 <body>
-<header th:replace="~{fragments/layout :: topbar(null, 'campaign')}"></header>
+<header th:replace="~{fragments/layout :: nav(${campaign}, null, 'overview')}"></header>
 
 <!-- A-10: даунтайм одной формой. Кто работал и кто кого лечит — отмечено по умолчанию; одно нажатие — промотка.
      Итог по каждому персонажу сверху; не то — «↶ Отменить и изменить» (это отмена A-01, те же броски не повторяются) -->
@@ -14,7 +14,6 @@
       <p class="page-sub">Сейчас <strong th:text="${campaign.currentDate}">2037-10-27</strong>. Лечение, работа, регулярные траты, препараты и обкатка чипов — одной записью хроники.</p>
     </div>
     <div class="page-actions">
-      <a th:href="@{'/campaign/' + ${campaign.id}}" class="btn btn-ghost">← К кампании</a>
     </div>
   </div>
 

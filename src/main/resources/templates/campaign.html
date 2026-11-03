@@ -2,7 +2,7 @@
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head('Кампания: ' + ${campaign.name})}"></head>
 <body>
-<header th:replace="~{fragments/layout :: topbar(null, 'campaign')}"></header>
+<header th:replace="~{fragments/layout :: nav(${campaign}, null, 'overview')}"></header>
 
 <main class="page">
   <!-- A-07: запросы бросков от мастера: карточка с одной кнопкой, приходит опросом -->
@@ -17,15 +17,8 @@
     </div>
     <div class="page-actions">
       <th:block th:replace="~{fragments/reference :: open-button(${campaign.id})}"></th:block>
-      <a th:href="@{/}" class="btn btn-ghost">← На главную</a>
-      <th:block th:with="round=${@encounterService.activeRound(campaign.id)}">
-        <a th:href="@{'/campaign/' + ${campaign.id} + '/encounter'}" class="btn btn-primary"
-           th:text="${round != null} ? '⚔ Идёт бой · раунд ' + ${round} : '⚔ Бой'">⚔ Бой</a>
-      </th:block>
       <th:block th:if="${isGm}">
         <a th:href="@{'/campaign/' + ${campaign.id} + '/print'}" target="_blank" class="btn btn-ghost" title="Листы всех игроков, каждый с новой страницы">🖨 Распечатать всех</a>
-        <a th:href="@{'/campaign/' + ${campaign.id} + '/gm'}" class="btn">👁 Экран мастера</a>
-        <a th:href="@{'/campaign/' + ${campaign.id} + '/maps'}" class="btn">🗺 Карты</a>
         <a th:href="@{'/api/campaigns/' + ${campaign.id} + '/download'}" class="btn" download>⬇ Скачать JSON</a>
       </th:block>
     </div>

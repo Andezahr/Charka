@@ -3,7 +3,7 @@
 <!-- Страница ошибки: рисуется и GlobalExceptionHandler-ом, и стандартным /error Spring Boot (status, error, message) -->
 <head th:replace="~{fragments/layout :: head('Ошибка')}"></head>
 <body>
-<header th:replace="~{fragments/layout :: topbar(null, null)}"></header>
+<header th:replace="~{fragments/layout :: nav(null, null, null)}"></header>
 
 <main class="page">
   <div class="page-head">

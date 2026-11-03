@@ -2,7 +2,7 @@
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head('Сцены: ' + ${campaign.name})}"></head>
 <body>
-<header th:replace="~{fragments/layout :: topbar(null, 'campaign')}"></header>
+<header th:replace="~{fragments/layout :: nav(${campaign}, null, 'scenes')}"></header>
 
 <!-- A-06: заготовки боя. Карта сцены — карта кампании: где встают игроки и NPC, задают её зоны старта в редакторе -->
 <main class="page" th:with="base=${'/campaign/' + campaign.id + '/scenes'}">
@@ -13,9 +13,6 @@
       <p class="page-sub">Сцена: карта, NPC и засада. «Начать» создаёт NPC, ставит фишки в зоны старта карты и бросает инициативу. После боя сцена остаётся.</p>
     </div>
     <div class="page-actions">
-      <a th:href="@{'/campaign/' + ${campaign.id}}" class="btn btn-ghost">← К кампании</a>
-      <a th:href="@{'/campaign/' + ${campaign.id} + '/maps'}" class="btn btn-ghost">🗺 Карты</a>
-      <a th:href="@{'/campaign/' + ${campaign.id} + '/encounter'}" class="btn btn-primary">⚔ Бой</a>
     </div>
   </div>
 

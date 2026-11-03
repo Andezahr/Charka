@@ -2,7 +2,7 @@
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head('Новый персонаж · ' + ${campaign.name})}"></head>
 <body>
-<header th:replace="~{fragments/layout :: topbar(null, 'campaign')}"></header>
+<header th:replace="~{fragments/layout :: nav(${campaign}, null, 'overview')}"></header>
 
 <!-- Мастер создания персонажа CP2020: одна страница, итоги считаются сразу (app.js, [data-creation]).
      Правила и таблицы — Cp2020Creation; сервер проверяет всё ещё раз -->
@@ -19,7 +19,6 @@
       <p class="page-sub">Очки, статы, роль и навыки по книге (с. 20, 44–45); деньги — по таблице занятий (с. 58)</p>
     </div>
     <div class="page-actions">
-      <a th:href="@{'/campaign/' + ${campaign.id}}" class="btn btn-ghost">← К кампании</a>
     </div>
   </div>
 

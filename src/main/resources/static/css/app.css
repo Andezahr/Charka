@@ -129,6 +129,43 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
   box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.35);
 }
 
+/* ---------- R-01…R-03: крошка и вкладки ---------- */
+body:has(.subnav) { --topbar-height: 102px; }
+.topbar-spacer { flex: 1; }
+.crumbs { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.crumb-sep { color: var(--muted); }
+.crumb-menu { position: relative; }
+.crumb-menu > summary { list-style: none; cursor: pointer; }
+.crumb-menu > summary::-webkit-details-marker { display: none; }
+.crumb { display: inline-block; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding: 6px 10px; border-radius: 8px; color: var(--text-soft); font-weight: 500; font-size: 14px; }
+.crumb:hover { background: var(--surface-2); color: var(--text); }
+.crumb.is-current { color: var(--text); font-weight: 600; }
+.crumb-list { position: absolute; top: calc(100% + 4px); left: 0; z-index: 20; min-width: 200px; max-height: 60vh; overflow-y: auto;
+  display: flex; flex-direction: column; padding: 6px; background: var(--surface-2); border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm); box-shadow: var(--shadow); }
+.crumb-list a { padding: 7px 10px; border-radius: 6px; color: var(--text-soft); white-space: nowrap; }
+.crumb-list a:hover { background: var(--surface-3); color: var(--text); }
+.crumb-list a.is-active { color: var(--accent); }
+.crumb-list .crumb-open { color: var(--accent); border-bottom: 1px solid var(--border); border-radius: 6px 6px 0 0; margin-bottom: 4px; }
+.crumb-group { padding: 6px 10px 2px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.subnav { border-top: 1px solid var(--border); }
+.tabs { max-width: 1200px; margin: 0 auto; padding: 4px 24px; display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tabs a { flex: none; padding: 7px 14px; border-radius: 999px; color: var(--text-soft); font-weight: 500; font-size: 14px; white-space: nowrap; }
+.tabs a:hover { background: var(--surface-2); color: var(--text); }
+.tabs a.is-active { background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.35); }
+.tabs a.tab-fight { color: var(--danger); }
+@media (max-width: 560px) {
+  body:has(.subnav) { --topbar-height: 98px; }
+  .topbar-inner { flex-wrap: nowrap; height: 52px; padding: 0 12px; gap: 8px; }
+  .brand-name { display: none; }
+  .crumbs .crumb-menu:first-child:not(:last-child) .crumb { max-width: 90px; }
+  .crumb { max-width: 140px; padding: 6px 6px; }
+  .topbar-user > span { display: none; }
+  .tabs { padding: 4px 12px; }
+}
+
 /* ---------- Страница ---------- */
 
 .page {
@@ -179,7 +216,11 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
 .stack { display: flex; flex-direction: column; gap: 20px; }
 
 @media (max-width: 900px) {
-  .grid-main, .grid-2, .grid-sidebar { grid-template-columns: 1fr; }
+  /* minmax(0, …): длинная кнопка не растягивает колонку шире экрана телефона */
+  .grid-main, .grid-2, .grid-sidebar { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 560px) {
+  .btn { white-space: normal; max-width: 100%; }
 }
 
 /* ---------- Статистика ---------- */

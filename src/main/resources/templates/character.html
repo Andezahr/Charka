@@ -2,7 +2,7 @@
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head('Персонаж ' + ${character.name})}"></head>
 <body>
-<header th:replace="~{fragments/layout :: topbar(${character.id}, 'sheet')}"></header>
+<header th:replace="~{fragments/layout :: nav(null, ${character}, 'sheet')}"></header>
 
 <main class="page">
   <!-- A-07: запросы бросков от мастера: карточка с одной кнопкой, приходит опросом -->
@@ -31,9 +31,6 @@
       <th:block th:if="${character.campaign != null}"><th:block th:replace="~{fragments/reference :: open-button(${character.campaign.id})}"></th:block></th:block>
       <!-- A-12: бумажный лист — в новой вкладке, у него свои стили печати -->
       <a th:href="@{'/character/' + ${character.id} + '/print'}" target="_blank" class="btn btn-ghost" title="Лист на бумаге или в PDF — на случай, если сеть упадёт">🖨 Печать</a>
-      <a th:href="@{/}" class="btn btn-ghost">← На главную</a>
-      <a th:href="@{'/character/' + ${character.id} + '/counters'}" class="btn">Счётчики</a>
-      <a th:href="@{'/character/' + ${character.id} + '/notes'}" class="btn">Заметки</a>
     </div>
   </div>
 

@@ -125,7 +125,7 @@ class SecurityTest {
         @DisplayName("Мастер видит всё в кампании")
         void gm() throws Exception {
             mockMvc.perform(get("/campaign/" + campaign.getId()).with(user("master")))
-                    .andExpect(status().isOk()).andExpect(content().string(containsString("Экран мастера")))
+                    .andExpect(status().isOk()).andExpect(content().string(containsString("/gm\">Мастер</a>")))
                     .andExpect(content().string(containsString("Олежа")));
             mockMvc.perform(get("/character/" + other.getId()).with(user("master"))).andExpect(status().isOk());
             mockMvc.perform(get("/campaign/" + campaign.getId() + "/maps").with(user("master"))).andExpect(status().isOk());
@@ -138,7 +138,7 @@ class SecurityTest {
             mockMvc.perform(get(base).with(user("kolya")))
                     .andExpect(status().isOk())
                     .andExpect(content().string(containsString("Колясик")))
-                    .andExpect(content().string(not(containsString("Экран мастера"))))
+                    .andExpect(content().string(not(containsString("/gm\">Мастер</a>"))))
                     .andExpect(content().string(not(containsString("Олежа"))));
             mockMvc.perform(get("/character/" + mine.getId()).with(user("kolya"))).andExpect(status().isOk());
             mockMvc.perform(get("/character/" + other.getId()).with(user("kolya"))).andExpect(status().isNotFound());

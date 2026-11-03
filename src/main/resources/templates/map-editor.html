@@ -2,7 +2,7 @@
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head(${inFight} ? 'Карта боя: ' + ${campaign.name} : 'Карта: ' + ${map.name})}"></head>
 <body>
-<header th:replace="~{fragments/layout :: topbar(null, 'campaign')}"></header>
+<header th:replace="~{fragments/layout :: nav(${campaign}, null, 'maps')}"></header>
 
 <!-- M-06, M-07: редактор карты. Рисует app.js ([data-map-editor]), документ сохраняется сам через 2 с после правки -->
 <main class="page page-wide">

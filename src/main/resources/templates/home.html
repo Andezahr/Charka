@@ -2,7 +2,7 @@
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head('Главная')}"></head>
 <body>
-<header th:replace="~{fragments/layout :: topbar(null, 'home')}"></header>
+<header th:replace="~{fragments/layout :: nav(null, null, 'home')}"></header>
 
 <main class="page">
   <div th:if="${errorMessage != null}" class="alert alert-error" role="alert">

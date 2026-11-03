@@ -2,7 +2,7 @@
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head('Бой: ' + ${campaign.name})}"></head>
 <body>
-<header th:replace="~{fragments/layout :: topbar(null, 'encounter')}"></header>
+<header th:replace="~{fragments/layout :: nav(${campaign}, null, 'encounter')}"></header>
 
 <main class="page" th:with="base=${'/campaign/' + campaign.id + '/encounter'}">
   <div class="page-head">
@@ -12,7 +12,6 @@
     </div>
     <div class="page-actions">
       <th:block th:replace="~{fragments/reference :: open-button(${campaign.id})}"></th:block>
-      <a th:href="@{'/campaign/' + ${campaign.id}}" class="btn btn-ghost">← К кампании</a>
     </div>
   </div>
 

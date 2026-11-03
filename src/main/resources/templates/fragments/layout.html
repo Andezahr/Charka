@@ -16,38 +16,80 @@
 
 <body>
 
-<!-- Верхняя панель. characterId != null → показываются вкладки персонажа, active — текущая вкладка -->
-<th:block th:fragment="topbar(characterId, active)">
+<!-- R-01…R-03: шапка с контекстом. campaign и character — что открыто (любое может быть null; кампания берётся у персонажа),
+     active — вкладка: overview, encounter, gm, scenes, maps — кампании; sheet, skills, counters, notes — персонажа; home.
+     Крошка «Кампания ▾ › Персонаж ▾» ведёт вверх, ▾ у персонажа переходит к другому на той же вкладке -->
+<th:block th:fragment="nav(campaign, character, active)"
+          th:with="c=${campaign != null ? campaign : (character != null ? character.campaign : null)},
+                   me=${@accessService.current().orElse(null)},
+                   gm=${c != null and @accessService.isGm(c)},
+                   tab=${active == 'skills' ? '/skills' : (active == 'counters' ? '/counters' : (active == 'notes' ? '/notes/' : ''))}">
 <header class="topbar">
   <div class="topbar-inner">
-    <a th:href="@{/}" class="brand">
+    <a th:href="@{/}" class="brand" title="Главная: мои кампании и персонажи">
       <span class="brand-mark">◆</span>
       <span class="brand-name">Charka</span>
     </a>
-    <nav class="topnav" th:if="${characterId != null}">
-      <a th:href="@{'/character/' + ${characterId}}"
-         th:classappend="${active == 'sheet'} ? 'is-active'">Лист</a>
-      <a th:if="${@skillService.hasCatalog(characterId)}" th:href="@{'/character/' + ${characterId} + '/skills'}"
-         th:classappend="${active == 'skills'} ? 'is-active'">Навыки</a>
-      <a th:href="@{'/character/' + ${characterId} + '/counters'}"
-         th:classappend="${active == 'counters'} ? 'is-active'">Счётчики</a>
-      <a th:href="@{'/character/' + ${characterId} + '/notes'}"
-         th:classappend="${active == 'notes'} ? 'is-active'">Заметки</a>
-      <!-- Бой идёт: с листа в трекер одним нажатием -->
-      <th:block th:with="fight=${@encounterService.campaignInFight(characterId)}">
-        <a th:if="${fight != null}" th:href="@{'/campaign/' + ${fight} + '/encounter'}">⚔ Бой</a>
+    <nav class="crumbs" th:if="${c != null}" aria-label="Где я">
+      <details class="crumb-menu" data-menu>
+        <summary class="crumb" th:classappend="${character == null} ? 'is-current'" th:text="${c.name} + ' ▾'">Последний шанс ▾</summary>
+        <div class="crumb-list">
+          <a th:href="@{'/campaign/' + ${c.id}}" class="crumb-open">Обзор кампании</a>
+          <a th:each="other : ${@campaignService.getAll().?[@accessService.canOpen(#this) and id != __${c.id}__]}"
+             th:href="@{'/campaign/' + ${other.id}}" th:text="${other.name}">Другая кампания</a>
+        </div>
+      </details>
+      <th:block th:if="${character != null}">
+        <span class="crumb-sep">›</span>
+        <details class="crumb-menu" data-menu>
+          <summary class="crumb is-current" th:text="${character.name} + ' ▾'">Колясик ▾</summary>
+          <div class="crumb-list">
+            <th:block th:each="other : ${@accessService.visible(c)}">
+              <a th:if="${!other.npc}" th:href="@{'/character/' + ${other.id} + ${tab}}" th:text="${other.name}"
+                 th:classappend="${other.id == character.id} ? 'is-active'">Олежа</a>
+            </th:block>
+            <span class="crumb-group" th:if="${!#lists.isEmpty(@accessService.visible(c).?[npc])}">NPC</span>
+            <th:block th:each="other : ${@accessService.visible(c)}">
+              <a th:if="${other.npc}" th:href="@{'/character/' + ${other.id} + ${tab}}" th:text="${other.name}"
+                 th:classappend="${other.id == character.id} ? 'is-active'">Бандит</a>
+            </th:block>
+          </div>
+        </details>
       </th:block>
     </nav>
-    <nav class="topnav" th:unless="${characterId != null}">
-      <a th:href="@{/}" th:classappend="${active == 'home'} ? 'is-active'">Главная</a>
+    <nav class="crumbs" th:if="${c == null and character != null}">
+      <span class="crumb is-current" th:text="${character.name}">Колясик</span>
     </nav>
+    <span class="topbar-spacer"></span>
     <!-- U-03: кто вошёл и выход -->
-    <th:block th:with="me=${@accessService.current().orElse(null)}">
-      <form th:if="${me != null}" th:action="@{/logout}" method="post" class="topbar-user">
-        <span th:text="${me.username}">kolya</span>
-        <button type="submit" class="btn btn-sm btn-ghost">Выйти</button>
-      </form>
-    </th:block>
+    <form th:if="${me != null}" th:action="@{/logout}" method="post" class="topbar-user">
+      <span th:text="${me.username}">kolya</span>
+      <button type="submit" class="btn btn-sm btn-ghost">Выйти</button>
+    </form>
+  </div>
+  <!-- Вкладки: у персонажа — его страницы, иначе — страницы кампании. Строка прокручивается вбок, не переносится -->
+  <div class="subnav" th:if="${c != null or character != null}">
+    <nav class="tabs" th:if="${character != null}">
+      <a th:href="@{'/character/' + ${character.id}}" th:classappend="${active == 'sheet'} ? 'is-active'">Лист</a>
+      <a th:if="${@skillService.hasCatalog(character.id)}" th:href="@{'/character/' + ${character.id} + '/skills'}"
+         th:classappend="${active == 'skills'} ? 'is-active'">Навыки</a>
+      <a th:href="@{'/character/' + ${character.id} + '/counters'}" th:classappend="${active == 'counters'} ? 'is-active'">Счётчики</a>
+      <a th:href="@{'/character/' + ${character.id} + '/notes/'}" th:classappend="${active == 'notes'} ? 'is-active'">Заметки</a>
+      <th:block th:if="${c != null}" th:with="round=${@encounterService.activeRound(c.id)}">
+        <a th:if="${round != null}" th:href="@{'/campaign/' + ${c.id} + '/encounter'}" class="tab-fight"
+           th:text="'⚔ Бой · раунд ' + ${round}">⚔ Бой · раунд 2</a>
+      </th:block>
+    </nav>
+    <nav class="tabs" th:if="${character == null and c != null}" th:with="round=${@encounterService.activeRound(c.id)}">
+      <a th:href="@{'/campaign/' + ${c.id}}" th:classappend="${active == 'overview'} ? 'is-active'">Обзор</a>
+      <a th:href="@{'/campaign/' + ${c.id} + '/encounter'}" th:classappend="${active == 'encounter'} ? 'is-active'"
+         th:text="${round != null} ? '⚔ Бой · раунд ' + ${round} : '⚔ Бой'">⚔ Бой</a>
+      <th:block th:if="${gm}">
+        <a th:href="@{'/campaign/' + ${c.id} + '/gm'}" th:classappend="${active == 'gm'} ? 'is-active'">Мастер</a>
+        <a th:href="@{'/campaign/' + ${c.id} + '/scenes'}" th:classappend="${active == 'scenes'} ? 'is-active'">Сцены</a>
+        <a th:href="@{'/campaign/' + ${c.id} + '/maps'}" th:classappend="${active == 'maps'} ? 'is-active'">Карты</a>
+      </th:block>
+    </nav>
   </div>
 </header>
   <!-- A-01: отменить только что сделанное. Вне header: его backdrop-filter держит position: fixed внутри себя. undoOffer кладёт UndoInterceptor после любого действия игры -->
@@ -65,6 +107,12 @@
     <button type="button" class="undo-close" data-undo-close aria-label="Закрыть">×</button>
   </div>
 </th:block>
+
+<!-- Старая шапка: страницы вне кампании и всё, что ещё зовёт её по id персонажа -->
+<th:block th:fragment="topbar(characterId, active)">
+  <th:block th:replace="~{::nav(null, ${characterId != null ? @characterRepository.findById(characterId).orElse(null) : null}, ${active})}"></th:block>
+</th:block>
+
 
 </body>
 </html>

@@ -2,7 +2,7 @@
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head('Приглашение')}"></head>
 <body>
-<header th:replace="~{fragments/layout :: topbar(null, 'home')}"></header>
+<header th:replace="~{fragments/layout :: nav(null, null, 'home')}"></header>
 <!-- A-02: игрок пришёл по ссылке или QR-коду — забирает свободного персонажа одним нажатием или создаёт по правилам -->
 <main class="page page-narrow">
   <div th:if="${errorMessage != null}" class="alert alert-error" role="alert">

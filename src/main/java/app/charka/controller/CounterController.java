@@ -32,6 +32,9 @@ public class CounterController {
         model.addAttribute("counterTypes", counterService.getCounterTypes(characterId));
         List<app.charka.model.Character> healers = healthCounterService.healers(characterId, careOptions());
         model.addAttribute("healers", healers);
+        // R-01: шапке нужен сам персонаж; он есть среди тех, кто может лечить (сам себя — последним)
+        healers.stream().filter(healer -> characterId.equals(healer.getId())).findFirst()
+                .ifPresent(character -> model.addAttribute("character", character));
         counters.stream()
                 .filter(counter -> counter.getView() instanceof app.charka.model.counters.strategy.health.HealthView)
                 .findFirst()

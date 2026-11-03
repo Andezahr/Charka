@@ -2,7 +2,7 @@
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head('Навыки ' + ${character.name})}"></head>
 <body>
-<header th:replace="~{fragments/layout :: topbar(${character.id}, 'skills')}"></header>
+<header th:replace="~{fragments/layout :: nav(null, ${character}, 'skills')}"></header>
 
 <!-- По умолчанию видны только изученные навыки; остальное включает app.js (см. блок «Страница навыков») -->
 <main class="page" data-skills th:with="base=@{'/character/' + ${character.id}}">
