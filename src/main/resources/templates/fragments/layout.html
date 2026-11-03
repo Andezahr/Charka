@@ -95,7 +95,7 @@
       <a th:href="@{'/campaign/' + ${c.id} + '/encounter'}" th:classappend="${active == 'encounter'} ? 'is-active'"
          th:text="${round != null} ? '⚔ Бой · раунд ' + ${round} : '⚔ Бой'">⚔ Бой</a>
       <th:block th:if="${gm}">
-        <a th:href="@{'/campaign/' + ${c.id} + '/gm'}" th:classappend="${active == 'gm'} ? 'is-active'">Мастер</a>
+        <!-- R-10: вкладки «Мастер» нет — его строки на обзоре; /campaign/{id}/gm перенаправляет туда -->
         <a th:href="@{'/campaign/' + ${c.id} + '/scenes'}" th:classappend="${active == 'scenes'} ? 'is-active'">Сцены</a>
         <a th:href="@{'/campaign/' + ${c.id} + '/maps'}" th:classappend="${active == 'maps'} ? 'is-active'">Карты</a>
       </th:block>

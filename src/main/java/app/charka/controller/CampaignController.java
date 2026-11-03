@@ -73,6 +73,15 @@ public class CampaignController {
         GameSystem gameSystem = systemRegistry.find(campaign.getSystem()).orElseGet(systemRegistry::getGeneric);
         model.addAttribute("gameSystem", gameSystem);
         model.addAttribute("npcTemplates", gameSystem.getNpcTemplates());
+        // R-10: строки экрана мастера — список персонажей обзора
+        List<GmScreenController.Row> rows = GmScreenController.rows(visible, gameSystem);
+        model.addAttribute("playerRows", rows.stream().filter(row -> !row.character().isNpc()).toList());
+        model.addAttribute("npcRows", rows.stream().filter(row -> row.character().isNpc()).toList());
+        model.addAttribute("currency", gameSystem.getCurrency());
+        // роли строкой; состояние и SP строка берёт у системы (как в бою), а не из краткой сводки
+        model.addAttribute("rosterRoles", visible.stream()
+                .collect(Collectors.toMap(Character::getId, character -> gameSystem.rolesOf(character).stream()
+                        .map(app.charka.skill.CharacterRole::name).toList())));
         model.addAttribute("briefs", campaign.getCharacters().stream()
                 .collect(Collectors.toMap(Character::getId, gameSystem::getCharacterBrief)));
         model.addAttribute("quickDice", gameSystem.getQuickDice());

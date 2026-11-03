@@ -174,7 +174,7 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 | GET, POST | `/campaign/{id}/encounter/map`, `.../participants/{pid}/move\|lift\|reach`, `.../tokens` (мастер: персонаж или NPC по шаблону на клетку), `.../sight`, `.../door`, `.../pointer`, `.../doc` | поле боя: JSON с ETag (опрос), ход фишки (204/400 текстом), досягаемость, линия взгляда, дверь, указатель, правка копии; POST `/encounter/attach`, `/save-map`, GET `/edit-map` |
 | POST | `/campaign/{id}/undo/{entryId}` | отменить последнее действие кампании (автор или мастер), вернуться на страницу из Referer; плашку «↶ Отменить» после действия кладёт `UndoInterceptor` во flash `undoOffer` |
 | GET, POST | `/campaign/{id}/chat` | лента чата и бросков (фрагмент, ETag, опрос); POST `character?`, `text`, `returnTo` → сообщение |
-| GET | `/campaign/{id}/gm` | экран мастера: все персонажи — состояние, броня, статы, эффекты, деньги |
+| GET | `/campaign/{id}/gm` | перенаправляет на обзор (R-10): строки экрана мастера — список персонажей кампании (`fragments/roster :: row`) |
 | POST | `/character/{id}/effects`, `.../effects/{eid}/delete` | `template` (готовый эффект системы) или `name`, `stat`, `modifier`, `duration`, `unit` → временный эффект; раунды идут в трекере, дни — при промотке |
 | POST | `/character/{id}/contacts`, `.../{cid}/edit\|delete` | контакты: `name`, `role`, `relation`, `owes`, `note` |
 | GET | `/character/{id}/notes/` | заметки (фильтр `?categoryId=`) |

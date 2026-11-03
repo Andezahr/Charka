@@ -29,7 +29,7 @@
     <div class="stack">
     <section class="card">
       <div class="card-head">
-        <h2 class="card-title"><span class="dot"></span>Персонажи кампании</h2>
+        <h2 class="card-title"><span class="dot"></span>Персонажи</h2>
         <span class="badge" th:text="${#lists.size(players)}">0</span>
       </div>
       <div class="card-body" th:if="${isGm}">
@@ -39,31 +39,9 @@
         </form>
         <a th:if="${hasCreation}" th:href="@{'/campaign/' + ${campaign.id} + '/characters/new'}" class="btn btn-sm btn-ghost">🧬 Создать по правилам: статы, роль, навыки, деньги</a>
       </div>
-      <div class="card-body list">
-        <div th:each="character : ${players}" class="char-card">
-          <div class="char-card-head">
-            <a th:href="@{'/character/' + ${character.id}}" class="with-avatar">
-              <span class="avatar" th:text="${#strings.substring(character.name, 0, 1)}">П</span>
-              <span class="char-card-name" th:text="${character.name}">Имя персонажа</span>
-            </a>
-            <a th:href="@{'/character/' + ${character.id}}" class="btn btn-sm btn-ghost">Открыть →</a>
-          </div>
-          <!-- U-03: мастер отдаёт персонажа игроку по логину; пусто — персонаж мастера -->
-          <form th:if="${isGm and securityOn}" th:action="@{'/campaign/' + ${campaign.id} + '/characters/' + ${character.id} + '/player'}"
-                method="post" class="form-row char-player">
-            <span class="label">Игрок</span>
-            <input type="text" name="username" class="grow" maxlength="32" autocapitalize="none" placeholder="логин"
-                   th:value="${character.player != null ? character.player.username : ''}" aria-label="Логин игрока">
-            <button type="submit" class="btn btn-sm btn-ghost">Отдать</button>
-          </form>
-          <div class="chips">
-            <span th:each="line : ${briefs[character.id]}" class="chip" th:text="${line}">Соло</span>
-            <span th:each="wound : ${character.wounds}" class="chip red">
-              🩸 <span th:text="${wound.name}">Рана</span>
-              <span th:if="${wound.severity != null}" th:text="'· ' + ${wound.severity}">· 1</span>
-            </span>
-          </div>
-        </div>
+      <div class="card-body list gm-list">
+        <!-- R-10: строки бывшего экрана мастера: состояние, SP, статы, эффекты, деньги, удача; ⋯ — открыть, отдать игроку -->
+        <th:block th:each="row : ${playerRows}"><div th:replace="~{fragments/roster :: row(${row})}"></div></th:block>
         <div th:if="${#lists.isEmpty(players)}" class="empty">В кампании пока нет персонажей</div>
       </div>
       <!-- Начислить всем: опыт, IP. Галочки — игроки, NPC по умолчанию не получают -->
@@ -154,27 +132,8 @@
           <button type="submit" class="btn btn-primary">＋ NPC</button>
         </form>
       </div>
-      <div class="card-body list">
-        <div th:each="npc : ${npcs}" class="char-card">
-          <div class="char-card-head">
-            <a th:href="@{'/character/' + ${npc.id}}" class="with-avatar" title="К снаряжению и атаке">
-              <span class="avatar" th:text="${#strings.substring(npc.name, 0, 1)}">Б</span>
-              <span class="char-card-name" th:text="${npc.name}">Бустер 1</span>
-            </a>
-            <div class="npc-actions">
-              <form th:action="@{'/character/' + ${npc.id} + '/npc/copy'}" method="post">
-                <button type="submit" class="btn btn-sm btn-ghost" title="Ещё один такой же">＋ Копия</button>
-              </form>
-              <form th:action="@{'/character/' + ${npc.id} + '/npc/delete'}" method="post"
-                    th:attr="data-confirm='Удалить ' + ${npc.name} + '?'">
-                <button type="submit" class="icon-btn danger" title="Удалить NPC">✕</button>
-              </form>
-            </div>
-          </div>
-          <div class="chips">
-            <span th:each="line : ${briefs[npc.id]}" class="chip" th:text="${line}">Соло</span>
-          </div>
-        </div>
+      <div class="card-body list gm-list">
+        <th:block th:each="row : ${npcRows}"><div th:replace="~{fragments/roster :: row(${row})}"></div></th:block>
         <div th:if="${#lists.isEmpty(npcs)}" class="empty">NPC пока нет</div>
       </div>
     </section>
