@@ -47,6 +47,10 @@
       <div class="form-row">
         <button type="submit" class="btn btn-primary" title="Каждому отмеченному игроку — карточка с одной кнопкой; NPC бросаются сразу">Попросить</button>
         <button type="submit" name="rollNow" value="true" class="btn" title="Бросить сразу за всех отмеченных">🎲 Бросить за всех</button>
+        <!-- A-09: броски NPC игроки не увидят -->
+        <label class="check" title="Броски NPC игроки не увидят, в общую строку они не попадут">
+          <input type="checkbox" name="hidden" value="true" data-remember="request-hidden"><span>🙈 NPC скрыто</span>
+        </label>
       </div>
     </form>
   </div>

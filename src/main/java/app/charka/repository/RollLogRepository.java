@@ -12,6 +12,9 @@ public interface RollLogRepository extends JpaRepository<RollLog, Long> {
 
     List<RollLog> findByCampaignIdOrderByCreatedAtDescIdDesc(Long campaignId, Pageable pageable);
 
+    /** Лента игрока: без скрытых бросков мастера (A-09) */
+    List<RollLog> findByCampaignIdAndHiddenFalseOrderByCreatedAtDescIdDesc(Long campaignId, Pageable pageable);
+
     /** Страница лога кампании, новые сверху; с общим числом бросков для листалки */
     org.springframework.data.domain.Page<RollLog> findPageByCampaignIdOrderByCreatedAtDescIdDesc(Long campaignId, Pageable pageable);
 

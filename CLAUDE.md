@@ -38,7 +38,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 997 тестов, на 2026-11-03 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 999 тестов, на 2026-11-03 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -85,7 +85,7 @@ TODO.txt       список планов автора (см. ниже)
 ```
 AppUser (username, passwordHash) — пользователь; мастер своих кампаний, игрок своих персонажей
 Campaign (name, system, startDate, currentDate, gm?, inviteToken?, initiativeEachRound)   — system: код GameSystem (колонка game_system); gm — мастер (U-03); inviteToken — приглашение (A-02)
- ├─ RollLog* (character?, expression, details, total, label, gameDate, createdAt) — без коллекции в Campaign, не экспортируется
+ ├─ RollLog* (character?, expression, details, total, label, gameDate, createdAt, hidden) — без коллекции в Campaign, не экспортируется
  ├─ ChatMessage* (character?, author, text, gameDate, createdAt) — чат, как лог: без коллекции, не экспортируется
  ├─ RollRequest* (character, kind SKILL/SAVE, code, label, difficulty?, groupKey?, doneAt?, success?, total?, result?) — запрос броска от мастера
  ├─ UndoEntry* (userId?, characterId?, label, createdAt, snapshot JSON) — отмена (A-01), последние 20, без коллекции, не экспортируется
@@ -143,6 +143,7 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 | GET | `/campaign/{id}/encounter` | боевой трекер; без боя — выбор участников |
 | POST | `/campaign/{id}/encounter/start`, `.../next`, `.../end`, `.../initiative-mode` (`eachRound`, A-13) | `character` (несколько), `groupPlayers?`, `groupNpcs?` → начать бой с инициативой; следующий ход или раунд (игрок — только на своём ходу, «Закончить ход»); закончить бой |
 | GET, POST | `/campaign/{id}/scenes`, `.../{sid}/edit\|delete\|start`, `.../{sid}/npcs` (`who` = `t:код`/`c:id`, `count`, `name?`, `ambush?`), `.../npcs/{nid}/delete\|ambush` | сцены (A-06): заготовки боя, «Начать» — одно нажатие |
+| POST | `/campaign/{id}/roll`, `.../check` с `hidden=true`; `/campaign/{id}/rolls/{rid}/reveal` | A-09: скрытый бросок мастера (`HiddenRolls`), показать всем |
 | GET, POST | `/campaign/{id}/requests` (`character?` — фрагмент карточек, опрос; POST: `character` несколько, `what` = `skill:код`/`save:код`, `difficulty?`, `rollNow?`), `.../{rid}/roll\|cancel` | запросы бросков мастера (A-07, A-08); итог во flash `requestResults` |
 | GET | `/campaign/{id}/encounter/turn` | A-04: чей ход (JSON `turn`, `current`, `name`) — опрос с телефона игрока (`initTurnWatch`) |
 | POST | `/campaign/{id}/encounter/participants` | `character` → ввести в идущий бой |

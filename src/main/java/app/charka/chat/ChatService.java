@@ -86,10 +86,19 @@ public class ChatService {
      */
     @Transactional(readOnly = true)
     public List<Entry> feed(Long campaignId, int limit) {
+        return feed(campaignId, limit, false);
+    }
+
+    /**
+     * @param withHidden мастеру — и скрытые броски (A-09); игроку их нет даже в ответе опроса
+     */
+    @Transactional(readOnly = true)
+    public List<Entry> feed(Long campaignId, int limit, boolean withHidden) {
         List<Entry> entries = new ArrayList<>();
         chatMessageRepository.findByCampaignIdOrderByCreatedAtDescIdDesc(campaignId, PageRequest.of(0, limit))
                 .forEach(message -> entries.add(new Entry(message.getId(), message.getCreatedAt(), message.getAuthor(), message.getText(), null)));
-        rollLogRepository.findByCampaignIdOrderByCreatedAtDescIdDesc(campaignId, PageRequest.of(0, limit))
+        (withHidden ? rollLogRepository.findByCampaignIdOrderByCreatedAtDescIdDesc(campaignId, PageRequest.of(0, limit))
+                : rollLogRepository.findByCampaignIdAndHiddenFalseOrderByCreatedAtDescIdDesc(campaignId, PageRequest.of(0, limit)))
                 .forEach(roll -> entries.add(new Entry(roll.getId(), roll.getCreatedAt(),
                         roll.getCharacter() != null ? roll.getCharacter().getName() : MASTER, null, roll)));
         undoEntryRepository.findByCampaignIdOrderByIdDesc(campaignId).forEach(entry -> {

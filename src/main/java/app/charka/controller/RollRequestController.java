@@ -54,10 +54,11 @@ public class RollRequestController {
     @PostMapping
     public String ask(@PathVariable Long campaignId, @RequestParam(name = "character", required = false) List<Long> characters,
                       @RequestParam String what, @RequestParam(required = false) Integer difficulty,
-                      @RequestParam(defaultValue = "false") boolean rollNow, HttpServletRequest request,
+                      @RequestParam(defaultValue = "false") boolean rollNow, @RequestParam(defaultValue = "false") boolean hidden,
+                      HttpServletRequest request,
                       RedirectAttributes redirectAttributes) {
         try {
-            List<String> results = requestService.ask(campaignId, characters, what, difficulty, rollNow);
+            List<String> results = requestService.ask(campaignId, characters, what, difficulty, rollNow, hidden);
             redirectAttributes.addFlashAttribute("requestResults", results.isEmpty() ? List.of("Запрос отправлен") : results);
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("requestError", e.getMessage());

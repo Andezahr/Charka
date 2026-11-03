@@ -80,7 +80,7 @@ public class CampaignController {
         org.springframework.data.domain.Page<app.charka.model.RollLog> rollPage = diceService.pageForCampaign(campaignId, rolls, ROLLS_PER_PAGE);
         model.addAttribute("recentRolls", rollPage.getContent());
         model.addAttribute("rollPage", rollPage);
-        model.addAttribute("feed", chatService.feed(campaignId, ChatController.FEED_SIZE));
+        model.addAttribute("feed", chatService.feed(campaignId, ChatController.FEED_SIZE, accessService.isGm(campaign)));
         model.addAttribute("awardCounters", awardService.awardableCounters(campaignId));
         model.addAttribute("hasCreation", creations.stream().anyMatch(creation -> creation.getSystemCode().equals(campaign.getSystem())));
         // A-02: ссылка-приглашение и QR-код — мастеру, по адресу ноутбука в локальной сети

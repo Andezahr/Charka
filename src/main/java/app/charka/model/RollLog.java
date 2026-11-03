@@ -41,4 +41,7 @@ public class RollLog {
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
+
+    /** A-09: скрытый бросок мастера — в ленте игроков его нет, мастер может показать всем */
+    private boolean hidden;
 }

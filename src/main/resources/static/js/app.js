@@ -642,6 +642,14 @@ function initPage() {
       try { localStorage.setItem(key, select.value); } catch (e) { /* только удобство */ }
     });
   });
+  // A-09: галочка тоже запоминается: <input type="checkbox" data-remember="ключ"> — «🙈 Скрыто» у мастера
+  document.querySelectorAll('input[type=checkbox][data-remember]').forEach(box => {
+    const key = 'charka.remember.' + box.dataset.remember;
+    try { box.checked = localStorage.getItem(key) === '1'; } catch (e) { /* только удобство */ }
+    box.addEventListener('change', () => {
+      try { localStorage.setItem(key, box.checked ? '1' : ''); } catch (e) { /* только удобство */ }
+    });
+  });
 
   initBattle();
   initEditor();

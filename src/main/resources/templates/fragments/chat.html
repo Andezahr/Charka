@@ -29,12 +29,16 @@
 <th:block th:fragment="feed">
   <!-- A-01: у последнего действия кампании — «↶», если его можно отменить тому, кто смотрит -->
   <th:block th:with="undo=${@undoService.offer(campaignId)}">
-  <div th:each="e : ${feed}" class="chat-row" th:classappend="${e.roll != null} ? 'is-roll' : (${e.action} ? 'is-action')"
+  <div th:each="e : ${feed}" class="chat-row" th:classappend="${(e.roll != null ? 'is-roll' : (e.action ? 'is-action' : '')) + (e.roll != null and e.roll.hidden ? ' is-hidden' : '')}"
        th:title="${e.roll != null} ? ${e.roll.expression} + ': ' + ${e.roll.details} : ${#temporals.format(e.at, 'dd.MM HH:mm')}">
     <span class="chat-who" th:text="${e.who}">Колясик</span>
     <th:block th:if="${e.roll != null}">
-      <span class="chat-text">🎲 <th:block th:text="${e.roll.label != null ? e.roll.label + ': ' : ''} + ${e.roll.expression}">Атака: d10</th:block></span>
+      <span class="chat-text"><th:block th:text="${e.roll.hidden} ? '🙈 ' : '🎲 '">🎲 </th:block><th:block th:text="${e.roll.label != null ? e.roll.label + ': ' : ''} + ${e.roll.expression}">Атака: d10</th:block></span>
       <span class="roll-total" th:text="${e.roll.total}">8</span>
+      <!-- A-09: скрытый бросок видит только мастер — и может показать всем -->
+      <form th:if="${e.roll.hidden}" th:action="@{'/campaign/' + ${campaignId} + '/rolls/' + ${e.roll.id} + '/reveal'}" method="post" class="chat-undo">
+        <button type="submit" class="btn btn-sm" title="Показать всем">👁</button>
+      </form>
     </th:block>
     <span th:unless="${e.roll != null}" class="chat-text" th:text="${e.action} ? '✓ ' + ${e.text} : ${e.text}">Бегу к машине</span>
     <form th:if="${e.action and undo != null and undo.id() == e.id}" method="post" class="chat-undo"

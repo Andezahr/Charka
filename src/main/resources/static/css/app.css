@@ -1296,6 +1296,8 @@ html:has(.is-editing) {
 .chat-row.is-roll .chat-who { color: var(--muted); font-weight: 500; }
 .chat-text { overflow-wrap: anywhere; }
 .chat-row.is-action { color: var(--muted); font-size: 13px; }
+.chat-row.is-hidden { opacity: .55; font-style: italic; grid-template-columns: auto 1fr auto auto; }
+.dice-hidden { font-size: 13px; color: var(--muted); }
 .chat-row.is-action .chat-who { color: var(--muted); font-weight: 500; }
 .field-error { color: var(--danger); font-size: 13px; margin: 4px 0 0; }
 .page-narrow { max-width: 440px; }

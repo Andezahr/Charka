@@ -29,7 +29,7 @@ public class ChatController {
     /** Только лента: её подменяет опрос */
     @GetMapping
     public String feed(@PathVariable Long campaignId, Model model) {
-        model.addAttribute("feed", chatService.feed(campaignId, FEED_SIZE));
+        model.addAttribute("feed", chatService.feed(campaignId, FEED_SIZE, accessService.isGm(campaignService.getById(campaignId))));
         model.addAttribute("campaignId", campaignId);
         return "fragments/chat :: feed";
     }

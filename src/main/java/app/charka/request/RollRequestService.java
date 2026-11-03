@@ -78,6 +78,14 @@ public class RollRequestService {
      */
     @Transactional
     public List<String> ask(Long campaignId, List<Long> characterIds, String what, Integer difficulty, boolean rollNow) {
+        return ask(campaignId, characterIds, what, difficulty, rollNow, false);
+    }
+
+    /**
+     * @param hideNpcs A-09: броски NPC скрыты от игроков и не входят в общую строку группы
+     */
+    @Transactional
+    public List<String> ask(Long campaignId, List<Long> characterIds, String what, Integer difficulty, boolean rollNow, boolean hideNpcs) {
         Campaign campaign = campaign(campaignId);
         if (characterIds == null || characterIds.isEmpty()) {
             throw new IllegalArgumentException("Выберите, кто бросает");
@@ -97,14 +105,17 @@ public class RollRequestService {
             request.setCode(what.substring(what.indexOf(':') + 1));
             request.setDifficulty(skill ? difficulty : null);
             request.setLabel(choice.label() + (skill && difficulty != null ? " " + difficulty : ""));
-            request.setGroupKey(groupKey);
+            // скрытый NPC в общую строку группы не попадает: она видна всем
+            request.setGroupKey(hideNpcs && character.isNpc() ? null : groupKey);
             request.setCreatedAt(LocalDateTime.now());
             created.add(requestRepository.save(request));
         }
         List<String> results = new ArrayList<>();
         for (RollRequest request : created) {
             if (rollNow || request.getCharacter().isNpc()) {
-                results.add(request.getCharacter().getName() + ": " + perform(request));
+                boolean hidden = hideNpcs && request.getCharacter().isNpc();
+                results.add((hidden ? "🙈 " : "") + request.getCharacter().getName() + ": "
+                        + app.charka.dice.HiddenRolls.run(hidden, () -> perform(request)));
             }
         }
         return results;
