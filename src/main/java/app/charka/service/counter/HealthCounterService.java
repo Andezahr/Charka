@@ -210,6 +210,20 @@ public class HealthCounterService {
         return event.summary(result.getSummary());
     }
 
+    /** A-10: какая медпомощь бывает у системы здоровья этого счётчика */
+    @Transactional(readOnly = true)
+    public List<CareOption> careOptions(Long characterId, Long counterId) {
+        return strategyFor(contextFor(characterId, counterId)).getCareOptions();
+    }
+
+    /** A-10: счётчик здоровья персонажа; пусто — у системы его нет */
+    @Transactional(readOnly = true)
+    public Optional<Counter> healthCounter(Long characterId) {
+        return counterRepository.findByCharacterId(characterId).stream()
+                .filter(counter -> strategyFactory.findStrategy(counter.getType()).orElse(null) instanceof HealthCounterStrategy)
+                .findFirst();
+    }
+
     /**
      * Кто может оказать помощь: персонажи кампании, сначала с лучшим медицинским навыком, сам пациент — последним.
      */

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Даунтайм: ' + ${campaign.name})}"></head>
+<body>
+<header th:replace="~{fragments/layout :: topbar(null, 'campaign')}"></header>
+
+<!-- A-10: даунтайм одной формой. Кто работал и кто кого лечит — отмечено по умолчанию; одно нажатие — промотка.
+     Итог по каждому персонажу сверху; не то — «↶ Отменить и изменить» (это отмена A-01, те же броски не повторяются) -->
+<main class="page page-narrow" th:with="base=${'/campaign/' + campaign.id + '/downtime'}">
+  <div class="page-head">
+    <div>
+      <span class="eyebrow">Даунтайм</span>
+      <h1 class="page-title" th:text="${campaign.name}">Кампания</h1>
+      <p class="page-sub">Сейчас <strong th:text="${campaign.currentDate}">2037-10-27</strong>. Лечение, работа, регулярные траты, препараты и обкатка чипов — одной записью хроники.</p>
+    </div>
+    <div class="page-actions">
+      <a th:href="@{'/campaign/' + ${campaign.id}}" class="btn btn-ghost">← К кампании</a>
+    </div>
+  </div>
+
+  <section th:if="${downtimeReport != null}" class="card downtime-report">
+    <div class="card-head">
+      <h2 class="card-title"><span class="dot green"></span>Прошло <th:block th:text="${downtimeDays}">7</th:block> дн.</h2>
+      <form th:if="${undoOffer != null}" method="post" th:action="@{'/campaign/' + ${campaign.id} + '/undo/' + ${undoOffer.id()}}">
+        <button type="submit" class="btn btn-sm">↶ Отменить и изменить</button>
+      </form>
+    </div>
+    <div class="card-body">
+      <ul th:unless="${#lists.isEmpty(downtimeReport)}" class="downtime-lines">
+        <li th:each="line : ${downtimeReport}" th:text="${line}">Колясик: лечение, урон 12 → 5</li>
+      </ul>
+      <p th:if="${#lists.isEmpty(downtimeReport)}" class="empty">Ничего не случилось: все целы, трат и работы не было</p>
+    </div>
+  </section>
+  <div th:if="${downtimeError != null}" class="alert alert-error" role="alert">
+    <span class="alert-text" th:text="${downtimeError}">Дней — от 1</span>
+    <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+  </div>
+
+  <form th:action="@{${base}}" method="post" class="card">
+    <div class="card-head"><h2 class="card-title"><span class="dot pink"></span>Сколько прошло</h2></div>
+    <div class="card-body">
+      <div class="form-row">
+        <input type="text" name="name" class="grow" maxlength="255" placeholder="Что было: отлёживались, работали" aria-label="Запись хроники">
+      </div>
+      <div class="form-row downtime-days">
+        <button type="submit" name="days" value="1" class="btn">1 день</button>
+        <button type="submit" name="days" value="7" class="btn btn-primary">Неделя</button>
+        <button type="submit" name="days" value="30" class="btn">Месяц</button>
+        <input type="number" name="customDays" min="1" max="366" class="narrow" placeholder="Дней" aria-label="Сколько дней">
+        <button type="submit" class="btn btn-ghost">Промотать</button>
+      </div>
+    </div>
+    <div class="card-body list">
+      <div th:each="row : ${rows}" class="row downtime-row">
+        <div class="row-main">
+          <span class="row-title" th:text="${row.character.name}">Колясик</span>
+          <span class="chips">
+            <span class="chip muted" th:text="${row.character.npc} ? 'NPC' : 'Игрок'">Игрок</span>
+            <span th:if="${row.wounded}" class="chip red">ранен</span>
+          </span>
+        </div>
+        <label th:if="${row.earning != null}" class="check" th:title="${row.earning.label}">
+          <input type="checkbox" name="worked" th:value="${row.character.id}" th:checked="${!row.character.npc}">
+          <span th:text="'Работал · ' + ${row.earning.monthly} + '/мес'">Работал · 3000/мес</span>
+        </label>
+        <label th:if="${row.wounded}" class="field downtime-healer">
+          <span class="label">Лечит</span>
+          <select th:name="'healer.' + ${row.character.id}">
+            <option value="">без медика</option>
+            <option th:each="h : ${row.healers}" th:value="${h.id}" th:text="${h.name}" th:selected="${h.id == row.healer}">Олежа</option>
+          </select>
+        </label>
+      </div>
+    </div>
+  </form>
+</main>
+</body>
+</html>

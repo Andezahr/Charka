@@ -308,6 +308,12 @@ public class Cp2020System implements GameSystem {
         return List.of("awareness");
     }
 
+    /** A-10: зарплата по таблице с. 58 — по лучшей роли и её спецспособности */
+    @Override
+    public app.charka.system.Earning earnings(Character character, int days) {
+        return Cp2020Creation.earnings(character, days);
+    }
+
     /** A-07: оглушение и смерть — по запросу мастера */
     @Override
     public List<app.charka.item.ItemField.Option> getRequestableSaves() {

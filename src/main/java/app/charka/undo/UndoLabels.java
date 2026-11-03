@@ -33,7 +33,7 @@ public class UndoLabels {
             Map.entry("wounds", "журнал здоровья"), Map.entry("effects", "эффект"), Map.entry("improve", "прокачка навыка"),
             Map.entry("skills", "навыки"), Map.entry("roles", "роли"), Map.entry("custom", "свой навык"),
             Map.entry("next", "следующий ход"), Map.entry("start", "начало боя"), Map.entry("end", "конец боя"),
-            Map.entry("chronicles", "промотка времени"), Map.entry("award", "начисление"), Map.entry("session", "новая сессия"),
+            Map.entry("chronicles", "промотка времени"), Map.entry("downtime", "даунтайм"), Map.entry("award", "начисление"), Map.entry("session", "новая сессия"),
             Map.entry("dismiss", "заряд никого не задел"), Map.entry("quantity", "количество"), Map.entry("delete", "удаление"),
             Map.entry("edit", "правка"), Map.entry("move", "перенос"), Map.entry("catalog", "из справочника"),
             Map.entry("items", "новый предмет"), Map.entry("attributes", "правка счётчика"), Map.entry("reset", "сброс счётчика"),

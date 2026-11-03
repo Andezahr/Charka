@@ -378,6 +378,38 @@ public class Cp2020Creation implements CharacterCreation {
         return text.isEmpty() ? text : java.lang.Character.toUpperCase(text.charAt(0)) + text.substring(1);
     }
 
+    /**
+     * A-10: заработок за {@code days} дней по таблице с. 58 — лучшая из ролей персонажа по уровню её спецспособности.
+     * HOMEBREW: в книге только ставка за месяц; за неполный месяц — пропорционально дням (месяц = 30 дней), вниз.
+     *
+     * @return null — у персонажа нет роли с зарплатой
+     */
+    static app.charka.system.Earning earnings(Character character, int days) {
+        Role best = null;
+        int bestSalary = 0;
+        int bestLevel = 0;
+        for (Role role : roles()) {
+            if (!character.getRoles().contains(role.role().code())) {
+                continue;
+            }
+            int level = character.getSkills().stream()
+                    .filter(skill -> skill.getSkillCode().equals(role.role().specialSkillCode()))
+                    .mapToInt(app.charka.model.CharacterSkill::getLevel).max().orElse(0);
+            int salary = salary(role, level);
+            if (salary > bestSalary) {
+                best = role;
+                bestSalary = salary;
+                bestLevel = level;
+            }
+        }
+        if (best == null) {
+            return null;
+        }
+        long amount = (long) bestSalary * days / 30;
+        return new app.charka.system.Earning(amount, bestSalary,
+                "Работа: " + best.role().name() + ", спецспособность " + bestLevel + " (" + days + " дн.)");
+    }
+
     static int salary(Role role, int specialLevel) {
         int index = Math.max(0, Math.min(specialLevel, MAX_LEVEL) - 5);
         return role.salaries().get(index);

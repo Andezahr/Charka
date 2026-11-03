@@ -1330,6 +1330,13 @@ html:has(.is-editing) {
 .request-card form { margin: 0; }
 .undo-toast { flex-wrap: wrap; }
 
+/* ---------- A-10: даунтайм ---------- */
+.downtime-lines { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+.downtime-days { flex-wrap: wrap; }
+.downtime-row { flex-wrap: wrap; gap: 10px; }
+.downtime-healer { flex-direction: row; align-items: center; gap: 6px; }
+.downtime-link { margin-bottom: 12px; width: 100%; justify-content: center; }
+
 /* ---------- A-06: сцены ---------- */
 .scenes-list { margin-top: 16px; }
 .scene-edit .check { white-space: nowrap; }

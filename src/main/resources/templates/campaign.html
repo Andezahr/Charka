@@ -187,6 +187,8 @@
           </div>
         </div>
         <div class="card-body">
+          <!-- A-10: работа, медики и промотка одной формой с итогом по персонажам -->
+          <a th:if="${isGm}" th:href="@{'/campaign/' + ${campaign.id} + '/downtime'}" class="btn btn-primary downtime-link">🌙 Даунтайм: работа, лечение, траты</a>
           <form th:if="${isGm}" th:action="@{'/campaign/' + ${campaign.id} + '/chronicles'}" method="post" class="form">
             <div class="field">
               <label for="chronicle-name">Время летит…</label>

@@ -80,6 +80,13 @@ public interface GameSystem {
         return List.of();
     }
 
+    /**
+     * A-10: заработок персонажа, если он работал {@code days} дней; null — у системы нет работы или у персонажа нет роли.
+     */
+    default Earning earnings(Character character, int days) {
+        return null;
+    }
+
     default List<SkillDefinition> getSkillCatalog() {
         return List.of();
     }
