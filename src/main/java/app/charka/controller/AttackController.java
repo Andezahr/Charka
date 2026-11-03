@@ -55,7 +55,7 @@ public class AttackController {
                     location, skill, options(params), modifier, mode, rounds, zoneWidth, luck, itemTarget(target)));
             redirectAttributes.addFlashAttribute("attackResult", result);
             if (result.detached()) {
-                anchor = "#inventories";
+                anchor = "#weapons";
             }
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("actionError", e.getMessage());
@@ -85,7 +85,7 @@ public class AttackController {
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("encounterError", e.getMessage());
         }
-        return back(characterId, returnCampaign, "#inventories");
+        return back(characterId, returnCampaign, "#weapons");
     }
 
     /**
@@ -102,14 +102,14 @@ public class AttackController {
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("blastError", e.getMessage());
         }
-        return back(characterId, returnCampaign, "#inventories");
+        return back(characterId, returnCampaign, "#weapons");
     }
 
     @PostMapping("/character/{characterId}/attack/blast/{blastId}/dismiss")
     public String dismissBlast(@PathVariable Long characterId, @PathVariable Long blastId,
                                @RequestParam(required = false) Long returnCampaign) {
         attackService.dismissBlast(characterId, blastId);
-        return back(characterId, returnCampaign, "#inventories");
+        return back(characterId, returnCampaign, "#weapons");
     }
 
     /** Атака из боевого трекера возвращает в строку участника, с листа — к оружию */

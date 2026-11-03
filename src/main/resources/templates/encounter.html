@@ -216,7 +216,7 @@
               <div class="encounter-head">
                 <span class="encounter-init" th:text="${row.participant.initiative}" th:title="${row.participant.initiativeDetails}">17</span>
                 <div class="row-main">
-                  <a class="row-title" th:href="@{'/character/' + ${row.character.id}} + '#inventories'" th:text="${row.character.name}" title="Открыть лист">Колясик</a>
+                  <a class="row-title" th:href="@{'/character/' + ${row.character.id}}" th:text="${row.character.name}" title="Открыть лист">Колясик</a>
                   <div class="row-meta encounter-lines">
                     <span th:if="${row.participant.initiativeDetails != null}" class="encounter-details" th:text="${row.participant.initiativeDetails}">REF 8 + d10 7 = 15</span>
                   </div>

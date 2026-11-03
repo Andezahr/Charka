@@ -157,7 +157,7 @@
       <div class="card-body list">
         <div th:each="npc : ${npcs}" class="char-card">
           <div class="char-card-head">
-            <a th:href="@{'/character/' + ${npc.id}} + '#inventories'" class="with-avatar" title="К снаряжению и атаке">
+            <a th:href="@{'/character/' + ${npc.id}}" class="with-avatar" title="К снаряжению и атаке">
               <span class="avatar" th:text="${#strings.substring(npc.name, 0, 1)}">Б</span>
               <span class="char-card-name" th:text="${npc.name}">Бустер 1</span>
             </a>

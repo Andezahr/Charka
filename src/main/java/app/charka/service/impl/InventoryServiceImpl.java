@@ -71,6 +71,19 @@ public class InventoryServiceImpl implements InventoryService {
         return inventoryRepository.save(existing);
     }
 
+    /**
+     * Переносит инвентарь на лист или убирает с него; предметы не трогает.
+     *
+     * @throws InventoryNotFoundException инвентаря нет
+     */
+    @Override
+    public Inventory setCarried(Long id, boolean carried) {
+        Inventory existing = inventoryRepository.findById(id)
+                .orElseThrow(InventoryNotFoundException.forId(id));
+        existing.setCarried(carried);
+        return inventoryRepository.save(existing);
+    }
+
     @Override
     public void delete(Long id) {
         Inventory existing = inventoryRepository.findById(id)

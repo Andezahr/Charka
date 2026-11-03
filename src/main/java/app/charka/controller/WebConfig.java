@@ -23,5 +23,7 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addInterceptor(ownershipInterceptor).addPathPatterns("/character/**");
         // A-01: снимок для отмены — только для разрешённых запросов
         registry.addInterceptor(undoInterceptor).addPathPatterns("/campaign/**", "/character/**");
+        // R-08: действие с вкладки «Снаряжение» возвращает на неё, а не на лист
+        registry.addInterceptor(new GearReturnInterceptor()).addPathPatterns("/character/**");
     }
 }

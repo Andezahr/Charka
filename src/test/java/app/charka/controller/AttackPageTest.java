@@ -129,7 +129,7 @@ class AttackPageTest {
 
         MvcResult attack = throwGrenade(mine, 0, "PLANT");
 
-        assertThat(attack.getResponse().getRedirectedUrl()).endsWith("#inventories");
+        assertThat(attack.getResponse().getRedirectedUrl()).endsWith("#weapons");
         assertThat(sheetAfter(attack)).contains("Зона 2 м, задето целей: 1").doesNotContain("id=\"attack-" + mine.getId() + "\"");
     }
 }

@@ -17,7 +17,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @RequestMapping("/character/{characterId}/expenses")
 public class RecurringExpenseController {
 
-    private static final String BACK = "#money";
+    /** R-08: регулярные траты — на вкладке «Снаряжение» */
+    private static final String BACK = "/gear#money";
 
     private final RecurringExpenseService expenseService;
 

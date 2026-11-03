@@ -82,6 +82,7 @@
       <a th:href="@{'/character/' + ${character.id}}" th:classappend="${active == 'sheet'} ? 'is-active'">Лист</a>
       <a th:if="${@skillService.hasCatalog(character.id)}" th:href="@{'/character/' + ${character.id} + '/skills'}"
          th:classappend="${active == 'skills'} ? 'is-active'">Навыки</a>
+      <a th:href="@{'/character/' + ${character.id} + '/gear'}" th:classappend="${active == 'gear'} ? 'is-active'">Снаряжение</a>
       <!-- R-06: вкладки «Счётчики» нет — они на листе; /character/{id}/counters перенаправляет туда -->
       <a th:href="@{'/character/' + ${character.id} + '/notes/'}" th:classappend="${active == 'notes'} ? 'is-active'">Заметки</a>
       <th:block th:if="${c != null}" th:with="round=${@encounterService.activeRound(c.id)}">

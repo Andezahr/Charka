@@ -21,10 +21,12 @@ public class InventoryController {
     @PostMapping
     public String addInventory(
             @PathVariable Long characterId,
-            @RequestParam String name
+            @RequestParam String name,
+            @RequestParam(defaultValue = "true") boolean carried
     ) {
         Inventory inventory = new Inventory();
         inventory.setName(name);
+        inventory.setCarried(carried);
         inventoryService.create(
                 characterId,
                 inventory);
@@ -41,6 +43,17 @@ public class InventoryController {
         updated.setName(name);
         inventoryService.update(inventoryId, updated);
         return "redirect:/character/" + characterId;
+    }
+
+    /** R-08: на лист или только в «Снаряжение» */
+    @PostMapping("/{inventoryId}/carried")
+    public String carried(
+            @PathVariable Long characterId,
+            @PathVariable Long inventoryId,
+            @RequestParam boolean carried
+    ) {
+        inventoryService.setCarried(inventoryId, carried);
+        return "redirect:/character/" + characterId + "/gear#inventory-" + inventoryId;
     }
 
     @PostMapping("/{inventoryId}/delete")

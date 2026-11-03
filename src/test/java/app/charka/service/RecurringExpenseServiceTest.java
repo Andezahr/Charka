@@ -118,10 +118,11 @@ class RecurringExpenseServiceTest {
     void sheet() throws Exception {
         mockMvc.perform(post("/character/" + character.getId() + "/expenses")
                         .param("name", "Аренда").param("amount", "500").param("periodDays", "30"))
-                .andExpect(redirectedUrl("/character/" + character.getId() + "#money"));
+                .andExpect(redirectedUrl("/character/" + character.getId() + "/gear#money"));
         flush();
 
-        String page = mockMvc.perform(get("/character/" + character.getId()))
+        // R-08: регулярные траты — на вкладке «Снаряжение»
+        String page = mockMvc.perform(get("/character/" + character.getId() + "/gear"))
                 .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
         assertThat(page).contains("Аренда").contains("раз в 30 дн.").contains("/expenses");
     }

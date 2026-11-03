@@ -20,6 +20,9 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CharacterServiceImpl implements CharacterService {
 
+    static final String ON_BODY = "На теле";
+    static final String IN_BAG = "В сумке";
+
     private final CharacterRepository characterRepository;
     private final CampaignService campaignService;
     private final InventoryService inventoryService;
@@ -35,9 +38,12 @@ public class CharacterServiceImpl implements CharacterService {
         Campaign campaign = campaignService.getById(campaignId);
         character.setCampaign(campaign);
         Character saved = characterRepository.save(character);
-        Inventory inventory = new Inventory();
-        inventory.setName("Backpack");
-        inventoryService.create(character.getId(), inventory);
+        // R-08: два носимых инвентаря — под рукой и в сумке; неносимые («В машине») игрок добавит в «Снаряжении»
+        for (String name : List.of(ON_BODY, IN_BAG)) {
+            Inventory inventory = new Inventory();
+            inventory.setName(name);
+            inventoryService.create(character.getId(), inventory);
+        }
         counterService.createDefaults(saved.getId(),
                 systemRegistry.forCharacter(saved).getDefaultCounterTypes());
         return saved;

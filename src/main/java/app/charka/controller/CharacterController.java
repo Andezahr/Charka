@@ -97,7 +97,29 @@ public class CharacterController {
 
     @GetMapping
     public String characterPage(@PathVariable Long id, Model model) {
+        fill(id, model, false);
+        return "character";
+    }
+
+    /** R-08: вкладка «Снаряжение» — все инвентари (и неносимые), вживлённое целиком, деньги и регулярные траты */
+    @GetMapping("/gear")
+    public String gearPage(@PathVariable Long id, Model model) {
+        fill(id, model, true);
+        return "gear";
+    }
+
+    /**
+     * Модель листа и «Снаряжения»: строки предметов одни и те же.
+     *
+     * @param gear «Снаряжение»: все инвентари и оружие в них; иначе лист — носимые инвентари, оружие отдельной карточкой
+     */
+    private void fill(Long id, Model model, boolean gear) {
         Character character = characterService.getById(id);
+        List<Inventory> shownInventories = character.getInventories().stream()
+                .filter(inventory -> gear || inventory.isCarried())
+                .sorted(Comparator.comparing(Inventory::getId, Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
+        model.addAttribute("shownInventories", shownInventories);
 
         List<Money> moneyList = moneyService.getByCharacter(id);
 
@@ -107,6 +129,11 @@ public class CharacterController {
         // R-05: шапка состояния (компактные счётчики системы) и карточка «Счётчики»
         counterModel.fill(id, model);
         model.addAttribute("moneyList", moneyList);
+        // R-08: на листе — три последние записи, полный журнал — в «Снаряжении»
+        model.addAttribute("recentMoney", moneyList.stream()
+                .sorted(Comparator.comparing(Money::getId, Comparator.nullsLast(Comparator.reverseOrder())))
+                .limit(3)
+                .toList());
         model.addAttribute("moneySum", moneySum);
         model.addAttribute("expenses", recurringExpenseService.getByCharacter(id));
         GameSystem system = systemRegistry.forCharacter(character);
@@ -168,8 +195,8 @@ public class CharacterController {
                     });
             model.addAttribute("attackForms", attackForms);
             // R-07: оружие — отдельной карточкой: основное сверху, запасное свёрнуто; вживлённое остаётся в своём блоке
-            List<Item> weapons = character.getInventories().stream()
-                    .sorted(Comparator.comparing(Inventory::getId, Comparator.nullsLast(Comparator.naturalOrder())))
+            // R-08: на листе — только из носимых инвентарей; в «Снаряжении» оружие лежит в своих инвентарях
+            List<Item> weapons = gear ? List.of() : shownInventories.stream()
                     .flatMap(inventory -> inventory.getContent().stream())
                     .filter(item -> attackForms.containsKey(item.getId()) && !installedIds.contains(item.getId()))
                     .toList();
@@ -204,6 +231,9 @@ public class CharacterController {
             });
             model.addAttribute("attackBases", attackBases);
         }
+        if (gear) {
+            model.addAttribute("inventoryWeapons", Map.of());
+        }
         Set<Long> excluded = Set.copyOf(shownElsewhere);
         model.addAttribute("inventorySections", character.getInventories().stream()
                 .collect(Collectors.toMap(Inventory::getId, inventory -> ItemSection.of(inventory, system.getItemTypes(), attachments, excluded))));
@@ -212,6 +242,5 @@ public class CharacterController {
         model.addAttribute("difficultyPresets", system.getCheckResolver().getDifficultyPresets());
         model.addAttribute("recentRolls", diceService.recentForCharacter(id, 5));
 
-        return "character";
     }
 }

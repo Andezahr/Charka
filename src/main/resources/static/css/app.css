@@ -160,6 +160,13 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
 .inventory-weapons { color: var(--muted); }
 .inventory-weapons a { color: var(--accent); }
 
+/* ---------- R-08: носимое и «Снаряжение» ---------- */
+.inventory-folded { margin-top: 10px; }
+.inventory-folded > .inventory { margin-top: 8px; }
+.inventory-carried { background: var(--surface-3); color: var(--muted); }
+.inventory-carried.is-carried { color: var(--accent); }
+.card-more-link { display: block; margin-top: 8px; font-size: 13px; color: var(--accent); }
+
 /* ---------- R-04: «Стол» ---------- */
 .chat-dice { flex-wrap: wrap; gap: 6px; }
 .roll-log-card > summary { list-style: none; cursor: pointer; }
