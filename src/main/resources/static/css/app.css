@@ -171,6 +171,11 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
 .wound-log { display: flex; flex-direction: column; gap: 8px; }
 .state-log > .wound-log { margin-top: 8px; }
 
+/* ---------- R-09a: частые навыки ---------- */
+.frequent-checks { display: flex; flex-wrap: wrap; gap: 8px; }
+.skill-pin .icon-btn { color: var(--muted); }
+.skill-pin .icon-btn.is-pinned { color: var(--warning); }
+
 /* ---------- R-04: «Стол» ---------- */
 .chat-dice { flex-wrap: wrap; gap: 6px; }
 .roll-log-card > summary { list-style: none; cursor: pointer; }

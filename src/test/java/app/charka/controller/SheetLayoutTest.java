@@ -115,4 +115,26 @@ class SheetLayoutTest {
         mockMvc.perform(post("/character/" + character.getId() + "/main-weapon").param("item", "999999"))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    @DisplayName("R-09a: «Частые навыки» — последние проверенные, а закреплённые ☆ их заменяют")
+    void frequentSkills() throws Exception {
+        assertThat(sheet()).doesNotContain("id=\"frequent\"");
+        Long campaignId = characterService.getById(character.getId()).getCampaign().getId();
+        mockMvc.perform(post("/campaign/" + campaignId + "/chat/check").param("character", String.valueOf(character.getId()))
+                .param("skill", "awareness").param("returnTo", "/character/" + character.getId()));
+        String html = sheet();
+        assertThat(html).contains("id=\"frequent\"", "🎲 Внимательность", "data-opens-table");
+
+        mockMvc.perform(post("/character/" + character.getId() + "/skills/pin").param("key", "handgun").param("anchor", "skill-handgun"))
+                .andExpect(redirectedUrl("/character/" + character.getId() + "/skills#skill-handgun"));
+        html = sheet();
+        String frequent = html.substring(html.indexOf("id=\"frequent\""));
+        assertThat(frequent).contains("🎲 Пистолеты").doesNotContain("🎲 Внимательность");
+        assertThat(mockMvc.perform(get("/character/" + character.getId() + "/skills")).andReturn().getResponse()
+                .getContentAsString(StandardCharsets.UTF_8)).contains("is-pinned");
+
+        mockMvc.perform(post("/character/" + character.getId() + "/skills/pin").param("key", "handgun"));
+        assertThat(sheet()).contains("🎲 Внимательность");
+    }
 }

@@ -41,6 +41,7 @@ public class SkillService {
     private final CharacterRepository characterRepository;
     private final GameSystemRegistry systemRegistry;
     private final CheckService checkService;
+    private final app.charka.repository.RollLogRepository rollLogRepository;
 
     /**
      * Есть ли у системы персонажа навыки — от этого зависит вкладка «Навыки».
@@ -445,6 +446,65 @@ public class SkillService {
     private Character getCharacter(Long characterId) {
         return characterRepository.findById(characterId)
                 .orElseThrow(CharacterNotFoundException.forId(characterId));
+    }
+
+    /** Сколько «частых навыков» на листе без закреплённых — по последним проверкам */
+    static final int FREQUENT = 4;
+
+    /**
+     * R-09a: «Частые навыки» на листе — закреплённые звёздочкой, иначе последние проверенные (до {@value FREQUENT}).
+     * Значение — как у {@link #checkOptions}: код или {@code custom:<id>}.
+     */
+    @Transactional(readOnly = true)
+    public List<app.charka.encounter.EncounterView.CheckOption> frequentChecks(Long characterId) {
+        if (!hasCatalog(characterId)) {
+            return List.of();
+        }
+        Character character = getCharacter(characterId);
+        List<SkillSheet.Row> rows = getSheet(characterId).groups().stream()
+                .flatMap(group -> group.rows().stream())
+                .toList();
+        List<SkillSheet.Row> chosen;
+        if (!character.getPinnedSkills().isEmpty()) {
+            chosen = rows.stream().filter(row -> character.getPinnedSkills().contains(keyOf(row))).toList();
+        } else {
+            // подпись проверки в логе начинается с названия навыка («Внимательность», «Внимательность (чип)»)
+            List<String> labels = rollLogRepository.findByCharacterIdOrderByCreatedAtDescIdDesc(characterId,
+                            org.springframework.data.domain.PageRequest.of(0, 40)).stream()
+                    .map(app.charka.model.RollLog::getLabel)
+                    .filter(java.util.Objects::nonNull)
+                    .toList();
+            chosen = labels.stream()
+                    .map(label -> rows.stream()
+                            .filter(row -> label.equals(row.name()) || label.startsWith(row.name() + " "))
+                            .max(java.util.Comparator.comparingInt(row -> row.name().length()))
+                            .orElse(null))
+                    .filter(java.util.Objects::nonNull)
+                    .distinct()
+                    .limit(FREQUENT)
+                    .toList();
+        }
+        return chosen.stream()
+                .map(row -> new app.charka.encounter.EncounterView.CheckOption(keyOf(row), row.name() + " " + row.total()))
+                .toList();
+    }
+
+    /** R-09a: закрепить навык в «Частых» на листе или открепить */
+    @Transactional
+    public boolean togglePinned(Long characterId, String key) {
+        if (key == null || key.isBlank() || key.length() > 80) {
+            throw new IllegalArgumentException("Нет такого навыка");
+        }
+        Character character = getCharacter(characterId);
+        if (character.getPinnedSkills().remove(key)) {
+            return false;
+        }
+        character.getPinnedSkills().add(key);
+        return true;
+    }
+
+    private static String keyOf(SkillSheet.Row row) {
+        return row.customId() != null ? "custom:" + row.customId() : row.code();
     }
 
     /**

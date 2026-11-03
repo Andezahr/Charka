@@ -49,6 +49,7 @@ public class CharacterController {
     private final DiceService diceService;
     private final AttackService attackService;
     private final CounterModel counterModel;
+    private final app.charka.skill.SkillService skillService;
 
     /**
      * A-03: окно «Добавить» по требованию — при первом открытии; app.js хранит его, пока не изменится {@code v}
@@ -241,6 +242,8 @@ public class CharacterController {
         model.addAttribute("quickDice", system.getQuickDice());
         model.addAttribute("difficultyPresets", system.getCheckResolver().getDifficultyPresets());
         model.addAttribute("recentRolls", diceService.recentForCharacter(id, 5));
+        // R-09a: проверка частых навыков одним нажатием
+        model.addAttribute("frequentChecks", gear ? List.of() : skillService.frequentChecks(id));
 
     }
 }

@@ -211,6 +211,11 @@ function initPage() {
     if (reopen && !document.querySelector('main [data-chat]')) open();
   });
 
+  // R-09a: «Частые навыки» — после проверки открыть «Стол»: итог там
+  document.querySelectorAll('form[data-opens-table]').forEach(form => form.addEventListener('submit', () => {
+    try { sessionStorage.setItem('charka.table', '1'); } catch (e) { /* только удобство */ }
+  }));
+
   // R-04a: одна форма проверки — у выбранного персонажа его навыки с итогом, у мастера и систем без навыков — ±Мод и подпись
   document.querySelectorAll('[data-check-form]').forEach(holder => {
     const who = holder.querySelector('[data-check-who]');

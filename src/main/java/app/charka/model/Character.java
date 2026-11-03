@@ -48,6 +48,13 @@ public class Character {
     @com.fasterxml.jackson.annotation.JsonIgnore
     private Long mainWeaponId;
 
+    /** R-09a: «Частые навыки» на листе — код навыка или {@code custom:<id>}; не экспортируется: id своих навыков там новые */
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    @ElementCollection
+    @CollectionTable(name = "character_pinned_skill", joinColumns = @JoinColumn(name = "character_id"))
+    @Column(name = "skill_key")
+    private Set<String> pinnedSkills = new HashSet<>();
+
     /** Игрок (U-03): видит этого персонажа; null — персонаж мастера или ещё не отдан */
     @com.fasterxml.jackson.annotation.JsonIgnore
     @lombok.ToString.Exclude

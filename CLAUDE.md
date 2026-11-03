@@ -93,7 +93,7 @@ Campaign (name, system, startDate, currentDate, gm?, inviteToken?, initiativeEac
  ├─ Scene* (name, battleMapId?, withPlayers, groupPlayers, groupNpcs) └─ SceneNpc* (templateCode?, character?, name?, count, advanced, ambush) — заготовка боя (A-06), без коллекции в Campaign
  ├─ Encounter (round, groupPlayers, groupNpcs, mapDoc — копия карты, battleMapId) └─ EncounterParticipant* (character, initiative, initiativeDetails, turnOrder, done, waiting, declaration, posX, posY, movedMeters, actions) └─ CombatEffect* (label, roundsLeft, damage, attackOption, data) — идущий бой, один на кампанию; закончился — удаляется
  ├─ Chronicle* (name, startDate, endDate)     — запись о прошедшем периоде
- └─ Character* (name, birthDate, npc, roles, player?, mainWeaponId?)  — npc: персонаж мастера; roles: коды из GameSystem.getRoles(), таблица character_role; уровень роли = уровень спецспособности
+ └─ Character* (name, birthDate, npc, roles, player?, mainWeaponId?, pinnedSkills)  — npc: персонаж мастера; roles: коды из GameSystem.getRoles(), таблица character_role; уровень роли = уровень спецспособности
      ├─ CharacterSkill* (skillCode, level, customName?) — код из каталога системы; уровень 0 у обычного навыка не хранится
      ├─ Wound*     (name, severity, date) — журнал здоровья: ручные записи и автозаписи `HealthCounterService` (урон, смерть, медпомощь)
      ├─ Inventory* (name, carried) └─ Item* (name, quantity, cost, description, type, properties) — type: код из GameSystem.getItemTypes()
@@ -182,6 +182,7 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 | POST | `/character/{id}/categories`, `.../{catId}/edit|delete` | категории заметок |
 | GET, POST | `/character/{id}/skills` | страница навыков; POST `level.<код>`, `custom.<id>` → уровни разом |
 | POST | `/character/{id}/skills/custom`, `.../custom/{sid}/delete` | свой навык (язык, эксперт, боевое искусство) |
+| POST | `/character/{id}/skills/pin` | `key` (код или `custom:<id>`), `anchor?` → ☆ навык в «Частые навыки» на листе или обратно (R-09a) |
 | POST | `/character/{id}/skills/setup` | создать недостающие счётчики системы |
 | POST | `/api/characters/{id}/skills/check` | `code` или `skillId`, `modifier`, `difficulty?` → проверка навыка, JSON (диалог, без перезагрузки) |
 | POST | `/api/characters/{id}/skills/check/opposed` | то же + `opponentId`, `opponentCode` или `opponentSkillId`, `opponentModifier` (без `opponentId` — `opponentName` и число) → противопоставленная проверка, JSON |

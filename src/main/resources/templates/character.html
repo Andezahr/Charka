@@ -123,10 +123,6 @@
         </div>
       </section>
 
-      <!-- th:replace выполняется раньше th:if, поэтому условие снаружи: у GENERIC блока нет -->
-      <th:block th:if="${installed != null}">
-        <section th:replace="~{fragments/items :: installed(${installed}, ${character})}"></section>
-      </th:block>
 
     </div>
 
@@ -228,7 +224,9 @@
 
       <!-- ДЕНЬГИ -->
       <!-- R-08: на листе — баланс, «＋/− сумма» и три последние записи; журнал целиком и регулярные траты — в «Снаряжении» -->
-      <section th:replace="~{fragments/gear :: money(true)}"></section>
+      <th:block th:unless="${character.npc and #lists.isEmpty(moneyList)}">
+        <section th:replace="~{fragments/gear :: money(true)}"></section>
+      </th:block>
 
       <!-- R-08: на листе — только носимые инвентари; первый раскрыт, остальные свёрнуты до числа вещей; все — в «Снаряжении» -->
       <section class="card" id="inventories">
@@ -246,6 +244,28 @@
           </th:block>
           <div th:if="${#lists.isEmpty(shownInventories)}" class="empty">Носимого нет — инвентари в «Снаряжении»</div>
           <dialog th:replace="~{fragments/items :: add-dialog(${character.id})}"></dialog>
+        </div>
+      </section>
+
+      <!-- th:replace выполняется раньше th:if, поэтому условие снаружи: у GENERIC блока нет -->
+      <th:block th:if="${installed != null and !(character.npc and #lists.isEmpty(installed.rows))}">
+        <section th:replace="~{fragments/items :: installed(${installed}, ${character})}"></section>
+      </th:block>
+      <!-- R-09a: «Частые навыки» — проверка одним нажатием; итог — в «Столе» (он откроется). Закрепляет игрок ☆ на странице навыков -->
+      <section class="card" id="frequent" th:if="${character.campaign != null and !#lists.isEmpty(frequentChecks)}">
+        <div class="card-head">
+          <h2 class="card-title"><span class="dot"></span>Частые навыки</h2>
+          <a class="btn btn-sm btn-ghost" th:href="@{'/character/' + ${character.id} + '/skills'}"
+             th:text="${#sets.isEmpty(character.pinnedSkills)} ? 'последние · ☆ закрепить' : 'все навыки'">все навыки</a>
+        </div>
+        <div class="card-body frequent-checks">
+          <form th:each="c : ${frequentChecks}" th:action="@{'/campaign/' + ${character.campaign.id} + '/chat/check'}" method="post"
+                class="inline" data-opens-table>
+            <input type="hidden" name="character" th:value="${character.id}">
+            <input type="hidden" name="skill" th:value="${c.value}">
+            <input type="hidden" name="returnTo" th:value="'/character/' + ${character.id}">
+            <button type="submit" class="btn btn-sm" th:text="'🎲 ' + ${c.label}">🎲 Внимательность 11</button>
+          </form>
         </div>
       </section>
 

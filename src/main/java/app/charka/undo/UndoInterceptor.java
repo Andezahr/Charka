@@ -34,6 +34,8 @@ public class UndoInterceptor implements HandlerInterceptor {
             "/scenes", "/invite",
             // R-07: основное оружие — только место на листе
             "/main-weapon",
+            // R-09a: закреплённые навыки — только место на листе
+            "/skills/pin",
             // A-07: бросок по запросу — как бросок; запрос уже брошен, отменять его нечем
             "/requests");
     private static final Pattern SKIPPED_EXACT = Pattern.compile("^/(check|edit)$");
