@@ -101,37 +101,78 @@ public class InviteService {
     }
 
     /**
-     * Адреса ноутбука в локальной сети, по которым телефон откроет приложение: IPv4 включённых сетевых карт, кроме петли.
-     * Если страницу открыли не с localhost — её адрес первым.
+     * Адрес приглашения с подписью сети: мастер видит, какой выбрать.
+     *
+     * @param label       «Кабель: Intel(R) Ethernet…», «VPN: Radmin VPN», «Виртуальная сеть Windows»
+     * @param recommended обычная сеть (кабель или Wi-Fi): телефон рядом видит её; виртуальные и VPN — нет
      */
-    public List<String> addresses(String scheme, String requestHost, int port) {
-        List<String> hosts = new ArrayList<>();
-        if (requestHost != null && !requestHost.equals("localhost") && !requestHost.startsWith("127.") && !requestHost.equals("[::1]")) {
-            hosts.add(requestHost);
+    public record Address(String url, String label, boolean recommended) {
+    }
+
+    /** Вид сети по описанию адаптера: что из этого видит телефон рядом */
+    enum Network {
+        LAN("Wi-Fi или кабель", true), VPN("VPN — телефон в ней, только если сам подключён к этому VPN", false),
+        VIRTUAL("виртуальная сеть Windows (WSL, Hyper-V) — телефону не видна", false);
+
+        final String note;
+        final boolean reachable;
+
+        Network(String note, boolean reachable) {
+            this.note = note;
+            this.reachable = reachable;
         }
-        // локальная сеть (192.168, 10, 172.16–31) — первой: её видит телефон за тем же wi-fi
-        List<String> local = new ArrayList<>();
-        List<String> other = new ArrayList<>();
+
+        static Network of(String description) {
+            String text = description == null ? "" : description.toLowerCase();
+            if (text.matches(".*(hyper-v|vethernet|wsl|virtualbox|vmware|virtual ethernet|default switch|docker).*")) {
+                return VIRTUAL;
+            }
+            if (text.matches(".*(vpn|wireguard|tunnel|tap-|tap |radmin|hamachi|zerotier|tailscale|openvpn|wintun).*")) {
+                return VPN;
+            }
+            return LAN;
+        }
+    }
+
+    /**
+     * Адреса ноутбука, по которым телефон откроет приложение: IPv4 включённых сетевых карт, кроме петли, с подписью сети;
+     * обычная сеть (кабель, Wi-Fi) — первой, потом VPN, виртуальные — в конце. Если страницу открыли не с localhost —
+     * её адрес первым: он уже работает.
+     */
+    public List<Address> addresses(String scheme, String requestHost, int port) {
+        boolean defaultPort = ("http".equals(scheme) && port == 80) || ("https".equals(scheme) && port == 443);
+        java.util.function.Function<String, String> url = host -> scheme + "://" + host + (defaultPort ? "" : ":" + port);
+        List<Address> result = new ArrayList<>();
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        if (requestHost != null && !requestHost.equals("localhost") && !requestHost.startsWith("127.") && !requestHost.equals("[::1]")) {
+            result.add(new Address(url.apply(requestHost), "адрес, по которому открыта эта страница", true));
+            seen.add(requestHost);
+        }
+        List<Address> found = new ArrayList<>();
         try {
             for (NetworkInterface network : Collections.list(NetworkInterface.getNetworkInterfaces())) {
                 if (!network.isUp() || network.isLoopback() || network.isVirtual()) {
                     continue;
                 }
+                Network kind = Network.of(network.getDisplayName());
                 for (InetAddress address : Collections.list(network.getInetAddresses())) {
-                    if (address instanceof Inet4Address && !address.isLoopbackAddress() && !address.isLinkLocalAddress()) {
-                        (address.isSiteLocalAddress() ? local : other).add(address.getHostAddress());
+                    if (address instanceof Inet4Address && !address.isLoopbackAddress() && !address.isLinkLocalAddress()
+                            && seen.add(address.getHostAddress())) {
+                        found.add(new Address(url.apply(address.getHostAddress()),
+                                kind.note + " · " + network.getDisplayName(), kind.reachable && address.isSiteLocalAddress()));
                     }
                 }
             }
         } catch (SocketException e) {
             // сетевых карт не прочитать — остаётся адрес страницы
         }
-        java.util.stream.Stream.concat(local.stream(), other.stream()).filter(host -> !hosts.contains(host)).forEach(hosts::add);
-        if (hosts.isEmpty()) {
-            hosts.add(requestHost == null ? "localhost" : requestHost);
+        found.sort(java.util.Comparator.comparing((Address address) -> !address.recommended())
+                .thenComparing(address -> address.label().startsWith(Network.VIRTUAL.note)));
+        result.addAll(found);
+        if (result.isEmpty()) {
+            result.add(new Address(url.apply(requestHost == null ? "localhost" : requestHost), "адрес страницы", false));
         }
-        boolean defaultPort = ("http".equals(scheme) && port == 80) || ("https".equals(scheme) && port == 443);
-        return hosts.stream().map(host -> scheme + "://" + host + (defaultPort ? "" : ":" + port)).toList();
+        return result;
     }
 
     /** QR-код ссылки в SVG: тёмные модули одним путём, без внешних сервисов */

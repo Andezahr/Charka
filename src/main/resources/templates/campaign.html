@@ -107,12 +107,24 @@
       <div class="card-body">
         <p class="page-sub">Наведите камеру телефона: вход или регистрация — и игрок забирает свободного персонажа сам.</p>
         <select th:if="${#lists.size(invites) > 1}" data-invite-select aria-label="Адрес ноутбука в сети">
-          <option th:each="invite, i : ${invites}" th:value="${i.index}" th:text="${invite.get('url')}">http://192.168.1.5:8080/join/…</option>
+          <option th:each="invite, i : ${invites}" th:value="${i.index}"
+                  th:text="${(invite.get('recommended') ? '✓ ' : '') + invite.get('url').replaceAll('/join/.*', '') + ' — ' + invite.get('label')}">✓ http://192.168.1.5:8080 — Wi-Fi или кабель</option>
         </select>
         <div th:each="invite, i : ${invites}" class="invite" data-invite-qr th:hidden="${i.index > 0}">
           <div class="invite-qr" th:utext="${invite.get('svg')}"></div>
           <a class="invite-link" th:href="${invite.get('url')}" th:text="${invite.get('url')}">http://192.168.1.5:8080/join/…</a>
+          <span class="invite-net" th:classappend="${invite.get('recommended')} ? 'is-good'" th:text="${invite.get('label')}">Wi-Fi или кабель</span>
         </div>
+        <!-- Телефон в той же сети, а страница не открывается — почти всегда брандмауэр Windows: он закрывает порт в «общественной» сети -->
+        <details class="cp-more item-more">
+          <summary>Телефон не открывает ссылку?</summary>
+          <ol class="invite-help">
+            <li>Телефон — в той же Wi-Fi-сети, что ноутбук (не мобильный интернет), адрес — с ✓.</li>
+            <li>Брандмауэр Windows пропускает порт: PowerShell от имени администратора —
+              <code th:text="'New-NetFirewallRule -DisplayName &quot;Charka&quot; -Direction Inbound -Protocol TCP -LocalPort ' + ${invitePort} + ' -Action Allow -Profile Private,Public'">New-NetFirewallRule …</code></li>
+            <li>Или в параметрах Windows сделайте эту сеть «Частной» и разрешите Java при первом запросе брандмауэра.</li>
+          </ol>
+        </details>
         <form th:action="@{'/campaign/' + ${campaign.id} + '/invite/reset'}" method="post" class="form-row"
               data-confirm="Старая ссылка перестанет работать. Сбросить?">
           <button type="submit" class="btn btn-sm btn-ghost">Новая ссылка</button>

@@ -172,6 +172,11 @@ class InviteTest {
     @DisplayName("QR-код — SVG; адреса — с портом")
     void qrAndAddresses() {
         assertThat(inviteService.qrSvg("http://192.168.1.5:8080/join/abc")).startsWith("<svg").contains("<path");
-        assertThat(inviteService.addresses("http", "192.168.1.5", 8080)).first().isEqualTo("http://192.168.1.5:8080");
+        assertThat(inviteService.addresses("http", "192.168.1.5", 8080)).first()
+                .satisfies(address -> assertThat(address.url()).isEqualTo("http://192.168.1.5:8080"));
+        assertThat(InviteService.Network.of("Hyper-V Virtual Ethernet Adapter #2")).isEqualTo(InviteService.Network.VIRTUAL);
+        assertThat(InviteService.Network.of("Famatech Radmin VPN Ethernet Adapter")).isEqualTo(InviteService.Network.VPN);
+        assertThat(InviteService.Network.of("WireGuard Tunnel")).isEqualTo(InviteService.Network.VPN);
+        assertThat(InviteService.Network.of("Intel(R) Ethernet Connection (2) I218-V")).isEqualTo(InviteService.Network.LAN);
     }
 }

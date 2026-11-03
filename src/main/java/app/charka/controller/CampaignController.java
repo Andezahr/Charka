@@ -86,8 +86,10 @@ public class CampaignController {
         // A-02: ссылка-приглашение и QR-код — мастеру, по адресу ноутбука в локальной сети
         if (accessService.isEnabled() && accessService.isGm(campaign)) {
             String path = "/join/" + inviteService.token(campaignId);
+            model.addAttribute("invitePort", request.getServerPort());
             model.addAttribute("invites", inviteService.addresses(request.getScheme(), request.getServerName(), request.getServerPort()).stream()
-                    .map(base -> java.util.Map.of("url", base + path, "svg", inviteService.qrSvg(base + path)))
+                    .map(address -> java.util.Map.of("url", address.url() + path, "svg", inviteService.qrSvg(address.url() + path),
+                            "label", address.label(), "recommended", address.recommended()))
                     .toList());
         }
 

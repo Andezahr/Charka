@@ -521,6 +521,10 @@ form.inline { display: inline-flex; margin: 0; }
 .invite-qr { width: min(240px, 70vw); border-radius: var(--radius-sm); overflow: hidden; }
 .invite-qr svg { display: block; width: 100%; height: auto; }
 .invite-link { font-size: 13px; overflow-wrap: anywhere; text-align: center; }
+.invite-net { font-size: 12px; color: var(--warning); text-align: center; }
+.invite-net.is-good { color: var(--success); }
+.invite-help { margin: 6px 0 0; padding-left: 18px; font-size: 13px; color: var(--text-soft); display: flex; flex-direction: column; gap: 4px; }
+.invite-help code { display: block; margin-top: 4px; padding: 6px 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; font-size: 12px; overflow-wrap: anywhere; user-select: all; }
 .chat-undo .btn { padding: 2px 8px; }
 
 /* Итог действия вверху страницы: прокрутка после действия остаётся на месте, сообщение не должно оказаться за краем */
