@@ -1,5 +1,6 @@
 package app.charka.service;
 
+import app.charka.item.Purchase;
 import app.charka.model.Item;
 
 import org.springframework.transaction.annotation.Transactional;
@@ -35,10 +36,28 @@ public interface ItemService {
     Item addFromCatalog(Long inventoryId, String key, int quantity);
 
     @Transactional
+    Purchase buyFromCatalog(Long inventoryId, String key, int quantity);
+
+    @Transactional
+    Purchase buy(Long inventoryId, Item item, String typeCode, Map<String, String> properties);
+
+    @Transactional
     String performAction(Long characterId, Long itemId, String action, Map<String, String> params);
+
+    /**
+     * Действие блока вживлённого на листе персонажа: терапия.
+     *
+     * @return итог для показа игроку
+     * @throws IllegalArgumentException если действие сейчас невозможно
+     */
+    @Transactional
+    String performInstalledAction(Long characterId, String action, Map<String, String> params);
 
     @Transactional
     void delete(Long id);
+
+    @Transactional
+    void changeQuantity(Long characterId, Long itemId, int delta);
 
     @Transactional
     Item moveToInventory(Long itemId, Long targetInvId);

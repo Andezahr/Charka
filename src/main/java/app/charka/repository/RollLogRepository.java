@@ -12,5 +12,8 @@ public interface RollLogRepository extends JpaRepository<RollLog, Long> {
 
     List<RollLog> findByCampaignIdOrderByCreatedAtDescIdDesc(Long campaignId, Pageable pageable);
 
+    /** Страница лога кампании, новые сверху; с общим числом бросков для листалки */
+    org.springframework.data.domain.Page<RollLog> findPageByCampaignIdOrderByCreatedAtDescIdDesc(Long campaignId, Pageable pageable);
+
     List<RollLog> findByCharacterIdOrderByCreatedAtDescIdDesc(Long characterId, Pageable pageable);
 }

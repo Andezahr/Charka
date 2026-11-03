@@ -67,10 +67,16 @@ public record SkillSheet(List<CharacterRole> heldRoles, List<RoleOption> roleOpt
      * @param affordable    следующий уровень можно купить прямо сейчас
      * @param bonus         прибавка от других навыков и ролей ({@code GameSystem.getSkillBonuses})
      * @param blockedReason почему навык нельзя повышать, пока не выполнено требование; null — можно
+     * @param override      что задаёт уровень вместо природного («чип +2», {@code GameSystem.getSkillOverride}); null — природный
      */
     public record Row(String code, Long customId, String name, int level, int total,
                       String statName, int statValue, String roleName, Integer nextCost, boolean affordable,
-                      int bonus, String blockedReason) {
+                      int bonus, String blockedReason, String override) {
+
+        /** Уровень, с которым идёт проверка */
+        public String getCheckedPart() {
+            return override != null ? override : "навык " + level;
+        }
 
         /**
          * Якорь строки: после прокачки страница возвращается к ней.

@@ -33,6 +33,7 @@ class HealthCounterServiceTest {
 
     @Mock private CounterService counterService;
     @Mock private CounterRepository counterRepository;
+    @Mock private app.charka.repository.WoundRepository woundRepository;
 
     private HealthCounterService healthCounterService;
     private Cp2020ArmorStrategy armorStrategy;
@@ -47,7 +48,7 @@ class HealthCounterServiceTest {
         healthStrategy = new Cp2020HealthStrategy(new RandomDiceRoller(), armorStrategy);
         CounterStrategyFactory factory = new CounterStrategyFactory(
                 List.of(new SimpleIntegerCounterStrategy(), healthStrategy, statsStrategy, armorStrategy));
-        healthCounterService = new HealthCounterService(counterService, counterRepository, factory);
+        healthCounterService = new HealthCounterService(counterService, counterRepository, factory, null, null, null, woundRepository);
         character = new Character();
         character.setId(1L);
     }
@@ -122,6 +123,8 @@ class HealthCounterServiceTest {
             List<Counter> set = cp2020Set();
             Counter wounded = set.get(0);
             wounded.setValue(6);
+            // лечится тот, кому помог медик: Medical Tech, 1 в день
+            wounded.getAttributes().put(app.charka.system.cp2020.Cp2020HealthStrategy.CARE, 2);
             Counter ammo = counter(9L, "SIMPLE_INTEGER");
             ammo.setValue(30);
             when(counterRepository.findByCharacterCampaignId(9L))

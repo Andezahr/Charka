@@ -19,9 +19,19 @@ public class ChronicleController {
     public String addChronicle(
             @PathVariable Long campaignId,
             @RequestParam String name,
-            @RequestParam Integer duration
+            @RequestParam Integer duration,
+            org.springframework.web.servlet.mvc.support.RedirectAttributes redirectAttributes
     ) {
-        campaignTimelineService.proceedDate(campaignId, duration, name);
+        redirectAttributes.addFlashAttribute("timeReport", campaignTimelineService.proceedDate(campaignId, duration, name));
+        return "redirect:/campaign/" + campaignId;
+    }
+
+    /** Новая сессия: Удача и прочее, что возвращается к началу сессии */
+    @PostMapping("/campaign/{campaignId}/session")
+    public String newSession(@PathVariable Long campaignId,
+                             org.springframework.web.servlet.mvc.support.RedirectAttributes redirectAttributes) {
+        campaignTimelineService.newSession(campaignId);
+        redirectAttributes.addFlashAttribute("timeReport", java.util.List.of("Новая сессия: Удача вернулась"));
         return "redirect:/campaign/" + campaignId;
     }
 }

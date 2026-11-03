@@ -262,6 +262,26 @@ class ItemControllerTest {
         }
 
         @Test
+        @DisplayName("купить из справочника и сразу установить: итог покупки и действия в строке нового предмета")
+        void buyThenAction() throws Exception {
+            Item bought = new Item();
+            bought.setId(ITEM_ID);
+            when(itemService.buyFromCatalog(INV_ID, "cyber_rippers", 1))
+                    .thenReturn(new app.charka.item.Purchase(bought, 400, 100, new app.charka.system.Currency("Евродоллары", "eb")));
+            when(itemService.performAction(eq(CHAR_ID), eq(ITEM_ID), eq("INSTALL"), any())).thenReturn("Установлено");
+
+            mockMvc.perform(post("/character/{c}/inventories/{i}/items/catalog", CHAR_ID, INV_ID)
+                            .param("catalogKey", "cyber_rippers")
+                            .param("quantity", "3")
+                            .param("thenAction", "INSTALL")
+                            .param("buy", "true"))
+                    .andExpect(redirectedUrl(REDIRECT_URL + "#item-" + ITEM_ID))
+                    .andExpect(flash().attribute("actionResult", "Куплено за 400 eb, осталось 100 eb. Установлено"));
+
+            verify(itemService, never()).addFromCatalog(anyLong(), anyString(), anyInt());
+        }
+
+        @Test
         @DisplayName("действие: итог во flash для строки предмета, возврат к ней")
         void action() throws Exception {
             when(itemService.performAction(eq(CHAR_ID), eq(ITEM_ID), eq("BURST"), any())).thenReturn("выпущено 3");

@@ -1,0 +1,2 @@
+-- NPC: персонаж мастера (C-01)
+ALTER TABLE character ADD COLUMN npc BOOLEAN NOT NULL DEFAULT FALSE;

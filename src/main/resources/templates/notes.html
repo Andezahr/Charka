@@ -5,6 +5,10 @@
 <header th:replace="~{fragments/layout :: topbar(${character.id}, 'notes')}"></header>
 
 <main class="page">
+  <div th:if="${errorMessage != null}" class="alert alert-error" role="alert">
+    <span class="alert-text" th:text="${errorMessage}">Ошибка</span>
+    <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+  </div>
   <div class="page-head">
     <div>
       <span class="eyebrow">Заметки</span>
@@ -16,6 +20,7 @@
   </div>
 
   <div class="grid grid-sidebar">
+    <div class="stack">
     <!-- Категории -->
     <aside class="card">
       <div class="card-head">
@@ -57,6 +62,63 @@
         </form>
       </div>
     </aside>
+
+    <!-- Контакты: кто это, как относится, кто кому должен -->
+    <section class="card" id="contacts">
+      <div class="card-head">
+        <h2 class="card-title"><span class="dot"></span>Контакты</h2>
+        <span class="badge" th:text="${#lists.size(character.contacts)}">0</span>
+      </div>
+      <div class="card-body list">
+        <div th:each="contact : ${character.contacts}" class="row" data-editable>
+          <div class="row-main">
+            <div class="row-title">
+              <span th:text="${contact.name}">Рог</span>
+              <span class="chip" th:classappend="${contact.relation.name() == 'ENEMY' or contact.relation.name() == 'RIVAL'} ? 'red' : (${contact.relation.name() == 'NEUTRAL'} ? '' : 'green')"
+                    th:text="${contact.relation.label}">Друг</span>
+            </div>
+            <div class="row-meta">
+              <span th:if="${contact.role != null}" th:text="${contact.role}">фиксер</span>
+              <span th:if="${contact.owes != null}" class="chip" th:text="${contact.owes}">должен 500</span>
+            </div>
+            <div th:if="${contact.note != null}" class="row-desc" th:text="${contact.note}">заметка</div>
+          </div>
+          <div class="row-actions">
+            <button type="button" class="icon-btn" data-edit-toggle title="Править">✎</button>
+          </div>
+          <div class="edit-panel">
+            <form th:action="@{|/character/${character.id}/contacts/${contact.id}/edit|}" method="post" class="form-row">
+              <input type="text" name="name" class="grow" th:value="${contact.name}" required placeholder="Имя">
+              <input type="text" name="role" class="grow" th:value="${contact.role}" placeholder="Кто это">
+              <select name="relation" aria-label="Отношение">
+                <option th:each="r : ${T(app.charka.model.Contact.Relation).values()}" th:value="${r}" th:text="${r.label}"
+                        th:selected="${r == contact.relation}">Друг</option>
+              </select>
+              <input type="text" name="owes" class="grow" th:value="${contact.owes}" placeholder="Кто кому должен">
+              <input type="text" name="note" class="grow" th:value="${contact.note}" placeholder="Заметка" maxlength="1000">
+              <button type="submit" class="btn btn-sm btn-primary">OK</button>
+            </form>
+            <form th:action="@{|/character/${character.id}/contacts/${contact.id}/delete|}" method="post" class="inline"
+                  th:attr="data-confirm='Удалить контакт «' + ${contact.name} + '»?'">
+              <button type="submit" class="btn btn-sm danger">Удалить</button>
+            </form>
+          </div>
+        </div>
+        <div th:if="${#lists.isEmpty(character.contacts)}" class="empty">Никого</div>
+      </div>
+      <div class="card-body">
+        <form th:action="@{|/character/${character.id}/contacts|}" method="post" class="form-row">
+          <input type="text" name="name" class="grow" placeholder="Имя" required autocomplete="off">
+          <input type="text" name="role" class="grow" placeholder="Кто это: фиксер, коп" autocomplete="off">
+          <select name="relation" aria-label="Отношение">
+            <option th:each="r : ${T(app.charka.model.Contact.Relation).values()}" th:value="${r}" th:text="${r.label}"
+                    th:selected="${r.name() == 'NEUTRAL'}">Нейтрально</option>
+          </select>
+          <button type="submit" class="btn btn-sm btn-primary">＋</button>
+        </form>
+      </div>
+    </section>
+    </div>
 
     <div class="stack">
       <!-- Форма заметки (создание / редактирование) -->

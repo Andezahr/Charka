@@ -14,13 +14,22 @@ spring:
     # схему создаёт и меняет только Flyway (src/main/resources/db/migration), Hibernate лишь сверяет
     hibernate:
       ddl-auto: validate
-  resources:
-    cache:
-      period: 0
-    chain:
-      cache: false
+  web:
+    resources:
+      # в адрес app.js и app.css подставляется хэш содержимого (th:src="@{...}"): после обновления браузер берёт новый файл
+      chain:
+        strategy:
+          content:
+            enabled: true
+            paths: /**
   thymeleaf:
-    cache: false
+    # без кэша лист персонажа рендерится в 6 раз дольше (1,2 с против 0,2 с). Править шаблоны без перезапуска: THYMELEAF_CACHE=false
+    cache: ${THYMELEAF_CACHE:true}
+  servlet:
+    multipart:
+      # подложка карты боя — до 5 МБ (M-11)
+      max-file-size: 6MB
+      max-request-size: 7MB
   mvc:
     # позволяет HTML-формам слать DELETE через скрытое поле _method (удаление счётчиков)
     hiddenmethod:
@@ -40,3 +49,9 @@ logging:
     org:
       springframework:
         web: INFO
+
+charka:
+  security:
+    # U-03: вход по логину и паролю; ключ cookie «запомнить меня» — свой на каждом сервере
+    enabled: ${CHARKA_SECURITY:true}
+    remember-key: ${REMEMBER_KEY:charka-remember-dev}

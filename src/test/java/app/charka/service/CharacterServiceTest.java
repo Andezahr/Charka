@@ -43,7 +43,7 @@ class CharacterServiceTest {
     @Mock private InventoryService  inventoryService;
     @Mock private CounterService    counterService;
     @Spy  private GameSystemRegistry systemRegistry =
-            new GameSystemRegistry(List.of(new GenericSystem(), new Cp2020System(null)));
+            new GameSystemRegistry(List.of(new GenericSystem(), new Cp2020System(null, null)));
     @InjectMocks private CharacterServiceImpl characterService;
 
     /* ──────────────────── Creating character in campaign ─────────────────── */
@@ -126,7 +126,7 @@ class CharacterServiceTest {
             characterService.createInCampaign(campaignId, testCharacter);
 
             verify(counterService).createDefaults(1L,
-                    List.of("CP2020_STATS", "CP2020_ARMOR", "CP2020_HEALTH", "CP2020_IP"));
+                    List.of("CP2020_STATS", "CP2020_ARMOR", "CP2020_HEALTH", "CP2020_IP", "CP2020_REP"));
         }
 
         @Test

@@ -1,6 +1,7 @@
 package app.charka.controller;
 
 import app.charka.item.ItemTypeDefinition;
+import app.charka.item.Purchase;
 import app.charka.model.Item;
 import app.charka.service.ItemService;
 import org.springframework.stereotype.Controller;
@@ -12,6 +13,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Supplier;
 
 @Controller
 @RequestMapping("/character/{characterId}/inventories/{inventoryId}/items")
@@ -38,6 +40,8 @@ public class ItemController {
             @RequestParam(required = false) String description,
             @RequestParam(defaultValue = ItemTypeDefinition.GENERIC_CODE) String itemType,
             @RequestParam Map<String, String> params,
+            @RequestParam(required = false) String anchor,
+            @RequestParam(defaultValue = "false") boolean buy,
             RedirectAttributes redirectAttributes
     ) {
         Item item = new Item();
@@ -45,12 +49,16 @@ public class ItemController {
         item.setQuantity(quantity);
         item.setCost(cost);
         item.setDescription(description);
-        return handle(characterId, redirectAttributes,
+        if (buy) {
+            return bought(characterId, anchor, redirectAttributes,
+                    () -> itemService.buy(inventoryId, item, itemType, properties(params)), null);
+        }
+        return handle(characterId, anchor, redirectAttributes,
                 () -> itemService.create(inventoryId, item, itemType, properties(params)));
     }
 
     /**
-     * Предмет из справочника системы.
+     * Предмет из справочника системы. {@code buy} — купить: цена списывается в деньги, итог в строке нового предмета.
      */
     @PostMapping("/catalog")
     public String addFromCatalog(
@@ -58,10 +66,30 @@ public class ItemController {
             @PathVariable Long inventoryId,
             @RequestParam String catalogKey,
             @RequestParam(defaultValue = "1") int quantity,
+            @RequestParam(required = false) String anchor,
+            @RequestParam(required = false) String thenAction,
+            @RequestParam(defaultValue = "false") boolean buy,
             RedirectAttributes redirectAttributes
     ) {
-        return handle(characterId, redirectAttributes,
-                () -> itemService.addFromCatalog(inventoryId, catalogKey, quantity));
+        if (buy) {
+            boolean then = thenAction != null && !thenAction.isBlank();
+            return bought(characterId, anchor, redirectAttributes,
+                    () -> itemService.buyFromCatalog(inventoryId, catalogKey, then ? 1 : quantity),
+                    then ? thenAction : null);
+        }
+        if (thenAction == null || thenAction.isBlank()) {
+            return handle(characterId, anchor, redirectAttributes,
+                    () -> itemService.addFromCatalog(inventoryId, catalogKey, quantity));
+        }
+        // сразу действие над новым предметом: киберware выбирают, чтобы установить
+        Item added = itemService.addFromCatalog(inventoryId, catalogKey, 1);
+        redirectAttributes.addFlashAttribute("actionItemId", added.getId());
+        try {
+            redirectAttributes.addFlashAttribute("actionResult", itemService.performAction(characterId, added.getId(), thenAction, Map.of()));
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("actionError", e.getMessage());
+        }
+        return "redirect:/character/" + characterId + "#item-" + added.getId();
     }
 
     @PostMapping("/{itemId}/edit")
@@ -77,13 +105,16 @@ public class ItemController {
             @RequestParam Map<String, String> params,
             RedirectAttributes redirectAttributes
     ) {
-        return handle(characterId, redirectAttributes,
+        return handle(characterId, null, redirectAttributes,
                 () -> itemService.update(itemId, itemName, quantity, cost, description, itemType, properties(params)));
     }
 
     /**
      * Действие системы над предметом (выстрел, перезарядка). Возвращает к строке предмета, поэтому итог показывается в ней же:
      * сообщение вверху страницы осталось бы за экраном.
+     *
+     * @param returnTo предмет, под которым показан этот: своей строки у него может не быть
+     * @param returnCampaign действие из боевого трекера этой кампании: возвращаемся туда
      */
     @PostMapping("/{itemId}/action/{action}")
     public String performAction(
@@ -92,15 +123,36 @@ public class ItemController {
             @PathVariable Long itemId,
             @PathVariable String action,
             @RequestParam Map<String, String> params,
+            @RequestParam(required = false) Long returnTo,
+            @RequestParam(required = false) Long returnCampaign,
             RedirectAttributes redirectAttributes
     ) {
-        redirectAttributes.addFlashAttribute("actionItemId", itemId);
+        Long shownAt = returnTo != null ? returnTo : itemId;
+        redirectAttributes.addFlashAttribute("actionItemId", shownAt);
         try {
             redirectAttributes.addFlashAttribute("actionResult", itemService.performAction(characterId, itemId, action, params));
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("actionError", e.getMessage());
         }
-        return "redirect:/character/" + characterId + "#item-" + itemId;
+        if (returnCampaign != null) {
+            return "redirect:/campaign/" + returnCampaign + "/encounter#combatant-" + characterId;
+        }
+        return "redirect:/character/" + characterId + "#item-" + shownAt;
+    }
+
+    /**
+     * Кнопки − и ＋ на строке предмета.
+     */
+    @PostMapping("/{itemId}/quantity")
+    public String changeQuantity(
+            @PathVariable Long characterId,
+            @PathVariable Long inventoryId,
+            @PathVariable Long itemId,
+            @RequestParam int delta,
+            @RequestParam(required = false) Long returnTo
+    ) {
+        itemService.changeQuantity(characterId, itemId, delta);
+        return "redirect:/character/" + characterId + "#item-" + (returnTo != null ? returnTo : itemId);
     }
 
     private static Map<String, String> properties(Map<String, String> params) {
@@ -113,13 +165,42 @@ public class ItemController {
         return properties;
     }
 
-    private static String handle(Long characterId, RedirectAttributes redirectAttributes, Runnable action) {
+    /** Ошибка показывается вверху страницы, поэтому с ней к якорю не возвращаемся */
+    /**
+     * Покупка: итог в строке нового предмета, отказ (не хватает денег) — вверху страницы, как ошибка ввода.
+     * {@code then} — действие сразу после покупки (установить киберware), его итог дописывается к покупке.
+     */
+    private String bought(Long characterId, String anchor, RedirectAttributes redirectAttributes,
+                          Supplier<Purchase> purchase, String then) {
+        Purchase done;
+        try {
+            done = purchase.get();
+        } catch (IllegalArgumentException e) {
+            return handle(characterId, anchor, redirectAttributes, () -> { throw e; });
+        }
+        Long itemId = done.item().getId();
+        redirectAttributes.addFlashAttribute("actionItemId", itemId);
+        String result = done.summary();
+        if (then != null) {
+            try {
+                result += ". " + itemService.performAction(characterId, itemId, then, Map.of());
+            } catch (IllegalArgumentException e) {
+                redirectAttributes.addFlashAttribute("actionError", e.getMessage());
+            }
+        }
+        redirectAttributes.addFlashAttribute("actionResult", result);
+        return "redirect:/character/" + characterId + "#item-" + itemId;
+    }
+
+    private static String handle(Long characterId, String anchor, RedirectAttributes redirectAttributes, Runnable action) {
         try {
             action.run();
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+            return "redirect:/character/" + characterId;
         }
-        return "redirect:/character/" + characterId;
+        boolean validAnchor = anchor != null && anchor.matches("[a-z0-9-]+");
+        return "redirect:/character/" + characterId + (validAnchor ? "#" + anchor : "");
     }
 
     @PostMapping("/{itemId}/delete")

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Экран мастера: ' + ${campaign.name})}"></head>
+<body>
+<header th:replace="~{fragments/layout :: topbar(null, 'campaign')}"></header>
+
+<main class="page">
+  <div class="page-head">
+    <div>
+      <span class="eyebrow">Экран мастера · <span th:text="${gameSystem.displayName}">Система</span></span>
+      <h1 class="page-title" th:text="${campaign.name}">Кампания</h1>
+      <p class="page-sub" th:if="${campaign.currentDate != null}">Сейчас <span th:text="${campaign.currentDate}">дата</span></p>
+    </div>
+    <div class="page-actions">
+      <a th:href="@{'/campaign/' + ${campaign.id}}" class="btn btn-ghost">← Кампания</a>
+      <a th:href="@{'/campaign/' + ${campaign.id} + '/encounter'}" class="btn btn-primary">⚔ Бой</a>
+    </div>
+  </div>
+
+  <section class="card">
+    <div class="card-body list gm-list">
+      <div th:each="row : ${rows}" class="row gm-row" th:classappend="${row.card.out} ? 'is-out'">
+        <div class="row-main">
+          <div class="row-title">
+            <a th:href="@{'/character/' + ${row.character.id}}" th:text="${row.character.name}">Колясик</a>
+            <span th:if="${row.character.npc}" class="chip muted">NPC</span>
+            <span th:if="${row.card.status != null}" class="chip" th:classappend="${row.card.alarming} ? 'red'" th:text="${row.card.status}">Цел</span>
+            <span th:each="save : ${row.card.saves}" class="chip red" th:text="${save.label}">Спасбросок</span>
+          </div>
+          <div class="row-meta">
+            <span th:each="line : ${row.card.lines}" th:text="${line}">SP торса 14</span>
+          </div>
+          <div th:unless="${#lists.isEmpty(row.stats)}" class="row-meta gm-stats" title="* — с правкой: раны, броня, эффекты">
+            <span th:each="stat : ${row.stats}" th:text="${stat}">REF 7</span>
+          </div>
+          <div th:unless="${#lists.isEmpty(row.effects)}" class="row-meta">
+            <span th:each="effect : ${row.effects}" class="chip" th:text="${effect}">Boost 4 ч</span>
+          </div>
+        </div>
+        <div class="gm-side">
+          <span class="amount" th:classappend="${row.money < 0} ? 'neg' : 'pos'" th:text="${row.money} + ' ' + ${currency.symbol}">0 eb</span>
+          <span th:if="${row.luck != null}" class="chip muted" th:text="'Удача ' + ${row.luck}">Удача 6</span>
+        </div>
+      </div>
+      <div th:if="${#lists.isEmpty(rows)}" class="empty">В кампании нет персонажей</div>
+    </div>
+  </section>
+</main>
+</body>
+</html>

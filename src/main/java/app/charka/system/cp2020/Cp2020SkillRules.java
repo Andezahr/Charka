@@ -38,11 +38,8 @@ final class Cp2020SkillRules {
      */
     static List<CheckRequest.Part> bonuses(Character character, SkillDefinition definition, CharacterSkill skill) {
         List<CheckRequest.Part> parts = new ArrayList<>();
-        if ("awareness".equals(definition.code()) && character.getRoles().contains(SOLO_ROLE)) {
-            int combatSense = level(character, "combat_sense");
-            if (combatSense > 0) {
-                parts.add(new CheckRequest.Part(name("combat_sense"), combatSense));
-            }
+        if ("awareness".equals(definition.code())) {
+            combatSense(character).ifPresent(parts::add);
         }
         if ("charismatic_leadership".equals(definition.code()) && level(character, "oratory") >= ORATORY_BONUS_LEVEL) {
             parts.add(new CheckRequest.Part(name("oratory"), 1));
@@ -56,6 +53,14 @@ final class Cp2020SkillRules {
                             "Родственный язык: " + best.getCustomName(), best.getLevel() / 2 - own)));
         }
         return parts;
+    }
+
+    /**
+     * Боевое чутьё даёт прибавку только Соло: у сменившего роль уровень остаётся, но не работает (книга, с. 46, 97).
+     */
+    static Optional<CheckRequest.Part> combatSense(Character character) {
+        int level = character.getRoles().contains(SOLO_ROLE) ? level(character, "combat_sense") : 0;
+        return level > 0 ? Optional.of(new CheckRequest.Part(name("combat_sense"), level)) : Optional.empty();
     }
 
     /**

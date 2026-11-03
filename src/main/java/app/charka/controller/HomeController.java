@@ -19,21 +19,41 @@ public class HomeController {
     private final CharacterService characterService;
     private final CampaignService campaignService;
     private final GameSystemRegistry systemRegistry;
+    private final app.charka.service.campaign.CampaignImportService importService;
+    private final app.charka.security.AccessService accessService;
 
     public HomeController(CharacterService characterService, CampaignService campaignService,
-                          GameSystemRegistry systemRegistry) {
+                          GameSystemRegistry systemRegistry, app.charka.service.campaign.CampaignImportService importService,
+                          app.charka.security.AccessService accessService) {
         this.characterService = characterService;
         this.campaignService = campaignService;
         this.systemRegistry = systemRegistry;
+        this.importService = importService;
+        this.accessService = accessService;
     }
 
     @GetMapping("/")
     public String home(Model model) {
-        model.addAttribute("characters", characterService.getAll());
-        model.addAttribute("campaigns", campaignService.getAll());
+        // U-03: только свои кампании (мастер или игрок) и свои персонажи
+        model.addAttribute("characters", characterService.getAll().stream()
+                .filter(character -> !character.isNpc() && accessService.canControl(character)).toList());
+        model.addAttribute("campaigns", campaignService.getAll().stream().filter(accessService::canOpen).toList());
         model.addAttribute("systems", systemRegistry.getAll());
         model.addAttribute("systemNames", systemRegistry.getDisplayNames());
         return "home";
+    }
+
+    /** Импорт кампании из JSON экспорта: новая кампания, файл не трогает существующие */
+    @PostMapping("/campaigns/import")
+    public String importCampaign(@org.springframework.web.bind.annotation.RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+                                 org.springframework.web.servlet.mvc.support.RedirectAttributes redirectAttributes) {
+        try {
+            app.charka.model.Campaign imported = importService.importCampaign(new String(file.getBytes(), java.nio.charset.StandardCharsets.UTF_8));
+            return "redirect:/campaign/" + imported.getId();
+        } catch (IllegalArgumentException | java.io.IOException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+            return "redirect:/";
+        }
     }
 
     @PostMapping("/campaigns")

@@ -1,0 +1,49 @@
+package app.charka.attack;
+
+import java.util.List;
+import java.util.Set;
+
+/**
+ * Параметры атаки из формы.
+ *
+ * @param targetIds  цели с листом из той же кампании: при обычной атаке не больше одной, в зоне сколько вошло; пусто — цель без листа
+ * @param targetName имя цели без листа
+ * @param distance   расстояние до цели, м; null — не указано, система решает, нужно ли оно
+ * @param location   код выбранной зоны; пусто — случайная
+ * @param skillCode  навык атаки, если у оружия есть выбор
+ * @param options    коды выбранных модификаторов
+ * @param modifier   прочий модификатор; в зоне огня — итог цели без листа
+ * @param mode       код режима огня; пусто — одиночный выстрел
+ * @param rounds     сколько патронов выпустить или единиц израсходовать, если режим это спрашивает
+ * @param zoneWidth  ширина зоны огня, м
+ * @param luck       удача, объявленная до броска: тратится и прибавляется к броску атакующего
+ * @param targetItemId цель-предмет из той же кампании (машина): у неё прочность вместо здоровья; null — нет
+ */
+public record AttackRequest(List<Long> targetIds, String targetName, Integer distance, String location, String skillCode,
+                            Set<String> options, int modifier, String mode, int rounds, int zoneWidth, int luck, Long targetItemId) {
+
+    public AttackRequest {
+        targetIds = List.copyOf(targetIds);
+        options = Set.copyOf(options);
+    }
+
+    public AttackRequest(List<Long> targetIds, String targetName, Integer distance, String location, String skillCode,
+                         Set<String> options, int modifier, String mode, int rounds, int zoneWidth, int luck) {
+        this(targetIds, targetName, distance, location, skillCode, options, modifier, mode, rounds, zoneWidth, luck, null);
+    }
+
+    public AttackRequest(List<Long> targetIds, String targetName, Integer distance, String location, String skillCode,
+                         Set<String> options, int modifier, String mode, int rounds, int zoneWidth) {
+        this(targetIds, targetName, distance, location, skillCode, options, modifier, mode, rounds, zoneWidth, 0);
+    }
+
+    /** Одиночный выстрел */
+    public AttackRequest(Long targetId, String targetName, Integer distance, String location, String skillCode,
+                         Set<String> options, int modifier) {
+        this(targetId == null ? List.of() : List.of(targetId), targetName, distance, location, skillCode, options, modifier, "", 0, 0);
+    }
+
+    public boolean hasChosenLocation() {
+        return location != null && !location.isBlank();
+    }
+}

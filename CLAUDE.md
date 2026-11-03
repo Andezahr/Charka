@@ -7,9 +7,13 @@
 
 ## Рабочий план — `TODO.md`
 
-**Начинай любую работу с [`TODO.md`](TODO.md)**: там приоритизированный план (задачи с ID, «Готово, когда»), целевая архитектура и журнал решений. Взял задачу — отметь `[~]`, закончил — `[x]` с датой и строкой итога; новые задачи и изменения плана вноси туда же.
+**Начинай любую работу с [`TODO.md`](TODO.md)**: там текущий план (задачи с ID, «Готово, когда»), целевая архитектура, домашние правила и журнал решений. Сделанное — [`DONE.md`](DONE.md) (закрытую задачу переносить туда), отложенное до решения автора — [`BACKLOG.md`](BACKLOG.md) (оттуда без просьбы автора не брать). Взял задачу — отметь `[~]`, закончил — `[x]` с датой и строкой итога; новые задачи и изменения плана вноси туда же.
 
-**Правила CP2020 — `cyberpunk 2020 rulebook_text.pdf` в корне проекта** (в `.gitignore`, не коммитить). Значения правил бери оттуда, а не по памяти. Скан с распознанным текстом, удобнее `pdftotext -layout` в scratchpad; страница PDF = страница книги + 3. Текст распознан с ошибками, а в таблицах строки и номера теряются: таблицы читай с изображения страницы. Его показывает браузерная панель: открой файл и задай `location.hash = '#page=64&navpanes=0&toolbar=0&zoom=95,20,40'` с перезагрузкой (x, y — сдвиг), рендер занимает около 9 секунд.
+**Интерфейс — [`UI_PLAN.md`](UI_PLAN.md)**: разбор экранов на 2026-11-03 и план перегруппировки (задачи R-xx; отложен в `BACKLOG.md`, пока автор рисует эскизы). До эскизов интерфейс не перестраиваем, новые кнопки ставим рядом с похожими.
+
+**Правила CP2020 — сначала [`RULES.md`](RULES.md)**: выжимка для незакрытых задач, с номерами страниц. Новое правило или расхождение с кодом дописывай туда. **Книга — `cyberpunk 2020 rulebook_text.pdf` в корне проекта** (в `.gitignore`, не коммитить): нужна там, где `RULES.md` отсылает к таблице. Значения правил не бери по памяти. Скан с распознанным текстом, удобнее `pdftotext -layout` в scratchpad; страница PDF = страница книги + 3. Текст распознан с ошибками, а в таблицах строки и номера теряются: таблицы читай с изображения страницы. Его показывает браузерная панель: открой файл и задай `location.hash = '#page=64&navpanes=0&toolbar=0&zoom=95,20,40'` с перезагрузкой (x, y — сдвиг), рендер занимает около 9 секунд.
+
+**Функция должна уменьшать действия за столом.** Считай нажатия и ввод на настоящем сценарии и проверяй это в браузере: хорошие значения по умолчанию, запоминание последнего выбора, одно нажатие вместо числа, только то, что применимо к этому оружию или персонажу.
 
 **Домашние правила помечай.** Всё, чего нет в книгах и что решено нами, — комментарий `HOMEBREW` в коде и строка в таблице «Домашние правила» в `TODO.md`: автор хочет потом менять их сам.
 
@@ -20,7 +24,8 @@
 ## Стек
 
 - Java 24 (в `pom.xml`; локально стоит JDK 25), Spring Boot 3.5.3
-- Spring Web MVC + **Thymeleaf** (серверный рендеринг, формы с POST + redirect)
+- Spring Web MVC + **Thymeleaf** (серверный рендеринг, формы с POST + redirect; `app.js` выполняет их без перезагрузки). Кэш шаблонов включён: правка шаблона видна после перезапуска или с `THYMELEAF_CACHE=false`
+- Spring Security (U-03): вход по логину и паролю, права по кампаниям — `AccessInterceptor`; `charka.security.enabled=false` (профиль тестов) — без входа. CSRF-токен в cookie `XSRF-TOKEN`, `app.js` шлёт его заголовком
 - Spring Data JPA / Hibernate, **PostgreSQL 17 в Docker** (`compose.yaml`: контейнер `charka-postgres`, `localhost:5433/charka`, `charka`/`charka_dev_pw`; переопределяется `DB_URL`/`DB_USER`/`DB_PASSWORD`). `spring-boot-docker-compose` поднимает контейнер сам при `spring-boot:run` — нужен запущенный Docker Desktop. Установленный в системе PostgreSQL (5432) не используется
 - **Flyway**: схема только миграциями `src/main/resources/db/migration/V<n>__*.sql`, Hibernate `ddl-auto=validate` → любое изменение сущности = новая миграция
 - Тесты: H2 в режиме PostgreSQL на тех же миграциях (`application-test.yml`, `@ActiveProfiles("test")` у `@SpringBootTest`) — SQL миграций держать переносимым
@@ -33,7 +38,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 521 тест, на 2026-10-30 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 967 тестов, на 2026-11-02 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -50,33 +55,45 @@ service/       бизнес-логика; campaign/, counter/, notes/ — под
 controller/    MVC-контроллеры, возвращают имена шаблонов или redirect
 api/           REST: CampaignExportController, SkillCheckController (проверка навыка)
 dice/         DiceExpression (разбор NdM±K), DiceResult, DiceService (броски + лог RollLog)
+attack/       AttackRules (контракт системы: form, plan, spend, outcome, effectHit, isObjectTarget/damageObject — цель-предмет), AttackSource (предмет или способность), ObjectTarget (машина в списке целей), AttackContext, AttackPlan, AttackOutcome, AttackForm, AttackRequest, AttackHit, AreaDamage (урон по площади), LingeringEffect (что остаётся на цели на следующие раунды), AttackResult, AttackService (один ход для всех атак, урон цели, лог, заряды PendingBlast)
+creation/     CharacterCreation (мастер создания персонажа: форма, бросок очков, создание; реализует система)
+npc/          NpcTemplate, NpcSheet (что выбросила система), NpcService (создание по шаблону, копии, удаление)
+security/     SecurityConfig, UserService (регистрация, вход), AccessService (кто что видит: мастер кампании, игрок персонажа), AccessInterceptor (чужое — 404), AuthController
+chat/         ChatService (чат кампании: сообщения и броски одной лентой)
+map/          MapDoc (документ карты: стены-грани, клетки, предметы, зоны, подписи, подложка), MapRules (правила карты системы), MapObject, Material, MapGrid (что в клетке, линия взгляда, досягаемость), TokenPlacer, BattleMapService (карты кампании, подложка), BattleFieldService (поле идущего боя), PointerBoard (указатели в памяти), MapGenerator, EditableMap
+encounter/    EncounterService (бой кампании: очередь, раунды, ожидание, урон, противостояния), CombatContest (противостояние от системы), EncounterView (страница боя), Initiative, InitiativeDeclaration и CombatCard (что отдаёт система)
 check/        CheckRequest/CheckResult/CheckResolver (GenericCheckResolver: d20), OpposedCheckResult, CheckService (правила системы + лог)
-item/         ItemTypeDefinition, ItemField (поля типа предмета, проверка ввода, строка предмета), CatalogItem (строка справочника), ItemAction (кнопка действия на листе); типы, справочник и действия отдаёт GameSystem
-skill/        SkillDefinition, CharacterRole, StatValue, SkillSheet, SkillCheck, SkillOpponent, SkillProgression (контракт прокачки), SkillImprovement, SkillService (навыки, роли, проверка, прокачка)
-system/        GameSystem, GameSystemRegistry, GenericSystem ("GENERIC"), Currency; cp2020/ — Cp2020System ("CP2020"),
-               стратегии счётчиков, Cp2020Rules, Cp2020Dice (d10: на 10 один дополнительный кубик), Cp2020CheckResolver, Cp2020Skills (каталог, роли), Cp2020Fumbles (таблица книги), Cp2020SkillRules (языки по семьям, бонусы от других навыков, требования), Cp2020ItemTypes (оружие, магазины, боеприпасы), Cp2020Weapons (справочник оружия книги), Cp2020Ammo (таблица боеприпасов книги), Cp2020Magazines (справочник магазинов), Cp2020MagazineRules (цены, размеры, штрафы магазинов; хоумбрю помечен), Cp2020WeaponActions (выстрел, очередь, смена и снаряжение магазина), Cp2020SkillProgression + Cp2020IpStrategy (очки улучшения)
+item/         ItemTypeDefinition, ItemField (поля типа предмета, проверка ввода, строка предмета), CatalogItem (строка справочника), ItemAction (кнопка действия на листе), InstalledBlock (вживлённое: блок фишек над инвентарями), ItemSection (секции инвентаря), ItemSummary (краткая строка), ItemAttachments + ItemChip (что показано под предметом: магазины и патроны фишками); всё это отдаёт GameSystem
+skill/        SkillDefinition, CharacterRole, StatValue, SkillOverride (уровень от чипа), SkillSheet, SkillCheck, SkillOpponent, SkillProgression (контракт прокачки), SkillImprovement, SkillService (навыки, роли, проверка, прокачка)
+system/        GameSystem, GameSystemRegistry, GenericSystem ("GENERIC"), Currency, ExpenseTemplate (типичная регулярная трата); cp2020/ — Cp2020System ("CP2020"),
+               стратегии счётчиков, Cp2020Rules, Cp2020Dice (d10: на 10 один дополнительный кубик), Cp2020CheckResolver, Cp2020Skills (каталог, роли), Cp2020Fumbles (таблица книги), Cp2020SkillRules (языки по семьям, бонусы от других навыков, требования), Cp2020ItemTypes (оружие, магазины, боеприпасы), Cp2020Weapons (справочник оружия книги), Cp2020Ammo (таблица боеприпасов книги), Cp2020Magazines (справочник магазинов), Cp2020MagazineRules (цены, размеры, штрафы магазинов; хоумбрю помечен), Cp2020WeaponActions (выстрел, очередь, смена и снаряжение магазина), Cp2020ItemSheet (краткая строка, фишки под оружием, что предложить в окне «Добавить»), Cp2020Armors (справочник брони книги), Cp2020ArmorRules (пропорциональная броня, слои), Cp2020WornArmor (надетая броня), Cp2020ArmorActions (надеть, снять, починить), Cp2020AttackRules (дальняя атака и метание: план, сложность по дальности, зона, урон), Cp2020AreaAttacks (урон по площади и отклонение), Cp2020Effects (особые заряды: горение, оглушение, слепота, газ), Cp2020Cover (укрытие цели), Cp2020Cyberware (справочник киберware), Cp2020Cyber (установка, хирургия, эффекты, блок на листе), Cp2020Cyberlimbs (киберконечности: сторона, опции, прочность, удар), Cp2020Chips (чипы навыков: справочник, лимит INT, обкатка), Cp2020RepStrategy + Cp2020Facedown (репутация, противостояние в трекере), Cp2020Lifestyle (шаблоны трат: еда, жильё по зонам, услуги), Cp2020Creation (мастер создания: очки, пакеты ролей, зарплаты с. 58), Cp2020Lifepath (лайфпас с. 34–39), Cp2020Melee (ближний бой: встречный бросок, урон, рукопашная), Cp2020MartialArts (ключевые приёмы, с. 100), Cp2020AttackModifiers (таблица модификаторов FNFF), Cp2020SkillProgression + Cp2020IpStrategy (очки улучшения), Cp2020Npcs (быстрые NPC, с. 30), Cp2020MapRules (карта: укрытия как материалы, клетка 2 м)
 dto/counter/   DTO только для счётчиков (единственный модуль, переведённый на DTO)
 exception/     NotFoundException.forId("Entity", id) (NoSuchElementException → 404), наследники CharacterNotFoundException, InventoryNotFoundException;
                GlobalExceptionHandler (страницы → error.html: 404/400/500), ApiExceptionHandler (app.charka.api → text/plain)
 TODO.txt       список планов автора (см. ниже)
 ```
 
-Шаблоны: `src/main/resources/templates/` — `error.html`, `home.html`, `campaign.html`, `character.html`, `notes.html`, `counters/list.html`, `skills/list.html`; общие куски — `fragments/layout.html` (`head(title)`, `topbar(characterId, active)` с вкладками Лист/Навыки/Счётчики/Заметки; «Навыки» — только если у системы есть каталог), `fragments/dice.html` (`card(action, showAuthor)` — карточка «Кубики», `check-result` — итог проверки), `fragments/items.html` (`type-fields(types, item)` — выбор типа и поля предмета).
-Фронт единый: один CSS `static/css/app.css` (тёмная тема, токены в `:root`, шрифты Inter + Russo One с Google Fonts) и один JS `static/js/app.js` — без Bootstrap. JS-соглашения: `[data-edit-toggle]` открывает `.edit-panel` внутри ближайшего `[data-editable]`; `form[data-confirm]` спрашивает подтверждение; `[data-count-to]` — счётчик символов; `.alert-close` закрывает flash-сообщение; `[data-item-form]` — поля выбранного типа предмета; `[data-skills]` — страница навыков (фильтр, поиск, правка уровней, диалог проверки).
+Шаблоны: `src/main/resources/templates/` — `error.html`, `home.html`, `campaign.html`, `encounter.html`, `character.html`, `notes.html`, `counters/list.html`, `skills/list.html`; общие куски — `fragments/layout.html` (`head(title)`, `topbar(characterId, active)` с вкладками Лист/Навыки/Счётчики/Заметки; «Навыки» — только если у системы есть каталог), `fragments/dice.html` (`card(action, showAuthor)` — карточка «Кубики», `check-result` — итог проверки), `fragments/items.html` (`row(item, inv, owner)` — строка предмета, `chip` — фишка, `add-dialog` — окно «Добавить», `type-fields(types, item)` — выбор типа и поля предмета, редкие за «Дополнительно»; `action-form` — кнопка действия), `fragments/encounter.html` (`actions(row, base)` — действия участника боя), `fragments/attack.html` (`dialog(...)` — диалог атаки, `pending(...)` — упавший заряд, `result(...)` — итог, `target-checks`, `target-options`).
+Фронт единый (в адреса подставляется хэш содержимого, `spring.web.resources.chain`): один CSS `static/css/app.css` (тёмная тема, токены в `:root`, шрифты Inter + Russo One с Google Fonts) и один JS `static/js/app.js` — без Bootstrap. Страницы обновляются на месте: формы и ссылки идут через fetch, ответ заменяет `body`, затем снова вызывается `initPage()`, поэтому обработчики элементов живут в ней, а обработчики на `document` — вне её; редирект с якорем отдаёт `InPlaceRedirectFilter`. JS-соглашения: `[data-edit-toggle]` открывает `.edit-panel` внутри ближайшего `[data-editable]`; `form[data-confirm]` спрашивает подтверждение; `[data-count-to]` — счётчик символов; `.alert-close` закрывает flash-сообщение; `[data-item-form]` — поля выбранного типа предмета; `select[data-suggest]` — список типичных значений для текстового поля рядом («Другой…» открывает его), `data-name-prefix` подставляет название предмета; `[data-add-item]` + `[data-add-dialog]` — окно «Добавить» (одно на страницу, вкладка запоминается; `data-add-tab-open` и `data-add-then` — одна вкладка и сразу действие); `details[data-menu]` — выбор у фишки, закрывается нажатием мимо; `[data-dialog-open]` — диалог по кнопке; `[data-attack]` — диалог атаки (поля по режиму, цели нажатием, цель и расстояние запоминаются в localStorage для оружия); `[data-skills]` — страница навыков (фильтр, поиск, правка уровней, диалог проверки); `[data-creation]` — мастер создания персонажа; `[data-battle]` — поле боя (SVG по JSON карты, опрос с ETag, состояние в `battle` вне `initPage`); `[data-map-editor]` — редактор карты (`editor`); общая отрисовка — `drawMapLayers`; `select[data-remember]` — выбор запоминается. В SpEL `map[var]` берёт ключ строкой «var» — пишите `map.get(var)`.
 
-**Убирая что-то с экрана ради разгрузки, записывай в `TODO.md`, где это вернуть** (пример — таблица «Скрыто с экрана навыков» и пометки в задачах G-05, P-01, I-06, C-03, C-07).
+**Убирая что-то с экрана ради разгрузки, записывай в `BACKLOG.md`, где это вернуть** (пример — таблица «Скрыто с экрана навыков» и пометки в задачах G-05, P-01, I-06, C-03, C-07).
 
 ## Доменная модель
 
 ```
-Campaign (name, system, startDate, currentDate)   — system: код GameSystem (колонка game_system)
+AppUser (username, passwordHash) — пользователь; мастер своих кампаний, игрок своих персонажей
+Campaign (name, system, startDate, currentDate, gm?)   — system: код GameSystem (колонка game_system); gm — мастер (U-03)
  ├─ RollLog* (character?, expression, details, total, label, gameDate, createdAt) — без коллекции в Campaign, не экспортируется
+ ├─ ChatMessage* (character?, author, text, gameDate, createdAt) — чат, как лог: без коллекции, не экспортируется
+ ├─ BattleMap* (name, doc JSON, background) — карта боя, заготовка
+ ├─ Encounter (round, groupPlayers, groupNpcs, mapDoc — копия карты, battleMapId) └─ EncounterParticipant* (character, initiative, initiativeDetails, turnOrder, done, waiting, declaration, posX, posY) └─ CombatEffect* (label, roundsLeft, damage, attackOption, data) — идущий бой, один на кампанию; закончился — удаляется
  ├─ Chronicle* (name, startDate, endDate)     — запись о прошедшем периоде
- └─ Character* (name, birthDate, roles)       — roles: коды из GameSystem.getRoles(), таблица character_role; уровень роли = уровень спецспособности
+ └─ Character* (name, birthDate, npc, roles, player?)  — npc: персонаж мастера; roles: коды из GameSystem.getRoles(), таблица character_role; уровень роли = уровень спецспособности
      ├─ CharacterSkill* (skillCode, level, customName?) — код из каталога системы; уровень 0 у обычного навыка не хранится
-     ├─ Wound*     (name, severity, date)
+     ├─ Wound*     (name, severity, date) — журнал здоровья: ручные записи и автозаписи `HealthCounterService` (урон, смерть, медпомощь)
      ├─ Inventory* (name) └─ Item* (name, quantity, cost, description, type, properties) — type: код из GameSystem.getItemTypes()
      ├─ Money*     (name, amount, operationDate) — журнал операций, баланс = сумма amount
+     ├─ RecurringExpense* (name, amount, periodDays, nextDate) — регулярная трата, `proceedDate` пишет её в Money
      ├─ Note*      (name ≤255, text ≤1000, createdAt) ←M:N→ NoteCategory (глобальные, не привязаны к персонажу)
      └─ Counter*   (name, value:Integer, type:String)
 ```
@@ -87,38 +104,62 @@ Campaign (name, system, startDate, currentDate)   — system: код GameSystem 
 ### Счётчики (самая «архитектурная» часть)
 
 `CounterStrategy` (тип, `getNewValue(String current, Object input)`, `getResetValue()`) → `CounterStrategyFactory` собирает все бины-стратегии в Map по `getCounterType()`. Значения гоняются через `String`, хотя хранятся как `Integer`. Тип счётчика — строка без enum.
-Default-методы стратегии: `getSystems()` (пусто = универсальная; форма и `createCounter` показывают/принимают только типы системы кампании), `getDisplayName()`/`getDefaultName()`, `getViewTemplate()` (шаблон с фрагментом `card` — каждый тип рисует свою карточку, `counters/list.html` не трогаем), `getCreateFieldsTemplate()` (фрагмент `create-fields` — доп. поля формы создания, уходят в `attributes[...]`), `usesInitialValue()`, `getRequiredCounterTypes()` (обязательные счётчики: создаются автоматически, удалить их, пока есть зависимый, нельзя), `isUniquePerCharacter()`, `getDisplayOrder()`, `initialize(counter, params)` (незнакомые ключи пропускать — params общие для всех создаваемых вместе), `reset(counter)`, `describe(CounterContext)` → данные карточки в `CounterResponseDto.view`, `updateAttributes(counter, map)`, `performAction(ctx, action)`.
+Default-методы стратегии: `getSystems()` (пусто = универсальная; форма и `createCounter` показывают/принимают только типы системы кампании), `getDisplayName()`/`getDefaultName()`, `getViewTemplate()` (шаблон с фрагментом `card` — каждый тип рисует свою карточку, `counters/list.html` не трогаем), `getCreateFieldsTemplate()` (фрагмент `create-fields` — доп. поля формы создания, уходят в `attributes[...]`), `usesInitialValue()`, `getRequiredCounterTypes()` (обязательные счётчики: создаются автоматически, удалить их, пока есть зависимый, нельзя), `isUniquePerCharacter()`, `getDisplayOrder()`, `initialize(counter, params)` (незнакомые ключи пропускать — params общие для всех создаваемых вместе), `reset(counter)`, `describe(CounterContext)` → данные карточки в `CounterResponseDto.view`, `isAwardable()` (начислять всем со страницы кампании), `updateAttributes(counter, map)`, `performAction(ctx, action)`.
 `Counter.attributes` (`Map<String,Integer>`, таблица `counter_attribute`) — доп. состояние стратегии сверх одного числа. `CounterContext` — счётчик + все счётчики персонажа, через него зависимые стратегии читают друг друга.
 
 Стратегии: `SimpleIntegerCounterStrategy` (`"SIMPLE_INTEGER"`, прибавляет input) и связка CP2020 (`system/cp2020/`, доступна только кампаниям CP2020):
 - `strategy/health/HealthCounterStrategy` — точка расширения для систем здоровья (урон, лечение, `healOverTime`, спасброски по коду, стабилизация, `describe` → `HealthView`). `DiceRoller` — кубики (в тестах подменяются).
-- `Cp2020StatsStrategy` (`"CP2020_STATS"`): все 9 статов `int/ref/tech/cool/attr/luck/ma/body/emp` + `humanityLoss`. Текущие значения: REF/INT/COOL со штрафами от ран (уровень из счётчика здоровья), EMP = человечность/10 (человечность = EMP×10 − потеря). Производные (`Cp2020Rules`): бег MA×3 м, прыжок бег/4, переноска BODY×10 кг, подъём BODY×40 кг, BTM, спасбросок = BODY.
-- `Cp2020ArmorStrategy` (`"CP2020_ARMOR"`): `sp_<ЗОНА>` — текущий SP, `max_<ЗОНА>` — полный; `wear()` при пробитии, действие `REPAIR` возвращает полный SP.
+- `Cp2020StatsStrategy` (`"CP2020_STATS"`): все 9 статов `int/ref/tech/cool/attr/luck/ma/body/emp` + `humanityLoss`. Текущие значения: REF/INT/COOL со штрафами от ран (уровень из счётчика здоровья), REF ещё со штрафом брони, EMP = человечность/10 (человечность = EMP×10 − потеря). Производные (`Cp2020Rules`): бег MA×3 м, прыжок бег/4, переноска BODY×10 кг, подъём BODY×40 кг, BTM, спасбросок = BODY.
+- `Cp2020ArmorStrategy` (`"CP2020_ARMOR"`): SP зоны считается из надетых предметов типа «Броня» (`Cp2020WornArmor`, таблица `Cp2020ArmorRules`) и своего слоя счётчика: `sp_<ЗОНА>` — его текущий SP, `max_<ЗОНА>` — полный; `wear()` при пробитии, действие `REPAIR` возвращает полный SP; `encumbrance` — штраф брони к REF.
 - `Cp2020HealthStrategy` (`"CP2020_HEALTH"`, требует stats + armor): value = полученный урон 0..40; attributes: `lost_<ЗОНА>`, флаги `stunned/stabilized/dead/deathSavePending`. Порядок урона: зона → −SP (износ −1 при пробитии; AP — половина SP и урона; BYPASS — без брони) → ×2 в голову → −BTM (мин. 1) → >8 в голову = смерть, >8 в конечность = потеря + спасбросок от смерти → >40 = смерть → авто-спасбросок от оглушения. Таблицы — `Cp2020Rules`.
 - Карточки — `counters/types/cp2020-*.html`, стили — блок `.cp-*` в конце `app.css` (Russo One только у главного числа: в нём нет символов − ≤ →).
-- `HealthCounterService` — операции, не знающие о системе; `healOverTime` вызывается из `CampaignTimelineService.proceedDate` (1 очко/день, умирающие без стабилизации не лечатся).
+- `HealthCounterService` — операции, не знающие о системе; `healOverTime` вызывается из `CampaignTimelineService.proceedDate` (CP2020 по с. 116: без проверки медика +2 урона в день, иначе 0.5/1/2/3 в день). Медпомощь — `care`: `HealthCounterStrategy.getCareOptions` + бросок навыка медика.
 
 ### Время кампании
 
-`CampaignTimelineService.proceedDate(campaignId, days, description)` создаёт `Chronicle` [старая дата → новая], сдвигает `currentDate` и вызывает `GameSystem.onTimePassed` (CP2020 — естественное лечение). Место под периодические траты/лечение ран оставлено комментарием.
+`CampaignTimelineService.proceedDate(campaignId, days, description)` создаёт `Chronicle` [старая дата → новая], сдвигает `currentDate`, вызывает `GameSystem.onTimePassed` (CP2020 — естественное лечение, обкатка чипов) и списывает наступившие регулярные траты (`RecurringExpenseService.chargeDue`).
 
 ## HTTP-маршруты
 
 | Метод | Путь | Что делает |
 |---|---|---|
-| GET | `/` | список персонажей и кампаний |
+| GET, POST | `/login`, `/register`; POST `/logout` | вход, регистрация (сразу вход), выход |
+| GET | `/` | свои кампании (мастер или игрок) и свои персонажи |
+| POST | `/campaign/{id}/characters/{cid}/player` | `username` → отдать персонажа игроку (пусто — мастеру) |
 | POST | `/campaigns` | `name`, `system`, `startDate?` → новая кампания |
-| GET | `/campaign/{id}` | страница кампании |
+| GET | `/campaign/{id}` | страница кампании; `?rolls=N` — страница лога бросков (по 10, новые сверху) |
 | POST | `/campaign/{id}/characters` | добавить персонажа (инвентарь «Backpack» + счётчики по умолчанию системы) |
+| GET, POST | `/campaign/{id}/characters/new`, POST `.../roll`, `.../background` (лайфпас) | мастер создания по правилам системы (`CharacterCreation`; CP2020: очки, статы, роль и 40 карьерных очков, хобби, стартовые деньги) |
+| POST | `/campaign/{id}/session` | новая игровая сессия: потраченная Удача возвращается (`GameSystem.restoreLuck`) |
+| POST | `/campaign/{id}/award` | `counter` (название), `amount`, `character` (несколько) → начислить всем выбранным (IP, опыт), итог во flash `awardResult` |
 | POST | `/campaign/{id}/chronicles` | `name`, `duration` → промотать время |
+| POST | `/campaign/{id}/npcs` | `template?`, `name?`, `count`, `advanced` → NPC по шаблону системы или пустой |
+| GET | `/campaign/{id}/encounter` | боевой трекер; без боя — выбор участников |
+| POST | `/campaign/{id}/encounter/start`, `.../next`, `.../end` | `character` (несколько), `groupPlayers?`, `groupNpcs?` → начать бой с инициативой; следующий ход или раунд; закончить бой |
+| POST | `/campaign/{id}/encounter/participants` | `character` → ввести в идущий бой |
+| POST | `/campaign/{id}/encounter/participants/{pid}/contest/{code}` | `target` (персонаж) → противостояние системы (CP2020: `FACEDOWN`), итог в строке, проигравшему эффект |
+| POST | `/campaign/{id}/encounter/participants/{pid}/wait\|join\|remove\|initiative\|damage\|stabilize`, `.../save/{code}`, `.../effects/{eid}/remove`, `.../declare/{code}`, `.../check` | ожидание, вступление, убрать, инициатива вручную, урон (`amount`, `location?`, `damageType?`), спасбросок, снять эффект, объявить (CP2020: `FAST_DRAW`), проверка навыка (`skill`, `difficulty?`); итог во flash в строке участника |
+| POST | `/character/{id}/npc/copy`, `.../npc/delete` | `count` → копии NPC без ран; удаление только NPC |
 | GET | `/api/campaigns/{id}/download` | экспорт кампании в JSON-файл |
+| POST | `/campaigns/import` | `file` — JSON экспорта → новая кампания (id новые, ссылки предметов переводятся) |
 | POST | `/campaign/{id}/roll`, `/character/{id}/roll` | `expression` или `quick`, `label?` → бросок в лог, результат во flash |
 | POST | `/campaign/{id}/check`, `/character/{id}/check` | `modifier`, `difficulty?`, `label?` → проверка по правилам системы, `checkResult` во flash |
 | GET | `/character/{id}` | лист персонажа (раны, инвентари, деньги, кубики) |
 | POST | `/character/{id}/wounds`, `.../wounds/{wid}/delete` | раны |
 | POST | `/character/{id}/inventories`, `.../{invId}/edit`, `.../{invId}/delete` | инвентари |
-| POST | `/character/{id}/inventories/{invId}/items` (+ `/{itemId}/edit|delete|move`) | предметы; `itemType`, `prop.<ключ>` — тип и его поля; `/catalog` (`catalogKey`, `quantity`) — из справочника системы; `/{itemId}/action/{action}` (`source`, `amount`) — действие системы (CP2020: `FIRE`, `BURST`, `RELOAD`, `EJECT`, `ADD_MAGAZINE`, `LOAD`, `UNLOAD`), итог во flash для строки предмета |
+| POST | `/character/{id}/inventories/{invId}/items` (+ `/{itemId}/edit|delete|move`) | предметы; `itemType`, `prop.<ключ>` — тип и его поля; `anchor` — куда вернуться; `/catalog` (`catalogKey`, `quantity`, `anchor`, `thenAction?`) — из справочника системы, `thenAction` — сразу действие над новым предметом; `buy=true` (и у своего предмета) — купить: цена × количество списывается записью в деньгах, не хватает — отказ, итог `Purchase` в строке предмета; `/{itemId}/quantity` (`delta`, `returnTo`) — кнопки − и ＋, ноль убирает предмет; `/{itemId}/action/{action}` (`source`, `amount`, `returnTo`) — действие системы (CP2020: `FIRE`, `BURST`, `RELOAD`, `EJECT`, `ADD_MAGAZINE`, `LOAD`, `LOAD_ALL`, `UNLOAD`, `UNJAM`, у брони `WEAR`, `TAKE_OFF`, `REPAIR`, у киберware `INSTALL`, `REMOVE`, `REPAIR`), итог во flash для строки предмета или `returnTo` |
+| POST | `/character/{id}/items/{itemId}/attack` | `target` (в зоне огня несколько; `item-<id>` — машина, CP2020: урон в SDP через SP) или `targetName`, `distance`, `location?`, `skill?`, `modifier`, `mode`, `rounds`, `zoneWidth`, `option.<выбор>`, `returnCampaign?` (вернуться в трекер; то же у действий предмета и зарядов) → атака оружием, итог во flash `attackResult` в строке предмета (предмет израсходован — в начале блока инвентарей) |
+| POST | `/character/{id}/attack/ability/{code}` | то же без предмета, кодом способности системы (CP2020: `BRAWL`, режимы `STRIKE`, `KICK`, `GRAPPLE`, `BODY_THROW`, `HOLD`, `CHOKE`, `SWEEP`, `DISARM`, `ESCAPE`); только из трекера, итог над строками боя |
+| POST | `/character/{id}/attack/blast/{blastId}`, `.../dismiss` | `target` (несколько) → заряд упал мимо (`PendingBlast`): урон выбранным целям; `dismiss` — никого не задело |
 | POST | `/character/{id}/money`, `.../money/{mid}/delete` | деньги |
+| POST | `/character/{id}/expenses`, `.../expenses/{eid}/delete` | `name`, `amount`, `periodDays` → регулярная трата, списывается при промотке времени |
+| POST | `/character/{id}/installed/{action}` | действие блока вживлённого (CP2020: `THERAPY`, `source`, `amount`), итог в блоке |
+| GET, POST | `/campaign/{id}/maps`, `.../generate`, `.../{mapId}/edit\|copy\|rename\|delete\|regenerate\|background` | карты кампании, генератор, редактор, подложка; GET/POST `.../{mapId}/doc` — документ (JSON, автосохранение) |
+| GET, POST | `/campaign/{id}/encounter/map`, `.../participants/{pid}/move\|lift\|reach`, `.../tokens` (мастер: персонаж или NPC по шаблону на клетку), `.../sight`, `.../door`, `.../pointer`, `.../doc` | поле боя: JSON с ETag (опрос), ход фишки (204/400 текстом), досягаемость, линия взгляда, дверь, указатель, правка копии; POST `/encounter/attach`, `/save-map`, GET `/edit-map` |
+| GET, POST | `/campaign/{id}/chat` | лента чата и бросков (фрагмент, ETag, опрос); POST `character?`, `text`, `returnTo` → сообщение |
+| GET | `/campaign/{id}/gm` | экран мастера: все персонажи — состояние, броня, статы, эффекты, деньги |
+| POST | `/character/{id}/effects`, `.../effects/{eid}/delete` | `template` (готовый эффект системы) или `name`, `stat`, `modifier`, `duration`, `unit` → временный эффект; раунды идут в трекере, дни — при промотке |
+| POST | `/character/{id}/contacts`, `.../{cid}/edit\|delete` | контакты: `name`, `role`, `relation`, `owes`, `note` |
 | GET | `/character/{id}/notes/` | заметки (фильтр `?categoryId=`) |
 | POST | `/character/{id}/notes`, `.../{noteId}/edit|delete`; GET `.../{noteId}/edit` | заметки |
 | POST | `/character/{id}/categories`, `.../{catId}/edit|delete` | категории заметок |
@@ -134,6 +175,7 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 | POST | `/character/{id}/counters/create`, `/{cid}/update|set|reset`; DELETE `/{cid}` | счётчики |
 | POST | `/character/{id}/counters/{cid}/attributes`, `.../{cid}/action/{action}` | правка attributes и особые действия типа (ремонт брони) |
 | POST | `/character/{id}/counters/{cid}/health/damage|heal|stabilize`, `.../health/save/{STUN|DEATH}` | счётчик здоровья (итог + пошаговый расчёт во flash `healthSteps`) |
+| POST | `/character/{id}/counters/{cid}/health/care` | `healer`, `option`, `modifier` → медпомощь: медик бросает навык (CP2020: стабилизация, First Aid, Medical Tech) |
 
 ## Соглашения в коде
 
@@ -148,15 +190,15 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 Исправлено 2026-10-29: edit-эндпоинты ран и денег, кнопка ✎ у предметов (открывала форму инвентаря), `GET /notes` без слеша (был 405), подсветка выбранной категории, рекурсия в JSON-экспорте при наличии счётчиков, битые сид-данные. Единый редизайн всех страниц; добавлены UI для перемещения предмета, переименования категории и удаления счётчика (включён `spring.mvc.hiddenmethod.filter`).
 
 **Открытые вопросы (не баги в текущем UI, но стоит решить)**
-- `NoteCategory` глобальны для всех персонажей, хотя маршруты вложены в `/character/{id}`.
+- `NoteCategory` с 2026-11-02 принадлежат персонажу; старые общие (character_id IS NULL) видны всем.
 - Тесты контроллеров — standalone MockMvc без ViewResolver: если имя вида совпадает с последним сегментом URL (`notes` для `.../notes`), получится «Circular view path» — нужен `setViewResolvers(...)` (см. `NoteControllerTest`).
 
 **Архитектура**
 - Сущности отдаются прямо в шаблоны и в JSON; DTO есть только у счётчиков.
 - Сервисы ходят в чужие репозитории напрямую (Money/Wound/Inventory → `CharacterRepository`).
-- Нет проверки принадлежности ресурса персонажу (кроме счётчиков и удаления ран): можно удалить/переместить чужой предмет, подставив id.
+- Принадлежность ресурса персонажу проверяет `OwnershipInterceptor` (U-02) по переменным адреса.
 - Стратегии счётчиков работают через `String`/`Object`, тип — строка; стратегии лежат в `model/` и знают имена шаблонов.
-- Нет авторизации/пользователей.
+- Пользователи есть (U-03), но один мастер на кампанию и нет смены пароля.
 
 ## Планы автора (`TODO.txt`)
 
@@ -167,6 +209,6 @@ Default-методы стратегии: `getSystems()` (пусто = униве
    - **Мана / ячейки заклинаний** (D&D), **вдохновение**, **броня** (CP2020 SP/абляция).
 2. Периодические траты (привязать к `proceedDate`).
 3. ~~Броски кубиков с сохранением истории.~~ (D-01..D-03)
-4. Возможно — чат кампании.
+4. ~~Возможно — чат кампании.~~ (U-06)
 
 Сделано из TODO: заметки, хроники, раны как отдельная сущность, смена даты, окно трат, базовые счётчики.

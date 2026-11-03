@@ -29,14 +29,15 @@ class CampaignTimelineServiceTest {
     @Mock private ChronicleService chronicleService;
     @Mock private CampaignService campaignService;
     @Mock private HealthCounterService healthCounterService;
+    @Mock private app.charka.service.RecurringExpenseService recurringExpenseService;
 
     private CampaignTimelineService timelineService;
 
     @BeforeEach
     void setUp() {
         GameSystemRegistry registry = new GameSystemRegistry(
-                List.of(new GenericSystem(), new Cp2020System(healthCounterService)));
-        timelineService = new CampaignTimelineService(chronicleService, campaignService, registry);
+                List.of(new GenericSystem(), new Cp2020System(healthCounterService, null)));
+        timelineService = new CampaignTimelineService(chronicleService, campaignService, registry, recurringExpenseService);
     }
 
     private void givenCampaign(String system) {

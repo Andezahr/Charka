@@ -3,12 +3,16 @@ package app.charka.service.campaign;
 import app.charka.model.Campaign;
 import app.charka.model.Chronicle;
 import app.charka.service.ChronicleService;
+import app.charka.service.RecurringExpenseService;
+import app.charka.system.GameSystem;
 import app.charka.system.GameSystemRegistry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
+import java.util.ArrayList;
 
 /**
  * Сервис для управления ходом времени в кампании.
@@ -25,6 +29,7 @@ public class CampaignTimelineService {
     private final ChronicleService chronicleService;
     private final CampaignService campaignService;
     private final GameSystemRegistry systemRegistry;
+    private final RecurringExpenseService recurringExpenseService;
 
     /**
      * Переводит кампанию вперед на заданное количество дней,
@@ -34,9 +39,10 @@ public class CampaignTimelineService {
      * @param campaignId  ID кампании, для которой происходит расчет
      * @param daysToSkip  количество дней для пропуска (>=1)
      * @param description описание события в хронике
+     * @return что случилось с персонажами: лечение, траты
      */
     @Transactional
-    public void proceedDate(Long campaignId, int daysToSkip, String description) {
+    public List<String> proceedDate(Long campaignId, int daysToSkip, String description) {
         Campaign campaign = campaignService.getById(campaignId);
         LocalDate oldDate = campaign.getCurrentDate();
         LocalDate newDate = oldDate.plusDays(daysToSkip);
@@ -52,9 +58,31 @@ public class CampaignTimelineService {
         campaignService.updateCurrentDate(campaign.getId(), newDate);
 
         // Раны заживают и т.п. — по правилам системы кампании (у GENERIC ничего не происходит)
-        systemRegistry.get(campaign.getSystem()).onTimePassed(campaign, daysToSkip);
+        List<String> report = new ArrayList<>(systemRegistry.get(campaign.getSystem()).onTimePassed(campaign, daysToSkip));
 
-        // Реализовать периодические траты
+        // Препараты и прочие временные эффекты: часы прошли, дни убывают
+        for (var character : campaign.getCharacters()) {
+            List<String> ended = app.charka.effect.TimedEffects.passDays(character, daysToSkip);
+            if (!ended.isEmpty()) {
+                report.add(character.getName() + ": закончилось " + String.join(", ", ended));
+            }
+        }
+
+        // Аренда, еда: всё, что наступило за период, списывается своими датами
+        int charged = recurringExpenseService.chargeDue(campaign, newDate);
+        if (charged > 0) {
+            report.add("Регулярные траты: списаний " + charged);
+        }
+        return report;
+    }
+
+    /**
+     * Новая игровая сессия: то, что система возвращает к началу сессии (CP2020: Удача).
+     */
+    @Transactional
+    public void newSession(Long campaignId) {
+        Campaign campaign = campaignService.getById(campaignId);
+        GameSystem system = systemRegistry.get(campaign.getSystem());
+        campaign.getCharacters().forEach(system::restoreLuck);
     }
 }
-

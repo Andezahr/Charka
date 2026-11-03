@@ -18,6 +18,9 @@ import app.charka.model.counters.strategy.CounterStrategy;
  */
 public interface HealthCounterStrategy extends CounterStrategy {
 
+    /** Цель уже мертва: новый урон к ней не применяется */
+    boolean isDead(CounterContext context);
+
     /** Нанести урон по правилам системы (броня, зоны, модификаторы) */
     HealthEvent applyDamage(CounterContext context, DamageRequest request);
 
@@ -35,8 +38,35 @@ public interface HealthCounterStrategy extends CounterStrategy {
      */
     HealthEvent save(CounterContext context, String saveType, Integer roll);
 
+    /**
+     * Спасбросок с прибавкой к числу: например, от оглушающей гранаты.
+     */
+    default HealthEvent save(CounterContext context, String saveType, Integer roll, int modifier) {
+        return save(context, saveType, roll);
+    }
+
+    /** То же с удачей, объявленной до броска; у систем без удачи она не учитывается */
+    default HealthEvent save(CounterContext context, String saveType, Integer roll, int modifier, int luck) {
+        return save(context, saveType, roll, modifier);
+    }
+
     /** Стабилизировать умирающего (результат медицинской помощи) */
     HealthEvent stabilize(CounterContext context);
+
+    /** Какую медпомощь бывает: проверка навыка медика против состояния пациента. Пусто — только ручные кнопки */
+    default java.util.List<CareOption> getCareOptions() {
+        return java.util.List.of();
+    }
+
+    /** Сложность проверки медика; null — помощь сейчас не нужна */
+    default Integer careDifficulty(CounterContext context, CareOption option) {
+        return null;
+    }
+
+    /** Итог проверки медика: что меняется у пациента */
+    default HealthEvent applyCare(CounterContext context, CareOption option, boolean success) {
+        throw new UnsupportedOperationException("Медпомощи в этой системе нет");
+    }
 
     @Override
     HealthView describe(CounterContext context);

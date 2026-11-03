@@ -9,6 +9,9 @@ package app.charka.system.cp2020;
  */
 public final class Cp2020Rules {
 
+    /** С. 110: мягкая броня защищает от огнемёта только «>15 SP» и теряет 2 SP за попадание */
+    public static final int SOFT_ARMOR_FLAME_LIMIT = 15;
+    public static final int SOFT_ARMOR_FLAME_WEAR = 2;
     public static final int BOXES_PER_LEVEL = 4;
     public static final int LEVEL_COUNT = 10;
     /** 10 уровней по 4 клетки; урон сверх этого — смерть */
@@ -18,7 +21,6 @@ public final class Cp2020Rules {
     /** Урон за одно попадание сверх этого в голову убивает, в конечность — отрывает её */
     public static final int SEVERE_HIT_THRESHOLD = 8;
     /** Естественное восстановление при отдыхе, очков урона в день */
-    public static final int NATURAL_HEALING_PER_DAY = 1;
     /** Человечность = EMP × 10; каждые потерянные 10 очков снижают EMP на 1 */
     public static final int HUMANITY_PER_EMP = 10;
     /** Домашнее правило (из Cyberpunk RED): новая роль открывается, когда спецспособность текущей достигла этого уровня */
@@ -67,6 +69,17 @@ public final class Cp2020Rules {
     /**
      * Body Type Modifier — сколько урона «съедает» телосложение после брони.
      */
+    /** Прибавка к урону в ближнем бою: таблица с. 99, 112 */
+    public static int meleeDamageBonus(int body) {
+        if (body <= 2) return -2;
+        if (body <= 4) return -1;
+        if (body <= 7) return 0;
+        if (body <= 9) return 1;
+        if (body == 10) return 2;
+        if (body <= 12) return 4;
+        return body <= 14 ? 6 : 8;
+    }
+
     public static int btm(int body) {
         if (body <= 2) return 0;
         if (body <= 4) return 1;
@@ -79,6 +92,18 @@ public final class Cp2020Rules {
     /** Штраф к спасброску от оглушения: 0 за лёгкое, -1 за серьёзное и далее по уровню */
     public static int stunPenalty(int woundLevel) {
         return Math.max(woundLevel, 0);
+    }
+
+    /** Наименьшая ширина зоны подавляющего огня, м (с. 107) */
+    public static final int MIN_FIRE_ZONE_WIDTH = 2;
+
+    /** Заклинивает при d10 не выше этого числа (с. 106): VR 3, ST 5, UR 8 */
+    public static int jamLimit(String reliability) {
+        return switch (reliability) {
+            case "VR" -> 3;
+            case "UR" -> 8;
+            default -> 5;
+        };
     }
 
     /** REF: -2 при серьёзном ранении, /2 при критическом, /3 при смертельном (с округлением вверх) */

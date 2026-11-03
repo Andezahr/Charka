@@ -1,6 +1,7 @@
 package app.charka.controller;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
@@ -77,7 +78,7 @@ class NoteControllerTest {
 
             when(characterService.getById(CHAR_ID)).thenReturn(character);
             when(noteService.getNotesByCharacter(CHAR_ID)).thenReturn(notes);
-            when(categoryService.getAllCategories()).thenReturn(cats);
+            when(categoryService.getForCharacter(anyLong())).thenReturn(cats);
 
             mockMvc.perform(get("/character/{characterId}/notes/", CHAR_ID))
                     .andExpect(status().isOk())
@@ -90,7 +91,7 @@ class NoteControllerTest {
 
             verify(characterService).getById(CHAR_ID);
             verify(noteService).getNotesByCharacter(CHAR_ID);
-            verify(categoryService).getAllCategories();
+            verify(categoryService).getForCharacter(anyLong());
             verifyNoMoreInteractions(characterService, noteService, categoryService);
         }
 
@@ -103,7 +104,7 @@ class NoteControllerTest {
 
             when(characterService.getById(CHAR_ID)).thenReturn(character);
             when(noteService.getNotesByCharacterAndCategory(CHAR_ID, CAT_ID)).thenReturn(notes);
-            when(categoryService.getAllCategories()).thenReturn(cats);
+            when(categoryService.getForCharacter(anyLong())).thenReturn(cats);
 
             mockMvc.perform(get("/character/{characterId}/notes/", CHAR_ID)
                             .param("categoryId", String.valueOf(CAT_ID)))
@@ -113,7 +114,7 @@ class NoteControllerTest {
 
             verify(characterService).getById(CHAR_ID);
             verify(noteService).getNotesByCharacterAndCategory(CHAR_ID, CAT_ID);
-            verify(categoryService).getAllCategories();
+            verify(categoryService).getForCharacter(anyLong());
             verifyNoMoreInteractions(characterService, noteService, categoryService);
         }
 
@@ -124,7 +125,7 @@ class NoteControllerTest {
 
             when(characterService.getById(CHAR_ID)).thenReturn(character);
             when(noteService.getNotesByCharacterAndCategory(CHAR_ID, CAT_ID)).thenReturn(List.of());
-            when(categoryService.getAllCategories()).thenReturn(List.of());
+            when(categoryService.getForCharacter(anyLong())).thenReturn(List.of());
 
             // без ViewResolver standalone MockMvc считает вид "notes" циклическим для URL .../notes
             MockMvc mvcWithViews = MockMvcBuilders
@@ -270,7 +271,7 @@ class NoteControllerTest {
 
             when(characterService.getById(CHAR_ID)).thenReturn(character);
             when(noteService.getNoteById(NOTE_ID)).thenReturn(note);
-            when(categoryService.getAllCategories()).thenReturn(cats);
+            when(categoryService.getForCharacter(anyLong())).thenReturn(cats);
             when(noteService.getNotesByCharacter(CHAR_ID)).thenReturn(notes);
 
             mockMvc.perform(get("/character/{characterId}/notes/{noteId}/edit", CHAR_ID, NOTE_ID))
@@ -284,7 +285,7 @@ class NoteControllerTest {
 
             verify(characterService).getById(CHAR_ID);
             verify(noteService).getNoteById(NOTE_ID);
-            verify(categoryService).getAllCategories();
+            verify(categoryService).getForCharacter(anyLong());
             verify(noteService).getNotesByCharacter(CHAR_ID);
             verifyNoMoreInteractions(characterService, noteService, categoryService);
         }

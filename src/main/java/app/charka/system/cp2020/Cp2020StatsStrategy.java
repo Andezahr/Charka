@@ -1,5 +1,7 @@
 package app.charka.system.cp2020;
 
+import app.charka.effect.TimedEffects;
+
 import app.charka.model.counters.Counter;
 import app.charka.model.counters.strategy.AbstractCounterStrategy;
 import app.charka.model.counters.strategy.CounterContext;
@@ -20,7 +22,7 @@ import static app.charka.system.cp2020.Cp2020Rules.*;
  * ({@code humanityLoss}): человечность = EMP × 10 − потеря, текущий EMP = человечность / 10 (вверх).
  * <p>
  * Текущие значения учитывают штрафы: REF/INT/COOL — от ран (уровень берётся из счётчика здоровья),
- * EMP — от потери человечности. Производные величины (бег, прыжок, переноска, BTM) считаются
+ * REF ещё от брони (из счётчика брони), EMP — от потери человечности. Производные величины (бег, прыжок, переноска, BTM) считаются
  * в {@link #describe(CounterContext)}. Значение самого счётчика не используется.
  */
 @Component
@@ -34,6 +36,8 @@ public class Cp2020StatsStrategy extends AbstractCounterStrategy {
     public static final String COOL = "cool";
     public static final String ATTR = "attr";
     public static final String LUCK = "luck";
+    /** Сколько Удачи потрачено в этой сессии (с. 26) */
+    public static final String LUCK_SPENT = "luckSpent";
     public static final String MA = "ma";
     public static final String BODY = "body";
     public static final String EMP = "emp";
@@ -153,16 +157,24 @@ public class Cp2020StatsStrategy extends AbstractCounterStrategy {
                 .orElse(-1);
         int emp = counter.getAttribute(EMP, DEFAULT_STAT);
         int humanity = humanity(emp, counter.getAttribute(HUMANITY_LOSS, 0));
+        // Книга (с. 67): EV вычитается из REF; порядок со штрафом от ран не указан, сначала EV
+        int encumbrance = context.sibling(Cp2020ArmorStrategy.TYPE).map(Cp2020ArmorStrategy::encumbrance).orElse(0);
 
         List<StatLine> stats = new ArrayList<>();
         STATS.forEach((key, label) -> {
             int base = counter.getAttribute(key, DEFAULT_STAT);
             int effective = switch (key) {
-                case REF -> effectiveRef(base, level);
+                case REF -> effectiveRef(Math.max(base - encumbrance, 0), level);
                 case INT, COOL -> effectiveIntOrCool(base, level);
                 case EMP -> effectiveEmp(humanity);
+                case BODY -> body(counter);
                 default -> base;
             };
+            // P-03: препараты и прочие временные эффекты; итог с правкой не меньше 1 (с. 25)
+            int boost = TimedEffects.modifier(counter.getCharacter(), key);
+            if (boost != 0) {
+                effective = Math.max(1, effective + boost);
+            }
             stats.add(new StatLine(key, label, base, effective));
         });
 
@@ -183,7 +195,7 @@ public class Cp2020StatsStrategy extends AbstractCounterStrategy {
     }
 
     public static int body(Counter stats) {
-        return stats.getAttribute(BODY, DEFAULT_STAT);
+        return Cp2020Cyber.bodyBonus(stats.getCharacter()) + stats.getAttribute(BODY, DEFAULT_STAT);
     }
 
     private static int checkStat(String key, int value) {

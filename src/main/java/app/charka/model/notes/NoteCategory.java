@@ -1,9 +1,10 @@
 package app.charka.model.notes;
 
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.ToString;
 
 import java.util.HashSet;
 import java.util.Objects;
@@ -18,8 +19,15 @@ public class NoteCategory {
 
     private String name;
 
+    /** Чья категория; null — общая (остались с тех пор, как категории были глобальными) */
+    @ManyToOne
+    @JoinColumn(name = "character_id")
+    @JsonIgnore
+    @ToString.Exclude
+    private app.charka.model.Character character;
+
     @ManyToMany(mappedBy = "categories")
-    @JsonBackReference
+    @JsonIgnore
     private Set<Note> notes = new HashSet<>();
 
     @Override

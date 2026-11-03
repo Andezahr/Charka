@@ -119,7 +119,7 @@ class ItemTypesTest {
         @Test
         @DisplayName("справочник: коды уникальны, каждая строка проходит проверку полей без потерь")
         void catalogValid() {
-            assertThat(Cp2020Weapons.CATALOG).hasSize(73);
+            assertThat(Cp2020Weapons.CATALOG).hasSize(88);
             assertThat(Cp2020Weapons.CATALOG).extracting(CatalogItem::key).doesNotHaveDuplicates();
             assertThat(Cp2020Weapons.CATALOG).allSatisfy(entry -> {
                 assertThat(entry.typeCode()).isEqualTo(Cp2020ItemTypes.WEAPON);
@@ -170,7 +170,7 @@ class ItemTypesTest {
         @DisplayName("оружие из справочника продаётся снаряжённым; у одноразового и холодного магазина нет")
         void catalogLoaded() {
             assertThat(catalogEntry("arasaka_minami_10").properties()).containsEntry("shots", "40").containsEntry("ammo", "40");
-            assertThat(catalogEntry("grenade").properties()).doesNotContainKeys("shots", "ammo");
+            assertThat(catalogEntry("grenade_fragmentation").properties()).doesNotContainKeys("shots", "ammo");
             assertThat(catalogEntry("mine_all_types").properties()).doesNotContainKeys("shots", "ammo");
             assertThat(catalogEntry("kendachi_monoknife").properties()).doesNotContainKeys("shots", "ammo");
         }
@@ -315,6 +315,20 @@ class ItemTypesTest {
                     .isSubsetOf(Cp2020Ammo.CATALOG.stream().map(entry -> entry.properties().get("caliber")).toList());
         }
 
+        @Test
+        @DisplayName("в списке патронов формы — всё из справочника без повторов, своё значение тоже подходит")
+        void caliberOptions() {
+            assertThat(Cp2020Ammo.CALIBERS).extracting(ItemField.Option::value)
+                    .doesNotHaveDuplicates()
+                    .contains("9mm", "5.56", "00", "Стрелы", ".357")
+                    .containsAll(Cp2020Ammo.CATALOG.stream().map(entry -> entry.properties().get("caliber")).toList());
+            assertThat(Cp2020ItemTypes.AMMO_TYPE.normalize(Map.of("caliber", "4.7 безгильзовый")))
+                    .containsEntry("caliber", "4.7 безгильзовый");
+            assertThatThrownBy(() -> Cp2020ItemTypes.AMMO_TYPE.normalize(Map.of()))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Патрон");
+        }
+
         private CatalogItem ammo(String key) {
             return Cp2020Ammo.CATALOG.stream().filter(e -> e.key().equals(key)).findFirst().orElseThrow();
         }
@@ -334,8 +348,8 @@ class ItemTypesTest {
 
         @BeforeEach
         void setUp() {
-            GameSystemRegistry registry = new GameSystemRegistry(List.of(new GenericSystem(), new Cp2020System(null)));
-            itemService = new ItemServiceImpl(itemRepository, inventoryRepository, registry);
+            GameSystemRegistry registry = new GameSystemRegistry(List.of(new GenericSystem(), new Cp2020System(null, null)));
+            itemService = new ItemServiceImpl(null, itemRepository, inventoryRepository, registry, null);
             inventory = inventoryIn(Cp2020System.CODE);
             when(inventoryRepository.findById(1L)).thenReturn(Optional.of(inventory));
             when(itemRepository.save(any())).thenAnswer(call -> call.getArgument(0));
@@ -414,7 +428,7 @@ class ItemTypesTest {
         @Test
         @DisplayName("без магазина предмет идёт одной строкой: граната, холодное")
         void stackedRow() {
-            assertThat(itemService.addFromCatalog(1L, "grenade", 3).getQuantity()).isEqualTo(3);
+            assertThat(itemService.addFromCatalog(1L, "grenade_fragmentation", 3).getQuantity()).isEqualTo(3);
         }
 
         @Test

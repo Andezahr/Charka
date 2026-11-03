@@ -62,6 +62,7 @@ public class CounterService {
         counter.setCharacter(character);
         strategy.initialize(counter, requestDto.getAttributes());
 
+        character.getCounters().add(counter);
         Counter savedCounter = counterRepository.save(counter);
         siblings.add(savedCounter);
 
@@ -256,6 +257,7 @@ public class CounterService {
             counter.setType(requiredType);
             counter.setCharacter(character);
             required.initialize(counter, params);
+            character.getCounters().add(counter);
             siblings.add(counterRepository.save(counter));
             createdWith.add(counter.getName());
         }

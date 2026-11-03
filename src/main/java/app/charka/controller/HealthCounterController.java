@@ -65,6 +65,21 @@ public class HealthCounterController {
                 () -> healthCounterService.stabilize(characterId, counterId));
     }
 
+    /**
+     * Медпомощь: {@code healer} — персонаж-медик, {@code option} — что делает, {@code modifier} — условия (больница +5).
+     */
+    @PostMapping("/care")
+    public String care(@PathVariable Long characterId,
+                       @PathVariable Long counterId,
+                       @RequestParam Long healer,
+                       @RequestParam String option,
+                       @RequestParam(defaultValue = "0") int modifier,
+                       @RequestParam(defaultValue = "0") int luck,
+                       RedirectAttributes redirectAttributes) {
+        return perform(characterId, redirectAttributes, "Медпомощь",
+                () -> healthCounterService.care(characterId, counterId, healer, option, modifier, luck));
+    }
+
     private String perform(Long characterId, RedirectAttributes redirectAttributes,
                            String errorPrefix, Supplier<HealthEvent> action) {
         try {

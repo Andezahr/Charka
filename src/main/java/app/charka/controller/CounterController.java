@@ -21,6 +21,8 @@ import java.util.List;
 public class CounterController {
 
     private final CounterService counterService;
+    private final app.charka.service.counter.HealthCounterService healthCounterService;
+    private final app.charka.model.counters.strategy.CounterStrategyFactory strategyFactory;
 
     @GetMapping
     public String listCounters(@PathVariable Long characterId, Model model) {
@@ -28,6 +30,13 @@ public class CounterController {
         model.addAttribute("counters", counters);
         model.addAttribute("characterId", characterId);
         model.addAttribute("counterTypes", counterService.getCounterTypes(characterId));
+        List<app.charka.model.Character> healers = healthCounterService.healers(characterId, careOptions());
+        model.addAttribute("healers", healers);
+        counters.stream()
+                .filter(counter -> counter.getView() instanceof app.charka.model.counters.strategy.health.HealthView)
+                .findFirst()
+                .ifPresent(health -> model.addAttribute("defaultCare",
+                        healthCounterService.defaultCare(characterId, health.getId(), healers.isEmpty() ? null : healers.get(0))));
 
         // Создаем DTO и предзаполняем characterId
         CounterCreateRequestDto createRequest = new CounterCreateRequestDto();
@@ -169,5 +178,13 @@ public class CounterController {
                     "Ошибка удаления счётчика: " + e.getMessage());
         }
         return "redirect:/character/" + characterId + "/counters";
+    }
+
+    /** Медпомощь всех систем здоровья: для порядка медиков, лучший по этим навыкам — первым */
+    private List<app.charka.model.counters.strategy.health.CareOption> careOptions() {
+        return strategyFactory.getAllStrategies().stream()
+                .filter(strategy -> strategy instanceof app.charka.model.counters.strategy.health.HealthCounterStrategy)
+                .flatMap(strategy -> ((app.charka.model.counters.strategy.health.HealthCounterStrategy) strategy).getCareOptions().stream())
+                .toList();
     }
 }

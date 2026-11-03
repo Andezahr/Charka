@@ -19,7 +19,7 @@ class GameSystemRegistryTest {
 
     @BeforeEach
     void setUp() {
-        registry = new GameSystemRegistry(List.of(new GenericSystem(), new Cp2020System(null)));
+        registry = new GameSystemRegistry(List.of(new GenericSystem(), new Cp2020System(null, null)));
     }
 
     @Test
@@ -59,7 +59,7 @@ class GameSystemRegistryTest {
     void currencyAndDefaults() {
         assertThat(registry.get("CP2020").getCurrency().symbol()).isEqualTo("eb");
         assertThat(registry.get("CP2020").getDefaultCounterTypes())
-                .containsExactly("CP2020_STATS", "CP2020_ARMOR", "CP2020_HEALTH", "CP2020_IP");
+                .containsExactly("CP2020_STATS", "CP2020_ARMOR", "CP2020_HEALTH", "CP2020_IP", "CP2020_REP");
         assertThat(registry.get("GENERIC").getDefaultCounterTypes()).isEmpty();
         assertThat(registry.get("CP2020").getQuickDice()).containsExactly("d10", "d6", "2d6", "3d6");
         assertThat(registry.get("GENERIC").getQuickDice()).contains("d20", "d100");

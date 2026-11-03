@@ -4,8 +4,10 @@ import app.charka.item.ItemField;
 import app.charka.item.ItemField.Option;
 import app.charka.item.ItemTypeDefinition;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 /**
  * Типы предметов CP2020. Поля оружия — код оружия книги (с. 60; дробовик в кодах и таблицах — SHT): тип, точность, скрытность, доступность,
@@ -27,6 +29,85 @@ public final class Cp2020ItemTypes {
     public static final String DIRECT_LOAD = "directLoad";
     /** Размер вставленного магазина; указан, только если он не стандартный */
     public static final String INSERTED = "insertedMagazine";
+    /** Сколько SP снимает попадание, если больше обычного 1 (Barrett-Arasaka, с. 63) */
+    public static final String ARMOR_WEAR = "armorWear";
+    /** Метается; количество предмета — сколько осталось */
+    public static final String THROWN = "thrown";
+    /** Подрывается на месте, без броска на попадание */
+    public static final String PLANTED = "planted";
+    /** Зона поражения, м (с. 99); есть — урон по площади */
+    public static final String AREA = "area";
+    /** Взрывчатка (с. 111): зона умножается на число единиц, урон по всему телу. Единица — количество предмета */
+    public static final String EXPLOSIVE = "explosive";
+    /** Заряжены пули к дробовику (с. 109): урон по калибру, одна цель */
+    public static final String SLUG = "slug";
+    /** Калибр дробовика: 10, 12 или 20 */
+    public static final String GAUGE = "gauge";
+    /** Лезвие холодного оружия: {@link Cp2020DamageType#BLADE} или MONO */
+    public static final String EDGE = "edge";
+    /** Броня с отметкой √ (с. 99): клинок считает её SP за половину */
+    public static final String EDGE_WEAK = "edgeWeak";
+    /** Гранатомёт: заряд — граната из инвентаря, её урон, зона и эффект переходят на оружие */
+    public static final String LAUNCHER = "launcher";
+    /** Какая граната заряжена; состояние, не поле формы */
+    public static final String CHARGE = "charge";
+    /** Единица взрывчатки: кг, шашка, литр */
+    public static final String UNIT = "unit";
+    /** Что заряд делает сверх урона: {@link Cp2020Effects} */
+    public static final String EFFECT = "effect";
+    /** Оружие заклинило; состояние, не поле формы */
+    public static final String JAMMED = "jammed";
+
+    public static final String CYBER = "CP2020_CYBER";
+    public static final String SURGERY = "surgery";
+    public static final String NO_SURGERY = "NONE";
+    /** Потеря человечности за установку, как в таблице: «2D6», «1D6/2», «0.5» */
+    public static final String HUMANITY_COST = "humanityCost";
+    /** Сколько потеряно на самом деле; состояние, не поле формы */
+    public static final String HUMANITY_LOST = "humanityLost";
+    /** Нужен установленный базовый модуль: названия через «|» */
+    public static final String REQUIRES = "requires";
+    public static final String BODY_BONUS = "bodyBonus";
+    public static final String INITIATIVE = "initiative";
+    public static final String STRENGTH = "strength";
+    public static final String SPEEDWARE = "speedware";
+    /** Киберконечность (с. 89): какую зону заняла — состояние */
+    public static final String LIMB_ZONE = "limbZone";
+    /** Опция конечности: id конечности, в которой стоит — состояние */
+    public static final String LIMB_HOST = "limbHost";
+    /** Урон в прочность конечности — состояние */
+    public static final String LIMB_DAMAGE = "limbDamage";
+    /** Опция прибавляет прочность конечности: Reinforced, Thickened +5 */
+    public static final String LIMB_SDP = "limbSdp";
+    /** Гидравлика: прочность 30 и 40 */
+    public static final String LIMB_HYDRAULIC = "limbHydraulic";
+    /** Множитель удара и пинка: Thickened ×2, гидравлика ×3 */
+    public static final String LIMB_POWER = "limbPower";
+    /** Кисть или стопа: одна на конечность */
+    public static final String LIMB_END = "limbEnd";
+    /** Покрытие: места опции не занимает, одно на конечность */
+    public static final String LIMB_COVERING = "limbCovering";
+    /** Чип навыка (с. 82–83): код навыка, уровень +1…+3, рефлекторный ли */
+    public static final String CHIP_SKILL = "chipSkill";
+    public static final String CHIP_LEVEL = "chipLevel";
+    public static final String CHIP_REFLEX = "chipReflex";
+    /** Дни обкатки рефлекторного чипа — состояние */
+    public static final String CHIP_DAYS = "chipDays";
+    /** Слой брони без штрафа к REF (Skinweave, с. 101) */
+    public static final String NO_LAYER_PENALTY = "noLayerPenalty";
+
+    public static final String ARMOR = "CP2020_ARMOR";
+    public static final String ARMOR_SP = "sp";
+    public static final String ENCUMBRANCE = "ev";
+    public static final String HARDNESS = "hardness";
+    public static final String SOFT = "SOFT";
+    public static final String HARD = "HARD";
+    /** Порядок надевания; есть, только пока броня надета */
+    public static final String WORN = "worn";
+    private static final String ZONE_PREFIX = "zone_";
+    private static final String WEAR_PREFIX = "wear_";
+    /** Сюда попадают только магазины и патроны, к которым нет оружия: остальные показаны под ним */
+    private static final String AMMO_SECTION = "Боеприпасы";
 
     /**
      * Урон — текст, а не кубики: в книге у части оружия не только они («1-5D6», «Drugs», «3D6/2D6»).
@@ -52,36 +133,125 @@ public final class Cp2020ItemTypes {
                     new Option("P", "Плохая: чёрный рынок, армия"),
                     new Option("R", "Редкая: штучное, незаконное")),
             ItemField.text("damage", "Урон"),
-            ItemField.text(CALIBER, "Патрон"),
+            ItemField.suggested(CALIBER, "Патрон", false, "", Cp2020Ammo.CALIBERS),
             ItemField.number(SHOTS, "Магазин", "магазин ", "", 0, null),
-            ItemField.number(LOADED, "Заряжено", "заряжено ", "", 0, null),
-            ItemField.number(INSERTED, "Вставлен магазин на", "вставлен на ", "", 1, null),
+            ItemField.number(LOADED, "Заряжено", "заряжено ", "", 0, null).asAdvanced(),
+            ItemField.number(INSERTED, "Вставлен магазин на", "вставлен на ", "", 1, null).asAdvanced(),
             ItemField.number(RATE_OF_FIRE, "Темп (ROF)", "ROF ", "", 0, null),
             ItemField.choice("reliability", "Надёжность", false,
                     new Option("VR", "Очень надёжное"),
                     new Option("ST", "Обычное"),
                     new Option("UR", "Ненадёжное")),
             ItemField.number("range", "Дальность, м", "", " м", 0, null),
-            ItemField.flag(ARMOR_PIERCING, "Заряжены бронебойные", "AP"),
-            ItemField.flag(DIRECT_LOAD, "Заряжается без магазина", "без магазина")),
-            Cp2020ItemTypes::checkWeapon);
+            ItemField.flag(ARMOR_PIERCING, "Заряжены бронебойные", "AP").asAdvanced(),
+            ItemField.flag(DIRECT_LOAD, "Заряжается без магазина", "без магазина").asAdvanced(),
+            ItemField.number(ARMOR_WEAR, "SP брони за попадание", "снимает SP ", "", 2, 10).asAdvanced(),
+            ItemField.flag(THROWN, "Метается", "").asAdvanced(),
+            ItemField.flag(PLANTED, "Подрывается на месте", "").asAdvanced(),
+            ItemField.number(AREA, "Зона поражения, м", "зона ", " м", 1, null).asAdvanced(),
+            ItemField.flag(EXPLOSIVE, "Взрывчатка: зона на единицу, по всему телу", "").asAdvanced(),
+            ItemField.flag(LAUNCHER, "Гранатомёт: заряд — граната", "").asAdvanced(),
+            ItemField.flag(SLUG, "Заряжены пули", "пули").asAdvanced(),
+            ItemField.choice(GAUGE, "Калибр дробовика", false, new Option("10", "10"), new Option("12", "12"), new Option("20", "20")).asAdvanced(),
+            ItemField.choice(EDGE, "Лезвие", false, new Option("BLADE", "Клинок"), new Option("MONO", "Моно-лезвие")).asAdvanced(),
+            ItemField.text(UNIT, "Единица взрывчатки").asAdvanced(),
+            ItemField.choice(EFFECT, "Особый эффект", false, Cp2020Effects.OPTIONS.toArray(new Option[0])).asAdvanced()),
+            Cp2020ItemTypes::checkWeapon,
+            List.of(JAMMED, CHARGE)).inSection("Оружие");
 
     /** Каждая строка — один магазин со своим зарядом */
     public static final ItemTypeDefinition MAGAZINE_TYPE = new ItemTypeDefinition(MAGAZINE, "Магазин", List.of(
-            ItemField.requiredText(CALIBER, "Патрон"),
+            ItemField.suggested(CALIBER, "Патрон", true, "Магазин ", Cp2020Ammo.CALIBERS),
             ItemField.number(SHOTS, "Вместимость", "на ", "", 1, null),
             ItemField.number(LOADED, "Заряжено", "заряжено ", "", 0, null),
-            ItemField.flag(ARMOR_PIERCING, "Заряжены бронебойные", "AP")),
-            Cp2020ItemTypes::checkMagazine);
+            ItemField.flag(ARMOR_PIERCING, "Заряжены бронебойные", "AP"),
+            ItemField.flag(SLUG, "Заряжены пули", "пули")),
+            Cp2020ItemTypes::checkMagazine).inSection(AMMO_SECTION);
 
     /** Количество патронов — количество предмета */
     public static final ItemTypeDefinition AMMO_TYPE = new ItemTypeDefinition(AMMO, "Боеприпасы", List.of(
-            ItemField.requiredText(CALIBER, "Патрон"),
-            ItemField.flag(ARMOR_PIERCING, "Бронебойные", "AP")));
+            ItemField.suggested(CALIBER, "Патрон", true, "Патроны ", Cp2020Ammo.CALIBERS),
+            ItemField.flag(ARMOR_PIERCING, "Бронебойные", "AP"),
+            ItemField.flag(SLUG, "Пули к дробовику", "пули"))).inSection(AMMO_SECTION).withStacking();
 
-    public static final List<ItemTypeDefinition> ALL = List.of(ItemTypeDefinition.GENERIC, WEAPON_TYPE, MAGAZINE_TYPE, AMMO_TYPE);
+    public static String zoneKey(Cp2020Location location) {
+        return ZONE_PREFIX + location.name();
+    }
+
+    public static String wearKey(Cp2020Location location) {
+        return WEAR_PREFIX + location.name();
+    }
+
+    /**
+     * Броня (с. 67; жёсткая или мягкая — FNFF, с. 101). Надета ли и износ — состояние, а не поля формы: правка предмета их не сбрасывает.
+     */
+    public static final ItemTypeDefinition ARMOR_TYPE = new ItemTypeDefinition(ARMOR, "Броня",
+            Stream.concat(
+                    Stream.of(ItemField.number(ARMOR_SP, "SP", "SP ", "", 0, 60),
+                            ItemField.number(ENCUMBRANCE, "Штраф EV", "EV ", "", 0, 10),
+                            ItemField.choice(HARDNESS, "Жёсткость", true,
+                                    new Option(SOFT, "Мягкая: ткань, кевлар"),
+                                    new Option(HARD, "Жёсткая: металл, керамика, композит")),
+                            ItemField.flag(EDGE_WEAK, "Клинок считает SP за половину", "√")),
+                    Arrays.stream(Cp2020Location.values())
+                            .map(location -> ItemField.flag(zoneKey(location), location.getLabel(), location.getShortLabel())))
+                    .toList(),
+            Cp2020ItemTypes::checkArmor,
+            Stream.concat(Stream.of(WORN), Arrays.stream(Cp2020Location.values()).map(Cp2020ItemTypes::wearKey)).toList());
+
+    /**
+     * Киберware (с. 76–79). Что нужно за столом, задают поля «Дополнительно»; надет ли и что потеряно — состояние.
+     */
+    public static final ItemTypeDefinition CYBER_TYPE = new ItemTypeDefinition(CYBER, "Киберware",
+            Stream.concat(
+                    Stream.of(ItemField.choice(SURGERY, "Хирургия", true,
+                                    new Option("N", "Negligible: 1 час, 1 урон"),
+                                    new Option("M", "Minor: 2 часа, 1D6+1"),
+                                    new Option("MA", "Major: 4 часа, 2D6+1"),
+                                    new Option("CR", "Critical: 6 часов, 3D6+1"),
+                                    new Option(NO_SURGERY, "Без хирургии: чип вставляют сами")),
+                            ItemField.text(HUMANITY_COST, "Потеря человечности"),
+                            ItemField.text(REQUIRES, "Нужен модуль").asAdvanced(),
+                            ItemField.number(BODY_BONUS, "К BODY", "BODY +", "", 1, 10).asAdvanced(),
+                            ItemField.number(INITIATIVE, "К инициативе", "иниц. +", "", 1, 10).asAdvanced(),
+                            ItemField.number(STRENGTH, "Сила рамы", "сила ", "", 1, 30).asAdvanced(),
+                            ItemField.flag(SPEEDWARE, "Включается в бою: +3 к инициативе", "").asAdvanced(),
+                            ItemField.text("damage", "Урон в ближнем бою").asAdvanced(),
+                            ItemField.choice(EDGE, "Лезвие", false, new Option("BLADE", "Клинок"), new Option("MONO", "Моно-лезвие")).asAdvanced(),
+                            ItemField.flag(ARMOR_PIERCING, "Бронебойное", "AP").asAdvanced(),
+                            ItemField.number(ARMOR_SP, "SP", "SP ", "", 0, 60).asAdvanced(),
+                            ItemField.number(ENCUMBRANCE, "Штраф EV", "EV ", "", 0, 10).asAdvanced(),
+                            ItemField.choice(HARDNESS, "Жёсткость", false, new Option(SOFT, "Мягкая"), new Option(HARD, "Жёсткая")).asAdvanced(),
+                            ItemField.flag(NO_LAYER_PENALTY, "Слой без штрафа к REF", "").asAdvanced(),
+                            ItemField.number(LIMB_SDP, "Прочность конечности +", "прочн. +", "", 1, 20).asAdvanced(),
+                            ItemField.flag(LIMB_HYDRAULIC, "Гидравлика: прочность 30 и 40", "").asAdvanced(),
+                            ItemField.number(LIMB_POWER, "Множитель удара конечностью", "удар ×", "", 2, 5).asAdvanced(),
+                            ItemField.flag(LIMB_END, "Кисть или стопа: одна на конечность", "").asAdvanced(),
+                            ItemField.flag(LIMB_COVERING, "Покрытие конечности: без места опции", "").asAdvanced(),
+                            ItemField.text(CHIP_SKILL, "Чип: код навыка").asAdvanced(),
+                            ItemField.number(CHIP_LEVEL, "Чип: уровень", "чип +", "", 1, 3).asAdvanced(),
+                            ItemField.flag(CHIP_REFLEX, "Чип рефлекторный: нужна обкатка", "").asAdvanced()),
+                    Arrays.stream(Cp2020Location.values())
+                            .map(location -> ItemField.flag(zoneKey(location), location.getLabel(), location.getShortLabel()).asAdvanced()))
+                    .toList(),
+            values -> {
+            },
+            Stream.concat(Stream.of(WORN, HUMANITY_LOST, LIMB_ZONE, LIMB_HOST, LIMB_DAMAGE, CHIP_DAYS),
+                    Arrays.stream(Cp2020Location.values()).map(Cp2020ItemTypes::wearKey)).toList()).inSection("Киберware");
+
+    public static final List<ItemTypeDefinition> ALL = List.of(WEAPON_TYPE, ARMOR_TYPE, ItemTypeDefinition.GENERIC, MAGAZINE_TYPE, AMMO_TYPE, CYBER_TYPE, Cp2020Drugs.DRUG_TYPE, Cp2020Vehicles.VEHICLE_TYPE, Cp2020Netrunning.DECK_TYPE, Cp2020Netrunning.PROGRAM_TYPE);
 
     private Cp2020ItemTypes() {
+    }
+
+    private static void checkArmor(Map<String, String> values) {
+        if (!values.containsKey(ARMOR_SP)) {
+            throw new IllegalArgumentException("Поле «SP» обязательно");
+        }
+        boolean coversAny = Arrays.stream(Cp2020Location.values()).anyMatch(location -> values.containsKey(zoneKey(location)));
+        if (!coversAny) {
+            throw new IllegalArgumentException("Отметьте хотя бы одну зону, которую закрывает броня");
+        }
     }
 
     private static void checkWeapon(Map<String, String> values) {

@@ -27,6 +27,13 @@ public record CheckRequest(String label, int modifier, Integer difficulty, List<
         this(label, modifier, difficulty, List.of(), null);
     }
 
+    /** С ещё одним слагаемым: удача, объявленная до броска */
+    public CheckRequest withPart(Part part) {
+        List<Part> more = new java.util.ArrayList<>(parts);
+        more.add(part);
+        return new CheckRequest(label, modifier + part.value(), difficulty, more, skillCode);
+    }
+
     public static CheckRequest ofParts(String label, List<Part> parts, Integer difficulty, String skillCode) {
         int modifier = parts.stream().mapToInt(Part::value).sum();
         return new CheckRequest(label, modifier, difficulty, parts, skillCode);

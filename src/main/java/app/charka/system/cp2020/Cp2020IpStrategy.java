@@ -34,6 +34,12 @@ public class Cp2020IpStrategy extends AbstractCounterStrategy {
         return true;
     }
 
+    /** Мастер раздаёт IP после сессии всем сразу (с. 53) */
+    @Override
+    public boolean isAwardable() {
+        return true;
+    }
+
     @Override
     public int getDisplayOrder() {
         return 50;

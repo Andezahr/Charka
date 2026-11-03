@@ -52,7 +52,7 @@ class SkillServiceTest {
 
     @BeforeEach
     void setUp() {
-        GameSystemRegistry registry = new GameSystemRegistry(List.of(new GenericSystem(), new Cp2020System(null)));
+        GameSystemRegistry registry = new GameSystemRegistry(List.of(new GenericSystem(), new Cp2020System(null, null)));
         skillService = new SkillService(characterRepository, registry, checkService);
         character = characterIn(Cp2020System.CODE);
         when(characterRepository.findById(1L)).thenReturn(Optional.of(character));

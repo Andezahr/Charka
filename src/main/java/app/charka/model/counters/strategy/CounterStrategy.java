@@ -74,6 +74,13 @@ public interface CounterStrategy {
     /**
      * true — у персонажа может быть только один счётчик этого типа.
      */
+    /**
+     * Мастер начисляет этот счётчик всем сразу со страницы кампании: опыт, очки улучшения.
+     */
+    default boolean isAwardable() {
+        return false;
+    }
+
     default boolean isUniquePerCharacter() {
         return false;
     }
@@ -99,6 +106,12 @@ public interface CounterStrategy {
      */
     default void reset(Counter counter) {
         counter.setValue(Integer.valueOf(getResetValue()));
+    }
+
+    /**
+     * Счётчик скопирован на нового персонажа: что не должно перейти (раны, износ), стратегия убирает здесь.
+     */
+    default void prepareCopy(Counter counter) {
     }
 
     /**

@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Диалог атаки оружием; что спрашивать, задаёт AttackForm системы. Модификаторы открыты сразу: в атаке они главное содержимое. -->
+<dialog th:fragment="dialog(characterId, item, form, targets)" class="dialog attack-dialog" th:id="'attack-' + ${item.id}"
+        th:attr="data-attack=${item.id},data-radius=${form.radius}">
+  <form th:action="${attackUrl != null} ? @{${attackUrl}} : @{'/character/' + ${characterId} + '/items/' + ${item.id} + '/attack'}" method="post" class="form">
+    <input th:if="${returnCampaign != null}" type="hidden" name="returnCampaign" th:value="${returnCampaign}">
+    <div>
+      <h2 class="card-title" th:text="${form.actionLabel} + ': ' + ${item.name}">Атаковать: Minami</h2>
+      <p class="page-sub">
+        <span th:if="${form.damage != null}" th:text="'Урон ' + ${form.damage}">Урон 2D6+3</span>
+        <span th:if="${form.range != null}" th:text="' · дальность ' + ${form.range} + ' м'"> · дальность 200 м</span>
+      </p>
+    </div>
+
+    <label class="field" th:hidden="${#lists.size(form.modes) < 2}">
+      <span class="label">Режим</span>
+      <select name="mode" data-attack-mode>
+        <option th:each="m : ${form.modes}" th:value="${m.code}" th:text="${m.label}"
+                th:attr="data-rounds=${m.rounds},data-width=${m.width},data-multi=${m.multiTarget},data-noroll=${m.noRoll},data-location=${m.chooseLocation},data-nodistance=${m.noDistance},data-objects=${m.objects}">Одиночный</option>
+      </select>
+    </label>
+
+    <div class="field">
+      <span class="label" data-attack-target-label>Цель</span>
+      <th:block th:replace="~{fragments/attack :: target-checks(${targets}, null)}"></th:block>
+      <!-- T-10: машины кампании, кроме своих; режим без них (удар, подавляющий огонь) их прячет -->
+      <th:block th:with="objects=${attackObjects == null ? null : attackObjects.?[ownerId != __${characterId}__]}">
+        <div th:if="${objects != null and !#lists.isEmpty(objects)}" class="target-picker" data-attack-objects>
+          <span class="target-group">Транспорт</span>
+          <label class="check" th:each="o : ${objects}">
+            <input type="checkbox" name="target" th:value="${o.value}" data-attack-object>
+            <span th:text="${o.label}">Седан · Олежа · SDP 26/30</span>
+          </label>
+        </div>
+      </th:block>
+      <label class="check">
+        <input type="checkbox" name="target" value="" data-attack-unlisted>
+        <span>Без листа</span>
+      </label>
+      <input type="text" name="targetName" maxlength="100" autocomplete="off" placeholder="Имя цели" aria-label="Имя цели без листа" data-attack-name hidden>
+    </div>
+
+    <div class="field" th:if="${form.distanceLabel != null}" data-attack-distance>
+      <span class="label" th:text="${form.distanceLabel}">Расстояние, м</span>
+      <div class="attack-bands">
+        <button type="button" class="btn btn-sm btn-ghost" th:each="band : ${form.bands}" th:attr="data-attack-band=${band.meters}" th:text="${band.label}">до 12 м · 15</button>
+        <input type="number" name="distance" class="narrow" min="0" required aria-label="Расстояние, м">
+      </div>
+    </div>
+
+    <div class="field-grid">
+      <label class="field" data-attack-rounds hidden>
+        <span class="label" th:text="${form.roundsLabel}">Патронов</span>
+        <input type="number" name="rounds" min="1" th:attr="max=${form.maxRounds}" th:value="${form.defaultRounds}">
+      </label>
+      <label class="field" data-attack-width hidden>
+        <span class="label">Ширина зоны, м</span>
+        <input type="number" name="zoneWidth" min="2" value="2">
+      </label>
+      <label class="field" th:if="${form.locationLabel != null}" data-attack-location-field>
+        <span class="label" th:text="${form.locationLabel}">Зона (выбор −4)</span>
+        <select name="location" data-attack-location>
+          <option value="">Случайная</option>
+          <option th:each="l : ${form.locations}" th:value="${l.value}" th:text="${l.label}">Торс</option>
+        </select>
+      </label>
+      <label class="field" th:if="${#lists.size(form.skills) > 1}">
+        <span class="label">Навык</span>
+        <select name="skill">
+          <option th:each="s : ${form.skills}" th:value="${s.value}" th:text="${s.label}">Пистолеты</option>
+        </select>
+      </label>
+    </div>
+
+    <div data-attack-roll>
+      <fieldset th:each="section : ${form.sections.?[!rare]}" class="attack-section">
+        <legend th:text="${section.name}">Часто</legend>
+        <div th:replace="~{fragments/attack :: choices(${section})}"></div>
+      </fieldset>
+      <details class="cp-more item-more" th:open="${presetOptions != null and !#lists.isEmpty(presetOptions)}">
+        <summary>Ещё модификаторы</summary>
+        <fieldset th:each="section : ${form.sections.?[rare]}" class="attack-section">
+          <legend th:text="${section.name}">Цель</legend>
+          <div th:replace="~{fragments/attack :: choices(${section})}"></div>
+        </fieldset>
+        <label class="field">
+          <span class="label">Прочий модификатор</span>
+          <input type="number" name="modifier" value="0">
+        </label>
+      </details>
+      <!-- th:if выполняется раньше th:with, поэтому переменная — снаружи -->
+      <th:block th:with="left=${luckLeft != null ? luckLeft.get(characterId) : null}">
+        <label th:if="${left != null and left > 0}" class="field luck-field">
+          <span class="label" th:text="'Удача: есть ' + ${left}">Удача: есть 7</span>
+          <input type="number" name="luck" value="0" min="0" th:max="${left}" aria-label="Сколько Удачи прибавить">
+        </label>
+      </th:block>
+    </div>
+
+    <div class="form-row dialog-actions">
+      <button type="button" class="btn btn-ghost" data-dialog-close>Закрыть</button>
+      <button type="submit" class="btn btn-primary" th:text="'🎲 ' + ${form.actionLabel}">🎲 Атаковать</button>
+    </div>
+  </form>
+</dialog>
+
+<div th:fragment="choices(section)" class="attack-options">
+  <th:block th:each="choice : ${section.choices}">
+    <label th:if="${choice.flag}" class="check">
+      <input type="checkbox" th:name="'option.' + ${choice.key}" th:value="${choice.options[0].value}"
+             th:checked="${presetOptions != null and presetOptions.contains(choice.options[0].value)}">
+      <span th:text="${choice.options[0].label}">Цель неподвижна +4</span>
+    </label>
+    <label th:unless="${choice.flag}" class="field">
+      <span class="label" th:text="${choice.label}">Цель движется</span>
+      <select th:name="'option.' + ${choice.key}">
+        <option value="">—</option>
+        <option th:each="o : ${choice.options}" th:value="${o.value}" th:text="${o.label}">REF больше 10 −3</option>
+      </select>
+    </label>
+  </th:block>
+</div>
+
+<!-- Цели нажатием, без Ctrl: app.js делает их радиокнопками, если цель одна. Игроки отдельно от NPC -->
+<th:block th:fragment="target-checks(targets, chosen)">
+  <div class="target-picker" data-attack-targets>
+    <th:block th:each="t, state : ${targets}">
+      <span class="target-group" th:if="${state.first or targets[state.index - 1].npc != t.npc}" th:text="${t.npc} ? 'NPC' : 'Игроки'">NPC</span>
+      <label class="check">
+        <input type="checkbox" name="target" th:value="${t.id}" th:checked="${chosen != null and chosen.contains(t.id)}">
+        <span th:text="${t.name}">Олежа</span>
+      </label>
+    </th:block>
+  </div>
+</th:block>
+
+<!-- Заряд упал мимо: хранится на сервере и ждёт решения мастера. Кто и так в зоне, уже отмечен -->
+<div th:fragment="pending(characterId, blast, targets)" class="alert alert-error item-result" role="status">
+  <div class="alert-text">
+    <strong th:text="${blast.weapon} + ': заряд упал мимо, ' + (${blast.amount != null} ? 'урон ' + ${blast.amount} + ', ' : '') + 'зона ' + ${blast.radius} + ' м'">Граната: заряд упал мимо</strong>
+    <p class="item-note" th:text="${blast.note}">Отклонение: d10 = 3</p>
+    <form th:action="@{'/character/' + ${characterId} + '/attack/blast/' + ${blast.id}}" method="post" class="form">
+      <input th:if="${returnCampaign != null}" type="hidden" name="returnCampaign" th:value="${returnCampaign}">
+      <span class="label">Кого задело</span>
+      <th:block th:replace="~{fragments/attack :: target-checks(${targets}, ${blast.stillCaught})}"></th:block>
+      <div class="form-row">
+        <button type="submit" class="btn btn-sm btn-primary" th:text="${blast.amount != null} ? 'Применить урон' : 'Применить эффект'">Применить урон</button>
+        <button type="submit" class="btn btn-sm btn-ghost" formnovalidate
+                th:attr="formaction=@{'/character/' + ${characterId} + '/attack/blast/' + ${blast.id} + '/dismiss'}">Никого</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Персонажи кампании для выбора: игроки отдельно от NPC -->
+<th:block th:fragment="target-options(targets)">
+  <optgroup label="Игроки" th:unless="${#lists.isEmpty(targets.?[!npc])}">
+    <option th:each="t : ${targets.?[!npc]}" th:value="${t.id}" th:text="${t.name}">Олежа</option>
+  </optgroup>
+  <optgroup label="NPC" th:unless="${#lists.isEmpty(targets.?[npc])}">
+    <option th:each="t : ${targets.?[npc]}" th:value="${t.id}" th:text="${t.name}">Бустер 1</option>
+  </optgroup>
+</th:block>
+
+<!-- Итог атаки -->
+<div th:fragment="result(result)" class="alert item-result" role="status"
+     th:classappend="${result.hit} ? 'alert-success' : 'alert-error'">
+  <div class="alert-text">
+    <strong th:text="${result.title} + ': ' + ${result.outcome}">Minami → Олежа: попадание</strong>
+    <ol class="attack-steps"><li th:each="step : ${result.steps}" th:text="${step}">Бросок d10: 7</li></ol>
+  </div>
+  <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+</div>
+</body>
+</html>

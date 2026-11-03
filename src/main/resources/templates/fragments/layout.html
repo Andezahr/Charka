@@ -32,10 +32,21 @@
          th:classappend="${active == 'counters'} ? 'is-active'">Счётчики</a>
       <a th:href="@{'/character/' + ${characterId} + '/notes'}"
          th:classappend="${active == 'notes'} ? 'is-active'">Заметки</a>
+      <!-- Бой идёт: с листа в трекер одним нажатием -->
+      <th:block th:with="fight=${@encounterService.campaignInFight(characterId)}">
+        <a th:if="${fight != null}" th:href="@{'/campaign/' + ${fight} + '/encounter'}">⚔ Бой</a>
+      </th:block>
     </nav>
     <nav class="topnav" th:unless="${characterId != null}">
       <a th:href="@{/}" th:classappend="${active == 'home'} ? 'is-active'">Главная</a>
     </nav>
+    <!-- U-03: кто вошёл и выход -->
+    <th:block th:with="me=${@accessService.current().orElse(null)}">
+      <form th:if="${me != null}" th:action="@{/logout}" method="post" class="topbar-user">
+        <span th:text="${me.username}">kolya</span>
+        <button type="submit" class="btn btn-sm btn-ghost">Выйти</button>
+      </form>
+    </th:block>
   </div>
 </header>
 

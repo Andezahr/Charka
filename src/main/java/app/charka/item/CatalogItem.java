@@ -14,16 +14,27 @@ import java.util.Map;
  * @param properties  значения полей типа в том виде, как их вводят в форме
  * @param packSize    сколько штук в единице продажи: в коробке 50 патронов; количество предмета умножается на него
  * @param individual  у каждой штуки своё состояние (заряд), поэтому каждая — отдельной строкой инвентаря
+ * @param itemName    название предмета в инвентаре, если оно не такое, как строка справочника; null — такое же
  */
 public record CatalogItem(String key, String group, String name, String typeCode, int cost, String description,
-                          Map<String, String> properties, int packSize, boolean individual) {
+                          Map<String, String> properties, int packSize, boolean individual, String itemName) {
 
     public CatalogItem {
         properties = Map.copyOf(properties);
     }
 
     public CatalogItem(String key, String group, String name, String typeCode, int cost, String description,
+                       Map<String, String> properties, int packSize, boolean individual) {
+        this(key, group, name, typeCode, cost, description, properties, packSize, individual, null);
+    }
+
+    public CatalogItem(String key, String group, String name, String typeCode, int cost, String description,
                        Map<String, String> properties, int packSize) {
         this(key, group, name, typeCode, cost, description, properties, packSize, false);
+    }
+
+    /** Как назовётся предмет в инвентаре */
+    public String nameInInventory() {
+        return itemName != null ? itemName : name;
     }
 }

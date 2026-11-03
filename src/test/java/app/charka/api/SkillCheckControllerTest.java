@@ -51,7 +51,7 @@ class SkillCheckControllerTest {
     void returnsResult() throws Exception {
         CheckResult result = new CheckResult("d10!+12", List.of("Бросок d10: 7", "Сложность 15 → успех"),
                 19, 15, true, false, false);
-        when(skillService.check(1L, "handgun", null, -1, 15)).thenReturn(new SkillCheck("Пистолеты", result));
+        when(skillService.check(1L, "handgun", null, -1, 15, 0)).thenReturn(new SkillCheck("Пистолеты", result));
 
         mockMvc.perform(post(URL).param("code", "handgun").param("modifier", "-1").param("difficulty", "15"))
                 .andExpect(status().isOk())
@@ -66,7 +66,7 @@ class SkillCheckControllerTest {
     @DisplayName("навык со своим названием — по id строки, без сложности успех не определён")
     void customWithoutDifficulty() throws Exception {
         CheckResult result = new CheckResult("d10!+3", List.of("Бросок d10: 4"), 7, null, null, false, false);
-        when(skillService.check(1L, null, 10L, 0, null)).thenReturn(new SkillCheck("Язык: Русский", result));
+        when(skillService.check(1L, null, 10L, 0, null, 0)).thenReturn(new SkillCheck("Язык: Русский", result));
 
         mockMvc.perform(post(URL).param("skillId", "10"))
                 .andExpect(status().isOk())
@@ -76,7 +76,7 @@ class SkillCheckControllerTest {
     @Test
     @DisplayName("неизвестный навык — 400 с текстом ошибки для диалога")
     void badSkill() throws Exception {
-        when(skillService.check(eq(1L), eq("nope"), any(), eq(0), any()))
+        when(skillService.check(eq(1L), eq("nope"), any(), eq(0), any(), eq(0)))
                 .thenThrow(new IllegalArgumentException("Неизвестный навык: nope"));
 
         mockMvc.perform(post(URL).param("code", "nope"))
@@ -88,7 +88,7 @@ class SkillCheckControllerTest {
     @Test
     @DisplayName("неизвестный персонаж — 404")
     void unknownCharacter() throws Exception {
-        when(skillService.check(eq(1L), any(), any(), eq(0), any()))
+        when(skillService.check(eq(1L), any(), any(), eq(0), any(), eq(0)))
                 .thenThrow(new CharacterNotFoundException("Character not found"));
 
         mockMvc.perform(post(URL).param("code", "handgun"))
@@ -100,7 +100,7 @@ class SkillCheckControllerTest {
     void opposed() throws Exception {
         CheckResult own = new CheckResult("d10!+12", List.of("Бросок d10: 7"), 19, null, null, false, false);
         CheckResult other = new CheckResult("d10!+12", List.of("Бросок d10: 5"), 17, null, null, false, false);
-        when(skillService.checkOpposed(1L, "handgun", null, 0, new SkillOpponent(2L, "dodge", null, null, -1)))
+        when(skillService.checkOpposed(1L, "handgun", null, 0, new SkillOpponent(2L, "dodge", null, null, -1), 0))
                 .thenReturn(new OpposedCheckResult(
                         new OpposedCheckResult.Side("Колясик", "Пистолеты", own),
                         new OpposedCheckResult.Side("Олежа", "Уклонение", other),
@@ -120,7 +120,7 @@ class SkillCheckControllerTest {
     @Test
     @DisplayName("противник из другой кампании — 400 с текстом ошибки")
     void opposedBadOpponent() throws Exception {
-        when(skillService.checkOpposed(eq(1L), eq("handgun"), any(), eq(0), any()))
+        when(skillService.checkOpposed(eq(1L), eq("handgun"), any(), eq(0), any(), eq(0)))
                 .thenThrow(new IllegalArgumentException("Противник должен быть из той же кампании"));
 
         mockMvc.perform(post(URL + "/opposed").param("code", "handgun").param("opponentId", "9"))
@@ -131,7 +131,7 @@ class SkillCheckControllerTest {
     @Test
     @DisplayName("список навыков: все группы подряд, уровень и итог")
     void skillOptions() throws Exception {
-        SkillSheet.Row row = new SkillSheet.Row("handgun", null, "Пистолеты", 4, 12, "REF", 8, null, null, false, 0, null);
+        SkillSheet.Row row = new SkillSheet.Row("handgun", null, "Пистолеты", 4, 12, "REF", 8, null, null, false, 0, null, null);
         SkillSheet.Group group = new SkillSheet.Group("REF", null, false, List.of(), List.of(row));
         when(skillService.getSheet(1L)).thenReturn(
                 new SkillSheet(List.of(), List.of(), null, List.of(group), false, null, null));

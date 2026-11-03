@@ -89,6 +89,14 @@ public final class Cp2020Magazines {
     /**
      * Магазин, вынутый из оружия.
      */
+    static Item newMagazine(String caliber, int capacity, int loaded, boolean armorPiercing, boolean slug) {
+        Item magazine = newMagazine(caliber, capacity, loaded, armorPiercing);
+        if (slug && loaded > 0) {
+            magazine.getProperties().put(Cp2020ItemTypes.SLUG, "1");
+        }
+        return magazine;
+    }
+
     static Item newMagazine(String caliber, int capacity, int loaded, boolean armorPiercing) {
         Item magazine = new Item();
         magazine.setName(name(caliber, capacity));

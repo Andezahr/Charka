@@ -81,6 +81,32 @@
           th:text="'Потеряно: ' + ${#strings.listJoin(h.lostLimbs.![label], ', ')}">Потеряно: левая рука</span>
   </div>
 
+  <!-- Медпомощь: медик бросает навык против урона (с. 116); без лечения раненый теряет 2 очка в день -->
+  <div th:if="${h.careLabel != null}" class="cp-care">
+    <div class="cp-muted-line" th:text="${h.careLabel}">Без лечения: +2 урона в день</div>
+    <form th:unless="${#lists.isEmpty(h.careOptions)}" th:action="${base} + '/health/care'" method="post" class="form-row">
+      <select name="option" class="grow" aria-label="Что делает медик">
+        <option th:each="o : ${h.careOptions}" th:value="${o.code}" th:text="${o.label}" th:selected="${o.code == defaultCare}">Лечить: Медицинская техника</option>
+      </select>
+      <select name="healer" aria-label="Медик">
+        <option th:each="c : ${healers}" th:value="${c.id}" th:text="${c.name}">Медик</option>
+      </select>
+      <select name="modifier" aria-label="Условия">
+        <option th:each="m : ${h.careModifiers}" th:value="${m.code}" th:text="${m.label}">Без условий</option>
+      </select>
+      <input type="number" name="luck" min="0" max="10" class="narrow" title="Удача медика к броску" placeholder="🍀" aria-label="Удача медика">
+      <button type="submit" class="btn btn-sm">🎲 Медик</button>
+    </form>
+    <form th:if="${h.medicalTech}" th:action="${base} + '/attributes'" method="post" class="form-row">
+      <input type="hidden" name="attributes[speedheal]" th:value="${h.speedheal} ? 0 : 1">
+      <button type="submit" class="btn btn-sm btn-ghost" th:text="${h.speedheal} ? 'Убрать Speedheal' : '＋ Speedheal'">＋ Speedheal</button>
+    </form>
+    <form th:if="${h.medicalTech}" th:action="${base} + '/attributes'" method="post" class="form-row">
+      <input type="hidden" name="attributes[nanotech]" th:value="${h.nanotech} ? 0 : 1">
+      <button type="submit" class="btn btn-sm btn-ghost" th:text="${h.nanotech} ? 'Убрать нанотехнику' : '＋ Нанотехника'">＋ Нанотехника</button>
+    </form>
+  </div>
+
   <!-- Урон -->
   <form th:unless="${h.dead}" th:action="${base} + '/health/damage'" method="post" class="cp-damage">
     <div class="form-row">

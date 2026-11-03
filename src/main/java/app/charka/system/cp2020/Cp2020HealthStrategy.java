@@ -1,8 +1,10 @@
 package app.charka.system.cp2020;
 
+import app.charka.model.Item;
 import app.charka.model.counters.Counter;
 import app.charka.model.counters.strategy.AbstractCounterStrategy;
 import app.charka.model.counters.strategy.CounterContext;
+import app.charka.model.counters.strategy.health.CareOption;
 import app.charka.model.counters.strategy.health.DamageRequest;
 import app.charka.model.counters.strategy.health.DiceRoller;
 import app.charka.model.counters.strategy.health.HealthCounterStrategy;
@@ -15,6 +17,7 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.Map;
 import java.util.Set;
 
@@ -37,16 +40,50 @@ import static app.charka.system.cp2020.Cp2020Rules.*;
 public class Cp2020HealthStrategy extends AbstractCounterStrategy implements HealthCounterStrategy {
 
     public static final String TYPE = "CP2020_HEALTH";
+    /** Сколько SP снимает пробитие (`DamageRequest.extras`) */
+    public static final String ARMOR_WEAR = "armorWear";
 
     public static final String STUNNED = "stunned";
+    /** Больше 0 — BTM не вычитается: урон операции */
+    public static final String NO_BTM = "noBtm";
+    /** SP укрытия цели: {@link Cp2020Cover} */
+    public static final String COVER_SP = "coverSp";
+    /** Больше 0 — цель бросает спасбросок от яда, успех вдвое снижает урон */
+    public static final String POISON_SAVE = "poisonSave";
     public static final String STABILIZED = "stabilized";
     public static final String DEAD = "dead";
     public static final String DEATH_SAVE_PENDING = "deathSavePending";
     public static final String LOST_PREFIX = "lost_";
 
+    /** Медпомощь (с. 115–116): 0 — без лечения, 1 — First Aid, 2 — Medical Tech */
+    public static final String CARE = "care";
+    public static final String SPEEDHEAL = "speedheal";
+    public static final String NANOTECH = "nanotech";
+    /** Накопленные половинки очка: First Aid лечит 0.5 в день */
+    public static final String HEAL_HALVES = "healHalves";
+    static final int CARE_NONE = 0;
+    static final int CARE_FIRST_AID = 1;
+    static final int CARE_MEDICAL_TECH = 2;
+    /** Без медицинской проверки: «2 points per day» (с. 116) */
+    static final int UNTREATED_DAMAGE_PER_DAY = 2;
+
+    private static final CareOption STABILIZE_MED = new CareOption("STABILIZE_MED", "Стабилизировать: Медицинская техника", "medical_tech", false, true);
+    private static final CareOption STABILIZE_AID = new CareOption("STABILIZE_AID", "Стабилизировать: Первая помощь", "first_aid", false, true);
+    private static final CareOption TREAT_MED = new CareOption("TREAT_MED", "Лечить: Медицинская техника", "medical_tech", false, false);
+    private static final CareOption TREAT_AID = new CareOption("TREAT_AID", "Лечить: Первая помощь", "first_aid", true, false);
+    private static final List<CareOption> CARE_OPTIONS = List.of(STABILIZE_MED, STABILIZE_AID, TREAT_MED, TREAT_AID);
+
+    /** Прибавки к броску стабилизации (с. 116, с изображения страницы) */
+    private static final List<Option> CARE_MODIFIERS = List.of(
+            new Option("0", "Без условий"),
+            new Option("5", "Больница +5"),
+            new Option("3", "Trauma Team +3"),
+            new Option("3", "Cryo Tank +3"));
+
     public static final String SAVE_STUN = "STUN";
     public static final String SAVE_DEATH = "DEATH";
 
+    private static final Set<String> CARE_KEYS = Set.of(CARE, SPEEDHEAL, NANOTECH, HEAL_HALVES);
     private static final String STATS_NAME = "Характеристики";
     private static final String ARMOR_NAME = "Броня";
 
@@ -58,6 +95,12 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
     @Override
     public String getCounterType() {
         return TYPE;
+    }
+
+    /** Копия начинает без ран */
+    @Override
+    public void prepareCopy(Counter counter) {
+        reset(counter);
     }
 
     @Override
@@ -122,7 +165,7 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
         counter.getAttributes().keySet().removeIf(key ->
                 key.startsWith(LOST_PREFIX)
                         || key.equals(STUNNED) || key.equals(STABILIZED)
-                        || key.equals(DEAD) || key.equals(DEATH_SAVE_PENDING));
+                        || key.equals(DEAD) || key.equals(DEATH_SAVE_PENDING) || CARE_KEYS.contains(key));
     }
 
     /** Начальное значение — уже полученный урон; характеристики из формы забирает счётчик характеристик */
@@ -131,10 +174,14 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
         counter.setValue(Math.max(0, counter.getValue() == null ? 0 : counter.getValue()));
     }
 
-    /** Редактируется только потеря конечностей: {@code lost_<ЗОНА>} = 0/1 */
+    /** Редактируются потеря конечностей ({@code lost_<ЗОНА>} = 0/1) и ускорители лечения ({@code speedheal}, {@code nanotech}) */
     @Override
     public void updateAttributes(Counter counter, Map<String, Integer> attributes) {
         attributes.forEach((key, value) -> {
+            if (key.equals(SPEEDHEAL) || key.equals(NANOTECH)) {
+                counter.setFlag(key, value != null && value != 0);
+                return;
+            }
             if (!key.startsWith(LOST_PREFIX)) {
                 throw new IllegalArgumentException("Неизвестный параметр здоровья: " + key);
             }
@@ -160,27 +207,70 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
         Cp2020Location location = resolveLocation(request.getLocation(), event);
 
         // 1. Броня
+        int amount = request.getAmount();
+        if (request.extra(POISON_SAVE, 0) > 0) {
+            // HOMEBREW: книга (с. 107, 110) говорит «save», не называя числа; взят обычный спасбросок от BODY (с. 25)
+            int roll = dice.d10();
+            int target = body(context);
+            boolean saved = roll <= target;
+            event.step("Спасбросок от яда: d10 = " + roll + ", нужно ≤ " + target + (saved ? " — успех, половина урона" : " — провал"));
+            amount = saved ? Math.max(1, amount / 2) : amount;
+        }
         int sp = armorStrategy.sp(armor, location);
-        int effectiveSp = type.effectiveSp(sp);
-        int damage = request.getAmount() - effectiveSp;
+        int armorSp = sp;
+        if (type == Cp2020DamageType.BLADE || type == Cp2020DamageType.MONO) {
+            armorSp = armorStrategy.edgeSp(armor, location, type == Cp2020DamageType.MONO);
+            if (armorSp != sp) {
+                event.step(type.getLabel() + ": SP " + sp + " считается за " + armorSp);
+            }
+        }
+        boolean softAgainstFlame = type == Cp2020DamageType.FLAME && !armorStrategy.isHard(armor, location);
+        if (softAgainstFlame && sp > 0) {
+            if (sp <= Cp2020Rules.SOFT_ARMOR_FLAME_LIMIT) {
+                armorSp = 0;
+                event.step("Мягкая броня до " + Cp2020Rules.SOFT_ARMOR_FLAME_LIMIT + " SP от огня не защищает");
+            }
+            int burned = sp;
+            for (int i = 0; i < Cp2020Rules.SOFT_ARMOR_FLAME_WEAR; i++) {
+                burned = armorStrategy.wear(armor, location);
+            }
+            event.step("Огонь портит мягкую броню: SP «" + location.getLabel() + "» " + sp + " → " + burned);
+        }
+        // Укрытие складывается с бронёй как слой (с. 101). HOMEBREW: оно не изнашивается, книга молчит
+        int coverSp = type == Cp2020DamageType.BYPASS ? 0 : request.extra(COVER_SP, 0);
+        int shielding = coverSp > 0 ? Cp2020ArmorRules.combine(List.of(coverSp, armorSp)) : armorSp;
+        if (coverSp > 0) {
+            event.step("Укрытие SP " + coverSp + " и броня SP " + armorSp + " → SP " + shielding);
+        }
+        int effectiveSp = type.effectiveSp(shielding);
+        int damage = amount - effectiveSp;
         if (type == Cp2020DamageType.BYPASS) {
-            event.step("В обход брони: урон " + request.getAmount());
+            event.step("В обход брони: урон " + amount);
         } else {
-            String spText = type == Cp2020DamageType.ARMOR_PIERCING
-                    ? "SP " + effectiveSp + " (половина от " + sp + ")"
+            String spText = effectiveSp != shielding
+                    ? "SP " + effectiveSp + " (половина от " + shielding + ")"
                     : "SP " + effectiveSp;
-            event.step("Урон " + request.getAmount() + " − " + spText + " = " + Math.max(damage, 0));
+            event.step("Урон " + amount + " − " + spText + " = " + Math.max(damage, 0));
         }
         if (damage <= 0) {
-            return event.summary(counter.getName() + ": броня выдержала (" + location.getLabel() + ", SP " + sp + ")");
+            return event.summary(counter.getName() + ": " + (coverSp > 0 ? "укрытие и броня выдержали" : "броня выдержала") + " (" + location.getLabel() + ", SP " + shielding + ")");
         }
-        if (type == Cp2020DamageType.ARMOR_PIERCING) {
+        if (type == Cp2020DamageType.ARMOR_PIERCING || (type == Cp2020DamageType.SLUG && !armorStrategy.isHard(armor, location))) {
             damage = Math.max(1, damage / 2);
             event.step("Бронебойный: прошедший урон делится пополам → " + damage);
         }
-        if (type != Cp2020DamageType.BYPASS && sp > 0) {
-            int worn = armorStrategy.wear(armor, location);
+        if (type != Cp2020DamageType.BYPASS && sp > 0 && !softAgainstFlame) {
+            int worn = sp;
+            for (int i = 0; i < request.extra(ARMOR_WEAR, 1); i++) {
+                worn = armorStrategy.wear(armor, location);
+            }
             event.step("Броня пробита и изношена: SP «" + location.getLabel() + "» " + sp + " → " + worn);
+        }
+
+        // Киберконечность принимает урон сама, как машина (с. 89): тело не ранено
+        Optional<Item> cyberlimb = location.isLimb() ? Cp2020Cyberlimbs.at(counter.getCharacter(), location) : Optional.empty();
+        if (cyberlimb.isPresent()) {
+            return event.summary(Cp2020Cyberlimbs.hit(cyberlimb.get(), damage, event::step));
         }
 
         // 2. Голова
@@ -190,7 +280,7 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
         }
 
         // 3. Телосложение
-        int btm = btm(body(context));
+        int btm = request.extra(NO_BTM, 0) > 0 ? 0 : btm(body(context));
         int afterBtm = damage - btm;
         damage = Math.max(1, afterBtm);
         event.step("BTM −" + btm + " → " + damage + (afterBtm < 1 ? " (минимум 1)" : ""));
@@ -224,7 +314,7 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
 
         // 5. Оглушение
         if (request.isAutoSave()) {
-            rollStunSave(context, null, event);
+            rollStunSave(context, null, 0, 0, event);
         }
         return event.summary(summary + ". " + statusLabel(counter));
     }
@@ -251,6 +341,11 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
     /**
      * Естественное восстановление при отдыхе. Мёртвые и умирающие без стабилизации не восстанавливаются.
      */
+    /**
+     * Прошли дни (с. 116). Без успешной проверки медицины раненый теряет 2 очка в день, а смертельно раненый ещё и
+     * бросает спасбросок от смерти каждый день. После проверки: First Aid 0.5 в день, Medical Tech 1,
+     * Speedheal и нанотехника +1 каждый. Умирающего сначала стабилизируют: без этого лечение не идёт.
+     */
     @Override
     public HealthEvent healOverTime(CounterContext context, int days) {
         Counter counter = context.getCounter();
@@ -258,17 +353,124 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
         if (isDead(counter) || counter.getValue() == 0 || days <= 0) {
             return event;
         }
-        if (isMortal(woundLevel(counter.getValue())) && !counter.getFlag(STABILIZED)) {
-            return event.summary(counter.getName() + ": умирает без стабилизации, раны не заживают");
-        }
+        int care = counter.getAttribute(CARE, CARE_NONE);
+        boolean dyingUnstabilized = isMortal(woundLevel(counter.getValue())) && !counter.getFlag(STABILIZED);
         int before = counter.getValue();
-        int after = Math.max(0, before - days * NATURAL_HEALING_PER_DAY);
+        if (care == CARE_NONE || dyingUnstabilized) {
+            return untreated(context, days, event, before);
+        }
+        int halves = counter.getAttribute(HEAL_HALVES, 0) + days * healingHalves(counter);
+        int after = Math.max(0, before - halves / 2);
         counter.setValue(after);
-        return event.summary(counter.getName() + ": за " + days + " дн. урон " + before + " → " + after);
+        counter.getAttributes().put(HEAL_HALVES, halves % 2);
+        if (after == 0) {
+            counter.getAttributes().keySet().removeAll(CARE_KEYS);
+            counter.setFlag(STABILIZED, false);
+        }
+        return event.summary(who(counter) + ": " + careLabel(counter, care) + ", за " + days + " дн. урон " + before + " → " + after);
+    }
+
+    private HealthEvent untreated(CounterContext context, int days, HealthEvent event, int before) {
+        Counter counter = context.getCounter();
+        int saves = 0;
+        for (int day = 1; day <= days; day++) {
+            counter.setValue(counter.getValue() + UNTREATED_DAMAGE_PER_DAY);
+            if (counter.getValue() > MAX_DAMAGE) {
+                counter.setFlag(DEAD, true);
+                return event.summary(who(counter) + ": без лечения урон " + before + " → " + counter.getValue() + ", умер на " + day + "-й день");
+            }
+            if (isMortal(woundLevel(counter.getValue()))) {
+                int target = deathTarget(body(context), counter.getValue());
+                int roll = dice.d10();
+                saves++;
+                event.step("День " + day + ": спасбросок от смерти d10 = " + roll + ", нужно ≤ " + target);
+                if (roll > target) {
+                    counter.setFlag(DEAD, true);
+                    return event.summary(who(counter) + ": без лечения урон " + before + " → " + counter.getValue()
+                            + ", умер на " + day + "-й день (спасбросок от смерти)");
+                }
+            }
+        }
+        return event.summary(who(counter) + ": без лечения урон " + before + " → " + counter.getValue()
+                + " (+" + UNTREATED_DAMAGE_PER_DAY + " в день" + (saves > 0 ? ", спасбросков от смерти: " + saves : "") + ")");
+    }
+
+    /** В отчёте о промотке — имя персонажа, а не счётчика */
+    private static String who(Counter counter) {
+        return counter.getCharacter() != null ? counter.getCharacter().getName() : counter.getName();
+    }
+
+    /** Скорость в половинках очка в день */
+    private static int healingHalves(Counter counter) {
+        if (counter.getAttribute(CARE, CARE_NONE) == CARE_FIRST_AID) {
+            return 1;
+        }
+        return 2 + (counter.getFlag(SPEEDHEAL) ? 2 : 0) + (counter.getFlag(NANOTECH) ? 2 : 0);
+    }
+
+    private static String careLabel(Counter counter, int care) {
+        if (care == CARE_NONE) {
+            return "без лечения: +" + UNTREATED_DAMAGE_PER_DAY + " урона в день";
+        }
+        if (care == CARE_FIRST_AID) {
+            return "Первая помощь: 0.5 в день";
+        }
+        String extras = (counter.getFlag(SPEEDHEAL) ? " + Speedheal" : "") + (counter.getFlag(NANOTECH) ? " + нанотехника" : "");
+        return "Медицинская техника" + extras + ": " + healingHalves(counter) / 2 + " в день";
+    }
+
+    @Override
+    public List<CareOption> getCareOptions() {
+        return CARE_OPTIONS;
+    }
+
+    /**
+     * Стабилизация: TECH + навык + 1D10 ≥ всего урона (с. 116); лечение: больше всего урона.
+     */
+    @Override
+    public Integer careDifficulty(CounterContext context, CareOption option) {
+        Counter counter = context.getCounter();
+        if (isDead(counter) || counter.getValue() == 0) {
+            return null;
+        }
+        if (option.stabilization()) {
+            return deathSaveRequired(counter) ? counter.getValue() : null;
+        }
+        int level = option == TREAT_MED ? CARE_MEDICAL_TECH : CARE_FIRST_AID;
+        // Medical Tech заменяет First Aid, обратно не бывает (с. 116)
+        return counter.getAttribute(CARE, CARE_NONE) >= level ? null : counter.getValue() + 1;
+    }
+
+    @Override
+    public HealthEvent applyCare(CounterContext context, CareOption option, boolean success) {
+        Counter counter = context.getCounter();
+        if (option.stabilization()) {
+            return success ? stabilize(context)
+                    : new HealthEvent().summary(counter.getName() + ": стабилизировать не удалось, спасброски от смерти продолжаются");
+        }
+        if (!success) {
+            return new HealthEvent().summary(counter.getName() + ": лечение не удалось, новая попытка — через день");
+        }
+        int level = option == TREAT_MED ? CARE_MEDICAL_TECH : CARE_FIRST_AID;
+        counter.getAttributes().put(CARE, Math.max(level, counter.getAttribute(CARE, CARE_NONE)));
+        return new HealthEvent().summary(counter.getName() + ": " + careLabel(counter, counter.getAttribute(CARE, CARE_NONE)));
     }
 
     @Override
     public HealthEvent save(CounterContext context, String saveType, Integer roll) {
+        return save(context, saveType, roll, 0);
+    }
+
+    @Override
+    public HealthEvent save(CounterContext context, String saveType, Integer roll, int modifier) {
+        return save(context, saveType, roll, modifier, 0);
+    }
+
+    /**
+     * HOMEBREW: спасбросок бросают «не выше» числа, поэтому удача (с. 26: прибавить к важному броску) прибавляется к порогу, а не к кубику.
+     */
+    @Override
+    public HealthEvent save(CounterContext context, String saveType, Integer roll, int modifier, int luck) {
         ensureAlive(context.getCounter());
         if (roll != null && (roll < 1 || roll > 10)) {
             throw new IllegalArgumentException("Бросок d10 должен быть от 1 до 10");
@@ -276,8 +478,8 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
         HealthEvent event = new HealthEvent();
         String type = saveType == null ? "" : saveType.trim().toUpperCase();
         return switch (type) {
-            case SAVE_STUN -> rollStunSave(context, roll, event);
-            case SAVE_DEATH -> rollDeathSave(context, roll, event);
+            case SAVE_STUN -> rollStunSave(context, roll, modifier, luck, event);
+            case SAVE_DEATH -> rollDeathSave(context, roll, luck, event);
             default -> throw new IllegalArgumentException("Неизвестный спасбросок: " + saveType);
         };
     }
@@ -338,23 +540,37 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
                 .damageTypes(Arrays.stream(Cp2020DamageType.values())
                         .map(t -> new Option(t.name(), t.getLabel()))
                         .toList())
+                .careLabel(dead || damage == 0 ? null : careLabel(counter, counter.getAttribute(CARE, CARE_NONE)))
+                .medicalTech(counter.getAttribute(CARE, CARE_NONE) == CARE_MEDICAL_TECH)
+                .speedheal(counter.getFlag(SPEEDHEAL))
+                .nanotech(counter.getFlag(NANOTECH))
+                .careOptions(CARE_OPTIONS.stream()
+                        .filter(option -> careDifficulty(context, option) != null)
+                        .map(option -> new Option(option.code(), option.label()))
+                        .toList())
+                .careModifiers(CARE_MODIFIERS)
                 .build();
     }
 
     // ---------- спасброски ----------
 
     /** Спасбросок от оглушения: d10 ≤ BODY − штраф уровня ранения */
-    private HealthEvent rollStunSave(CounterContext context, Integer roll, HealthEvent event) {
+    private HealthEvent rollStunSave(CounterContext context, Integer roll, int modifier, int luck, HealthEvent event) {
         Counter counter = context.getCounter();
-        int target = body(context) - stunPenalty(woundLevel(counter.getValue()));
+        int target = body(context) - stunPenalty(woundLevel(counter.getValue())) + modifier + luck;
         int result = roll != null ? roll : dice.d10();
         boolean success = result <= target;
-        event.step("Спасбросок от оглушения: d10 = " + result + ", нужно ≤ " + target
+        event.step("Спасбросок от оглушения" + (modifier != 0 ? " с " + modifier : "") + (luck > 0 ? ", Удача +" + luck : "")
+                + ": d10 = " + result + ", нужно ≤ " + target
                 + (success ? " — успех" : " — провал"));
         boolean wasStunned = counter.getFlag(STUNNED);
-        counter.setFlag(STUNNED, !success);
+        // спасбросок с модификатором — от нового удара: уже оглушённого он в себя не приводит
+        boolean staysStunned = wasStunned && modifier != 0;
+        counter.setFlag(STUNNED, !success || staysStunned);
         String outcome;
-        if (success) {
+        if (staysStunned && success) {
+            outcome = " всё ещё оглушён";
+        } else if (success) {
             outcome = wasStunned ? " приходит в себя" : " держится на ногах";
         } else {
             outcome = " оглушён и выведен из строя";
@@ -363,15 +579,15 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
     }
 
     /** Спасбросок от смерти: d10 ≤ BODY − номер смертельного уровня */
-    private HealthEvent rollDeathSave(CounterContext context, Integer roll, HealthEvent event) {
+    private HealthEvent rollDeathSave(CounterContext context, Integer roll, int luck, HealthEvent event) {
         Counter counter = context.getCounter();
         if (!deathSaveRequired(counter)) {
             throw new IllegalStateException("Спасбросок от смерти нужен только смертельно раненым без стабилизации");
         }
-        int target = deathTarget(body(context), counter.getValue());
+        int target = deathTarget(body(context), counter.getValue()) + luck;
         int result = roll != null ? roll : dice.d10();
         boolean success = result <= target;
-        event.step("Спасбросок от смерти: d10 = " + result + ", нужно ≤ " + target
+        event.step("Спасбросок от смерти" + (luck > 0 ? ", Удача +" + luck : "") + ": d10 = " + result + ", нужно ≤ " + target
                 + (success ? " — успех" : " — провал"));
         counter.setFlag(DEATH_SAVE_PENDING, false);
         if (!success) {
@@ -394,6 +610,11 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
 
     private static int deathTarget(int body, int damage) {
         return body - Math.max(0, mortalLevel(woundLevel(damage)));
+    }
+
+    @Override
+    public boolean isDead(CounterContext context) {
+        return isDead(context.getCounter());
     }
 
     private boolean isDead(Counter counter) {

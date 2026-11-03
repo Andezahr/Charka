@@ -1,0 +1,451 @@
+package app.charka.attack;
+
+import app.charka.model.Campaign;
+import app.charka.model.Character;
+import app.charka.model.Inventory;
+import app.charka.model.Item;
+import app.charka.model.counters.Counter;
+import app.charka.model.counters.strategy.health.DiceRoller;
+import app.charka.repository.CampaignRepository;
+import app.charka.repository.CharacterRepository;
+import app.charka.repository.ItemRepository;
+import app.charka.service.CharacterService;
+import app.charka.service.ItemService;
+import app.charka.system.cp2020.Cp2020ArmorStrategy;
+import app.charka.system.cp2020.Cp2020HealthStrategy;
+import app.charka.system.cp2020.Cp2020ItemTypes;
+import app.charka.system.cp2020.Cp2020Vehicles;
+import jakarta.persistence.EntityManager;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.mockito.Answers;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.when;
+
+@SpringBootTest
+@ActiveProfiles("test")
+@Transactional
+@DisplayName("Атака: весь ход на настоящих сервисах")
+class AttackServiceTest {
+
+    @Autowired private AttackService attackService;
+    @Autowired private CampaignRepository campaignRepository;
+    @Autowired private CharacterRepository characterRepository;
+    @Autowired private CharacterService characterService;
+    @Autowired private ItemService itemService;
+    @Autowired private ItemRepository itemRepository;
+    @Autowired private EntityManager entityManager;
+
+    @MockitoBean(answers = Answers.CALLS_REAL_METHODS) private DiceRoller dice;
+
+    private Character shooter;
+    private Character victim;
+    private Item minami;
+
+    @BeforeEach
+    void setUp() {
+        Campaign campaign = new Campaign();
+        campaign.setName("Тест");
+        campaign.setSystem("CP2020");
+        campaign.setStartDate(LocalDate.of(2037, 1, 1));
+        campaign.setCurrentDate(LocalDate.of(2037, 1, 1));
+        campaign = campaignRepository.save(campaign);
+
+        shooter = member(campaign, "Стрелок");
+        victim = member(campaign, "Цель");
+        entityManager.flush();
+        entityManager.clear();
+        Long inventoryId = characterRepository.findById(shooter.getId()).orElseThrow().getInventories().get(0).getId();
+        minami = itemService.addFromCatalog(inventoryId, "arasaka_minami_10", 1);
+        Long victimInventory = characterRepository.findById(victim.getId()).orElseThrow().getInventories().get(0).getId();
+        Item jacket = itemService.addFromCatalog(victimInventory, "armor_light_jacket", 1);
+        itemService.performAction(victim.getId(), jacket.getId(), "WEAR", java.util.Map.of());
+        entityManager.flush();
+        entityManager.clear();
+    }
+
+    private Character member(Campaign campaign, String name) {
+        Character character = new Character();
+        character.setName(name);
+        return characterService.createInCampaign(campaign.getId(), character);
+    }
+
+    private Counter counter(Character character, String type) {
+        return characterRepository.findById(character.getId()).orElseThrow().getCounters().stream()
+                .filter(c -> type.equals(c.getType()))
+                .findFirst().orElseThrow();
+    }
+
+    private AttackRequest atTorso() {
+        return new AttackRequest(victim.getId(), null, 5, "TORSO", null, Set.of("immobile"), 0);
+    }
+
+    @Test
+    @DisplayName("Попадание меняет здоровье и броню цели, расход патрона, расчёт виден целиком")
+    void hitChangesTarget() {
+        when(dice.roll(anyInt())).thenReturn(9, 6, 6);
+        // REF 6 + навык 0 + WA 0 + неподвижна 4 − прицельный 4 + 9 = 15 против 15; урон 6 + 6 + 3 = 15
+        AttackResult result = attackService.attack(shooter.getId(), minami.getId(), atTorso());
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(result.hit()).isTrue();
+        assertThat(result.steps()).anyMatch(step -> step.contains("Сложность 15"))
+                .anyMatch(step -> step.contains("Урон 2d6+3"))
+                .anyMatch(step -> step.contains("Урон 15 − SP 14"))
+                .anyMatch(step -> step.contains("Броня пробита"));
+        assertThat(counter(victim, Cp2020HealthStrategy.TYPE).getValue()).isEqualTo(1);
+        Item jacket = characterRepository.findById(victim.getId()).orElseThrow().getInventories().get(0).getContent().stream()
+                .filter(item -> Cp2020ItemTypes.ARMOR.equals(item.getType())).findFirst().orElseThrow();
+        assertThat(jacket.getProperties()).containsEntry("wear_TORSO", "1");
+        assertThat(itemRepository.findById(minami.getId()).orElseThrow().getProperties()).containsEntry("ammo", "39");
+        assertThat(counter(victim, Cp2020ArmorStrategy.TYPE)).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Автоогонь по двум целям (с. 107): 20 патронов делятся по 10, бросок на каждую, расход — все 20")
+    void autoSplit() {
+        Character second = member(campaignRepository.findById(characterRepository.findById(shooter.getId()).orElseThrow()
+                .getCampaign().getId()).orElseThrow(), "Второй");
+        entityManager.flush();
+        when(dice.roll(anyInt())).thenReturn(5);
+
+        AttackResult result = attackService.attack(shooter.getId(), minami.getId(),
+                new AttackRequest(List.of(victim.getId(), second.getId()), null, 5, null, null, Set.of(), 0, "AUTO", 20, 0));
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(result.steps()).contains("Цель: 10 патр.", "Второй: 10 патр.");
+        assertThat(itemRepository.findById(minami.getId()).orElseThrow().getProperties()).containsEntry("ammo", "20");
+    }
+
+    @Test
+    @DisplayName("Очередь не падает, если цель умерла на одной из пуль")
+    void targetDiesMidBurst() {
+        counter(victim, Cp2020HealthStrategy.TYPE).getAttributes().put(Cp2020HealthStrategy.DEAD, 1);
+        entityManager.flush();
+        when(dice.roll(anyInt())).thenReturn(9, 6, 6);
+
+        AttackResult result = attackService.attack(shooter.getId(), minami.getId(),
+                new AttackRequest(List.of(victim.getId()), null, 5, null, null, Set.of("immobile"), 0, "AUTO", 20, 0));
+
+        assertThat(result.steps()).contains("Цель уже мертва");
+        assertThat(result.outcome()).contains("Цель уже мертва");
+    }
+
+    @Test
+    @DisplayName("Подавляющий огонь: каждая цель бросает сама, патроны списаны один раз")
+    void zoneFire() {
+        when(dice.roll(anyInt())).thenReturn(9);
+
+        AttackResult result = attackService.attack(shooter.getId(), minami.getId(),
+                new AttackRequest(List.of(victim.getId()), null, 20, null, null, Set.of(), 0, "SUPPRESS", 20, 2));
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(result.title()).endsWith("зона огня");
+        assertThat(result.steps()).anyMatch(step -> step.startsWith("Цель: спасбросок"));
+        assertThat(itemRepository.findById(minami.getId()).orElseThrow().getProperties()).containsEntry("ammo", "20");
+    }
+
+    @Test
+    @DisplayName("Промах расходует патрон и не трогает цель")
+    void missSpendsRound() {
+        when(dice.roll(anyInt())).thenReturn(2);
+
+        AttackResult result = attackService.attack(shooter.getId(), minami.getId(), atTorso());
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(result.hit()).isFalse();
+        assertThat(counter(victim, Cp2020HealthStrategy.TYPE).getValue()).isZero();
+        assertThat(itemRepository.findById(minami.getId()).orElseThrow().getProperties()).containsEntry("ammo", "39");
+    }
+
+    @Test
+    @DisplayName("Цель без листа: урон брошен, применяет мастер")
+    void targetWithoutSheet() {
+        when(dice.roll(anyInt())).thenReturn(9, 3, 4);
+
+        AttackResult result = attackService.attack(shooter.getId(), minami.getId(),
+                new AttackRequest(null, "Бустер", 5, "TORSO", null, Set.of("immobile"), 0));
+
+        assertThat(result.title()).endsWith("Бустер");
+        assertThat(result.steps()).anyMatch(step -> step.contains("урон применяет мастер"));
+    }
+
+    private Item fromCatalog(String key, int quantity) {
+        Long inventoryId = characterRepository.findById(shooter.getId()).orElseThrow().getInventories().get(0).getId();
+        Item item = itemService.addFromCatalog(inventoryId, key, quantity);
+        entityManager.flush();
+        entityManager.clear();
+        return item;
+    }
+
+    @Test
+    @DisplayName("Слезоточивый газ: спасбросок провален — REF −2 на листе цели на 1D6+1 минуту")
+    void teargas() {
+        Item grenade = fromCatalog("grenade_gas_teargas", 1);
+        // бросок попадания 9; спасбросок 9 > BODY 6 — провал; срок 3 + 1 = 4 минуты
+        when(dice.roll(anyInt())).thenReturn(9, 9, 3);
+
+        AttackResult result = attackService.attack(shooter.getId(), grenade.getId(),
+                new AttackRequest(List.of(victim.getId()), null, 5, null, null, Set.of(), 0, "THROW", 0, 0));
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(result.steps()).anyMatch(step -> step.contains("провал, REF -2"));
+        assertThat(characterRepository.findById(victim.getId()).orElseThrow().getEffects()).singleElement()
+                .satisfies(effect -> {
+                    assertThat(effect.getModifier()).isEqualTo(-2);
+                    assertThat(effect.getRemainingLabel()).isEqualTo("≈4 мин");
+                });
+    }
+
+    @Test
+    @DisplayName("Брошенная граната попала: задеты выбранные цели, последняя граната ушла из инвентаря")
+    void grenadeHits() {
+        Item grenade = fromCatalog("grenade_fragmentation", 1);
+        // 7D6 по 3 = 21; бросок 9; зона: торс. Урон 21 − SP 14 = 7
+        when(dice.roll(anyInt())).thenReturn(3, 3, 3, 3, 3, 3, 3, 9, 3);
+
+        AttackResult result = attackService.attack(shooter.getId(), grenade.getId(),
+                new AttackRequest(List.of(victim.getId()), null, 5, null, null, Set.of(), 0, "THROW", 0, 0));
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(result.hit()).isTrue();
+        assertThat(result.detached()).isTrue();
+        assertThat(result.pendingBlast()).isNull();
+        assertThat(result.outcome()).contains("Зона 5 м");
+        assertThat(counter(victim, Cp2020HealthStrategy.TYPE).getValue()).isPositive();
+        assertThat(itemRepository.findById(grenade.getId())).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Промах: заряд отклонился, никого не задело, пока мастер не выберет")
+    void grenadeScatters() {
+        Item grenade = fromCatalog("grenade_fragmentation", 2);
+        // 7D6 по 3; бросок 2 — мимо; отклонение 8, 4 м; при применении зона: торс
+        when(dice.roll(anyInt())).thenReturn(3, 3, 3, 3, 3, 3, 3, 2, 8, 4, 3);
+
+        AttackResult result = attackService.attack(shooter.getId(), grenade.getId(),
+                new AttackRequest(List.of(victim.getId()), null, 5, null, null, Set.of(), 0, "THROW", 0, 0));
+
+        assertThat(result.hit()).isFalse();
+        assertThat(result.pendingBlast()).isNotNull();
+        assertThat(attackService.pendingBlasts(shooter.getId())).singleElement().satisfies(blast -> {
+            assertThat(blast.getAmount()).isEqualTo(21);
+            // отклонение 4 м при зоне 5 м: цель так и осталась в зоне, мастеру остаётся подтвердить
+            assertThat(blast.getStillCaught()).containsExactly(victim.getId());
+        });
+        assertThat(result.steps()).anyMatch(step -> step.startsWith("Отклонение"));
+        assertThat(counter(victim, Cp2020HealthStrategy.TYPE).getValue()).isZero();
+
+        AttackResult applied = attackService.applyBlast(shooter.getId(), result.pendingBlast(), List.of(victim.getId()));
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(applied.detached()).isTrue();
+        assertThat(applied.outcome()).contains("Задето целей: 1");
+        assertThat(attackService.pendingBlasts(shooter.getId())).isEmpty();
+        assertThat(counter(victim, Cp2020HealthStrategy.TYPE).getValue()).isPositive();
+        assertThat(itemRepository.findById(grenade.getId()).orElseThrow().getQuantity()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("Упавший заряд: нужны цели той же кампании, чужой заряд не найти, «Никого» его убирает")
+    void blastRules() {
+        Item grenade = fromCatalog("grenade_fragmentation", 2);
+        when(dice.roll(anyInt())).thenReturn(3, 3, 3, 3, 3, 3, 3, 2, 8, 9);
+        Long blast = attackService.attack(shooter.getId(), grenade.getId(),
+                new AttackRequest(List.of(victim.getId()), null, 5, null, null, Set.of(), 0, "THROW", 0, 0)).pendingBlast();
+
+        assertThat(attackService.pendingBlasts(shooter.getId()).get(0).getStillCaught()).isEmpty();
+        assertThatThrownBy(() -> attackService.applyBlast(shooter.getId(), blast, List.of()))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("кого задело");
+        assertThatThrownBy(() -> attackService.applyBlast(shooter.getId(), blast, List.of(shooter.getId())))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> attackService.applyBlast(victim.getId(), blast, List.of(shooter.getId())))
+                .isInstanceOf(java.util.NoSuchElementException.class);
+
+        attackService.dismissBlast(shooter.getId(), blast);
+
+        assertThat(attackService.pendingBlasts(shooter.getId())).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Мина подрывается без броска на попадание")
+    void minePlanted() {
+        Item mine = fromCatalog("mine_all_types", 2);
+        when(dice.roll(anyInt())).thenReturn(5, 5, 5, 5, 3);
+
+        AttackResult result = attackService.attack(shooter.getId(), mine.getId(),
+                new AttackRequest(List.of(victim.getId()), null, 0, null, null, Set.of(), 0, "PLANT", 0, 0));
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(result.hit()).isTrue();
+        assertThat(result.steps()).noneMatch(step -> step.contains("Сложность"));
+        assertThat(counter(victim, Cp2020HealthStrategy.TYPE).getValue()).isPositive();
+        assertThat(itemRepository.findById(mine.getId()).orElseThrow().getQuantity()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("Метательное бьёт как обычная атака и расходуется")
+    void shurikenThrown() {
+        Item shiriken = fromCatalog("shiriken", 3);
+        when(dice.roll(anyInt())).thenReturn(9, 3, 6);
+
+        AttackResult result = attackService.attack(shooter.getId(), shiriken.getId(),
+                new AttackRequest(List.of(victim.getId()), null, 3, null, null, Set.of("immobile"), 0, "SINGLE", 0, 0));
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(result.detached()).isFalse();
+        assertThat(result.steps()).anyMatch(step -> step.contains("Атлетика"));
+        assertThat(itemRepository.findById(shiriken.getId()).orElseThrow().getQuantity()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("Дробовик задевает всех выбранных в пятне, патрон один")
+    void shotgunPattern() {
+        Long inventoryId = characterRepository.findById(shooter.getId()).orElseThrow().getInventories().get(0).getId();
+        Item shotgun = itemService.addFromCatalog(inventoryId, "arasaka_rapid_assault_12", 1);
+        entityManager.flush();
+        entityManager.clear();
+        when(dice.roll(anyInt())).thenReturn(6, 6, 6, 6, 9, 3);
+
+        AttackResult result = attackService.attack(shooter.getId(), shotgun.getId(),
+                new AttackRequest(List.of(victim.getId()), null, 5, null, null, Set.of("immobile"), 0, "SINGLE", 0, 0));
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(result.outcome()).contains("Зона 1 м");
+        assertThat(counter(victim, Cp2020HealthStrategy.TYPE).getValue()).isPositive();
+        assertThat(itemRepository.findById(shotgun.getId()).orElseThrow().getProperties()).containsEntry("ammo", "19");
+    }
+
+    @Test
+    @DisplayName("Нельзя стрелять в себя, в чужую кампанию и чужим оружием")
+    void refused() {
+        assertThatThrownBy(() -> attackService.attack(shooter.getId(), minami.getId(),
+                new AttackRequest(shooter.getId(), null, 5, null, null, Set.of(), 0)))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> attackService.attack(victim.getId(), minami.getId(), atTorso()))
+                .isInstanceOf(java.util.NoSuchElementException.class);
+
+        Campaign other = new Campaign();
+        other.setName("Другая");
+        other.setSystem("CP2020");
+        other.setStartDate(LocalDate.of(2037, 1, 1));
+        other.setCurrentDate(LocalDate.of(2037, 1, 1));
+        Character stranger = member(campaignRepository.save(other), "Чужой");
+        assertThatThrownBy(() -> attackService.attack(shooter.getId(), minami.getId(),
+                new AttackRequest(stranger.getId(), null, 5, null, null, Set.of(), 0)))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("кампании");
+    }
+
+    @Nested
+    @DisplayName("Машина как цель (T-10, с. 113)")
+    class VehicleTarget {
+
+        private Item car;
+
+        @BeforeEach
+        void parkCar() {
+            Long victimInventory = characterRepository.findById(victim.getId()).orElseThrow().getInventories().get(0).getId();
+            Item item = new Item();
+            item.setName("Седан");
+            item.setQuantity(1);
+            car = itemService.create(victimInventory, item, Cp2020Vehicles.TYPE,
+                    Map.of(Cp2020Vehicles.KIND, "CAR", Cp2020Vehicles.SDP, "30", Cp2020Vehicles.SP, "10"));
+            entityManager.flush();
+            entityManager.clear();
+        }
+
+        private AttackRequest atCar(String location, String mode, int rounds) {
+            return new AttackRequest(List.of(), null, 5, location, null, Set.of(), 0, mode, rounds, 0, 0, car.getId());
+        }
+
+        private String sdpLost() {
+            return itemRepository.findById(car.getId()).orElseThrow().getProperties().get(Cp2020Vehicles.DAMAGE);
+        }
+
+        @Test
+        @DisplayName("Выстрел без броска зоны: урон − SP машины уходит в SDP, людям ничего")
+        void shotGoesToSdp() {
+            when(dice.roll(anyInt())).thenReturn(9, 6, 6);
+            // REF 6 + 9 = 15 против 15 (близко); урон 6 + 6 + 3 = 15 − SP 10 = 5
+            AttackResult result = attackService.attack(shooter.getId(), minami.getId(), atCar(null, "SINGLE", 0));
+            entityManager.flush();
+            entityManager.clear();
+
+            assertThat(result.title()).isEqualTo("Arasaka Minami 10 → Седан");
+            assertThat(result.outcome()).contains("= 5").contains("SDP 25/30");
+            assertThat(result.steps()).noneMatch(step -> step.contains("Бросок зоны"));
+            assertThat(sdpLost()).isEqualTo("5");
+            assertThat(counter(victim, Cp2020HealthStrategy.TYPE).getValue()).isZero();
+        }
+
+        @Test
+        @DisplayName("Граната по машине и человеку рядом: урон каждому, машина разрушена")
+        void grenadeHitsBoth() {
+            Long inventoryId = characterRepository.findById(shooter.getId()).orElseThrow().getInventories().get(0).getId();
+            Item grenade = itemService.addFromCatalog(inventoryId, "grenade_fragmentation", 1);
+            entityManager.flush();
+            entityManager.clear();
+            when(dice.roll(anyInt())).thenReturn(9);
+
+            AttackResult result = attackService.attack(shooter.getId(), grenade.getId(),
+                    new AttackRequest(List.of(victim.getId()), null, 5, null, null, Set.of(), 0, "THROW", 1, 0, 0, car.getId()));
+            entityManager.flush();
+            entityManager.clear();
+
+            assertThat(result.steps()).contains("Седан:", "Цель:");
+            assertThat(sdpLost()).isEqualTo("30");
+            assertThat(counter(victim, Cp2020HealthStrategy.TYPE).getValue()).isPositive();
+        }
+
+        @Test
+        @DisplayName("Прицельный выстрел и машина вместе с человеком — отказ: зон у машины нет")
+        void refused() {
+            assertThatThrownBy(() -> attackService.attack(shooter.getId(), minami.getId(), atCar("HEAD", "SINGLE", 0)))
+                    .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("зон");
+            assertThatThrownBy(() -> attackService.attack(shooter.getId(), minami.getId(),
+                    new AttackRequest(List.of(victim.getId()), null, 5, null, null, Set.of(), 0, "SINGLE", 0, 0, 0, car.getId())))
+                    .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("взрыве");
+            assertThatThrownBy(() -> attackService.attack(shooter.getId(), minami.getId(),
+                    new AttackRequest(List.of(), null, 5, null, null, Set.of(), 0, "SINGLE", 0, 0, 0, minami.getId())))
+                    .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("целью");
+        }
+
+        @Test
+        @DisplayName("В списке целей — машины кампании с SDP и прочностью; разрушенной нет")
+        void listed() {
+            Campaign campaign = characterRepository.findById(shooter.getId()).orElseThrow().getCampaign();
+
+            assertThat(attackService.objectTargets(campaign)).extracting(ObjectTarget::label).containsExactly("Седан · Цель · SDP 30/30");
+
+            Item wreck = itemRepository.findById(car.getId()).orElseThrow();
+            wreck.getProperties().put(Cp2020Vehicles.DAMAGE, "30");
+            entityManager.flush();
+            assertThat(attackService.objectTargets(campaign)).isEmpty();
+        }
+    }
+}

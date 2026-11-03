@@ -80,13 +80,15 @@
       </div>
       <div class="skills-rows">
         <div th:each="row : ${group.rows}" class="skill-row" data-skill-row th:id="${row.anchor}"
-             th:classappend="${row.level == 0} ? 'is-zero'"
+             th:classappend="${row.level == 0 and row.override == null} ? 'is-zero'"
              th:attr="data-always=${group.special}">
           <div class="skill-name">
             <span data-skill-name th:text="${row.name}">Пистолеты</span>
             <span th:if="${group.special}" class="skill-note" th:text="${row.roleName} + ' · ' + ${row.statName}">Соло · INT</span>
             <span th:if="${row.level > 0}" class="skill-note skill-level" title="Уровень навыка"
                   th:text="'ур. ' + ${row.level}">ур. 4</span>
+            <span th:if="${row.override != null}" class="skill-note skill-level" title="Уровень задаёт вставленный чип, свой не складывается"
+                  th:text="${row.override}">чип +2</span>
           </div>
           <input type="number" class="skill-input" form="skill-levels" min="0" max="10"
                  th:name="${row.customId != null} ? 'custom.' + ${row.customId} : 'level.' + ${row.code}"
@@ -97,7 +99,7 @@
           </form>
           <button type="button" class="btn btn-sm skill-check" data-skill-check
                   th:data-code="${row.code}" th:data-skill-id="${row.customId}" th:data-name="${row.name}"
-                  th:data-sum="${row.statName} + ' ' + ${row.statValue} + ' + навык ' + ${row.level} + (${row.bonus != 0} ? ' + бонус ' + ${row.bonus} : '') + ' = ' + ${row.total}"
+                  th:data-sum="${row.statName} + ' ' + ${row.statValue} + ' + ' + ${row.checkedPart} + (${row.bonus != 0} ? ' + бонус ' + ${row.bonus} : '') + ' = ' + ${row.total}"
                   th:aria-label="'Проверить: ' + ${row.name} + ', итог ' + ${row.total}"
                   th:text="'🎲 ' + ${row.total}">🎲 12</button>
           <form th:if="${sheet.pointsName != null}" th:action="${base} + '/skills/improve'" method="post" class="inline skill-improve">
@@ -180,7 +182,7 @@
         <label class="field">
           <span class="label">Противник</span>
           <select name="opponentId" data-opponent>
-            <option th:each="o : ${opponents}" th:value="${o.id}" th:text="${o.name}">Олежа</option>
+            <th:block th:replace="~{fragments/attack :: target-options(${opponents})}"></th:block>
             <option value="">Другой, без листа</option>
           </select>
         </label>
@@ -204,6 +206,10 @@
         <summary class="label">Доп. модификатор</summary>
         <input type="number" name="modifier" step="1" value="0" aria-label="Дополнительный модификатор">
       </details>
+      <label th:if="${luck > 0}" class="field luck-field">
+        <span class="label" th:text="'Удача: есть ' + ${luck} + ', прибавить до броска'">Удача</span>
+        <input type="number" name="luck" step="1" value="0" min="0" th:max="${luck}" aria-label="Сколько Удачи прибавить">
+      </label>
       <div class="form-row dialog-actions">
         <button type="button" class="btn btn-ghost" data-dialog-close>Закрыть</button>
         <button type="submit" class="btn btn-primary" autofocus data-check-submit>🎲 Бросить</button>

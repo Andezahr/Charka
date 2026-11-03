@@ -316,15 +316,62 @@ class Cp2020HealthStrategyTest {
         }
 
         @Test
-        @DisplayName("natural healing skips the dying without stabilization")
-        void healOverTime() {
-            health.setValue(20);
-            strategy.healOverTime(context, 5);
-            assertThat(health.getValue()).isEqualTo(20);
+        @DisplayName("untreated: +2 damage a day (p. 116)")
+        void untreated() {
+            health.setValue(5);
+            HealthEvent event = strategy.healOverTime(context, 3);
+            assertThat(health.getValue()).isEqualTo(11);
+            assertThat(event.getSummary()).contains("без лечения");
+        }
 
-            health.setFlag(STABILIZED, true);
+        @Test
+        @DisplayName("untreated mortal: a death save every day, a failed one kills")
+        void untreatedMortal() {
+            health.setValue(20);
+            // BODY 6: 22 и 24 — Mortal 2, нужно ≤ 4; 26 — Mortal 3, нужно ≤ 3
+            dice.next(1, 1, 9);
             strategy.healOverTime(context, 5);
-            assertThat(health.getValue()).isEqualTo(15);
+            assertThat(health.getValue()).isEqualTo(26);
+            assertThat(strategy.isDead(context)).isTrue();
+        }
+
+        @Test
+        @DisplayName("treated: First Aid 0.5 a day, Medical Tech 1, Speedheal and nanotech +1 each")
+        void treated() {
+            health.setValue(10);
+            health.getAttributes().put(CARE, CARE_FIRST_AID);
+            strategy.healOverTime(context, 3);
+            assertThat(health.getValue()).isEqualTo(9);
+            strategy.healOverTime(context, 1);
+            assertThat(health.getValue()).isEqualTo(8);
+
+            health.getAttributes().put(CARE, CARE_MEDICAL_TECH);
+            health.setFlag(SPEEDHEAL, true);
+            health.setFlag(NANOTECH, true);
+            strategy.healOverTime(context, 2);
+            assertThat(health.getValue()).isEqualTo(2);
+            strategy.healOverTime(context, 5);
+            assertThat(health.getValue()).isZero();
+            assertThat(health.getAttributes()).doesNotContainKeys(CARE, SPEEDHEAL, NANOTECH);
+        }
+
+        @Test
+        @DisplayName("medic: stabilization only for the dying, difficulty = damage; treatment needs more than damage")
+        void care() {
+            health.setValue(12);
+            app.charka.model.counters.strategy.health.CareOption stabilize = strategy.getCareOptions().get(0);
+            app.charka.model.counters.strategy.health.CareOption treat = strategy.getCareOptions().get(2);
+            assertThat(strategy.careDifficulty(context, stabilize)).isNull();
+            assertThat(strategy.careDifficulty(context, treat)).isEqualTo(13);
+
+            strategy.applyCare(context, treat, true);
+            assertThat(health.getAttribute(CARE, 0)).isEqualTo(CARE_MEDICAL_TECH);
+            assertThat(strategy.careDifficulty(context, treat)).isNull();
+
+            health.setValue(20);
+            assertThat(strategy.careDifficulty(context, stabilize)).isEqualTo(20);
+            strategy.applyCare(context, stabilize, true);
+            assertThat(health.getFlag(STABILIZED)).isTrue();
         }
 
         @Test

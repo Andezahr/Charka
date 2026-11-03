@@ -1,6 +1,7 @@
 package app.charka.system.cp2020;
 
 import app.charka.item.CatalogItem;
+import app.charka.item.ItemField;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +22,12 @@ public final class Cp2020Ammo {
     public static final String NEEDLES = "Иглы";
     public static final String NAPALM = "Напалм";
     public static final String MICRO_MISSILES = "Микроракеты";
+    public static final String MISSILES = "Ракеты";
+    public static final String RPG_ROUNDS = "Заряды РПГ";
+
+    private static final String CANNON = "20/9mm";
+    private static final String SHOTGUN_SHELL = "00";
+    private static final List<String> OWN_NAMES = List.of(ARROWS, BOLTS, PELLETS, NEEDLES, NAPALM, MICRO_MISSILES, MISSILES, RPG_ROUNDS);
 
     private static final String GROUP = "Боеприпасы";
     private static final String OTHER_GROUP = "Боеприпасы: другие";
@@ -35,6 +42,13 @@ public final class Cp2020Ammo {
 
     public static final List<CatalogItem> CATALOG = build();
 
+    /** Все патроны справочника, для выбора в форме предмета */
+    public static final List<ItemField.Option> CALIBERS = CATALOG.stream()
+            .map(entry -> entry.properties().get(Cp2020ItemTypes.CALIBER))
+            .distinct()
+            .map(caliber -> new ItemField.Option(caliber, caliber))
+            .toList();
+
     private Cp2020Ammo() {
     }
 
@@ -48,7 +62,9 @@ public final class Cp2020Ammo {
         bullets(rows, "дробовик", 12, 15, "00");
 
         // Подкалиберный снаряд Barrett-Arasaka (с. 63): бронебойный всегда, отдельной цены ×3 у него нет
-        rows.add(row("ammo_20mm", OTHER_GROUP, "20mm Cannon, снаряд", "20/9mm", true, 1, 25, null));
+        // HOMEBREW: в таблице Reloads (с. 64) пуль нет; с. 109 — «normal AP ability», цена как у бронебойных ×3
+        rows.add(slug());
+        rows.add(row("ammo_20mm", OTHER_GROUP, "20mm Cannon, снаряд", CANNON, true, 1, 25, null));
         rows.add(other("arrows", "Стрелы (12)", ARROWS, 12, 24, BOX_NOTE));
         rows.add(other("bolts", "Болты для арбалета (12)", BOLTS, 12, 30, BOX_NOTE));
         rows.add(other("pellets", "Пульки для пневматики (100)", PELLETS, 100, 6, BOX_NOTE + ". С наркотиком или кислотой — ×5 к цене"));
@@ -56,6 +72,11 @@ public final class Cp2020Ammo {
         // HOMEBREW: в книге одна заправка без числа выстрелов; 10 — магазин K-A F-253
         rows.add(other("napalm", "Заправка огнемёта", NAPALM, 10, 50, "Цена за заправку. В книге без числа выстрелов, взят магазин F-253"));
         rows.add(other("micro_missiles", "Микроракеты (4)", MICRO_MISSILES, 4, 100, "Цена за 4"));
+
+        // HOMEBREW: в таблице Reloads (с. 64) ракет и зарядов РПГ нет, цены наши
+        rows.add(other("missile", "Ракета к Scorpion 16", MISSILES, 1, 300, "Цена за штуку. В книге цены нет"));
+        rows.add(row("ammo_missile_ap", OTHER_GROUP, "Ракета к Scorpion 16 AP", MISSILES, true, 1, 300 * AP_MULTIPLIER, "Цена за штуку. SP вдвое меньше, прошедший урон не делится (с. 111)"));
+        rows.add(other("rpg", "Заряд РПГ", RPG_ROUNDS, 1, 100, "Цена за штуку. В книге цены нет"));
 
         brass(rows, "лёгкий пистолет", 100, 15, ".25", ".38");
         brass(rows, "средний пистолет", 50, 15, ".357", ".45");
@@ -80,6 +101,16 @@ public final class Cp2020Ammo {
         }
     }
 
+    private static CatalogItem slug() {
+        return new CatalogItem("ammo_slugs", GROUP, "Пули к дробовику, коробка 12", Cp2020ItemTypes.AMMO, 15 * AP_MULTIPLIER,
+                BOX_NOTE + ". Урон по калибру оружия: 10 — 5D6+3, 12 — 4D6+2, 20 — 3D6+1. Бьют одну цель",
+                Map.of(Cp2020ItemTypes.CALIBER, SHOTGUN_SHELL, Cp2020ItemTypes.SLUG, "1"), 12, false, slugStackName(SHOTGUN_SHELL));
+    }
+
+    static String slugStackName(String caliber) {
+        return "Пули " + caliber;
+    }
+
     private static CatalogItem other(String key, String name, String caliber, int pack, int cost, String note) {
         return row("ammo_" + key, OTHER_GROUP, name, caliber, false, pack, cost, note);
     }
@@ -89,7 +120,18 @@ public final class Cp2020Ammo {
         Map<String, String> properties = armorPiercing
                 ? Map.of(Cp2020ItemTypes.CALIBER, caliber, Cp2020ItemTypes.ARMOR_PIERCING, "1")
                 : Map.of(Cp2020ItemTypes.CALIBER, caliber);
-        return new CatalogItem(key, group, name, Cp2020ItemTypes.AMMO, cost, note, properties, pack);
+        return new CatalogItem(key, group, name, Cp2020ItemTypes.AMMO, cost, note, properties, pack, false, stackName(caliber, armorPiercing));
+    }
+
+    /** Название запаса в инвентаре: число в нём меняется, поэтому ни коробки, ни класса оружия в названии нет */
+    static String stackName(String caliber, boolean armorPiercing) {
+        if (OWN_NAMES.contains(caliber)) {
+            return caliber + (armorPiercing ? " AP" : "");
+        }
+        if (CANNON.equals(caliber)) {
+            return "Снаряды " + caliber;
+        }
+        return "Патроны " + caliber + (armorPiercing ? " AP" : "");
     }
 
     private static String key(String caliber, int cost, int boxSize) {

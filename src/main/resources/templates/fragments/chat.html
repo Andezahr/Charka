@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- U-06: чат кампании. Лента — сообщения и броски по времени; app.js опрашивает её ([data-chat]) и подменяет только список.
+     Кто пишет — «Я — …», запоминается на устройстве вместе с выбором на карте -->
+<section th:fragment="card(campaignId, returnTo, characters)" class="card chat" id="chat"
+         th:attr="data-chat=@{'/campaign/' + ${campaignId} + '/chat'},data-me-key=${'campaign.' + campaignId}">
+  <div class="card-head"><h2 class="card-title"><span class="dot pink"></span>Чат и броски</h2></div>
+  <div class="card-body">
+    <form th:action="@{'/campaign/' + ${campaignId} + '/chat'}" method="post" class="form chat-form">
+      <input type="hidden" name="returnTo" th:value="${returnTo}">
+      <div class="form-row">
+        <select name="character" class="chat-me" data-me aria-label="Кто пишет">
+          <option th:if="${isGm == null or isGm}" value="">Мастер</option>
+          <option th:each="c : ${characters}" th:value="${c.id}" th:text="${c.name}">Колясик</option>
+        </select>
+        <input type="text" name="text" class="grow" maxlength="500" required autocomplete="off" placeholder="Сообщение"
+               th:value="${chatDraft}" aria-label="Сообщение">
+        <button type="submit" class="btn btn-sm btn-primary">➤</button>
+      </div>
+      <p th:if="${chatError != null}" class="field-error" th:text="${chatError}">Пустое сообщение</p>
+    </form>
+  </div>
+  <div class="card-body list chat-feed" data-chat-feed>
+    <th:block th:replace="~{fragments/chat :: feed}"></th:block>
+  </div>
+</section>
+
+<th:block th:fragment="feed">
+  <div th:each="e : ${feed}" class="chat-row" th:classappend="${e.roll != null} ? 'is-roll'"
+       th:title="${e.roll != null} ? ${e.roll.expression} + ': ' + ${e.roll.details} : ${#temporals.format(e.at, 'dd.MM HH:mm')}">
+    <span class="chat-who" th:text="${e.who}">Колясик</span>
+    <th:block th:if="${e.roll != null}">
+      <span class="chat-text">🎲 <th:block th:text="${e.roll.label != null ? e.roll.label + ': ' : ''} + ${e.roll.expression}">Атака: d10</th:block></span>
+      <span class="roll-total" th:text="${e.roll.total}">8</span>
+    </th:block>
+    <span th:unless="${e.roll != null}" class="chat-text" th:text="${e.text}">Бегу к машине</span>
+  </div>
+  <div th:if="${#lists.isEmpty(feed)}" class="empty">Пока тихо</div>
+</th:block>
+</body>
+</html>

@@ -13,6 +13,10 @@ public class Cp2020ArmorView {
     List<ArmorLine> locations;
     /** Хоть одна зона изношена — показываем кнопку ремонта */
     boolean worn;
+    /** Надетые предметы, от внутреннего слоя к внешнему */
+    List<String> wornItems;
+    /** Штраф брони к REF */
+    int encumbrance;
 
     @Value
     public static class ArmorLine {
@@ -22,6 +26,8 @@ public class Cp2020ArmorView {
         String rolls;
         int sp;
         int maxSp;
+        /** Полный SP брони, заданной вручную, без предмета */
+        int ownSp;
 
         public boolean isWorn() {
             return sp < maxSp;
