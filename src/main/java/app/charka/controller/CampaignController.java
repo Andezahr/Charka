@@ -70,6 +70,11 @@ public class CampaignController {
         model.addAttribute("securityOn", accessService.isEnabled());
         model.addAttribute("chatCharacters", visible);
         model.addAttribute("currentDate", currentDate);
+        // R-11: хроника — новые сверху
+        model.addAttribute("chronicles", campaign.getChronicles().stream()
+                .sorted(java.util.Comparator.comparing(app.charka.model.Chronicle::getEndDate, java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder()))
+                        .thenComparing(app.charka.model.Chronicle::getId, java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())))
+                .toList());
         GameSystem gameSystem = systemRegistry.find(campaign.getSystem()).orElseGet(systemRegistry::getGeneric);
         model.addAttribute("gameSystem", gameSystem);
         model.addAttribute("npcTemplates", gameSystem.getNpcTemplates());

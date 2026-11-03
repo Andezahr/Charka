@@ -44,30 +44,7 @@
         <th:block th:each="row : ${playerRows}"><div th:replace="~{fragments/roster :: row(${row})}"></div></th:block>
         <div th:if="${#lists.isEmpty(players)}" class="empty">В кампании пока нет персонажей</div>
       </div>
-      <!-- Начислить всем: опыт, IP. Галочки — игроки, NPC по умолчанию не получают -->
       <div th:if="${playerError != null}" class="card-body"><p class="field-error" th:text="${playerError}">Нет такого логина</p></div>
-      <div class="card-body" id="award" th:unless="${!isGm or #lists.isEmpty(awardCounters) or #lists.isEmpty(players)}">
-        <form th:action="@{'/campaign/' + ${campaign.id} + '/award'}" method="post" class="form">
-          <div class="form-row">
-            <select th:if="${#lists.size(awardCounters) > 1}" name="counter" class="grow" aria-label="Что начислить">
-              <option th:each="name : ${awardCounters}" th:value="${name}" th:text="${name}">Очки улучшения</option>
-            </select>
-            <input th:if="${#lists.size(awardCounters) == 1}" type="hidden" name="counter" th:value="${awardCounters[0]}">
-            <span th:if="${#lists.size(awardCounters) == 1}" class="grow award-label" th:text="${awardCounters[0]}">Очки улучшения</span>
-            <input type="number" name="amount" class="narrow" placeholder="Сколько" required aria-label="Сколько начислить">
-            <button type="submit" class="btn btn-primary">Начислить</button>
-          </div>
-          <div class="chips">
-            <label th:each="character : ${players}" class="check">
-              <input type="checkbox" name="character" th:value="${character.id}" checked>
-              <span th:text="${character.name}">Колясик</span>
-            </label>
-          </div>
-        </form>
-        <ul th:if="${awardResult != null}" class="award-result">
-          <li th:each="line : ${awardResult}" th:text="${line}">Колясик: 0 → 10</li>
-        </ul>
-      </div>
     </section>
 
     <!-- A-02: приглашение игроков — QR-код с телефона, ссылка; адресов несколько — выбор -->
@@ -140,48 +117,79 @@
     </div>
 
     <div class="stack">
-      <!-- Время и хроника -->
-      <section class="card">
+      <!-- R-11: «Сессия» — всё, что мастер делает в конце вечера, одной карточкой: дата, промотка, новая сессия, начисление -->
+      <section class="card" id="session">
+        <div class="card-head">
+          <h2 class="card-title"><span class="dot pink"></span>Сессия</h2>
+          <span class="session-date" th:text="${currentDate}" title="Текущая игровая дата">2037-01-01</span>
+        </div>
+        <div class="card-body session-body" th:if="${isGm}">
+          <!-- A-10: работа, медики и промотка одной формой с итогом по персонажам -->
+          <a th:href="@{'/campaign/' + ${campaign.id} + '/downtime'}" class="btn btn-primary downtime-link">🌙 Даунтайм: работа, лечение, траты</a>
+          <form th:action="@{'/campaign/' + ${campaign.id} + '/chronicles'}" method="post" class="form-row">
+            <input type="text" name="name" class="grow" placeholder="Время летит… что произошло" required autocomplete="off" aria-label="Что произошло за это время">
+            <input type="number" name="duration" class="narrow" placeholder="Дней" required min="1" aria-label="Длительность (дней)">
+            <button type="submit" class="btn btn-pink">⏩ Промотать</button>
+          </form>
+          <ul th:if="${timeReport != null and !#lists.isEmpty(timeReport)}" class="award-result">
+            <li th:each="line : ${timeReport}" th:text="${line}">Колясик: урон 12 → 9</li>
+          </ul>
+          <form th:if="${gameSystem.hasLuck()}" th:action="@{'/campaign/' + ${campaign.id} + '/session'}" method="post" class="form-row">
+            <button type="submit" class="btn btn-sm btn-ghost" title="Потраченная Удача возвращается всем">🍀 Новая сессия</button>
+          </form>
+        <!-- Начислить всем: опыт, IP. Галочки — игроки, NPC по умолчанию не получают -->
+        <div class="session-award" id="award" th:unless="${#lists.isEmpty(awardCounters) or #lists.isEmpty(players)}">
+          <form th:action="@{'/campaign/' + ${campaign.id} + '/award'}" method="post" class="form">
+            <div class="form-row">
+              <select th:if="${#lists.size(awardCounters) > 1}" name="counter" class="grow" aria-label="Что начислить">
+                <option th:each="name : ${awardCounters}" th:value="${name}" th:text="${name}">Очки улучшения</option>
+              </select>
+              <input th:if="${#lists.size(awardCounters) == 1}" type="hidden" name="counter" th:value="${awardCounters[0]}">
+              <span th:if="${#lists.size(awardCounters) == 1}" class="grow award-label" th:text="${awardCounters[0]}">Очки улучшения</span>
+              <input type="number" name="amount" class="narrow" placeholder="Сколько" required aria-label="Сколько начислить">
+              <button type="submit" class="btn btn-primary">Начислить</button>
+            </div>
+            <div class="chips">
+              <label th:each="character : ${players}" class="check">
+                <input type="checkbox" name="character" th:value="${character.id}" checked>
+                <span th:text="${character.name}">Колясик</span>
+              </label>
+            </div>
+          </form>
+          <ul th:if="${awardResult != null}" class="award-result">
+            <li th:each="line : ${awardResult}" th:text="${line}">Колясик: 0 → 10</li>
+          </ul>
+        </div>
+        </div>
+      </section>
+
+      <section class="card" id="chronicle">
         <div class="card-head">
           <h2 class="card-title"><span class="dot pink"></span>Хроника</h2>
           <span class="badge" th:text="${#lists.size(campaign.chronicles)}">0</span>
         </div>
         <div class="card-body">
-          <div class="date-hero">
-            <span class="label">Текущая дата</span>
-            <div class="date" th:text="${currentDate}">2037-01-01</div>
-          </div>
-        </div>
-        <div class="card-body">
-          <!-- A-10: работа, медики и промотка одной формой с итогом по персонажам -->
-          <a th:if="${isGm}" th:href="@{'/campaign/' + ${campaign.id} + '/downtime'}" class="btn btn-primary downtime-link">🌙 Даунтайм: работа, лечение, траты</a>
-          <form th:if="${isGm}" th:action="@{'/campaign/' + ${campaign.id} + '/chronicles'}" method="post" class="form">
-            <div class="field">
-              <label for="chronicle-name">Время летит…</label>
-              <input id="chronicle-name" type="text" name="name" placeholder="Что произошло за это время" required autocomplete="off">
-            </div>
-            <div class="form-row">
-              <input type="number" name="duration" placeholder="Дней" required min="1" aria-label="Длительность (дней)">
-              <button type="submit" class="btn btn-pink">⏩ Промотать</button>
-            </div>
-          </form>
-          <form th:if="${isGm and gameSystem.hasLuck()}" th:action="@{'/campaign/' + ${campaign.id} + '/session'}" method="post" class="form-row">
-            <button type="submit" class="btn btn-sm btn-ghost" title="Потраченная Удача возвращается всем">🍀 Новая сессия</button>
-          </form>
-          <ul th:if="${timeReport != null and !#lists.isEmpty(timeReport)}" class="award-result">
-            <li th:each="line : ${timeReport}" th:text="${line}">Колясик: урон 12 → 9</li>
-          </ul>
-        </div>
-        <div class="card-body">
-          <div class="timeline" th:unless="${#lists.isEmpty(campaign.chronicles)}">
-            <div th:each="chronicle : ${campaign.chronicles}" class="timeline-item">
+          <!-- новые сверху; видно 5, старые свёрнуты -->
+          <div class="timeline" th:unless="${#lists.isEmpty(chronicles)}">
+            <div th:each="chronicle, st : ${chronicles}" th:if="${st.index < 5}" class="timeline-item">
               <div class="timeline-title" th:text="${chronicle.name}">Название</div>
               <div class="timeline-dates">
                 <span th:text="${chronicle.startDate}">начало</span> — <span th:text="${chronicle.endDate}">конец</span>
               </div>
             </div>
           </div>
-          <div th:if="${#lists.isEmpty(campaign.chronicles)}" class="empty">Хроника пуста</div>
+          <details th:if="${#lists.size(chronicles) > 5}" class="cp-more item-more">
+            <summary th:text="'Раньше: ещё ' + ${#lists.size(chronicles) - 5}">Раньше</summary>
+            <div class="timeline">
+              <div th:each="chronicle, st : ${chronicles}" th:if="${st.index >= 5}" class="timeline-item">
+                <div class="timeline-title" th:text="${chronicle.name}">Название</div>
+                <div class="timeline-dates">
+                  <span th:text="${chronicle.startDate}">начало</span> — <span th:text="${chronicle.endDate}">конец</span>
+                </div>
+              </div>
+            </div>
+          </details>
+          <div th:if="${#lists.isEmpty(chronicles)}" class="empty">Хроника пуста</div>
         </div>
       </section>
 

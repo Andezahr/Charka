@@ -176,6 +176,11 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
 .skill-pin .icon-btn { color: var(--muted); }
 .skill-pin .icon-btn.is-pinned { color: var(--warning); }
 
+/* ---------- R-11: «Сессия» ---------- */
+.session-date { font-family: 'Russo One', sans-serif; font-size: 18px; color: var(--text); font-variant-numeric: tabular-nums; }
+.session-body { display: flex; flex-direction: column; gap: 10px; }
+.session-award { border-top: 1px solid var(--border); padding-top: 10px; }
+
 /* ---------- R-04: «Стол» ---------- */
 .chat-dice { flex-wrap: wrap; gap: 6px; }
 .roll-log-card > summary { list-style: none; cursor: pointer; }
