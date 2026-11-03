@@ -38,7 +38,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 967 тестов, на 2026-11-02 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 977 тестов, на 2026-11-03 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -60,6 +60,7 @@ creation/     CharacterCreation (мастер создания персонаж�
 npc/          NpcTemplate, NpcSheet (что выбросила система), NpcService (создание по шаблону, копии, удаление)
 security/     SecurityConfig, UserService (регистрация, вход), AccessService (кто что видит: мастер кампании, игрок персонажа), AccessInterceptor (чужое — 404), AuthController
 chat/         ChatService (чат кампании: сообщения и броски одной лентой)
+undo/         CampaignSnapshots (снимок игрового состояния кампании строками таблиц с прежними id, восстановление), UndoService (запись, отмена последнего действия, кто может), UndoInterceptor (снимок до и после любого изменяющего запроса), UndoLabels (подпись по адресу)
 map/          MapDoc (документ карты: стены-грани, клетки, предметы, зоны, подписи, подложка), MapRules (правила карты системы), MapObject, Material, MapGrid (что в клетке, линия взгляда, досягаемость), TokenPlacer, BattleMapService (карты кампании, подложка), BattleFieldService (поле идущего боя), PointerBoard (указатели в памяти), MapGenerator, EditableMap
 encounter/    EncounterService (бой кампании: очередь, раунды, ожидание, урон, противостояния), CombatContest (противостояние от системы), EncounterView (страница боя), Initiative, InitiativeDeclaration и CombatCard (что отдаёт система)
 check/        CheckRequest/CheckResult/CheckResolver (GenericCheckResolver: d20), OpposedCheckResult, CheckService (правила системы + лог)
@@ -85,6 +86,7 @@ AppUser (username, passwordHash) — пользователь; мастер св
 Campaign (name, system, startDate, currentDate, gm?)   — system: код GameSystem (колонка game_system); gm — мастер (U-03)
  ├─ RollLog* (character?, expression, details, total, label, gameDate, createdAt) — без коллекции в Campaign, не экспортируется
  ├─ ChatMessage* (character?, author, text, gameDate, createdAt) — чат, как лог: без коллекции, не экспортируется
+ ├─ UndoEntry* (userId?, characterId?, label, createdAt, snapshot JSON) — отмена (A-01), последние 20, без коллекции, не экспортируется
  ├─ BattleMap* (name, doc JSON, background) — карта боя, заготовка
  ├─ Encounter (round, groupPlayers, groupNpcs, mapDoc — копия карты, battleMapId) └─ EncounterParticipant* (character, initiative, initiativeDetails, turnOrder, done, waiting, declaration, posX, posY) └─ CombatEffect* (label, roundsLeft, damage, attackOption, data) — идущий бой, один на кампанию; закончился — удаляется
  ├─ Chronicle* (name, startDate, endDate)     — запись о прошедшем периоде
@@ -156,6 +158,7 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 | POST | `/character/{id}/installed/{action}` | действие блока вживлённого (CP2020: `THERAPY`, `source`, `amount`), итог в блоке |
 | GET, POST | `/campaign/{id}/maps`, `.../generate`, `.../{mapId}/edit\|copy\|rename\|delete\|regenerate\|background` | карты кампании, генератор, редактор, подложка; GET/POST `.../{mapId}/doc` — документ (JSON, автосохранение) |
 | GET, POST | `/campaign/{id}/encounter/map`, `.../participants/{pid}/move\|lift\|reach`, `.../tokens` (мастер: персонаж или NPC по шаблону на клетку), `.../sight`, `.../door`, `.../pointer`, `.../doc` | поле боя: JSON с ETag (опрос), ход фишки (204/400 текстом), досягаемость, линия взгляда, дверь, указатель, правка копии; POST `/encounter/attach`, `/save-map`, GET `/edit-map` |
+| POST | `/campaign/{id}/undo/{entryId}` | отменить последнее действие кампании (автор или мастер), вернуться на страницу из Referer; плашку «↶ Отменить» после действия кладёт `UndoInterceptor` во flash `undoOffer` |
 | GET, POST | `/campaign/{id}/chat` | лента чата и бросков (фрагмент, ETag, опрос); POST `character?`, `text`, `returnTo` → сообщение |
 | GET | `/campaign/{id}/gm` | экран мастера: все персонажи — состояние, броня, статы, эффекты, деньги |
 | POST | `/character/{id}/effects`, `.../effects/{eid}/delete` | `template` (готовый эффект системы) или `name`, `stat`, `modifier`, `duration`, `unit` → временный эффект; раунды идут в трекере, дни — при промотке |
@@ -184,6 +187,7 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 - Контроллеры (кроме счётчиков) принимают `@RequestParam` и собирают сущность вручную, после POST — `redirect:/...`.
 - Контроллер счётчиков — образец «нового» стиля: DTO + `@Valid` + flash-сообщения `successMessage`/`errorMessage`.
 - Тесты разбиты на `@Nested` классы по операциям.
+- Отмена (A-01) снимает таблицы списком `CampaignSnapshots.TABLES`: новая таблица игрового состояния персонажа или боя — добавить туда, иначе её изменения не откатываются. Новый изменяющий маршрут вне игры (как заметки) — в `UndoInterceptor.SKIPPED`.
 
 ## Известные проблемы и долг (кандидаты на модернизацию)
 

@@ -499,6 +499,23 @@ form.inline { display: inline-flex; margin: 0; }
   cursor: pointer; opacity: .7;
 }
 .alert .alert-close:hover { opacity: 1; }
+/* A-01: «↶ Отменить» после действия — внизу экрана, поверх всего, чтобы не искать */
+.undo-toast {
+  position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 50;
+  display: flex; align-items: center; gap: 10px;
+  max-width: calc(100vw - 32px); padding: 8px 8px 8px 14px;
+  background: var(--surface-3); border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+  box-shadow: var(--shadow); font-size: 14px; color: var(--text);
+}
+.undo-form { display: flex; align-items: center; gap: 10px; margin: 0; min-width: 0; }
+.undo-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.undo-label.is-done { color: var(--success); }
+.undo-label.is-error { color: var(--danger); white-space: normal; }
+.undo-close { background: none; border: none; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; padding: 0 4px; }
+.undo-close:hover { color: var(--text); }
+.chat-undo { margin: 0; }
+.chat-undo .btn { padding: 2px 8px; }
+
 /* Итог действия вверху страницы: прокрутка после действия остаётся на месте, сообщение не должно оказаться за краем */
 main.page > .alert {
   position: sticky;
@@ -1271,6 +1288,8 @@ html:has(.is-editing) {
 .chat-row.is-roll { color: var(--text-soft); font-size: 13px; }
 .chat-row.is-roll .chat-who { color: var(--muted); font-weight: 500; }
 .chat-text { overflow-wrap: anywhere; }
+.chat-row.is-action { color: var(--muted); font-size: 13px; }
+.chat-row.is-action .chat-who { color: var(--muted); font-weight: 500; }
 .field-error { color: var(--danger); font-size: 13px; margin: 4px 0 0; }
 .page-narrow { max-width: 440px; }
 .topbar-user { display: flex; align-items: center; gap: 8px; margin-left: 12px; color: var(--muted); font-size: 13px; }

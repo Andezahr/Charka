@@ -73,6 +73,8 @@ public class AccessInterceptor implements HandlerInterceptor {
         }
         boolean playerPath = (rest.isEmpty() && "GET".equals(method))
                 || rest.equals("/chat")
+                // A-01: своё действие игрок отменяет сам, чьё оно — проверяет UndoService
+                || rest.startsWith("/undo/")
                 || ((rest.equals("/encounter") || rest.startsWith("/encounter/")) && !GM_ONLY_IN_FIGHT.contains(rest));
         if (!playerPath || !accessService.isPlayer(campaign)) {
             throw NotFoundException.forId("Campaign", id).get();

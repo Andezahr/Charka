@@ -818,6 +818,9 @@ document.addEventListener('click', e => {
 document.addEventListener('click', e => {
   const close = e.target.closest('.alert-close');
   if (close) close.closest('.alert').remove();
+  // A-01: плашка «↶ Отменить»
+  const undoClose = e.target.closest('[data-undo-close]');
+  if (undoClose) undoClose.closest('.undo-toast').remove();
 });
 
 // Обновление страницы на месте: формы и ссылки идут через fetch, новая страница заменяет старую без мигания,

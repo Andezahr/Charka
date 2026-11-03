@@ -27,16 +27,23 @@
 </section>
 
 <th:block th:fragment="feed">
-  <div th:each="e : ${feed}" class="chat-row" th:classappend="${e.roll != null} ? 'is-roll'"
+  <!-- A-01: у последнего действия кампании — «↶», если его можно отменить тому, кто смотрит -->
+  <th:block th:with="undo=${@undoService.offer(campaignId)}">
+  <div th:each="e : ${feed}" class="chat-row" th:classappend="${e.roll != null} ? 'is-roll' : (${e.action} ? 'is-action')"
        th:title="${e.roll != null} ? ${e.roll.expression} + ': ' + ${e.roll.details} : ${#temporals.format(e.at, 'dd.MM HH:mm')}">
     <span class="chat-who" th:text="${e.who}">Колясик</span>
     <th:block th:if="${e.roll != null}">
       <span class="chat-text">🎲 <th:block th:text="${e.roll.label != null ? e.roll.label + ': ' : ''} + ${e.roll.expression}">Атака: d10</th:block></span>
       <span class="roll-total" th:text="${e.roll.total}">8</span>
     </th:block>
-    <span th:unless="${e.roll != null}" class="chat-text" th:text="${e.text}">Бегу к машине</span>
+    <span th:unless="${e.roll != null}" class="chat-text" th:text="${e.action} ? '✓ ' + ${e.text} : ${e.text}">Бегу к машине</span>
+    <form th:if="${e.action and undo != null and undo.id() == e.id}" method="post" class="chat-undo"
+          th:action="@{'/campaign/' + ${campaignId} + '/undo/' + ${e.id}}">
+      <button type="submit" class="btn btn-sm" title="Отменить">↶</button>
+    </form>
   </div>
   <div th:if="${#lists.isEmpty(feed)}" class="empty">Пока тихо</div>
+  </th:block>
 </th:block>
 </body>
 </html>

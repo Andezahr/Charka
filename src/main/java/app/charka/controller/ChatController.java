@@ -30,6 +30,7 @@ public class ChatController {
     @GetMapping
     public String feed(@PathVariable Long campaignId, Model model) {
         model.addAttribute("feed", chatService.feed(campaignId, FEED_SIZE));
+        model.addAttribute("campaignId", campaignId);
         return "fragments/chat :: feed";
     }
 

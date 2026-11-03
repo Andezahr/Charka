@@ -34,14 +34,19 @@ public class ChatService {
     private final RollLogRepository rollLogRepository;
     private final CampaignRepository campaignRepository;
     private final CharacterRepository characterRepository;
+    private final app.charka.repository.UndoEntryRepository undoEntryRepository;
 
     /**
-     * Строка ленты: сообщение или бросок.
+     * Строка ленты: сообщение, бросок или действие, которое можно отменить.
      *
-     * @param text текст сообщения; у броска null
-     * @param roll бросок; у сообщения null
+     * @param text   текст сообщения или подпись действия; у броска null
+     * @param roll   бросок; у сообщения и действия null
+     * @param action действие (A-01): id — запись отмены
      */
-    public record Entry(Long id, LocalDateTime at, String who, String text, RollLog roll) {
+    public record Entry(Long id, LocalDateTime at, String who, String text, RollLog roll, boolean action) {
+        public Entry(Long id, LocalDateTime at, String who, String text, RollLog roll) {
+            this(id, at, who, text, roll, false);
+        }
     }
 
     /**
@@ -77,7 +82,7 @@ public class ChatService {
     }
 
     /**
-     * Последние записи ленты, новые сверху.
+     * Последние записи ленты, новые сверху. Действия (A-01) — те, что ещё можно отменить.
      */
     @Transactional(readOnly = true)
     public List<Entry> feed(Long campaignId, int limit) {
@@ -87,6 +92,14 @@ public class ChatService {
         rollLogRepository.findByCampaignIdOrderByCreatedAtDescIdDesc(campaignId, PageRequest.of(0, limit))
                 .forEach(roll -> entries.add(new Entry(roll.getId(), roll.getCreatedAt(),
                         roll.getCharacter() != null ? roll.getCharacter().getName() : MASTER, null, roll)));
+        undoEntryRepository.findByCampaignIdOrderByIdDesc(campaignId).forEach(entry -> {
+            String who = entry.getCharacterId() == null ? MASTER
+                    : characterRepository.findById(entry.getCharacterId()).map(Character::getName).orElse(MASTER);
+            String label = entry.getLabel();
+            // подпись начинается с имени персонажа — в ленте оно уже стоит слева
+            String text = label.startsWith(who + ": ") ? label.substring(who.length() + 2) : label;
+            entries.add(new Entry(entry.getId(), entry.getCreatedAt(), who, text, null, true));
+        });
         entries.sort(Comparator.comparing(Entry::at).reversed());
         return entries.size() > limit ? List.copyOf(entries.subList(0, limit)) : entries;
     }
