@@ -91,8 +91,8 @@ final class Cp2020AttackModifiers {
     }
 
     /**
-     * HOMEBREW: книга (с. 98) говорит «−3 к каждому следующему действию» и не говорит, складывается ли штраф.
-     * Решено, что складывается: 2-е −3, 3-е −6, 4-е −9. Если −3 к каждому без роста — поменять {@code value} на {@link #ACTION_STEP}.
+     * С. 98: «You may perform more than one action at a −3 penalty to each successive action» — штраф растёт с каждым
+     * следующим действием: 2-е −3, 3-е −6, 4-е −9.
      */
     private static Modifier action(int number) {
         return variant(ACTION + number, SHOOTER, "action", "Несколько действий", number + "-е действие", ACTION_STEP * (number - 1));
