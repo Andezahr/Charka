@@ -59,6 +59,14 @@ public interface AttackRules {
         return null;
     }
 
+    /**
+     * R-07: из чего складывается бросок атаки до модификаторов — строка у оружия на листе («Пистолеты 5 + REF 6 + WA 1 = 12»),
+     * чтобы не считать в уме. null — система такой строки не даёт.
+     */
+    default String attackBase(Character attacker, AttackSource source, AttackForm form, Map<String, StatValue> stats) {
+        return null;
+    }
+
     default List<AttackSource> abilities(Character attacker) {
         return List.of();
     }

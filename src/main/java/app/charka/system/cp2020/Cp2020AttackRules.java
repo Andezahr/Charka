@@ -79,6 +79,28 @@ final class Cp2020AttackRules implements AttackRules {
         return form(source.item(), stats);
     }
 
+    /** REF + навык + WA (с. 99, 102): для ближнего боя из нескольких навыков — лучший, его диалог и предложит */
+    @Override
+    public String attackBase(Character attacker, AttackSource source, AttackForm form, Map<String, StatValue> stats) {
+        if (form == null || form.skills().stream().allMatch(option -> option.value().isBlank())) {
+            return null;
+        }
+        // пустое значение — «Лучший навык» ближнего боя: выбор за игрока, сам по себе он не навык
+        Option skill = form.skills().stream()
+                .filter(option -> !option.value().isBlank())
+                .max(java.util.Comparator.comparingInt(option -> skillLevel(attacker, option.value())))
+                .orElseThrow();
+        int level = skillLevel(attacker, skill.value());
+        StatValue refValue = stats.get(Cp2020StatsStrategy.REF);
+        int ref = refValue == null ? 0 : refValue.value();
+        int accuracy = source.item() == null ? 0 : number(source.item(), "accuracy");
+        String line = skill.label() + " " + level + " + REF " + ref;
+        if (accuracy != 0) {
+            line += (accuracy > 0 ? " + WA " : " − WA ") + Math.abs(accuracy);
+        }
+        return line + " = " + (level + ref + accuracy);
+    }
+
     @Override
     public List<AttackSource> abilities(Character attacker) {
         return List.of(Cp2020Melee.brawl(attacker));

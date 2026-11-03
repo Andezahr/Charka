@@ -80,4 +80,22 @@ public class CharacterServiceImpl implements CharacterService {
     public void delete(Long id) {
         characterRepository.deleteById(id);
     }
+
+    /**
+     * Запоминает основное оружие листа.
+     *
+     * @throws app.charka.exception.NotFoundException предмета нет у этого персонажа
+     */
+    @Override
+    public void setMainWeapon(Long id, Long itemId) {
+        var character = characterRepository.findById(id)
+                .orElseThrow(CharacterNotFoundException.forId(id));
+        if (itemId != null && character.getInventories().stream()
+                .flatMap(inventory -> inventory.getContent().stream())
+                .noneMatch(item -> itemId.equals(item.getId()))) {
+            throw app.charka.exception.NotFoundException.forId("Item", itemId).get();
+        }
+        character.setMainWeaponId(itemId);
+        characterRepository.save(character);
+    }
 }

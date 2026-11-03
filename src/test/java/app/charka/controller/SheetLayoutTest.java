@@ -81,4 +81,36 @@ class SheetLayoutTest {
                 .andExpect(redirectedUrl("/character/" + character.getId() + "#state-health"));
         assertThat(sheet()).contains("Лёгкое");
     }
+
+    @Test
+    @DisplayName("R-07: первое оружие — основное с навыком атаки, остальное — в «Запасном»; «Сделать основным» меняет их местами")
+    void weapons() throws Exception {
+        Long inventoryId = characterService.getById(character.getId()).getInventories().get(0).getId();
+        for (String key : new String[]{"militech_arms_avenger", "kendachi_monoknife"}) {
+            mockMvc.perform(post("/character/" + character.getId() + "/inventories/" + inventoryId + "/items/catalog")
+                    .param("catalogKey", key).param("quantity", "1"));
+        }
+        String html = sheet();
+        String weapons = html.substring(html.indexOf("id=\"weapons\""), html.indexOf("id=\"inventories\""));
+        assertThat(weapons).contains("Militech Arms Avenger", "Пистолеты 0 + REF", "Запасное: Kendachi Monoknife", "Сделать основным")
+                .doesNotContain("Лучший навык 0");
+        assertThat(weapons.indexOf("Militech Arms Avenger")).isLessThan(weapons.indexOf("Запасное"));
+        assertThat(html.substring(html.indexOf("id=\"inventories\""))).contains("— в карточке «Оружие»");
+
+        Long knife = characterService.getById(character.getId()).getInventories().get(0).getContent().stream()
+                .filter(item -> item.getName().contains("Monoknife")).findFirst().orElseThrow().getId();
+        mockMvc.perform(post("/character/" + character.getId() + "/main-weapon").param("item", String.valueOf(knife)))
+                .andExpect(redirectedUrl("/character/" + character.getId() + "#weapons"));
+        weapons = sheet();
+        weapons = weapons.substring(weapons.indexOf("id=\"weapons\""), weapons.indexOf("id=\"inventories\""));
+        assertThat(weapons.indexOf("Kendachi Monoknife")).isLessThan(weapons.indexOf("Запасное"));
+        assertThat(weapons).contains("Запасное: Militech Arms Avenger");
+    }
+
+    @Test
+    @DisplayName("R-07: чужой предмет основным не сделать")
+    void foreignWeapon() throws Exception {
+        mockMvc.perform(post("/character/" + character.getId() + "/main-weapon").param("item", "999999"))
+                .andExpect(status().isNotFound());
+    }
 }

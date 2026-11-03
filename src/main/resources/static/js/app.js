@@ -1113,6 +1113,8 @@ let submitting = false;
 const revealAnchor = () => {
   const anchored = location.hash && document.getElementById(location.hash.slice(1));
   if (!anchored) return;
+  // строка в свёрнутом блоке (запасное оружие, R-07): раскрыть, иначе её не видно
+  for (let details = anchored.closest('details'); details; details = details.parentElement.closest('details')) details.open = true;
   const top = anchored.getBoundingClientRect().top;
   const topbar = document.querySelector('.topbar');
   if (top < (topbar ? topbar.offsetHeight : 0) || top > innerHeight - 80) anchored.scrollIntoView();

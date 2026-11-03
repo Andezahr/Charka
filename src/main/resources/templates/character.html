@@ -56,6 +56,56 @@
         </div>
       </section>
       <!-- РАНЫ -->
+      <!-- R-07: ОРУЖИЕ — основное на виду (с навыком атаки и магазинами), запасное и рукопашная свёрнуты; правилами они не различаются -->
+      <section class="card" id="weapons" th:if="${mainWeapon != null or (abilities != null and !#lists.isEmpty(abilities) and !#lists.isEmpty(attackTargets))}">
+        <div class="card-head">
+          <h2 class="card-title"><span class="dot red"></span>Оружие</h2>
+        </div>
+        <div class="card-body">
+          <th:block th:if="${attackResult != null and attackResult.detached}">
+            <div th:replace="~{fragments/attack :: result(${attackResult})}"></div>
+          </th:block>
+          <th:block th:each="blast : ${pendingBlasts}">
+            <div th:replace="~{fragments/attack :: pending(${character.id}, ${blast}, ${attackTargets})}"></div>
+          </th:block>
+          <div th:if="${blastError != null}" class="alert alert-error item-result" role="alert">
+            <span class="alert-text" th:text="${blastError}">Выберите, кого задело</span>
+            <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+          </div>
+          <th:block th:if="${attackResult != null and !attackResult.detached and actionItemId == null}">
+            <div th:replace="~{fragments/attack :: result(${attackResult})}"></div>
+          </th:block>
+          <div th:if="${encounterError != null}" class="alert alert-error item-result" role="alert">
+            <span class="alert-text" th:text="${encounterError}">Ошибка</span>
+            <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+          </div>
+          <div class="list" th:if="${mainWeapon != null}">
+            <div th:replace="~{fragments/items :: row(${mainWeapon}, ${mainWeapon.inventory}, null)}"></div>
+          </div>
+          <details class="cp-more item-more weapon-spare"
+                   th:if="${!#lists.isEmpty(spareWeapons) or (abilities != null and !#lists.isEmpty(abilities) and !#lists.isEmpty(attackTargets))}"
+                   th:open="${(attackResult != null and !attackResult.detached and actionItemId == null) or encounterError != null}">
+            <summary th:text="'Запасное: ' + ${#strings.listJoin(spareWeapons.![name], ', ')} + (${abilities != null and !#lists.isEmpty(abilities) and !#lists.isEmpty(attackTargets)} ? (${#lists.isEmpty(spareWeapons)} ? '' : ', ') + ${#strings.listJoin(abilities.![name], ', ')} : '')">Запасное: Нож, Рукопашная</summary>
+            <div class="list" th:unless="${#lists.isEmpty(spareWeapons)}">
+              <th:block th:each="item : ${spareWeapons}">
+                <div th:replace="~{fragments/items :: row(${item}, ${item.inventory}, null)}"></div>
+              </th:block>
+            </div>
+            <div th:if="${abilities != null and !#lists.isEmpty(abilities) and !#lists.isEmpty(attackTargets)}" class="abilities">
+            <div th:each="ability : ${abilities}" class="item-head">
+              <span class="row-title" th:text="${ability.name}">Рукопашная</span>
+              <span class="item-value" th:text="${ability.form.damage}">1D6/2 + BODY</span>
+              <span th:if="${attackBases.get(ability.id) != null}" class="item-attack-base" th:text="'🎯 ' + ${attackBases.get(ability.id)}">🎯 Рукопашная 4 + REF 6 = 10</span>
+              <span class="item-actions" th:with="attackUrl=${ability.url}">
+                <button type="button" class="btn btn-sm" th:attr="data-dialog-open='attack-' + ${ability.id}" th:text="${ability.form.actionLabel}">Атаковать</button>
+                <dialog th:replace="~{fragments/attack :: dialog(${character.id}, ${ability}, ${ability.form}, ${attackTargets})}"></dialog>
+              </span>
+            </div>
+            </div>
+          </details>
+        </div>
+      </section>
+
       <section class="card">
         <div class="card-head">
           <h2 class="card-title"><span class="dot red"></span><span th:text="${healthStatus != null} ? 'Журнал здоровья' : 'Раны'">Раны</span></h2>
@@ -124,34 +174,6 @@
           <span class="badge" th:text="${#lists.size(character.inventories)}">0</span>
         </div>
         <div class="card-body">
-          <th:block th:if="${attackResult != null and attackResult.detached}">
-            <div th:replace="~{fragments/attack :: result(${attackResult})}"></div>
-          </th:block>
-          <th:block th:each="blast : ${pendingBlasts}">
-            <div th:replace="~{fragments/attack :: pending(${character.id}, ${blast}, ${attackTargets})}"></div>
-          </th:block>
-          <!-- Без предмета: рукопашная и приёмы; итог — здесь же -->
-          <div th:if="${abilities != null and !#lists.isEmpty(abilities) and !#lists.isEmpty(attackTargets)}" class="abilities">
-            <div th:each="ability : ${abilities}" class="item-head">
-              <span class="row-title" th:text="${ability.name}">Рукопашная</span>
-              <span class="item-value" th:text="${ability.form.damage}">1D6/2 + BODY</span>
-              <span class="item-actions" th:with="attackUrl=${ability.url}">
-                <button type="button" class="btn btn-sm" th:attr="data-dialog-open='attack-' + ${ability.id}" th:text="${ability.form.actionLabel}">Атаковать</button>
-                <dialog th:replace="~{fragments/attack :: dialog(${character.id}, ${ability}, ${ability.form}, ${attackTargets})}"></dialog>
-              </span>
-            </div>
-            <th:block th:if="${attackResult != null and !attackResult.detached and actionItemId == null}">
-              <div th:replace="~{fragments/attack :: result(${attackResult})}"></div>
-            </th:block>
-            <div th:if="${encounterError != null}" class="alert alert-error item-result" role="alert">
-              <span class="alert-text" th:text="${encounterError}">Ошибка</span>
-              <button type="button" class="alert-close" aria-label="Закрыть">×</button>
-            </div>
-          </div>
-          <div th:if="${blastError != null}" class="alert alert-error item-result" role="alert">
-            <span class="alert-text" th:text="${blastError}">Выберите, кого задело</span>
-            <button type="button" class="alert-close" aria-label="Закрыть">×</button>
-          </div>
           <form th:action="@{'/character/' + ${character.id} + '/inventories'}" method="post" class="form-row">
             <input type="text" name="name" class="grow" placeholder="Название нового инвентаря" required autocomplete="off">
             <button type="submit" class="btn btn-primary">＋ Добавить</button>
@@ -190,7 +212,12 @@
                   </th:block>
                 </div>
               </div>
-              <div th:if="${#lists.isEmpty(inventorySections[inv.id])}" class="empty">Пусто</div>
+              <p th:if="${inventoryWeapons != null and inventoryWeapons.get(inv.id) != null}" class="item-note inventory-weapons">
+                Оружие:
+                <th:block th:each="w, st : ${inventoryWeapons.get(inv.id)}"><a th:href="'#item-' + ${w.id}" th:text="${w.name}">Avenger</a><th:block th:unless="${st.last}">, </th:block></th:block>
+                — в карточке «Оружие»
+              </p>
+              <div th:if="${#lists.isEmpty(inventorySections[inv.id]) and (inventoryWeapons == null or inventoryWeapons.get(inv.id) == null)}" class="empty">Пусто</div>
             </div>
           </div>
           <div th:if="${#lists.isEmpty(character.inventories)}" class="empty">Нет инвентарей</div>

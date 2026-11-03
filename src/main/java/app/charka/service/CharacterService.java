@@ -27,4 +27,8 @@ public interface CharacterService {
 
     @Transactional
     void delete(Long id);
+
+    /** R-07: основное оружие на листе; null — первое оружие инвентаря. Предмет должен быть у этого персонажа */
+    @Transactional
+    void setMainWeapon(Long id, Long itemId);
 }

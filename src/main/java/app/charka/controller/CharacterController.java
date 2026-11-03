@@ -80,6 +80,13 @@ public class CharacterController {
         return "fragments/items :: edit-form";
     }
 
+    /** R-07: «Сделать основным» в меню ⋯ оружия; пусто — снова первое оружие инвентаря */
+    @org.springframework.web.bind.annotation.PostMapping("/main-weapon")
+    public String mainWeapon(@PathVariable Long id, @org.springframework.web.bind.annotation.RequestParam(required = false) Long item) {
+        characterService.setMainWeapon(id, item);
+        return "redirect:/character/" + id + "#weapons";
+    }
+
     private static void addCatalog(Model model, GameSystem system, Character character) {
         model.addAttribute("itemTypes", system.getItemTypes());
         model.addAttribute("itemCatalog", system.getItemCatalog().stream()
@@ -140,11 +147,12 @@ public class CharacterController {
                 .flatMap(inventory -> inventory.getContent().stream())
                 .collect(Collectors.toMap(Item::getId, system::getItemAttachments));
         model.addAttribute("itemAttachments", attachments);
-        model.addAttribute("inventorySections", character.getInventories().stream()
-                .collect(Collectors.toMap(Inventory::getId, inventory -> ItemSection.of(inventory, system.getItemTypes(), attachments, installedIds))));
+        // R-07: что показано не в инвентаре — вживлённое и оружие
+        Set<Long> shownElsewhere = new java.util.HashSet<>(installedIds);
         AttackRules attackRules = system.getAttackRules();
         if (attackRules != null) {
             Map<Long, AttackForm> attackForms = new HashMap<>();
+            Map<String, String> attackBases = new HashMap<>();
             Map<String, StatValue> currentStats = system.getCurrentStats(character);
             character.getInventories().stream()
                     .flatMap(inventory -> inventory.getContent().stream())
@@ -152,9 +160,28 @@ public class CharacterController {
                         AttackForm form = attackRules.form(AttackSource.of(item), currentStats);
                         if (form != null) {
                             attackForms.put(item.getId(), form);
+                            String base = attackRules.attackBase(character, AttackSource.of(item), form, currentStats);
+                            if (base != null) {
+                                attackBases.put("item-" + item.getId(), base);
+                            }
                         }
                     });
             model.addAttribute("attackForms", attackForms);
+            // R-07: оружие — отдельной карточкой: основное сверху, запасное свёрнуто; вживлённое остаётся в своём блоке
+            List<Item> weapons = character.getInventories().stream()
+                    .sorted(Comparator.comparing(Inventory::getId, Comparator.nullsLast(Comparator.naturalOrder())))
+                    .flatMap(inventory -> inventory.getContent().stream())
+                    .filter(item -> attackForms.containsKey(item.getId()) && !installedIds.contains(item.getId()))
+                    .toList();
+            Item mainWeapon = weapons.stream()
+                    .filter(item -> item.getId().equals(character.getMainWeaponId()))
+                    .findFirst()
+                    .orElse(weapons.isEmpty() ? null : weapons.get(0));
+            model.addAttribute("mainWeapon", mainWeapon);
+            model.addAttribute("spareWeapons", weapons.stream().filter(item -> item != mainWeapon).toList());
+            weapons.forEach(item -> shownElsewhere.add(item.getId()));
+            model.addAttribute("inventoryWeapons", weapons.stream()
+                    .collect(Collectors.groupingBy(item -> item.getInventory().getId())));
             model.addAttribute("attackTargets", character.getCampaign() == null ? List.of()
                     : character.getCampaign().getCharacters().stream()
                     .filter(other -> !other.getId().equals(id))
@@ -169,7 +196,17 @@ public class CharacterController {
                             "/character/" + character.getId() + "/attack/ability/" + source.ability(), source.name(),
                             attackRules.form(source, currentStats)))
                     .toList());
+            attackRules.abilities(character).forEach(source -> {
+                String base = attackRules.attackBase(character, source, attackRules.form(source, currentStats), currentStats);
+                if (base != null) {
+                    attackBases.put(source.ability() + "-" + character.getId(), base);
+                }
+            });
+            model.addAttribute("attackBases", attackBases);
         }
+        Set<Long> excluded = Set.copyOf(shownElsewhere);
+        model.addAttribute("inventorySections", character.getInventories().stream()
+                .collect(Collectors.toMap(Inventory::getId, inventory -> ItemSection.of(inventory, system.getItemTypes(), attachments, excluded))));
         model.addAttribute("roles", system.rolesOf(character));
         model.addAttribute("quickDice", system.getQuickDice());
         model.addAttribute("difficultyPresets", system.getCheckResolver().getDifficultyPresets());

@@ -131,7 +131,7 @@ class InventoryPageTest {
     }
 
     @Test
-    @DisplayName("секции в порядке типов: оружие, броня, вещи; пустых нет")
+    @DisplayName("секции в порядке типов: броня, вещи; пустых нет; оружие — в карточке «Оружие» (R-07), в инвентаре — ссылкой")
     void sections() throws Exception {
         plain("Фонарик", 10, null);
         itemService.addFromCatalog(inventoryId, "armor_light_jacket", 1);
@@ -139,7 +139,8 @@ class InventoryPageTest {
 
         String html = sheet();
 
-        assertThat(html.indexOf(">Оружие</h3>")).isPositive().isLessThan(html.indexOf(">Броня</h3>"));
+        assertThat(html).doesNotContain(">Оружие</h3>").contains("— в карточке «Оружие»");
+        assertThat(html.indexOf(">Броня</h3>")).isPositive();
         assertThat(html.indexOf(">Броня</h3>")).isLessThan(html.indexOf(">Вещи</h3>"));
         assertThat(html).doesNotContain(">Боеприпасы</h3>");
     }

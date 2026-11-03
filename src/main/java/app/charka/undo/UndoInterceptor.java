@@ -32,6 +32,8 @@ public class UndoInterceptor implements HandlerInterceptor {
             "/roll", "/npc/", "/characters", "/player", "/encounter/map", "/encounter/attach", "/encounter/save-map",
             // A-06: заготовки — не игра; начало сцены создаёт NPC, их отмена не уберёт
             "/scenes", "/invite",
+            // R-07: основное оружие — только место на листе
+            "/main-weapon",
             // A-07: бросок по запросу — как бросок; запрос уже брошен, отменять его нечем
             "/requests");
     private static final Pattern SKIPPED_EXACT = Pattern.compile("^/(check|edit)$");

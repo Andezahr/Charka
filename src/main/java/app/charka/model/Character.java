@@ -44,6 +44,10 @@ public class Character {
     @JsonBackReference
     private Campaign campaign;
 
+    /** R-07: основное оружие на листе (id предмета); null или не оружие — первое оружие инвентаря. В экспорт не идёт: id предметов там новые */
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private Long mainWeaponId;
+
     /** Игрок (U-03): видит этого персонажа; null — персонаж мастера или ещё не отдан */
     @com.fasterxml.jackson.annotation.JsonIgnore
     @lombok.ToString.Exclude

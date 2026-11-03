@@ -152,6 +152,14 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
 .counter-row-more > summary::-webkit-details-marker { display: none; }
 .counter-row-more[open] { flex-basis: 100%; }
 
+/* ---------- R-07: оружие ---------- */
+.item-attack-base { margin: 2px 0 0; font-size: 13px; color: var(--accent); font-variant-numeric: tabular-nums; }
+.item-head .item-attack-base { margin: 0; }
+.weapon-spare { margin-top: 10px; }
+.weapon-spare > .list, .weapon-spare > .abilities { margin-top: 8px; }
+.inventory-weapons { color: var(--muted); }
+.inventory-weapons a { color: var(--accent); }
+
 /* ---------- R-04: «Стол» ---------- */
 .chat-dice { flex-wrap: wrap; gap: 6px; }
 .roll-log-card > summary { list-style: none; cursor: pointer; }
@@ -976,7 +984,7 @@ details.cp-more > summary:hover { color: var(--text-soft); }
 .item-action-note { flex: 1 1 100%; margin: 0; font-size: 13px; color: var(--text-soft); }
 .item-note { margin: 6px 0 0; font-size: 13px; color: var(--warning); }
 .item-result { margin: 6px 0 0; }
-.inventory .row[id] { scroll-margin-top: calc(var(--topbar-height) + 12px); }
+.inventory .row[id], .card[id], .card .row[id], .inventory[id] { scroll-margin-top: calc(var(--topbar-height) + 12px); }
 
 /* Строка предмета: всё важное в одну линию, остальное в панели */
 .item-section-title { margin: 0 0 6px; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }

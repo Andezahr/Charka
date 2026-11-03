@@ -85,6 +85,9 @@
         <button type="button" class="alert-close" aria-label="Закрыть">×</button>
       </div>
     </th:block>
+    <!-- R-07: из чего бросок атаки, чтобы не считать в уме -->
+    <p th:if="${owner == null and attackBases != null and attackBases.get('item-' + item.id) != null}" class="item-attack-base"
+       th:text="'🎯 ' + ${attackBases.get('item-' + item.id)}">🎯 Пистолеты 5 + REF 6 = 11</p>
     <p th:if="${attack != null and attack.unavailable != null}" class="item-action-note" th:text="${attack.unavailable}">Магазин пуст</p>
     <p th:if="${attachments.warning != null}" class="item-note" th:text="${attachments.warning}">Нечем перезарядить</p>
 
@@ -155,6 +158,11 @@
       </th:block>
     </div>
     <!-- A-03: форма правки грузится по ✎ (edit-form): поля всех типов предмета — 30 КБ на строку -->
+    <form th:if="${owner == null and spareWeapons != null and spareWeapons.contains(item)}"
+          th:action="@{'/character/' + ${character.id} + '/main-weapon'}" method="post" class="form-row">
+      <input type="hidden" name="item" th:value="${item.id}">
+      <button type="submit" class="btn btn-sm">★ Сделать основным</button>
+    </form>
     <div class="item-edit-slot" th:attr="data-lazy=@{'/character/' + ${character.id} + '/items/' + ${item.id} + '/edit-form'}"></div>
     <form th:if="${#lists.size(character.inventories) > 1}" th:action="@{${itemUrl} + '/move'}" method="post" class="form-row">
       <select name="targetInventoryId" required aria-label="Куда переместить">
