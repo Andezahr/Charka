@@ -309,6 +309,11 @@ public class Cp2020System implements GameSystem {
     }
 
     @Override
+    public app.charka.system.PrintSheet getPrintSheet(Character character) {
+        return Cp2020Print.sheet(character, getCurrentStats(character), ARMOR);
+    }
+
+    @Override
     public List<app.charka.system.Reference> getReference() {
         return Cp2020Reference.sections();
     }

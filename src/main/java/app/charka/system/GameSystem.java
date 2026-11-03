@@ -80,6 +80,11 @@ public interface GameSystem {
         return List.of();
     }
 
+    /** A-12: что печатать на бумажном листе сверх общего; пусто — только общее */
+    default PrintSheet getPrintSheet(Character character) {
+        return PrintSheet.EMPTY;
+    }
+
     /** A-11: справка правил для панели «📖 Правила»; пусто — у системы справки нет */
     default List<Reference> getReference() {
         return List.of();

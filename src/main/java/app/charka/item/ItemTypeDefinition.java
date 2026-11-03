@@ -145,6 +145,29 @@ public record ItemTypeDefinition(String code, String displayName, List<ItemField
         return lines;
     }
 
+    /**
+     * A-12: то же для бумаги — у выбора название варианта, а не код: подсказки при наведении на листе нет.
+     */
+    public List<String> describeReadable(Map<String, String> properties) {
+        List<String> lines = new ArrayList<>();
+        for (ItemField field : fields) {
+            String value = properties.get(field.key());
+            if (value == null) {
+                continue;
+            }
+            if (field.isFlag()) {
+                if (!field.prefix().isEmpty()) {
+                    lines.add(field.prefix());
+                }
+            } else if (field.isChoice()) {
+                lines.add(optionLabel(field, value));
+            } else {
+                lines.add(field.prefix() + value + field.suffix());
+            }
+        }
+        return lines;
+    }
+
     private static String number(ItemField field, String value) {
         int number;
         try {

@@ -38,7 +38,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 1005 тестов, на 2026-11-03 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 1007 тестов, на 2026-11-03 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -142,6 +142,7 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 | POST | `/campaign/{id}/npcs` | `template?`, `name?`, `count`, `advanced` → NPC по шаблону системы или пустой |
 | GET | `/campaign/{id}/encounter` | боевой трекер; без боя — выбор участников |
 | POST | `/campaign/{id}/encounter/start`, `.../next`, `.../end`, `.../initiative-mode` (`eachRound`, A-13) | `character` (несколько), `groupPlayers?`, `groupNpcs?` → начать бой с инициативой; следующий ход или раунд (игрок — только на своём ходу, «Закончить ход»); закончить бой |
+| GET | `/character/{id}/print`, `/campaign/{id}/print` (`npc?`) | A-12: лист на бумаге и в PDF (свои стили, A4), все персонажи кампании подряд |
 | GET | `/campaign/{id}/reference` | A-11: справка правил системы (фрагмент окна «📖 Правила») |
 | GET, POST | `/campaign/{id}/downtime` (`days` или `customDays`, `name?`, `worked` несколько, `healer.<id>`) | A-10: даунтайм одной формой, итог с «↶ Отменить и изменить» |
 | GET, POST | `/campaign/{id}/scenes`, `.../{sid}/edit\|delete\|start`, `.../{sid}/npcs` (`who` = `t:код`/`c:id`, `count`, `name?`, `ambush?`), `.../npcs/{nid}/delete\|ambush` | сцены (A-06): заготовки боя, «Начать» — одно нажатие |
