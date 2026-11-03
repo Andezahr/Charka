@@ -68,6 +68,8 @@ class SheetLayoutTest {
         assertThat(html).contains("id=\"state-health\"", "id=\"state-armor\"", "id=\"state-stats\"", "Нанести", "id=\"counters\"", "＋ Счётчик")
                 .doesNotContain("stat-label\">Инвентарей", "/counters\" class=\"\">Счётчики</a>");
         assertThat(html).doesNotContainPattern("<a[^>]*/counters\"[^>]*>Счётчики</a>");
+        // R-09: журнал здоровья — в блоке состояния, отдельной карточки нет
+        assertThat(html).contains("Журнал здоровья (0)", "＋ Запись").doesNotContain("<section class=\"card\" id=\"wounds\"");
     }
 
     @Test

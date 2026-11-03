@@ -167,6 +167,10 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
 .inventory-carried.is-carried { color: var(--accent); }
 .card-more-link { display: block; margin-top: 8px; font-size: 13px; color: var(--accent); }
 
+/* ---------- R-09: журнал здоровья ---------- */
+.wound-log { display: flex; flex-direction: column; gap: 8px; }
+.state-log > .wound-log { margin-top: 8px; }
+
 /* ---------- R-04: «Стол» ---------- */
 .chat-dice { flex-wrap: wrap; gap: 6px; }
 .roll-log-card > summary { list-style: none; cursor: pointer; }

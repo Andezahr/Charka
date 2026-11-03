@@ -53,6 +53,11 @@
           <th:block th:each="counter : ${counters}" th:if="${counter.compactTemplate != null}">
             <div th:replace="~{__${counter.compactTemplate}__ :: card-compact}"></div>
           </th:block>
+          <!-- R-09: журнал здоровья раскрывается из блока состояния; id тот же, что у карточки «Раны»: туда ведут записи -->
+          <details class="cp-more item-more state-log" id="wounds">
+            <summary th:text="'Журнал здоровья (' + ${#lists.size(character.wounds)} + ')'">Журнал здоровья (0)</summary>
+            <div th:replace="~{fragments/wounds :: log}"></div>
+          </details>
         </div>
       </section>
       <!-- РАНЫ -->
@@ -107,59 +112,14 @@
         </div>
       </section>
 
-      <section class="card">
+      <!-- R-09: без шапки состояния (GENERIC) — карточка «Раны», запись — под кнопкой; с ней журнал — в блоке здоровья -->
+      <section class="card" id="wounds" th:if="${#lists.isEmpty(counters.?[compactTemplate != null])}">
         <div class="card-head">
           <h2 class="card-title"><span class="dot red"></span><span th:text="${healthStatus != null} ? 'Журнал здоровья' : 'Раны'">Раны</span></h2>
           <span class="badge" th:text="${#lists.size(character.wounds)}">0</span>
         </div>
         <div class="card-body">
-          <form th:action="@{'/character/' + ${character.id} + '/wounds'}" method="post" class="form-row">
-            <input type="text" name="name" class="grow" th:placeholder="${healthStatus != null} ? 'Запись: сломано ребро' : 'Описание раны'" required autocomplete="off">
-            <input type="number" name="severity" class="narrow" placeholder="Тяжесть" min="1" step="1">
-            <button type="submit" class="btn btn-primary">＋ Добавить</button>
-          </form>
-        </div>
-        <div class="card-body list">
-          <!-- Журнал: новые сверху; видно 8, старые свёрнуты -->
-          <th:block th:each="wound, state : ${woundLog}" th:if="${state.index < 8}">
-          <div class="row" data-editable>
-            <div class="row-main">
-              <div class="row-title" th:text="${wound.name}">Название</div>
-              <div class="row-meta">
-                <span th:if="${wound.severity != null}" class="chip red" th:text="(${healthStatus != null} ? 'Урон ' : 'Тяжесть ') + ${wound.severity}">Тяжесть 1</span>
-                <span th:if="${wound.date != null}" th:text="${wound.date}">дата</span>
-              </div>
-            </div>
-            <div class="row-actions">
-              <button type="button" class="icon-btn" data-edit-toggle title="Редактировать">✎</button>
-              <form th:action="@{'/character/' + ${character.id} + '/wounds/' + ${wound.id} + '/delete'}"
-                    method="post" class="inline">
-                <button type="submit" class="icon-btn danger" title="Удалить">✕</button>
-              </form>
-            </div>
-            <form th:action="@{'/character/' + ${character.id} + '/wounds/' + ${wound.id} + '/edit'}"
-                  method="post" class="edit-panel">
-              <div class="form-row">
-                <input type="text" name="name" class="grow" th:value="${wound.name}" required placeholder="Описание">
-                <input type="number" name="severity" class="narrow" th:value="${wound.severity}" min="1" placeholder="Тяжесть">
-                <button type="submit" class="btn btn-sm btn-primary">Сохранить</button>
-              </div>
-            </form>
-          </div>
-          </th:block>
-          <details th:if="${#lists.size(woundLog) > 8}" class="add-own">
-            <summary th:text="'Раньше: ещё ' + ${#lists.size(woundLog) - 8}">Раньше</summary>
-            <div th:each="wound, state : ${woundLog}" th:if="${state.index >= 8}" class="row">
-              <div class="row-main">
-                <div class="row-title" th:text="${wound.name}">Запись</div>
-                <div class="row-meta"><span th:if="${wound.date != null}" th:text="${wound.date}">дата</span></div>
-              </div>
-              <form th:action="@{'/character/' + ${character.id} + '/wounds/' + ${wound.id} + '/delete'}" method="post" class="inline">
-                <button type="submit" class="icon-btn danger" title="Удалить">✕</button>
-              </form>
-            </div>
-          </details>
-          <div th:if="${#lists.isEmpty(character.wounds)}" class="empty">Нет ран — персонаж цел</div>
+          <div th:replace="~{fragments/wounds :: log}"></div>
         </div>
       </section>
 

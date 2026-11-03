@@ -28,7 +28,7 @@ public class WoundController {
         newWound.setName(name);
         if (severity != null) newWound.setSeverity(severity);
         woundService.create(characterId, newWound);
-        return "redirect:/character/" + characterId;
+        return "redirect:/character/" + characterId + "#wounds";
     }
 
     @PostMapping("/{woundId}/edit")
@@ -46,7 +46,7 @@ public class WoundController {
             updated.setDate(wound.getDate());
             woundService.update(woundId, updated);
         }
-        return "redirect:/character/" + characterId;
+        return "redirect:/character/" + characterId + "#wounds";
     }
 
     @PostMapping("/{woundId}/delete")
@@ -55,7 +55,7 @@ public class WoundController {
         if (wound.getCharacter().getId().equals(characterId)) {
             woundService.delete(wound.getId());
         }
-        return "redirect:/character/" + characterId;
+        return "redirect:/character/" + characterId + "#wounds";
     }
 
 }
