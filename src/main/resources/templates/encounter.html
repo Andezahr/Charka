@@ -68,7 +68,7 @@
         <span th:if="${view.current != null}" th:text="'Ход: ' + ${view.current.name}">Ход: Колясик</span>
         <span th:if="${view.current == null}">Ходить некому</span>
       </div>
-      <form th:action="@{${base} + '/next'}" method="post">
+      <form th:if="${isGm}" th:action="@{${base} + '/next'}" method="post">
         <button type="submit" class="btn btn-primary" th:text="${view.lastInRound} ? 'Следующий раунд →' : 'Следующий ход →'">Следующий ход →</button>
       </form>
     </div>
@@ -80,6 +80,58 @@
       </div>
       <button type="button" class="alert-close" aria-label="Закрыть">×</button>
     </div>
+
+    <!-- A-04: игрок видит сверху своего персонажа: его ли ход, сколько ждать, его оружие и «Закончить ход».
+         Телефон опрашивает /turn: подошла очередь — вибрация, звук (если включён) и обновление экрана -->
+    <section th:if="${myRows != null and !#lists.isEmpty(myRows)}" class="turn-panels"
+             th:attr="data-turn-watch=@{${base} + '/turn'},data-turn=${view.encounter.round + ':' + (view.current != null ? view.current.id : '')},data-mine=${#strings.listJoin(myRows.![character.id], ',')}">
+      <div th:each="row : ${myRows}" class="card turn-panel" th:id="'combatant-' + ${row.character.id}"
+           th:classappend="${row.current} ? 'is-mine'" th:with="ahead=${turnsAhead.get(row.character.id)}">
+        <div class="card-head">
+          <h2 class="card-title"><span class="dot" th:classappend="${row.current} ? 'green' : 'yellow'"></span><th:block th:text="${row.character.name}">Колясик</th:block></h2>
+          <label class="check turn-sound" title="Звук, когда подошла ваша очередь">
+            <input type="checkbox" data-turn-sound><span>🔔 Звук</span>
+          </label>
+        </div>
+        <div class="card-body">
+          <p class="turn-status">
+            <strong th:if="${row.current}">▶ Ваш ход</strong>
+            <span th:if="${!row.current and row.card.out}">Выбыл из боя</span>
+            <span th:if="${!row.current and !row.card.out and row.participant.waiting}">Вы ждёте — вступите, когда захотите</span>
+            <span th:if="${!row.current and !row.card.out and !row.participant.waiting and row.participant.done}">Вы уже ходили в этом раунде</span>
+            <span th:if="${!row.current and !row.card.out and !row.participant.waiting and !row.participant.done}"
+                  th:text="${(view.current != null ? 'Ходит ' + view.current.name + ' · ' : '') + (ahead <= 1 ? 'вы следующий' : 'до вас ещё ' + ahead + ' ход.')}">Ходит Бустер 2 · вы следующий</span>
+          </p>
+          <div class="chips">
+            <span th:if="${row.card.status != null}" class="chip" th:classappend="${row.card.alarming} ? 'red'" th:text="${row.card.status}">Цел</span>
+            <span th:each="line : ${row.card.lines}" class="chip" th:text="${line}">SP торса 14</span>
+            <span th:if="${row.declaration != null}" class="chip pink" th:text="${row.declaration.label} + ' +' + ${row.declaration.bonus}">Выхватывает +3</span>
+            <span th:each="effect : ${row.effects}" class="chip red" th:text="${effect.summary}">Горит 1D6 · раундов 2</span>
+          </div>
+          <form th:if="${row.participant.waiting and !row.current}" th:action="@{${base} + '/participants/' + ${row.participant.id} + '/join'}" method="post">
+            <button type="submit" class="btn btn-primary">Вступить</button>
+          </form>
+          <!-- передать ход — сразу под «Ваш ход», а не под всеми действиями -->
+          <form th:if="${row.current}" th:action="@{${base} + '/next'}" method="post" class="turn-end">
+            <button type="submit" class="btn btn-primary">Закончить ход →</button>
+          </form>
+          <th:block th:replace="~{fragments/encounter :: results(${row})}"></th:block>
+        </div>
+        <div th:if="${row.current}" class="card-body">
+          <div th:replace="~{fragments/encounter :: actions(${row}, ${base})}"></div>
+        </div>
+        <div th:unless="${row.current or row.card.out}" class="card-body">
+          <details class="cp-more item-more">
+            <summary>Действия вне очереди</summary>
+            <div th:replace="~{fragments/encounter :: actions(${row}, ${base})}"></div>
+          </details>
+        </div>
+      </div>
+      <div class="battle-turn" data-turn-changed hidden>
+        <span>Ход сменился</span>
+        <a th:href="@{${base}}" class="btn btn-sm btn-primary">Обновить</a>
+      </div>
+    </section>
 
     <div class="grid grid-main">
       <div class="stack">
@@ -133,8 +185,12 @@
           <div th:replace="~{fragments/attack :: result(${attackResult})}"></div>
         </th:block>
         <section class="card">
+          <details class="turn-queue" th:attr="open=${isGm or myRows == null or #lists.isEmpty(myRows) ? 'open' : null}">
+          <summary class="card-head" th:unless="${isGm or myRows == null or #lists.isEmpty(myRows)}">
+            <h2 class="card-title"><span class="dot red"></span>Очередь <span class="badge" th:text="${#lists.size(view.rows)}">5</span></h2>
+          </summary>
           <div class="card-body list">
-            <div th:each="row : ${view.rows}" class="row encounter-row" th:id="'combatant-' + ${row.character.id}"
+            <div th:each="row : ${view.rows}" class="row encounter-row" th:id="${isGm or !controllable.contains(row.character.id)} ? 'combatant-' + ${row.character.id}"
                  th:classappend="${(row.current ? 'is-current ' : '') + (row.participant.done ? 'is-done ' : '') + (row.participant.waiting ? 'is-waiting ' : '') + (row.card.out ? 'is-out' : '')}">
               <div class="encounter-head">
                 <span class="encounter-init" th:text="${row.participant.initiative}" th:title="${row.participant.initiativeDetails}">17</span>
@@ -166,42 +222,24 @@
                 </form>
               </div>
 
-              <th:block th:if="${resultCharacterId == row.character.id and combatResult != null}">
-                <div th:replace="~{fragments/attack :: result(${combatResult})}"></div>
+              <!-- A-04: у своего персонажа игрок видит итоги в панели сверху -->
+              <th:block th:if="${isGm or !controllable.contains(row.character.id)}">
+                <th:block th:replace="~{fragments/encounter :: results(${row})}"></th:block>
               </th:block>
-              <th:block th:if="${row.hasItem(actionItemId)}">
-                <th:block th:if="${attackResult != null and !attackResult.detached}">
-                  <div th:replace="~{fragments/attack :: result(${attackResult})}"></div>
-                </th:block>
-                <div th:if="${actionResult != null}" class="alert alert-success item-result" role="status">
-                  <span class="alert-text" th:text="${actionResult}">Перезаряжено</span>
-                  <button type="button" class="alert-close" aria-label="Закрыть">×</button>
-                </div>
-                <div th:if="${actionError != null}" class="alert alert-error item-result" role="alert">
-                  <span class="alert-text" th:text="${actionError}">Магазин пуст</span>
-                  <button type="button" class="alert-close" aria-label="Закрыть">×</button>
-                </div>
-              </th:block>
-              <th:block th:each="blast : ${row.blasts}">
-                <div th:replace="~{fragments/attack :: pending(${row.character.id}, ${blast}, ${row.targets})}"></div>
-              </th:block>
-              <div th:if="${blastError != null and !#lists.isEmpty(row.blasts)}" class="alert alert-error item-result" role="alert">
-                <span class="alert-text" th:text="${blastError}">Выберите, кого задело</span>
-                <button type="button" class="alert-close" aria-label="Закрыть">×</button>
-              </div>
 
               <!-- Кто ходит, у того всё открыто; у остальных — за одним нажатием: урон и атака вне очереди редки -->
               <!-- U-03: действия — у своих персонажей; мастеру — у всех -->
-              <th:block th:if="${row.current and controllable.contains(row.character.id)}">
+              <th:block th:if="${isGm and row.current and controllable.contains(row.character.id)}">
                 <div th:replace="~{fragments/encounter :: actions(${row}, ${base})}"></div>
               </th:block>
-              <details th:unless="${row.current or row.card.out or !controllable.contains(row.character.id)}" class="cp-more item-more">
+              <details th:unless="${!isGm or row.current or row.card.out or !controllable.contains(row.character.id)}" class="cp-more item-more">
                 <summary>Действия</summary>
                 <div th:replace="~{fragments/encounter :: actions(${row}, ${base})}"></div>
               </details>
             </div>
             <div th:if="${#lists.isEmpty(view.rows)}" class="empty">В бою никого нет</div>
           </div>
+          </details>
         </section>
       </div>
 

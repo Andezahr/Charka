@@ -95,5 +95,32 @@
     </form>
   </div>
 </div>
+<!-- Итоги действий участника: атака, действие с оружием, упавший заряд (в строке или в панели игрока) -->
+<th:block th:fragment="results(row)">
+  <th:block th:if="${resultCharacterId == row.character.id and combatResult != null}">
+    <div th:replace="~{fragments/attack :: result(${combatResult})}"></div>
+  </th:block>
+  <th:block th:if="${row.hasItem(actionItemId)}">
+    <th:block th:if="${attackResult != null and !attackResult.detached}">
+      <div th:replace="~{fragments/attack :: result(${attackResult})}"></div>
+    </th:block>
+    <div th:if="${actionResult != null}" class="alert alert-success item-result" role="status">
+      <span class="alert-text" th:text="${actionResult}">Перезаряжено</span>
+      <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+    </div>
+    <div th:if="${actionError != null}" class="alert alert-error item-result" role="alert">
+      <span class="alert-text" th:text="${actionError}">Магазин пуст</span>
+      <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+    </div>
+  </th:block>
+  <th:block th:each="blast : ${row.blasts}">
+    <div th:replace="~{fragments/attack :: pending(${row.character.id}, ${blast}, ${row.targets})}"></div>
+  </th:block>
+  <div th:if="${blastError != null and !#lists.isEmpty(row.blasts)}" class="alert alert-error item-result" role="alert">
+    <span class="alert-text" th:text="${blastError}">Выберите, кого задело</span>
+    <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+  </div>
+</th:block>
+
 </body>
 </html>

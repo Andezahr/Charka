@@ -1303,3 +1303,15 @@ html:has(.is-editing) {
 .char-player .label { margin: 0; }
 .battle-add { display: inline-flex; gap: 4px; align-items: center; }
 .battle-add select { max-width: 160px; }
+
+/* ---------- A-04: «мой ход» у игрока ---------- */
+.turn-panels { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+.turn-panel.is-mine { border-color: var(--success); box-shadow: 0 0 0 1px var(--success), var(--shadow); }
+.turn-status { margin: 0 0 8px; font-size: 15px; }
+.turn-panel.is-mine .turn-status strong { color: var(--success); font-size: 18px; }
+.turn-sound { font-size: 13px; color: var(--muted); }
+.turn-end { margin-top: 12px; }
+.turn-end .btn { width: 100%; }
+.turn-panels .battle-turn { margin: 0; }
+.turn-queue > summary { cursor: pointer; list-style: none; }
+.turn-queue > summary::-webkit-details-marker { display: none; }

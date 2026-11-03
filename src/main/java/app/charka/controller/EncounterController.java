@@ -63,6 +63,11 @@ public class EncounterController {
             app.charka.system.GameSystem system = systemRegistry.get(campaign.getSystem());
             model.addAttribute("luckLeft", view.get().rows().stream().collect(java.util.stream.Collectors.toMap(
                     row -> row.character().getId(), row -> system.getLuck(row.character()), (first, second) -> first)));
+            // A-04: игроку — свой экран сверху: чей ход и сколько до него
+            if (!accessService.isGm(campaign)) {
+                model.addAttribute("myRows", view.get().rows().stream().filter(row -> accessService.canControl(row.character())).toList());
+                model.addAttribute("turnsAhead", turnsAhead(view.get()));
+            }
         } else {
             model.addAttribute("candidates", encounterService.candidates(campaignId));
         }
@@ -111,9 +116,45 @@ public class EncounterController {
         });
     }
 
+    /**
+     * A-04: кто перед каждым участником ещё походит в этом раунде, считая того, кто ходит сейчас.
+     * Ждущие и выбывшие очередь не держат.
+     */
+    static java.util.Map<Long, Integer> turnsAhead(EncounterView view) {
+        java.util.Map<Long, Integer> ahead = new java.util.HashMap<>();
+        int pending = 0;
+        for (EncounterView.Row row : view.rows()) {
+            ahead.put(row.character().getId(), pending);
+            if (!row.participant().isDone() && !row.participant().isWaiting() && !row.card().out()) {
+                pending++;
+            }
+        }
+        return ahead;
+    }
+
+    /** A-04: чей ход — для опроса с телефона игрока; сменился — вибрация и обновление его экрана */
+    @GetMapping("/turn")
+    @org.springframework.web.bind.annotation.ResponseBody
+    public java.util.Map<String, Object> turn(@PathVariable Long campaignId) {
+        return encounterService.view(campaignId)
+                .<java.util.Map<String, Object>>map(view -> java.util.Map.of(
+                        "turn", view.encounter().getRound() + ":" + (view.current() == null ? "" : view.current().getId()),
+                        "current", view.current() == null ? "" : view.current().getId(),
+                        "name", view.current() == null ? "" : view.current().getName()))
+                .orElse(java.util.Map.of("turn", "", "current", "", "name", ""));
+    }
+
+    /** «Следующий ход» у мастера; игрок передаёт ход только на своём ходу («Закончить ход») */
     @PostMapping("/next")
     public String next(@PathVariable Long campaignId, RedirectAttributes redirectAttributes) {
         try {
+            Campaign campaign = campaignService.getById(campaignId);
+            if (!accessService.isGm(campaign)) {
+                app.charka.model.Character current = encounterService.view(campaignId).map(EncounterView::current).orElse(null);
+                if (current == null || !accessService.canControl(current)) {
+                    throw new IllegalArgumentException("Сейчас ход не ваш: передать его может тот, кто ходит, или мастер");
+                }
+            }
             EncounterService.Turn turn = encounterService.next(campaignId);
             redirectAttributes.addFlashAttribute("roundReport", turn.report());
             return redirect(campaignId, turn.character());

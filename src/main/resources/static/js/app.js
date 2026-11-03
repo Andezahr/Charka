@@ -646,6 +646,88 @@ function initPage() {
   initBattle();
   initEditor();
   initChat();
+  initTurnWatch();
+}
+
+// A-04: «мой ход» на телефоне игрока. Опрос /turn раз в 2 с; ход сменился — если подошла очередь игрока,
+// вибрация, звук (галочка «Звук», запоминается) и заголовок вкладки; экран обновляется сам, если ничего не открыто
+const turnWatch = { url: null, turn: null, mine: [], timer: null };
+const TURN_SOUND_KEY = 'charka.turnSound';
+
+function initTurnWatch() {
+  clearTimeout(turnWatch.timer);
+  const holder = document.querySelector('[data-turn-watch]');
+  if (!holder) {
+    turnWatch.url = null;
+    return;
+  }
+  Object.assign(turnWatch, { url: holder.dataset.turnWatch, turn: holder.dataset.turn, mine: holder.dataset.mine.split(',') });
+  if (holder.querySelector('.turn-panel.is-mine') && !document.title.startsWith('▶')) document.title = '▶ Ваш ход · ' + document.title;
+  let sound = false;
+  try { sound = localStorage.getItem(TURN_SOUND_KEY) === '1'; } catch (e) { /* без памяти — без звука */ }
+  holder.querySelectorAll('[data-turn-sound]').forEach(box => {
+    box.checked = sound;
+    box.addEventListener('change', () => {
+      try { localStorage.setItem(TURN_SOUND_KEY, box.checked ? '1' : ''); } catch (e) { /* только удобство */ }
+      holder.querySelectorAll('[data-turn-sound]').forEach(other => { other.checked = box.checked; });
+      if (box.checked) beep();
+    });
+  });
+  turnWatch.timer = setTimeout(pollTurn, 2000);
+}
+
+async function pollTurn() {
+  if (!turnWatch.url || !document.querySelector('[data-turn-watch]')) return;
+  try {
+    const response = await fetch(turnWatch.url, { cache: 'no-store' });
+    if (response.ok) {
+      const state = await response.json();
+      if (state.turn !== turnWatch.turn) {
+        turnWatch.turn = state.turn;
+        turnChanged(turnWatch.mine.includes(String(state.current)));
+        return;
+      }
+    }
+  } catch (e) { /* сеть пропала: попробуем позже */ }
+  turnWatch.timer = setTimeout(pollTurn, document.hidden ? 5000 : 2000);
+}
+
+function turnChanged(mine) {
+  if (mine) {
+    if (navigator.vibrate) navigator.vibrate([250, 120, 250]);
+    let sound = false;
+    try { sound = localStorage.getItem(TURN_SOUND_KEY) === '1'; } catch (e) { /* без звука */ }
+    if (sound) beep();
+  }
+  // открытый диалог, раскрытое меню или поле с вводом не сбрасываем — полоса «Обновить»
+  const busy = document.querySelector('dialog[open], details[data-menu][open]')
+    || (document.activeElement && document.activeElement.matches('input:not([type=checkbox]), textarea, select') && document.activeElement.value);
+  if (busy || submitting) {
+    const bar = document.querySelector('[data-turn-changed]');
+    if (bar) bar.hidden = false;
+    if (mine) document.title = '▶ Ваш ход · ' + document.title.replace(/^▶ Ваш ход · /, '');
+    turnWatch.timer = setTimeout(pollTurn, 2000);
+    return;
+  }
+  visit(location.href);
+}
+
+// Короткий сигнал без файла: WebAudio, два тона
+function beep() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    const audio = beep.context || (beep.context = new AudioCtx());
+    [0, 0.18].forEach((start, i) => {
+      const tone = audio.createOscillator();
+      const gain = audio.createGain();
+      tone.frequency.value = i ? 990 : 660;
+      gain.gain.setValueAtTime(0.18, audio.currentTime + start);
+      gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + start + 0.16);
+      tone.connect(gain).connect(audio.destination);
+      tone.start(audio.currentTime + start);
+      tone.stop(audio.currentTime + start + 0.17);
+    });
+  } catch (e) { /* звук не поддерживается */ }
 }
 
 // Чат кампании (U-06): лента опрашивается раз в 3 с (раз в 10 с после минуты тишины) с ETag и подменяется целиком,
