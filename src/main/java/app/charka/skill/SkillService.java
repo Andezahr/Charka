@@ -446,4 +446,23 @@ public class SkillService {
         return characterRepository.findById(characterId)
                 .orElseThrow(CharacterNotFoundException.forId(characterId));
     }
+
+    /**
+     * R-04a: навыки для одной формы проверки (бой, «Стол»): сначала то, что система проверяет в бою всегда, потом изученные;
+     * подпись — с итогом «Внимательность 11», складывать в уме не нужно. Пусто — у системы нет каталога.
+     */
+    @Transactional(readOnly = true)
+    public List<app.charka.encounter.EncounterView.CheckOption> checkOptions(Long characterId) {
+        if (!hasCatalog(characterId)) {
+            return List.of();
+        }
+        List<String> always = systemRegistry.forCharacter(getCharacter(characterId)).getCombatCheckSkills();
+        return getSheet(characterId).groups().stream()
+                .flatMap(group -> group.rows().stream())
+                .filter(row -> row.level() > 0 || row.override() != null || always.contains(row.code()))
+                .sorted(java.util.Comparator.comparing((SkillSheet.Row row) -> !always.contains(row.code())).thenComparing(SkillSheet.Row::name))
+                .map(row -> new app.charka.encounter.EncounterView.CheckOption(row.customId() != null ? "custom:" + row.customId() : row.code(),
+                        row.name() + " " + row.total()))
+                .toList();
+    }
 }

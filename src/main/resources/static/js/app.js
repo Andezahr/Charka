@@ -211,6 +211,26 @@ function initPage() {
     if (reopen && !document.querySelector('main [data-chat]')) open();
   });
 
+  // R-04a: одна форма проверки — у выбранного персонажа его навыки с итогом, у мастера и систем без навыков — ±Мод и подпись
+  document.querySelectorAll('[data-check-form]').forEach(holder => {
+    const who = holder.querySelector('[data-check-who]');
+    const me = holder.closest('[data-chat]') && holder.closest('[data-chat]').querySelector('[data-me]');
+    if (me && [...who.options].some(option => option.value === me.value)) who.value = me.value;
+    const sync = () => {
+      let skilled = false;
+      holder.querySelectorAll('[data-check-skill]').forEach(select => {
+        const active = select.dataset.checkSkill === who.value;
+        select.hidden = !active;
+        select.disabled = !active;
+        skilled = skilled || active;
+      });
+      holder.querySelectorAll('[data-check-mod]').forEach(field => { field.hidden = skilled; });
+    };
+    who.addEventListener('change', sync);
+    if (me) me.addEventListener('change', () => { if ([...who.options].some(option => option.value === me.value)) { who.value = me.value; sync(); } });
+    sync();
+  });
+
   // A-02: приглашение — у ноутбука несколько адресов, QR-код того, что выбран
   document.querySelectorAll('[data-invite-select]').forEach(select => {
     const codes = select.closest('[data-invite]').querySelectorAll('[data-invite-qr]');

@@ -26,6 +26,8 @@ public class ChatController {
     private final app.charka.service.campaign.CampaignService campaignService;
     private final app.charka.repository.CharacterRepository characterRepository;
     private final app.charka.dice.DiceService diceService;
+    private final app.charka.skill.SkillService skillService;
+    private final app.charka.check.CheckService checkService;
 
     /** Только лента: её подменяет опрос */
     @GetMapping
@@ -81,6 +83,40 @@ public class ChatController {
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("chatError", e.getMessage());
             redirectAttributes.addFlashAttribute("chatDraft", text);
+        }
+        return "redirect:" + back(campaignId, returnTo) + "#chat";
+    }
+
+    /**
+     * R-04a: проверка из «Стола». У персонажа и системы с каталогом — проверка навыка (итог уже сложен), иначе — мастер
+     * бросает «±Мод против DC» по правилам системы. Итог уходит в ленту (лог бросков).
+     *
+     * @param skill код навыка или {@code custom:<id>}
+     */
+    @PostMapping("/check")
+    public String check(@PathVariable Long campaignId, @RequestParam(required = false) Long character,
+                        @RequestParam(required = false) String skill, @RequestParam(required = false) Integer difficulty,
+                        @RequestParam(defaultValue = "0") int modifier, @RequestParam(defaultValue = "0") int luck,
+                        @RequestParam(required = false) String label, @RequestParam(defaultValue = "false") boolean hidden,
+                        @RequestParam(required = false) String returnTo, RedirectAttributes redirectAttributes) {
+        try {
+            app.charka.model.Campaign campaign = campaignService.getById(campaignId);
+            boolean gm = accessService.isGm(campaign);
+            if (character != null && skill != null && !skill.isBlank()) {
+                app.charka.model.Character who = characterRepository.findById(character)
+                        .filter(c -> c.getCampaign() != null && c.getCampaign().getId().equals(campaignId) && accessService.canControl(c))
+                        .orElseThrow(() -> new IllegalArgumentException("Проверять можно только за себя"));
+                app.charka.dice.HiddenRolls.run(hidden && gm, () -> skill.startsWith("custom:")
+                        ? skillService.check(who.getId(), null, Long.valueOf(skill.substring("custom:".length())), modifier, difficulty, Math.max(0, luck))
+                        : skillService.check(who.getId(), skill, null, modifier, difficulty, Math.max(0, luck)));
+            } else if (gm) {
+                app.charka.check.CheckRequest request = new app.charka.check.CheckRequest(label, modifier, difficulty);
+                app.charka.dice.HiddenRolls.run(hidden, () -> checkService.checkForCampaign(campaignId, request));
+            } else {
+                throw new IllegalArgumentException("Выберите, кто проверяет");
+            }
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("chatError", e.getMessage());
         }
         return "redirect:" + back(campaignId, returnTo) + "#chat";
     }

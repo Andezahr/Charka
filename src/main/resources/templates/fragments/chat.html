@@ -30,19 +30,33 @@
       </div>
       <p th:if="${chatError != null}" class="field-error" th:text="${chatError}">Пустое сообщение</p>
     </form>
-    <!-- Общая проверка мастера (была в карточке «Кубики»); R-04a заменит её проверкой навыка -->
-    <details th:if="${tableGm}" class="cp-more item-more">
-      <summary>Проверка ±Мод · DC</summary>
-      <form th:action="@{'/campaign/' + ${campaignId} + '/check'}" method="post" class="form-row">
-        <input type="number" name="modifier" class="narrow" placeholder="±Мод." aria-label="Модификатор">
-        <input type="number" name="difficulty" class="narrow" placeholder="DC" min="0" aria-label="Сложность"
-               th:attr="list=${'table-dc-' + campaignId}">
-        <datalist th:id="${'table-dc-' + campaignId}">
-          <option th:each="p : ${tableSystem.getCheckResolver().getDifficultyPresets()}" th:value="${p.value}" th:label="${p.key}">15</option>
-        </datalist>
-        <input type="text" name="label" class="grow" placeholder="Что проверяем" autocomplete="off" aria-label="Что проверяем">
-        <label class="check dice-hidden"><input type="checkbox" name="hidden" value="true" data-remember="dice-hidden"><span>🙈</span></label>
-        <button type="submit" class="btn btn-sm">✓</button>
+    <!-- R-04a: одна форма проверки. Персонаж с навыками — навык с итогом (как в бою), мастер или система без навыков — ±Мод -->
+    <details class="cp-more item-more" data-check-form>
+      <summary>🎲 Проверка</summary>
+      <form th:action="@{'/campaign/' + ${campaignId} + '/chat/check'}" method="post" class="form">
+        <input type="hidden" name="returnTo" th:value="${returnTo}">
+        <div class="form-row">
+          <select name="character" data-check-who aria-label="Кто проверяет">
+            <option th:if="${tableGm}" value="">Мастер</option>
+            <option th:each="c : ${characters}" th:value="${c.id}" th:text="${c.name}">Колясик</option>
+          </select>
+          <th:block th:each="c : ${characters}" th:with="options=${@skillService.checkOptions(c.id)}">
+            <select th:unless="${#lists.isEmpty(options)}" name="skill" class="grow" th:attr="data-check-skill=${c.id}" aria-label="Навык" hidden disabled>
+              <option th:each="o : ${options}" th:value="${o.value}" th:text="${o.label}">Внимательность 11</option>
+            </select>
+          </th:block>
+          <input type="number" name="modifier" class="narrow" placeholder="±Мод." aria-label="Модификатор" data-check-mod>
+        </div>
+        <div class="form-row">
+          <select name="difficulty" aria-label="Сложность">
+            <option value="">Без сложности</option>
+            <option th:each="p : ${tableSystem.getCheckResolver().getDifficultyPresets()}" th:value="${p.value}" th:text="${p.key} + ' ' + ${p.value}">Средне 15</option>
+          </select>
+          <input type="number" name="luck" class="narrow" min="0" placeholder="🍀" aria-label="Удача" title="Удача к броску">
+          <input type="text" name="label" class="grow" placeholder="Что проверяем" autocomplete="off" aria-label="Что проверяем" data-check-mod>
+          <label th:if="${tableGm}" class="check dice-hidden"><input type="checkbox" name="hidden" value="true" data-remember="dice-hidden"><span>🙈</span></label>
+          <button type="submit" class="btn btn-sm">🎲 Проверка</button>
+        </div>
       </form>
     </details>
   </div>

@@ -59,6 +59,8 @@ class TableTest {
         character.setName("Колясик");
         kolya = characterService.createInCampaign(campaign.getId(), character);
         base = "/campaign/" + campaign.getId() + "/chat";
+        entityManager.flush();
+        entityManager.clear();
     }
 
     private RollLog lastRoll() {
@@ -97,10 +99,26 @@ class TableTest {
         String sheet = mockMvc.perform(get("/character/" + kolya.getId())).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(sheet).doesNotContain("id=\"dice\"").contains("data-table-open", base + "/panel");
         String overview = mockMvc.perform(get("/campaign/" + campaign.getId())).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        assertThat(overview).doesNotContain("id=\"dice\"").contains("Стол: чат и броски", ">d10<", "Проверка ±Мод · DC");
+        assertThat(overview).doesNotContain("id=\"dice\"").contains("Стол: чат и броски", ">d10<", "🎲 Проверка", "data-check-skill=\"" + kolya.getId() + "\"", "Внимательность ");
 
         String panel = mockMvc.perform(get(base + "/panel").param("returnTo", "/character/" + kolya.getId()))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(panel).contains("data-chat=", "Сообщение или 2d6+3", ">d10<", "value=\"/character/" + kolya.getId() + "\"");
+    }
+
+    @Test
+    @DisplayName("R-04a: проверка из «Стола» — навык персонажа с итогом против сложности, у мастера без персонажа — ±Мод")
+    void check() throws Exception {
+        mockMvc.perform(post(base + "/check").param("character", String.valueOf(kolya.getId())).param("skill", "awareness")
+                        .param("difficulty", "15").param("returnTo", "/character/" + kolya.getId()))
+                .andExpect(redirectedUrl("/character/" + kolya.getId() + "#chat"));
+        RollLog skill = lastRoll();
+        assertThat(skill.getCharacter().getName()).isEqualTo("Колясик");
+        assertThat(skill.getLabel()).contains("Внимательность");
+
+        mockMvc.perform(post(base + "/check").param("modifier", "5").param("difficulty", "10").param("label", "Засада"));
+        RollLog gm = lastRoll();
+        assertThat(gm.getCharacter()).isNull();
+        assertThat(gm.getLabel()).contains("Засада");
     }
 }

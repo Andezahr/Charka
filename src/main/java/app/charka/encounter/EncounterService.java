@@ -220,17 +220,7 @@ public class EncounterService {
 
     /** Сначала то, что система считает нужным в бою; остальное — только изученное */
     private List<EncounterView.CheckOption> checks(Character character, GameSystem system) {
-        if (!skillService.hasCatalog(character.getId())) {
-            return List.of();
-        }
-        List<String> always = system.getCombatCheckSkills();
-        return skillService.getSheet(character.getId()).groups().stream()
-                .flatMap(group -> group.rows().stream())
-                .filter(row -> row.level() > 0 || row.override() != null || always.contains(row.code()))
-                .sorted(Comparator.comparing((SkillSheet.Row row) -> !always.contains(row.code())).thenComparing(SkillSheet.Row::name))
-                .map(row -> new EncounterView.CheckOption(row.customId() != null ? "custom:" + row.customId() : row.code(),
-                        row.name() + " " + row.total()))
-                .toList();
+        return skillService.checkOptions(character.getId());
     }
 
     private List<EncounterView.Ability> abilities(Character character, GameSystem system) {
