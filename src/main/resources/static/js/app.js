@@ -1867,10 +1867,10 @@ function openAttackFromMap(dialog, target, sight) {
     distance.value = sight.meters;
     distance.dispatchEvent(new Event('input', { bubbles: true }));
   }
-  // бегал в этом раунде — атака уже второе действие (с. 98)
+  // A-05: бегал или уже стрелял в этом раунде — штраф за следующее действие (с. 98) по свежим данным карты
   const attacker = battleAttacker(target);
-  const moved = battle.data.movedOption && dialog.querySelector(`input[value="${battle.data.movedOption}"]`);
-  if (moved) moved.checked = Boolean(attacker && attacker.moved > 0);
+  const actions = attacker && dialog.querySelector('select[name="option.action"]');
+  if (actions) actions.value = attacker.actionOption || '';
   const cover = dialog.querySelector('select[name="option.cover"]');
   if (cover) cover.value = sight.cover || '';
   if (cover && sight.cover) {

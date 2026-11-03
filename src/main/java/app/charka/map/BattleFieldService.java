@@ -43,9 +43,10 @@ public class BattleFieldService {
      * @param out      выбыл
      * @param alarming состояние требует внимания: красное кольцо
      * @param moved    сколько метров пробежал в этом раунде
+     * @param actionOption модификатор атаки за следующее действие в раунде (A-05: после бега и выстрела); null — нет
      */
     public record Token(Long id, Long character, String name, String initials, boolean npc, Integer x, Integer y,
-                        boolean current, boolean done, boolean out, boolean alarming, String status, int moved) {
+                        boolean current, boolean done, boolean out, boolean alarming, String status, int moved, String actionOption) {
     }
 
     /**
@@ -56,10 +57,9 @@ public class BattleFieldService {
      * @param metric    мера расстояния ({@link MapRules#metric})
      * @param materials материалы системы
      * @param objects   готовые предметы системы
-     * @param movedOption модификатор атаки после бега (CP2020: второе действие −3); null — нет
      */
     public record Field(Long mapId, String turn, MapDoc doc, String metric, List<Material> materials, List<MapObject> objects,
-                        List<Token> tokens, List<PointerBoard.Pointer> pointers, String backgroundUrl, String movedOption) {
+                        List<Token> tokens, List<PointerBoard.Pointer> pointers, String backgroundUrl) {
     }
 
     /**
@@ -77,12 +77,12 @@ public class BattleFieldService {
             EncounterParticipant participant = row.participant();
             return new Token(participant.getId(), row.character().getId(), row.character().getName(), initials(row.character().getName()),
                     row.character().isNpc(), participant.getPosX(), participant.getPosY(), row.current(), participant.isDone(),
-                    row.card().out(), row.card().alarming(), row.card().status(), participant.getMovedMeters());
+                    row.card().out(), row.card().alarming(), row.card().status(), participant.getMovedMeters(), row.actionOption());
         }).toList();
         String turn = encounter.getRound() + ":" + (view.get().current() == null ? "" : view.get().current().getId());
         MapDoc doc = MapDoc.parse(encounter.getMapDoc());
         return Optional.of(new Field(encounter.getBattleMapId(), turn, doc, rules.metric(), rules.materials(), rules.objects(), tokens,
-                pointerBoard.live(campaignId), EditableMap.backgroundUrl(campaignId, encounter.getBattleMapId(), doc), rules.movedAttackOption()));
+                pointerBoard.live(campaignId), EditableMap.backgroundUrl(campaignId, encounter.getBattleMapId(), doc)));
     }
 
     public void move(Long campaignId, Long participantId, int x, int y) {

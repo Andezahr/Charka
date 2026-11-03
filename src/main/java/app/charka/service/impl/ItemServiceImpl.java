@@ -32,6 +32,7 @@ public class ItemServiceImpl implements ItemService {
     private final InventoryRepository inventoryRepository;
     private final GameSystemRegistry systemRegistry;
     private final MoneyService moneyService;
+    private final app.charka.encounter.RoundActions roundActions;
 
     private static final String ITEM_NOT_FOUND = "Item not found for id=%d";
 
@@ -241,7 +242,15 @@ public class ItemServiceImpl implements ItemService {
         if (!characterId.equals(item.getInventory().getCharacter().getId())) {
             throw new NotFoundException(String.format(ITEM_NOT_FOUND, itemId));
         }
-        return systemRegistry.forCharacter(item.getInventory().getCharacter()).performItemAction(item, action, params);
+        app.charka.model.Character owner = item.getInventory().getCharacter();
+        app.charka.system.GameSystem system = systemRegistry.forCharacter(owner);
+        // A-05: то, что делают и в бою (перезарядка, препарат), — действие раунда; учёт вроде «Списать патрон» — нет
+        boolean roundAction = system.getItemActions(item).stream().anyMatch(candidate -> candidate.code().equals(action) && candidate.combat());
+        String result = system.performItemAction(item, action, params);
+        if (roundAction) {
+            roundActions.count(owner);
+        }
+        return result;
     }
 
     /**

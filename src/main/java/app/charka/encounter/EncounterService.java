@@ -170,7 +170,8 @@ public class EncounterService {
                     system.getCombatCard(character), participant == current,
                     weapons(character, system), targets(character, fighters, system), attackService.pendingBlasts(character.getId()),
                     List.copyOf(participant.getEffects()), abilities(character, system),
-                    system.getMapRules().movedAttackOption());
+                    RoundActions.done(participant),
+                    system.getAttackRules() == null ? null : system.getAttackRules().actionOption(RoundActions.done(participant)));
         }).toList();
         Set<Long> inFight = fighters.stream().map(Character::getId).collect(Collectors.toSet());
         List<Character> addable = encounter.getCampaign().getCharacters().stream()
@@ -400,7 +401,10 @@ public class EncounterService {
 
     @Transactional
     public SkillCheck check(Long campaignId, Long participantId, String skill, Integer difficulty, int modifier, int luck) {
-        Character character = participant(campaignId, participantId).getCharacter();
+        EncounterParticipant checking = participant(campaignId, participantId);
+        Character character = checking.getCharacter();
+        // A-05: проверка в бою — действие
+        checking.setActions(checking.getActions() + 1);
         return skill.startsWith(CUSTOM_SKILL)
                 ? skillService.check(character.getId(), null, Long.valueOf(skill.substring(CUSTOM_SKILL.length())), modifier, difficulty, luck)
                 : skillService.check(character.getId(), skill, null, modifier, difficulty, luck);
@@ -432,6 +436,7 @@ public class EncounterService {
             throw new IllegalArgumentException("Такого противостояния нет: " + code);
         }
         app.charka.check.CheckRequest own = system.getContestRequest(code, initiator.getCharacter());
+        initiator.setActions(initiator.getActions() + 1);
         if (luck > 0) {
             system.spendLuck(initiator.getCharacter(), luck);
             own = own.withPart(GameSystem.luckPart(luck));
@@ -582,6 +587,7 @@ public class EncounterService {
             participant.setWaiting(false);
             participant.setDeclaration(null);
             participant.setMovedMeters(0);
+            participant.setActions(0);
             if (system.rollsInitiativeEachRound()) {
                 roll(participant, system, dice);
             }

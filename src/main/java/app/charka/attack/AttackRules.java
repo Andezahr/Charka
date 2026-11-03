@@ -50,6 +50,15 @@ public interface AttackRules {
     /**
      * Чем персонаж может атаковать без предмета: кулаки, заклинания.
      */
+    /**
+     * A-05: модификатор атаки за то, что в раунде уже сделано {@code done} действий; ставится в диалоге сам.
+     *
+     * @return код варианта модификатора; null — штрафа нет
+     */
+    default String actionOption(int done) {
+        return null;
+    }
+
     default List<AttackSource> abilities(Character attacker) {
         return List.of();
     }

@@ -50,6 +50,9 @@ public class EncounterParticipant {
     @Column(name = "moved_meters")
     private int movedMeters;
 
+    /** A-05: сколько действий сделано в этом раунде, кроме бега (он — {@link #movedMeters}); новый раунд обнуляет */
+    private int actions;
+
     /** Клетка фишки на карте боя; null — ещё не на поле */
     @Column(name = "pos_x")
     private Integer posX;

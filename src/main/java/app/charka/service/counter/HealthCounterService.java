@@ -52,6 +52,7 @@ public class HealthCounterService {
     /** Тоже через провайдер: реестр собирает системы, а система CP2020 зависит от этого сервиса */
     private final ObjectProvider<GameSystemRegistry> systemRegistry;
     private final WoundRepository woundRepository;
+    private final app.charka.encounter.RoundActions roundActions;
 
     @Transactional
     public HealthEvent applyDamage(Long characterId, Long counterId, HealthDamageRequestDto requestDto) {
@@ -204,6 +205,8 @@ public class HealthCounterService {
         if (Boolean.TRUE.equals(check.result().success())) {
             log(patient, healer.getName() + ": " + result.getSummary(), null);
         }
+        // A-05: медпомощь в бою — действие медика
+        roundActions.count(healer);
         return event.summary(result.getSummary());
     }
 

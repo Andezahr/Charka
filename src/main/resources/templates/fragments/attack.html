@@ -117,7 +117,8 @@
       <span class="label" th:text="${choice.label}">Цель движется</span>
       <select th:name="'option.' + ${choice.key}">
         <option value="">—</option>
-        <option th:each="o : ${choice.options}" th:value="${o.value}" th:text="${o.label}">REF больше 10 −3</option>
+        <option th:each="o : ${choice.options}" th:value="${o.value}" th:text="${o.label}"
+                th:selected="${presetOptions != null and presetOptions.contains(o.value)}">REF больше 10 −3</option>
       </select>
     </label>
   </th:block>

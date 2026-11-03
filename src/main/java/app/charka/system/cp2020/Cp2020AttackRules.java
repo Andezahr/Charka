@@ -36,6 +36,12 @@ import java.util.stream.Collectors;
  */
 final class Cp2020AttackRules implements AttackRules {
 
+    /** С. 98: каждое следующее действие в раунде −3 */
+    @Override
+    public String actionOption(int done) {
+        return Cp2020AttackModifiers.actionOption(done);
+    }
+
     static final int POINT_BLANK = 10;
     static final int CLOSE = 15;
     static final int MEDIUM = 20;

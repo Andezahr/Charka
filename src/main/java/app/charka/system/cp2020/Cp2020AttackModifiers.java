@@ -31,9 +31,13 @@ final class Cp2020AttackModifiers {
     /** Прицелы, турель и машина бывают только у стрельбы, не у броска */
     private static final Set<String> FIREARM_ONLY = Set.of("turret", "vehicle", "laser", "targeting_scope", "smartgun", "smartgoggles", TELESCOPIC, "two_weapons", "hip");
     private static final Set<String> SHOULDER_ARMS = Set.of("RIF", "SHT", "HVY");
-    static final String SECOND_ACTION = "second_action";
+    /** A-05: «N-е действие в раунде», варианты action_2 … action_6 */
+    private static final String ACTION = "action_";
+    private static final int ACTION_STEP = -3;
+    private static final int LAST_ACTION = 6;
 
-    private static final Set<String> MELEE_CODES = Set.of("immobile", "ambush", "blinded", "turning", "size_large", "size_small", "size_tiny", "fast_draw", "swept", "swept_foe", SECOND_ACTION, Cp2020Melee.DEFENSE);
+    private static final Set<String> MELEE_CODES = Set.of("immobile", "ambush", "blinded", "turning", "size_large", "size_small", "size_tiny", "fast_draw", "swept", "swept_foe",
+            "action_2", "action_3", "action_4", "action_5", "action_6", Cp2020Melee.DEFENSE);
 
     /**
      * @param choice код выбора: варианты с одним кодом взаимоисключающие; у флажка совпадает с {@code code}
@@ -71,8 +75,8 @@ final class Cp2020AttackModifiers {
             flag("swept_foe", SHOOTER, "Противник сбит с ног", 2),
             flag("two_weapons", SHOOTER, "Стрельба с двух рук", -3),
             flag("running", SHOOTER, "Стрельба на бегу", -3),
-            // с. 98: «more than one action at a −3 penalty to each successive action»; карта ставит его сама после бега
-            flag(SECOND_ACTION, SHOOTER, "Второе действие в раунде", -3),
+            // с. 98: «more than one action at a −3 penalty to each successive action»; трекер ставит его сам по числу действий (A-05)
+            action(2), action(3), action(4), action(5), action(6),
             flag("hip", SHOOTER, "Длинноствольное от бедра", -2),
 
             flag("ricochet", WEAPON, "Рикошет или стрельба навесом", -5),
@@ -84,6 +88,21 @@ final class Cp2020AttackModifiers {
             flag("smartgoggles", WEAPON, "Смарт-очки", 2));
 
     private Cp2020AttackModifiers() {
+    }
+
+    /**
+     * HOMEBREW: книга (с. 98) говорит «−3 к каждому следующему действию» и не говорит, складывается ли штраф.
+     * Решено, что складывается: 2-е −3, 3-е −6, 4-е −9. Если −3 к каждому без роста — поменять {@code value} на {@link #ACTION_STEP}.
+     */
+    private static Modifier action(int number) {
+        return variant(ACTION + number, SHOOTER, "action", "Несколько действий", number + "-е действие", ACTION_STEP * (number - 1));
+    }
+
+    /**
+     * Вариант модификатора для действия, которое последует за {@code done} уже сделанными; первое — без штрафа.
+     */
+    static String actionOption(int done) {
+        return done <= 0 ? null : ACTION + Math.min(done + 1, LAST_ACTION);
     }
 
     private static Modifier flag(String code, String section, String label, int value) {

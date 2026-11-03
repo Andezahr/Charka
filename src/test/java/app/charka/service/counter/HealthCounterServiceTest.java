@@ -48,7 +48,8 @@ class HealthCounterServiceTest {
         healthStrategy = new Cp2020HealthStrategy(new RandomDiceRoller(), armorStrategy);
         CounterStrategyFactory factory = new CounterStrategyFactory(
                 List.of(new SimpleIntegerCounterStrategy(), healthStrategy, statsStrategy, armorStrategy));
-        healthCounterService = new HealthCounterService(counterService, counterRepository, factory, null, null, null, woundRepository);
+        healthCounterService = new HealthCounterService(counterService, counterRepository, factory, null, null, null, woundRepository,
+                org.mockito.Mockito.mock(app.charka.encounter.RoundActions.class));
         character = new Character();
         character.setId(1L);
     }

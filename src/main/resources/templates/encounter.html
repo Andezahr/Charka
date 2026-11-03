@@ -107,6 +107,7 @@
             <span th:each="line : ${row.card.lines}" class="chip" th:text="${line}">SP торса 14</span>
             <span th:if="${row.declaration != null}" class="chip pink" th:text="${row.declaration.label} + ' +' + ${row.declaration.bonus}">Выхватывает +3</span>
             <span th:each="effect : ${row.effects}" class="chip red" th:text="${effect.summary}">Горит 1D6 · раундов 2</span>
+            <span th:if="${row.actionsDone > 0}" class="chip yellow" th:text="'Действий: ' + ${row.actionsDone}">Действий: 1</span>
           </div>
           <form th:if="${row.participant.waiting and !row.current}" th:action="@{${base} + '/participants/' + ${row.participant.id} + '/join'}" method="post">
             <button type="submit" class="btn btn-primary">Вступить</button>
@@ -202,6 +203,9 @@
                   <div class="chips">
                     <span th:if="${row.card.status != null}" class="chip" th:classappend="${row.card.alarming} ? 'red'" th:text="${row.card.status}">Цел</span>
                     <span th:each="line : ${row.card.lines}" class="chip" th:text="${line}">SP торса 14</span>
+                    <!-- A-05: следующее действие в раунде со штрафом (с. 98) -->
+                    <span th:if="${row.actionsDone > 0 and !row.card.out}" class="chip yellow" th:text="'Действий: ' + ${row.actionsDone}"
+                          title="Следующее действие в этом раунде — со штрафом; диалог атаки ставит его сам">Действий: 1</span>
                     <span th:if="${row.participant.done and !row.card.out}" class="chip">Походил</span>
                     <span th:if="${row.participant.waiting}" class="chip">Ждёт</span>
                     <span th:if="${row.declaration != null}" class="chip pink" th:text="${row.declaration.label} + ' +' + ${row.declaration.bonus}">Выхватывает +3</span>

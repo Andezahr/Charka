@@ -49,6 +49,7 @@ public class AttackService {
     private final DiceService diceService;
     private final DiceRoller diceRoller;
     private final HealthCounterService healthCounterService;
+    private final app.charka.encounter.RoundActions roundActions;
 
     /**
      * @param characterId атакующий; предмет другого персонажа считается ненайденным
@@ -83,6 +84,8 @@ public class AttackService {
             system.spendLuck(attacker, request.luck());
         }
         AttackResult result = perform(context, rules);
+        // A-05: атака в бою — действие раунда
+        roundActions.count(attacker);
         // израсходованный предмет ушёл из инвентаря: его строки на листе больше нет
         boolean spentUp = source.item() == null || source.item().getInventory().getContent().stream().noneMatch(item -> item == source.item());
         return spentUp || result.pendingBlast() != null ? result.withoutItemRow() : result;

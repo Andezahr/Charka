@@ -38,7 +38,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 987 тестов, на 2026-11-03 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 989 тестов, на 2026-11-03 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -62,7 +62,7 @@ security/     SecurityConfig, UserService (регистрация, вход), Ac
 chat/         ChatService (чат кампании: сообщения и броски одной лентой)
 undo/         CampaignSnapshots (снимок игрового состояния кампании строками таблиц с прежними id, восстановление), UndoService (запись, отмена последнего действия, кто может), UndoInterceptor (снимок до и после любого изменяющего запроса), UndoLabels (подпись по адресу)
 map/          MapDoc (документ карты: стены-грани, клетки, предметы, зоны, подписи, подложка), MapRules (правила карты системы), MapObject, Material, MapGrid (что в клетке, линия взгляда, досягаемость), TokenPlacer, BattleMapService (карты кампании, подложка), BattleFieldService (поле идущего боя), PointerBoard (указатели в памяти), MapGenerator, EditableMap
-encounter/    EncounterService (бой кампании: очередь, раунды, ожидание, урон, противостояния), CombatContest (противостояние от системы), EncounterView (страница боя), Initiative, InitiativeDeclaration и CombatCard (что отдаёт система)
+encounter/    EncounterService (бой кампании: очередь, раунды, ожидание, урон, противостояния), RoundActions (действия участника в раунде, A-05), CombatContest (противостояние от системы), EncounterView (страница боя), Initiative, InitiativeDeclaration и CombatCard (что отдаёт система)
 check/        CheckRequest/CheckResult/CheckResolver (GenericCheckResolver: d20), OpposedCheckResult, CheckService (правила системы + лог)
 item/         ItemTypeDefinition, ItemField (поля типа предмета, проверка ввода, строка предмета), CatalogItem (строка справочника), ItemAction (кнопка действия на листе), InstalledBlock (вживлённое: блок фишек над инвентарями), ItemSection (секции инвентаря), ItemSummary (краткая строка), ItemAttachments + ItemChip (что показано под предметом: магазины и патроны фишками); всё это отдаёт GameSystem
 skill/        SkillDefinition, CharacterRole, StatValue, SkillOverride (уровень от чипа), SkillSheet, SkillCheck, SkillOpponent, SkillProgression (контракт прокачки), SkillImprovement, SkillService (навыки, роли, проверка, прокачка)
@@ -88,7 +88,7 @@ Campaign (name, system, startDate, currentDate, gm?, inviteToken?)   — system:
  ├─ ChatMessage* (character?, author, text, gameDate, createdAt) — чат, как лог: без коллекции, не экспортируется
  ├─ UndoEntry* (userId?, characterId?, label, createdAt, snapshot JSON) — отмена (A-01), последние 20, без коллекции, не экспортируется
  ├─ BattleMap* (name, doc JSON, background) — карта боя, заготовка
- ├─ Encounter (round, groupPlayers, groupNpcs, mapDoc — копия карты, battleMapId) └─ EncounterParticipant* (character, initiative, initiativeDetails, turnOrder, done, waiting, declaration, posX, posY) └─ CombatEffect* (label, roundsLeft, damage, attackOption, data) — идущий бой, один на кампанию; закончился — удаляется
+ ├─ Encounter (round, groupPlayers, groupNpcs, mapDoc — копия карты, battleMapId) └─ EncounterParticipant* (character, initiative, initiativeDetails, turnOrder, done, waiting, declaration, posX, posY, movedMeters, actions) └─ CombatEffect* (label, roundsLeft, damage, attackOption, data) — идущий бой, один на кампанию; закончился — удаляется
  ├─ Chronicle* (name, startDate, endDate)     — запись о прошедшем периоде
  └─ Character* (name, birthDate, npc, roles, player?)  — npc: персонаж мастера; roles: коды из GameSystem.getRoles(), таблица character_role; уровень роли = уровень спецспособности
      ├─ CharacterSkill* (skillCode, level, customName?) — код из каталога системы; уровень 0 у обычного навыка не хранится

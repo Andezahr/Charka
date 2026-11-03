@@ -81,12 +81,6 @@ final class Cp2020MapRules implements MapRules {
                 "heavy_door", "cover_steel_door", "window", "glass");
     }
 
-    /** С. 98: каждое следующее действие в раунде −3; бег — первое */
-    @Override
-    public String movedAttackOption() {
-        return Cp2020AttackModifiers.SECOND_ACTION;
-    }
-
     /** Бег MA × 3 м за действие (с. 98) */
     @Override
     public Integer reach(Map<String, StatValue> stats) {

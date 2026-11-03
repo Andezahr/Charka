@@ -192,7 +192,7 @@ class BattleFieldServiceTest {
         }
 
         @Test
-        @DisplayName("После бега атака в трекере — уже второе действие, −3 отмечено")
+        @DisplayName("После бега атака в трекере — уже второе действие, −3 отмечено (A-05)")
         void secondAction() {
             start();
             Long id = token(player).id();
@@ -203,8 +203,9 @@ class BattleFieldServiceTest {
 
             assertThat(encounterService.view(campaign.getId()).orElseThrow().rows().stream()
                     .filter(row -> row.character().getId().equals(player.getId())).findFirst().orElseThrow().attackOptions())
-                    .contains("second_action");
-            assertThat(field.field(campaign.getId()).orElseThrow().movedOption()).isEqualTo("second_action");
+                    .contains("action_2");
+            assertThat(field.field(campaign.getId()).orElseThrow().tokens().stream()
+                    .filter(token -> token.character().equals(player.getId())).findFirst().orElseThrow().actionOption()).isEqualTo("action_2");
         }
 
         @Test
