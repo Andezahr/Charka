@@ -3,9 +3,13 @@
 <body>
 <!-- U-06: чат кампании. Лента — сообщения и броски по времени; app.js опрашивает её ([data-chat]) и подменяет только список.
      Кто пишет — «Я — …», запоминается на устройстве вместе с выбором на карте -->
+<!-- R-04: «Стол» — чат и кубики одним блоком: поле принимает и сообщение, и бросок («2d6+3 Атака»), быстрые кубики системы,
+     у мастера «🙈» — бросок, которого игроки не видят, и общая проверка ±Мод/DC (до R-04a) -->
 <section th:fragment="card(campaignId, returnTo, characters)" class="card chat" id="chat"
-         th:attr="data-chat=@{'/campaign/' + ${campaignId} + '/chat'},data-me-key=${'campaign.' + campaignId}">
-  <div class="card-head"><h2 class="card-title"><span class="dot pink"></span>Чат и броски</h2></div>
+         th:attr="data-chat=@{'/campaign/' + ${campaignId} + '/chat'},data-me-key=${'campaign.' + campaignId}"
+         th:with="tableSystem=${@gameSystemRegistry.get(@campaignService.getById(campaignId).system)},
+                  tableGm=${isGm == null or isGm}">
+  <div class="card-head"><h2 class="card-title"><span class="dot pink"></span>Стол: чат и броски</h2></div>
   <div class="card-body">
     <form th:action="@{'/campaign/' + ${campaignId} + '/chat'}" method="post" class="form chat-form">
       <input type="hidden" name="returnTo" th:value="${returnTo}">
@@ -14,17 +18,43 @@
           <option th:if="${isGm == null or isGm}" value="">Мастер</option>
           <option th:each="c : ${characters}" th:value="${c.id}" th:text="${c.name}">Колясик</option>
         </select>
-        <input type="text" name="text" class="grow" maxlength="500" required autocomplete="off" placeholder="Сообщение"
-               th:value="${chatDraft}" aria-label="Сообщение">
+        <input type="text" name="text" class="grow" maxlength="500" autocomplete="off" placeholder="Сообщение или 2d6+3"
+               th:value="${chatDraft}" aria-label="Сообщение или бросок" title="Начните с кубиков — «2d6+3 Атака» — и это бросок с подписью">
         <button type="submit" class="btn btn-sm btn-primary">➤</button>
+      </div>
+      <div class="form-row chat-dice">
+        <button th:each="d : ${tableSystem.getQuickDice()}" type="submit" name="quick" th:value="${d}" class="btn btn-sm" th:text="${d}">d10</button>
+        <label th:if="${tableGm}" class="check dice-hidden" title="Игроки этот бросок не увидят; в ленте его можно показать всем">
+          <input type="checkbox" name="hidden" value="true" data-remember="dice-hidden"><span>🙈</span>
+        </label>
       </div>
       <p th:if="${chatError != null}" class="field-error" th:text="${chatError}">Пустое сообщение</p>
     </form>
+    <!-- Общая проверка мастера (была в карточке «Кубики»); R-04a заменит её проверкой навыка -->
+    <details th:if="${tableGm}" class="cp-more item-more">
+      <summary>Проверка ±Мод · DC</summary>
+      <form th:action="@{'/campaign/' + ${campaignId} + '/check'}" method="post" class="form-row">
+        <input type="number" name="modifier" class="narrow" placeholder="±Мод." aria-label="Модификатор">
+        <input type="number" name="difficulty" class="narrow" placeholder="DC" min="0" aria-label="Сложность"
+               th:attr="list=${'table-dc-' + campaignId}">
+        <datalist th:id="${'table-dc-' + campaignId}">
+          <option th:each="p : ${tableSystem.getCheckResolver().getDifficultyPresets()}" th:value="${p.value}" th:label="${p.key}">15</option>
+        </datalist>
+        <input type="text" name="label" class="grow" placeholder="Что проверяем" autocomplete="off" aria-label="Что проверяем">
+        <label class="check dice-hidden"><input type="checkbox" name="hidden" value="true" data-remember="dice-hidden"><span>🙈</span></label>
+        <button type="submit" class="btn btn-sm">✓</button>
+      </form>
+    </details>
   </div>
   <div class="card-body list chat-feed" data-chat-feed>
     <th:block th:replace="~{fragments/chat :: feed}"></th:block>
   </div>
 </section>
+
+<!-- Стол в выезжающей панели (кнопка «💬 Стол» в шапке): GET /campaign/{id}/chat/panel -->
+<th:block th:fragment="panel">
+  <section th:replace="~{fragments/chat :: card(${campaignId}, ${returnTo}, ${chatCharacters})}"></section>
+</th:block>
 
 <th:block th:fragment="feed">
   <!-- A-01: у последнего действия кампании — «↶», если его можно отменить тому, кто смотрит -->

@@ -61,6 +61,15 @@
       <span class="crumb is-current" th:text="${character.name}">Колясик</span>
     </nav>
     <span class="topbar-spacer"></span>
+    <!-- R-04: «Стол» с любой страницы кампании; где карточка чата есть на странице — прокрутка к ней -->
+    <th:block th:if="${c != null}">
+      <button type="button" class="btn btn-sm btn-ghost table-open" data-table-open
+              th:attr="data-table-src=@{'/campaign/' + ${c.id} + '/chat/panel'}" title="Чат и кубики">💬 Стол</button>
+      <dialog class="dialog table-drawer" data-table-drawer>
+        <button type="button" class="icon-btn table-close" data-table-close aria-label="Закрыть">✕</button>
+        <div data-table-body><p class="empty">Загрузка…</p></div>
+      </dialog>
+    </th:block>
     <!-- U-03: кто вошёл и выход -->
     <form th:if="${me != null}" th:action="@{/logout}" method="post" class="topbar-user">
       <span th:text="${me.username}">kolya</span>

@@ -100,5 +100,27 @@
   </nav>
 </section>
 
+<!-- R-04: журнал бросков кампании с листалкой — отдельно от «Стола» (там последние 30 вперемешку с чатом) -->
+<details th:fragment="roll-log(base)" class="card roll-log-card" id="roll-log" th:open="${param.rolls != null}">
+  <summary class="card-head"><h2 class="card-title"><span class="dot"></span>Журнал бросков</h2>
+    <span class="badge" th:if="${rollPage != null}" th:text="${rollPage.totalElements}">25</span></summary>
+  <div class="card-body roll-log" th:unless="${#lists.isEmpty(recentRolls)}">
+    <div th:each="r : ${recentRolls}" class="roll-row"
+         th:title="${r.expression} + ': ' + ${r.details} + (${r.gameDate != null} ? ' · ' + ${r.gameDate} : '')">
+      <span class="roll-who"><th:block th:text="${r.character != null ? r.character.name : 'Мастер'}">Колясик</th:block><th:block
+            th:if="${r.label != null}" th:text="' · ' + ${r.label}"> · Атака</th:block><th:block th:if="${r.hidden}"> 🙈</th:block></span>
+      <span class="roll-details" th:text="${r.expression} + ': ' + ${r.details}">2d6: [3, 5] = 8</span>
+      <span class="roll-total" th:text="${r.total}">8</span>
+    </div>
+  </div>
+  <div class="card-body empty" th:if="${#lists.isEmpty(recentRolls)}">Бросков ещё не было</div>
+  <nav th:if="${rollPage != null and rollPage.totalPages > 1}" class="card-body pager" aria-label="Страницы лога бросков">
+    <a th:if="${rollPage.hasPrevious()}" class="btn btn-sm btn-ghost"
+       th:href="@{${base}(rolls=${rollPage.number - 1})} + '#roll-log'">← Новее</a>
+    <span class="pager-info" th:text="${rollPage.number + 1} + ' из ' + ${rollPage.totalPages}">1 из 3</span>
+    <a th:if="${rollPage.hasNext()}" class="btn btn-sm btn-ghost"
+       th:href="@{${base}(rolls=${rollPage.number + 1})} + '#roll-log'">Старее →</a>
+  </nav>
+</details>
 </body>
 </html>

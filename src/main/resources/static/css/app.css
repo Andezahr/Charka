@@ -129,6 +129,16 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
   box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.35);
 }
 
+/* ---------- R-04: «Стол» ---------- */
+.chat-dice { flex-wrap: wrap; gap: 6px; }
+.roll-log-card > summary { list-style: none; cursor: pointer; }
+.roll-log-card > summary::-webkit-details-marker { display: none; }
+.table-drawer { position: fixed; inset: 0 0 0 auto; margin: 0; width: min(420px, 100vw); height: 100vh; max-height: 100vh;
+  border-radius: 0; padding: 12px; border-left: 1px solid var(--border-strong); }
+.table-drawer .card { box-shadow: none; }
+.table-close { position: absolute; top: 18px; right: 18px; z-index: 1; }
+@media (max-width: 560px) { .table-open { padding: 4px 8px; } }
+
 /* ---------- R-01…R-03: крошка и вкладки ---------- */
 body:has(.subnav) { --topbar-height: 102px; }
 .topbar-spacer { flex: 1; }

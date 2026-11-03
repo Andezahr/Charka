@@ -181,6 +181,36 @@ function initPage() {
     dialog.querySelector('[data-dialog-close]').addEventListener('click', () => dialog.close());
   });
 
+  // R-04: «💬 Стол» — на странице с карточкой чата прокрутка к ней, иначе выезжающая панель; открытая панель
+  // переживает обновление страницы после отправки (sessionStorage)
+  document.querySelectorAll('[data-table-open]').forEach(button => {
+    const drawer = button.parentElement.querySelector('[data-table-drawer]');
+    const open = async () => {
+      const pinned = document.querySelector('main [data-chat]');
+      if (pinned) {
+        pinned.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+      drawer.showModal();
+      try { sessionStorage.setItem('charka.table', '1'); } catch (e) { /* только удобство */ }
+      try {
+        const url = button.dataset.tableSrc + '?returnTo=' + encodeURIComponent(location.pathname);
+        drawer.querySelector('[data-table-body]').innerHTML = await fetch(url, { cache: 'no-store' }).then(r => r.text());
+        safely('chat', initChat);
+        const input = drawer.querySelector('input[name="text"]');
+        if (input && !matchMedia('(pointer: coarse)').matches) input.focus();
+      } catch (e) {
+        drawer.querySelector('[data-table-body]').textContent = 'Стол не загрузился — нет связи с сервером';
+      }
+    };
+    button.addEventListener('click', open);
+    drawer.querySelector('[data-table-close]').addEventListener('click', () => drawer.close());
+    drawer.addEventListener('close', () => { try { sessionStorage.removeItem('charka.table'); } catch (e) { /* только удобство */ } });
+    let reopen = false;
+    try { reopen = sessionStorage.getItem('charka.table') === '1'; } catch (e) { /* только удобство */ }
+    if (reopen && !document.querySelector('main [data-chat]')) open();
+  });
+
   // A-02: приглашение — у ноутбука несколько адресов, QR-код того, что выбран
   document.querySelectorAll('[data-invite-select]').forEach(select => {
     const codes = select.closest('[data-invite]').querySelectorAll('[data-invite-qr]');

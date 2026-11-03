@@ -227,7 +227,9 @@
       </section>
 
       <!-- Кубики мастера и последние броски кампании -->
-      <th:block th:if="${isGm}"><section th:replace="~{fragments/dice :: card('/campaign/' + ${campaign.id}, true)}"></section></th:block>
+      <!-- R-04: карточка «Кубики» ушла в «Стол» (fragments/dice :: card остаётся, маршруты /roll и /check — тоже);
+           журнал бросков с листалкой — мастеру, свёрнут -->
+      <th:block th:if="${isGm}"><details th:replace="~{fragments/dice :: roll-log('/campaign/' + ${campaign.id})}"></details></th:block>
       <th:block th:if="${isGm}"><section th:replace="~{fragments/requests :: ask-form(${campaign})}"></section></th:block>
       <section th:replace="~{fragments/chat :: card(${campaign.id}, '/campaign/' + ${campaign.id}, ${chatCharacters})}"></section>
     </div>
