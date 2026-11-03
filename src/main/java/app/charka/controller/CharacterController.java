@@ -49,6 +49,44 @@ public class CharacterController {
     private final DiceService diceService;
     private final AttackService attackService;
 
+    /**
+     * A-03: окно «Добавить» по требованию — при первом открытии; app.js хранит его, пока не изменится {@code v}
+     * (баланс и подсказки справочника).
+     */
+    @GetMapping("/add-dialog")
+    public String addDialog(@PathVariable Long id, Model model) {
+        Character character = characterService.getById(id);
+        GameSystem system = systemRegistry.forCharacter(character);
+        model.addAttribute("moneySum", moneyService.calculateBalance(id));
+        model.addAttribute("currency", system.getCurrency());
+        addCatalog(model, system, character);
+        return "fragments/items :: add-dialog-body";
+    }
+
+    /** A-03: форма правки предмета по требованию — по ✎: поля всех типов предмета весят по 30 КБ на строку */
+    @GetMapping("/items/{itemId}/edit-form")
+    public String itemEditForm(@PathVariable Long id, @PathVariable Long itemId, Model model) {
+        Character character = characterService.getById(id);
+        Item item = character.getInventories().stream()
+                .flatMap(inventory -> inventory.getContent().stream())
+                .filter(candidate -> candidate.getId().equals(itemId))
+                .findFirst()
+                .orElseThrow(app.charka.exception.NotFoundException.forId("Item", itemId));
+        model.addAttribute("character", character);
+        model.addAttribute("item", item);
+        model.addAttribute("inv", item.getInventory());
+        model.addAttribute("itemTypes", systemRegistry.forCharacter(character).getItemTypes());
+        return "fragments/items :: edit-form";
+    }
+
+    private static void addCatalog(Model model, GameSystem system, Character character) {
+        model.addAttribute("itemTypes", system.getItemTypes());
+        model.addAttribute("itemCatalog", system.getItemCatalog().stream()
+                .collect(Collectors.groupingBy(CatalogItem::typeCode, Collectors.groupingBy(CatalogItem::group, LinkedHashMap::new, Collectors.toList()))));
+        model.addAttribute("suggestedCatalog", system.getSuggestedCatalog(character).stream()
+                .collect(Collectors.groupingBy(CatalogItem::typeCode)));
+    }
+
     @GetMapping
     public String characterPage(@PathVariable Long id, Model model) {
         Character character = characterService.getById(id);
@@ -65,6 +103,9 @@ public class CharacterController {
         model.addAttribute("expenseTemplates", system.getExpenseTemplates().stream()
                 .collect(Collectors.groupingBy(ExpenseTemplate::group, LinkedHashMap::new, Collectors.toList())));
         model.addAttribute("currency", system.getCurrency());
+        // A-03: окно «Добавить» грузится по требованию; версия меняется вместе с балансом и подсказками справочника
+        model.addAttribute("addDialogVersion", Long.toHexString(java.util.Objects.hash(moneySum,
+                system.getSuggestedCatalog(character).stream().map(CatalogItem::key).toList())));
         model.addAttribute("effectTemplates", system.getEffectTemplates());
         model.addAttribute("effectStats", system.getCurrentStats(character).values());
         model.addAttribute("luckLeft", java.util.Map.of(character.getId(), system.getLuck(character)));
@@ -76,10 +117,6 @@ public class CharacterController {
         model.addAttribute("itemTypes", system.getItemTypes());
         model.addAttribute("itemTypeByCode", system.getItemTypes().stream()
                 .collect(Collectors.toMap(ItemTypeDefinition::code, Function.identity())));
-        model.addAttribute("itemCatalog", system.getItemCatalog().stream()
-                .collect(Collectors.groupingBy(CatalogItem::typeCode, Collectors.groupingBy(CatalogItem::group, LinkedHashMap::new, Collectors.toList()))));
-        model.addAttribute("suggestedCatalog", system.getSuggestedCatalog(character).stream()
-                .collect(Collectors.groupingBy(CatalogItem::typeCode)));
         model.addAttribute("itemActions", character.getInventories().stream()
                 .flatMap(inventory -> inventory.getContent().stream())
                 .collect(Collectors.toMap(Item::getId, system::getItemActions)));

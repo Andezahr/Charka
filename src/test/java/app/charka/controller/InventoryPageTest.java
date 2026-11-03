@@ -85,6 +85,15 @@ class InventoryPageTest {
                 .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
     }
 
+    /** A-03: содержимое окна «Добавить» приходит отдельно, при первом открытии */
+    private String addDialog() throws Exception {
+        entityManager.flush();
+        entityManager.clear();
+        return mockMvc.perform(get("/character/" + character.getId() + "/add-dialog"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+    }
+
     private String deleteForm(String html, Item item) {
         String action = "/items/" + item.getId() + "/delete";
         int start = html.lastIndexOf("<form", html.indexOf(action));
@@ -116,7 +125,7 @@ class InventoryPageTest {
     @Test
     @DisplayName("в окне «Добавить» у патрона список типичных значений и «Другой…»")
     void caliberList() throws Exception {
-        String html = sheet();
+        String html = addDialog();
 
         assertThat(html).contains("data-name-prefix=\"Патроны \"", "<option value=\"9mm\">9mm</option>", "Другой…");
     }
@@ -312,7 +321,26 @@ class InventoryPageTest {
     void buyCheckbox() throws Exception {
         income(1200);
 
-        assertThat(sheet()).contains("data-add-buy").contains("data-balance=\"1200\"");
+        assertThat(addDialog()).contains("data-add-buy").contains("data-balance=\"1200\"");
+    }
+
+    @Test
+    @DisplayName("A-03: справочник и формы правки не в листе — оболочка окна с версией и заглушки по ✎")
+    void lazyParts() throws Exception {
+        Item weapon = itemService.addFromCatalog(inventoryId, "arasaka_minami_10", 1);
+        String before = sheet();
+        income(700);
+        String after = sheet();
+
+        assertThat(before).doesNotContain("data-add-search", "class=\"form-row item-edit\"")
+                .contains("data-add-src=\"/character/" + character.getId() + "/add-dialog?v=")
+                .contains("data-lazy=\"/character/" + character.getId() + "/items/" + weapon.getId() + "/edit-form\"");
+        String version = before.replaceAll("(?s).*add-dialog[?]v=([0-9a-f-]+).*", "$1");
+        assertThat(after).doesNotContain("add-dialog?v=" + version + "\"");
+
+        String form = mockMvc.perform(get("/character/" + character.getId() + "/items/" + weapon.getId() + "/edit-form"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        assertThat(form).contains("Arasaka Minami 10", "Сохранить", "data-item-fields=\"CP2020_WEAPON\"");
     }
 
     private void income(long amount) {

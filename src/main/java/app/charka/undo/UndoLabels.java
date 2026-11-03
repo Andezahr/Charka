@@ -46,10 +46,18 @@ public class UndoLabels {
     private final ItemRepository itemRepository;
     private final GameSystemRegistry systemRegistry;
 
+    /**
+     * @param catalogKey что добавляют из справочника; null — не оттуда
+     * @param itemName   название своего добавляемого предмета; null — не добавление
+     */
     @Transactional(readOnly = true)
-    public String label(String path, Long characterId, boolean buy) {
+    public String label(String path, Long characterId, boolean buy, String catalogKey, String itemName) {
         String who = characterId == null ? null : name("SELECT name FROM character WHERE id = ?", characterId);
         String what = what(path, buy);
+        String added = catalogKey != null ? catalogName(characterId, catalogKey) : itemName;
+        if (added != null && !added.isBlank() && (path.endsWith("/items") || path.endsWith("/items/catalog"))) {
+            what = (buy ? "покупка" : "новый предмет") + " — " + added.strip();
+        }
         String text = who == null ? capitalize(what) : who + ": " + what;
         return text.length() > 255 ? text.substring(0, 255) : text;
     }
@@ -104,6 +112,18 @@ public class UndoLabels {
                     .findFirst().orElse(code);
         }
         return plain(label).toLowerCase() + " — " + item.getName();
+    }
+
+    private String catalogName(Long characterId, String key) {
+        if (characterId == null) {
+            return null;
+        }
+        return jdbc.queryForList("SELECT c.game_system FROM character ch JOIN campaign c ON ch.campaign_id = c.id WHERE ch.id = ?",
+                        String.class, characterId).stream().findFirst()
+                .flatMap(systemRegistry::find)
+                .flatMap(system -> system.getItemCatalog().stream().filter(entry -> entry.key().equals(key)).findFirst())
+                .map(app.charka.item.CatalogItem::name)
+                .orElse(null);
     }
 
     private String itemName(Long itemId) {

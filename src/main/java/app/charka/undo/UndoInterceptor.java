@@ -66,7 +66,8 @@ public class UndoInterceptor implements HandlerInterceptor {
             return true;
         }
         request.setAttribute(BEFORE, undoService.snapshot(campaignId));
-        request.setAttribute(LABEL, labels.label(rest, actor, "true".equals(request.getParameter("buy"))));
+        request.setAttribute(LABEL, labels.label(rest, actor, "true".equals(request.getParameter("buy")),
+                request.getParameter("catalogKey"), request.getParameter("itemName")));
         request.setAttribute(ACTOR, actor);
         return true;
     }

@@ -154,14 +154,8 @@
         <form th:replace="~{fragments/items :: action-form(${action}, @{${itemUrl} + '/action/' + ${action.code}}, ${back})}"></form>
       </th:block>
     </div>
-    <form th:action="@{${itemUrl} + '/edit'}" method="post" class="form-row item-edit" data-item-form>
-      <input type="text" name="itemName" class="grow" th:value="${item.name}" required placeholder="Название">
-      <input type="number" name="quantity" class="narrow" th:value="${item.quantity}" min="1" placeholder="Кол-во">
-      <input type="number" name="cost" class="narrow" th:value="${item.cost}" min="0" placeholder="Цена">
-      <input type="text" name="description" class="grow" th:value="${item.description}" placeholder="Описание">
-      <th:block th:replace="~{fragments/items :: type-fields(${itemTypes}, ${item})}"></th:block>
-      <button type="submit" class="btn btn-sm btn-primary">Сохранить</button>
-    </form>
+    <!-- A-03: форма правки грузится по ✎ (edit-form): поля всех типов предмета — 30 КБ на строку -->
+    <div class="item-edit-slot" th:attr="data-lazy=@{'/character/' + ${character.id} + '/items/' + ${item.id} + '/edit-form'}"></div>
     <form th:if="${#lists.size(character.inventories) > 1}" th:action="@{${itemUrl} + '/move'}" method="post" class="form-row">
       <select name="targetInventoryId" required aria-label="Куда переместить">
         <option th:each="target : ${character.inventories}" th:if="${target.id != inv.id}"
@@ -175,6 +169,17 @@
     </form>
   </div>
 </div>
+
+<!-- Форма правки предмета (A-03): GET /character/{id}/items/{itemId}/edit-form, вставляется в строку по ✎ -->
+<form th:fragment="edit-form" th:with="itemUrl=${'/character/' + character.id + '/inventories/' + inv.id + '/items/' + item.id}"
+      th:action="@{${itemUrl} + '/edit'}" method="post" class="form-row item-edit" data-item-form>
+  <input type="text" name="itemName" class="grow" th:value="${item.name}" required placeholder="Название">
+  <input type="number" name="quantity" class="narrow" th:value="${item.quantity}" min="1" placeholder="Кол-во">
+  <input type="number" name="cost" class="narrow" th:value="${item.cost}" min="0" placeholder="Цена">
+  <input type="text" name="description" class="grow" th:value="${item.description}" placeholder="Описание">
+  <th:block th:replace="~{fragments/items :: type-fields(${itemTypes}, ${item})}"></th:block>
+  <button type="submit" class="btn btn-sm btn-primary">Сохранить</button>
+</form>
 
 <!-- Фишка под строкой предмета: значение, одно нажатие или короткий выбор, если вариантов несколько -->
 <th:block th:fragment="chip(chip, item, inv)"
@@ -269,9 +274,14 @@
 </section>
 
 <!-- Окно «Добавить» одно на страницу: инвентарь подставляет кнопка, которая его открыла ([data-add-item] в app.js).
-     У каждого типа предмета своя вкладка; если тип один, вкладок нет. -->
+     A-03: на странице только оболочка, содержимое (весь справочник, ~250 КБ) app.js берёт при первом открытии
+     и хранит, пока не изменится версия (баланс, подсказки) -->
 <dialog th:fragment="add-dialog(characterId)" class="dialog add-dialog" data-add-dialog
-        th:attr="data-base=@{'/character/' + ${characterId} + '/inventories/'}">
+        th:attr="data-base=@{'/character/' + ${characterId} + '/inventories/'},data-add-src=@{'/character/' + ${characterId} + '/add-dialog'(v=${addDialogVersion})}">
+</dialog>
+
+<!-- Содержимое окна «Добавить»: GET /character/{id}/add-dialog. У каждого типа предмета своя вкладка; если тип один, вкладок нет -->
+<th:block th:fragment="add-dialog-body">
   <div class="add-dialog-head">
     <h2 class="card-title" data-add-target>Добавить</h2>
     <button type="button" class="icon-btn" data-dialog-close aria-label="Закрыть">✕</button>
@@ -331,7 +341,7 @@
       </form>
     </details>
   </div>
-</dialog>
+</th:block>
 
 <!-- «Купить»: цена списывается записью в деньгах. Выбор общий для всех вкладок и запоминается (app.js) -->
 <label th:fragment="buy-check" class="check add-buy" th:title="'Списать цену с денег персонажа, на счету ' + ${moneySum} + ' ' + ${currency.symbol}">

@@ -178,7 +178,7 @@ class UndoTest {
                             .param("catalogKey", "arasaka_minami_10").param("quantity", "1").param("buy", "true"))
                     .andExpect(status().is3xxRedirection()).andReturn();
             UndoService.Offer offer = offer(bought);
-            assertThat(offer.label()).isEqualTo("Колясик: покупка");
+            assertThat(offer.label()).isEqualTo("Колясик: покупка — Arasaka Minami 10");
 
             undo(offer);
 
