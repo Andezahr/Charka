@@ -350,7 +350,7 @@ a.row:hover .arrow { color: var(--accent); transform: translateX(3px); }
   color: var(--muted);
 }
 
-input[type="text"], input[type="number"], input[type="date"], input[type="search"], select, textarea {
+input[type="text"], input[type="password"], input[type="number"], input[type="date"], input[type="search"], select, textarea {
   width: 100%;
   min-width: 0;
   padding: 9px 12px;
@@ -514,6 +514,12 @@ form.inline { display: inline-flex; margin: 0; }
 .undo-close { background: none; border: none; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; padding: 0 4px; }
 .undo-close:hover { color: var(--text); }
 .chat-undo { margin: 0; }
+/* A-02: приглашение — QR-код на белом, чтобы камера читала его и на тёмной теме */
+.invite { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 12px 0; }
+.invite[hidden] { display: none; }
+.invite-qr { width: min(240px, 70vw); border-radius: var(--radius-sm); overflow: hidden; }
+.invite-qr svg { display: block; width: 100%; height: auto; }
+.invite-link { font-size: 13px; overflow-wrap: anywhere; text-align: center; }
 .chat-undo .btn { padding: 2px 8px; }
 
 /* Итог действия вверху страницы: прокрутка после действия остаётся на месте, сообщение не должно оказаться за краем */

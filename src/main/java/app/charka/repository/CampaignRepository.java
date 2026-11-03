@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface CampaignRepository extends JpaRepository<Campaign, Long> {
+    java.util.Optional<Campaign> findByInviteToken(String inviteToken);
 }

@@ -38,7 +38,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 977 тестов, на 2026-11-03 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 984 теста, на 2026-11-03 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -58,7 +58,7 @@ dice/         DiceExpression (разбор NdM±K), DiceResult, DiceService (б�
 attack/       AttackRules (контракт системы: form, plan, spend, outcome, effectHit, isObjectTarget/damageObject — цель-предмет), AttackSource (предмет или способность), ObjectTarget (машина в списке целей), AttackContext, AttackPlan, AttackOutcome, AttackForm, AttackRequest, AttackHit, AreaDamage (урон по площади), LingeringEffect (что остаётся на цели на следующие раунды), AttackResult, AttackService (один ход для всех атак, урон цели, лог, заряды PendingBlast)
 creation/     CharacterCreation (мастер создания персонажа: форма, бросок очков, создание; реализует система)
 npc/          NpcTemplate, NpcSheet (что выбросила система), NpcService (создание по шаблону, копии, удаление)
-security/     SecurityConfig, UserService (регистрация, вход), AccessService (кто что видит: мастер кампании, игрок персонажа), AccessInterceptor (чужое — 404), AuthController
+security/     SecurityConfig, UserService (регистрация, вход), AccessService (кто что видит: мастер кампании, игрок персонажа), AccessInterceptor (чужое — 404), AuthController, InviteService + InviteController (приглашение по ссылке и QR, A-02)
 chat/         ChatService (чат кампании: сообщения и броски одной лентой)
 undo/         CampaignSnapshots (снимок игрового состояния кампании строками таблиц с прежними id, восстановление), UndoService (запись, отмена последнего действия, кто может), UndoInterceptor (снимок до и после любого изменяющего запроса), UndoLabels (подпись по адресу)
 map/          MapDoc (документ карты: стены-грани, клетки, предметы, зоны, подписи, подложка), MapRules (правила карты системы), MapObject, Material, MapGrid (что в клетке, линия взгляда, досягаемость), TokenPlacer, BattleMapService (карты кампании, подложка), BattleFieldService (поле идущего боя), PointerBoard (указатели в памяти), MapGenerator, EditableMap
@@ -83,7 +83,7 @@ TODO.txt       список планов автора (см. ниже)
 
 ```
 AppUser (username, passwordHash) — пользователь; мастер своих кампаний, игрок своих персонажей
-Campaign (name, system, startDate, currentDate, gm?)   — system: код GameSystem (колонка game_system); gm — мастер (U-03)
+Campaign (name, system, startDate, currentDate, gm?, inviteToken?)   — system: код GameSystem (колонка game_system); gm — мастер (U-03); inviteToken — приглашение (A-02)
  ├─ RollLog* (character?, expression, details, total, label, gameDate, createdAt) — без коллекции в Campaign, не экспортируется
  ├─ ChatMessage* (character?, author, text, gameDate, createdAt) — чат, как лог: без коллекции, не экспортируется
  ├─ UndoEntry* (userId?, characterId?, label, createdAt, snapshot JSON) — отмена (A-01), последние 20, без коллекции, не экспортируется
@@ -125,7 +125,8 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 
 | Метод | Путь | Что делает |
 |---|---|---|
-| GET, POST | `/login`, `/register`; POST `/logout` | вход, регистрация (сразу вход), выход |
+| GET, POST | `/login`, `/register`; POST `/logout` | вход, регистрация (сразу вход; без `repeat` — со страницы входа, «Я новый игрок»), выход |
+| GET, POST | `/join/{token}`, POST `/join/{token}/claim/{cid}`; POST `/campaign/{id}/invite/reset` | приглашение (A-02): свободные персонажи «Это я», мастер создания; новая ссылка |
 | GET | `/` | свои кампании (мастер или игрок) и свои персонажи |
 | POST | `/campaign/{id}/characters/{cid}/player` | `username` → отдать персонажа игроку (пусто — мастеру) |
 | POST | `/campaigns` | `name`, `system`, `startDate?` → новая кампания |

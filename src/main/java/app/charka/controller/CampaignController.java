@@ -36,11 +36,14 @@ public class CampaignController {
     private final app.charka.security.AccessService accessService;
     private final app.charka.repository.AppUserRepository userRepository;
     private final List<app.charka.creation.CharacterCreation> creations;
+    private final app.charka.security.InviteService inviteService;
 
     public CampaignController(CampaignService campaignService, CharacterService characterService,
                               GameSystemRegistry systemRegistry, DiceService diceService, CampaignAwardService awardService,
-                              List<app.charka.creation.CharacterCreation> creations, app.charka.chat.ChatService chatService, app.charka.security.AccessService accessService, app.charka.repository.AppUserRepository userRepository) {
+                              List<app.charka.creation.CharacterCreation> creations, app.charka.chat.ChatService chatService, app.charka.security.AccessService accessService, app.charka.repository.AppUserRepository userRepository,
+                              app.charka.security.InviteService inviteService) {
         this.creations = creations;
+        this.inviteService = inviteService;
         this.campaignService = campaignService;
         this.characterService = characterService;
         this.systemRegistry = systemRegistry;
@@ -52,7 +55,8 @@ public class CampaignController {
     }
 
     @GetMapping
-    public String campaignPage(@PathVariable Long campaignId, @RequestParam(defaultValue = "0") int rolls, Model model) {
+    public String campaignPage(@PathVariable Long campaignId, @RequestParam(defaultValue = "0") int rolls, Model model,
+                               jakarta.servlet.http.HttpServletRequest request) {
         Campaign campaign = campaignService.getById(campaignId);
 
         LocalDate currentDate = campaign.getCurrentDate();
@@ -79,6 +83,13 @@ public class CampaignController {
         model.addAttribute("feed", chatService.feed(campaignId, ChatController.FEED_SIZE));
         model.addAttribute("awardCounters", awardService.awardableCounters(campaignId));
         model.addAttribute("hasCreation", creations.stream().anyMatch(creation -> creation.getSystemCode().equals(campaign.getSystem())));
+        // A-02: ссылка-приглашение и QR-код — мастеру, по адресу ноутбука в локальной сети
+        if (accessService.isEnabled() && accessService.isGm(campaign)) {
+            String path = "/join/" + inviteService.token(campaignId);
+            model.addAttribute("invites", inviteService.addresses(request.getScheme(), request.getServerName(), request.getServerPort()).stream()
+                    .map(base -> java.util.Map.of("url", base + path, "svg", inviteService.qrSvg(base + path)))
+                    .toList());
+        }
 
         return "campaign";
     }

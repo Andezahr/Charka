@@ -31,6 +31,11 @@ public class Campaign {
     @JoinColumn(name = "gm_user_id")
     private AppUser gm;
 
+    /** Приглашение игроков (A-02): {@code /join/{token}}; null — ещё не выдано. В экспорт не идёт */
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    @Column(name = "invite_token", length = 64)
+    private String inviteToken;
+
     private LocalDate startDate;
     @Column(name = "current_date_value")
     private LocalDate currentDate;

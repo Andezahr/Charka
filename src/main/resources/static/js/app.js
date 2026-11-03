@@ -135,6 +135,12 @@ function initPage() {
     });
   });
 
+  // A-02: приглашение — у ноутбука несколько адресов, QR-код того, что выбран
+  document.querySelectorAll('[data-invite-select]').forEach(select => {
+    const codes = select.closest('[data-invite]').querySelectorAll('[data-invite-qr]');
+    select.addEventListener('change', () => codes.forEach((code, i) => { code.hidden = String(i) !== select.value; }));
+  });
+
   // Форма создания счётчика: доп. поля показываются только для выбранного типа.
   // <select data-type-select> + блоки <div data-type-fields="ТИП">; поля скрытых блоков отключаются, чтобы не уходили на сервер
   document.querySelectorAll('[data-type-select]').forEach(select => {

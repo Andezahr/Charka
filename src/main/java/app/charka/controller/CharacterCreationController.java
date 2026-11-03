@@ -27,10 +27,16 @@ public class CharacterCreationController {
 
     private final CampaignService campaignService;
     private final List<CharacterCreation> creations;
+    private final app.charka.security.AccessService accessService;
+    private final app.charka.repository.CharacterRepository characterRepository;
 
-    public CharacterCreationController(CampaignService campaignService, List<CharacterCreation> creations) {
+    public CharacterCreationController(CampaignService campaignService, List<CharacterCreation> creations,
+                                       app.charka.security.AccessService accessService,
+                                       app.charka.repository.CharacterRepository characterRepository) {
         this.campaignService = campaignService;
         this.creations = creations;
+        this.accessService = accessService;
+        this.characterRepository = characterRepository;
     }
 
     @GetMapping
@@ -73,6 +79,13 @@ public class CharacterCreationController {
         CharacterCreation creation = creationFor(campaign).orElseThrow(() -> new IllegalArgumentException("В этой системе нет мастера создания"));
         try {
             Character created = creation.create(campaign, params);
+            // A-02: игрок по приглашению создаёт себе — персонаж сразу его
+            if (accessService.isEnabled() && !accessService.isGm(campaign)) {
+                accessService.current().ifPresent(me -> {
+                    created.setPlayer(me);
+                    characterRepository.save(created);
+                });
+            }
             return "redirect:/character/" + created.getId();
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());

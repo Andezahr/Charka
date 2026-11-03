@@ -46,7 +46,7 @@ public class AccessInterceptor implements HandlerInterceptor {
         String path = request.getRequestURI().substring(request.getContextPath().length());
         Matcher campaign = CAMPAIGN.matcher(path);
         if (campaign.matches()) {
-            checkCampaign(Long.valueOf(campaign.group(1)), campaign.group(2) == null ? "" : campaign.group(2), request.getMethod());
+            checkCampaign(Long.valueOf(campaign.group(1)), campaign.group(2) == null ? "" : campaign.group(2), request.getMethod(), request);
             return true;
         }
         Matcher character = CHARACTER.matcher(path);
@@ -61,14 +61,18 @@ public class AccessInterceptor implements HandlerInterceptor {
         }
         Matcher export = EXPORT.matcher(path);
         if (export.matches()) {
-            checkCampaign(Long.valueOf(export.group(1)), "/export", request.getMethod());
+            checkCampaign(Long.valueOf(export.group(1)), "/export", request.getMethod(), request);
         }
         return true;
     }
 
-    private void checkCampaign(Long id, String rest, String method) {
+    private void checkCampaign(Long id, String rest, String method, HttpServletRequest request) {
         Campaign campaign = campaignRepository.findById(id).orElseThrow(NotFoundException.forId("Campaign", id));
         if (accessService.isGm(campaign)) {
+            return;
+        }
+        // A-02: по приглашению игрок создаёт себе персонажа мастером создания
+        if (rest.startsWith("/characters/new") && invited(request, id)) {
             return;
         }
         boolean playerPath = (rest.isEmpty() && "GET".equals(method))
@@ -79,5 +83,11 @@ public class AccessInterceptor implements HandlerInterceptor {
         if (!playerPath || !accessService.isPlayer(campaign)) {
             throw NotFoundException.forId("Campaign", id).get();
         }
+    }
+
+    private static boolean invited(HttpServletRequest request, Long campaignId) {
+        jakarta.servlet.http.HttpSession session = request.getSession(false);
+        return session != null && session.getAttribute(InviteService.INVITED) instanceof java.util.Collection<?> invited
+                && invited.contains(campaignId);
     }
 }
