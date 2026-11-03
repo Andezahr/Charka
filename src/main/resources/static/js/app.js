@@ -2,17 +2,43 @@
 
 // U-03: CSRF. Сервер кладёт токен в cookie XSRF-TOKEN; каждый запрос, кроме чтения, несёт его заголовком —
 // формы обновления на месте, ход фишки, автосохранение карты
+// A-14: у каждого запроса срок — 20 с (файл — 60 с). Без него оборвавшийся на телефоне запрос висит вечно:
+// формы ждут его и не отправляются, опрос хода и ленты останавливается — «приложение перестало отвечать»
+const REQUEST_TIMEOUT = 20000;
+const UPLOAD_TIMEOUT = 60000;
 (() => {
   const plain = window.fetch.bind(window);
+  const bounded = (input, init) => {
+    if (init.signal || init.keepalive) return plain(input, init);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), init.body instanceof FormData ? UPLOAD_TIMEOUT : REQUEST_TIMEOUT);
+    return plain(input, { ...init, signal: controller.signal }).finally(() => clearTimeout(timer));
+  };
   window.fetch = (input, init = {}) => {
     const method = (init.method || 'GET').toUpperCase();
-    if (method === 'GET' || method === 'HEAD') return plain(input, init);
+    if (method === 'GET' || method === 'HEAD') return bounded(input, init);
     const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/);
-    if (!match) return plain(input, init);
+    if (!match) return bounded(input, init);
     const headers = new Headers(init.headers || {});
     headers.set('X-XSRF-TOKEN', decodeURIComponent(match[1]));
-    return plain(input, { ...init, headers });
+    return bounded(input, { ...init, headers });
   };
+})();
+
+// A-14: ошибки скрипта уходят в журнал сервера — по ним видно, что ломается у игроков; не больше 5 за страницу
+(() => {
+  let sent = 0;
+  const report = (message, stack) => {
+    if (sent++ >= 5) return;
+    try {
+      fetch('/client-error', { method: 'POST', keepalive: true, body: new URLSearchParams({
+        page: location.pathname + location.search, message: String(message).slice(0, 500), stack: String(stack || '').slice(0, 2000) }) })
+        .catch(() => { /* сервер недоступен — некуда писать */ });
+    } catch (e) { /* только журнал */ }
+  };
+  window.addEventListener('error', e => report(e.message, e.error && e.error.stack));
+  window.addEventListener('unhandledrejection', e => report(e.reason && e.reason.message || e.reason, e.reason && e.reason.stack));
+  window.reportClientError = report;
 })();
 
 // Обработчики элементов страницы: вызывается при загрузке и после каждого обновления на месте.
@@ -651,11 +677,21 @@ function initPage() {
     });
   });
 
-  initBattle();
-  initEditor();
-  initChat();
-  initTurnWatch();
-  initRequests();
+  // A-14: каждая часть отдельно — ошибка в одной не мешает остальным
+  safely('battle', initBattle);
+  safely('editor', initEditor);
+  safely('chat', initChat);
+  safely('turn', initTurnWatch);
+  safely('requests', initRequests);
+}
+
+function safely(name, init) {
+  try {
+    init();
+  } catch (e) {
+    console.error(name, e);
+    if (window.reportClientError) window.reportClientError(name + ': ' + e.message, e.stack);
+  }
 }
 
 // A-04: «мой ход» на телефоне игрока. Опрос /turn раз в 2 с; ход сменился — если подошла очередь игрока,
@@ -1030,7 +1066,7 @@ const replacePage = html => {
   document.title = next.title;
   document.body.replaceWith(next.body);
   openableDetails().filter(details => opened.has(detailsKey(details))).forEach(details => { details.open = true; });
-  initPage();
+  safely('initPage', initPage);
 };
 
 const fetchPage = async (url, init) => {
@@ -1041,13 +1077,15 @@ const fetchPage = async (url, init) => {
 };
 
 // Сервер недоступен: действие могло не выполниться, страница и введённое остаются
-const showConnectionError = () => {
+const showConnectionError = timedOut => {
   const alert = document.createElement('div');
   alert.className = 'alert alert-error';
   alert.setAttribute('role', 'alert');
   const text = document.createElement('span');
   text.className = 'alert-text';
-  text.textContent = 'Нет связи с сервером. Проверьте, прошло ли действие, и повторите.';
+  text.textContent = timedOut
+    ? 'Сервер не ответил за 20 секунд. Проверьте, прошло ли действие, и повторите.'
+    : 'Нет связи с сервером. Проверьте, прошло ли действие, и повторите.';
   const close = document.createElement('button');
   close.type = 'button';
   close.className = 'alert-close';
@@ -1094,7 +1132,7 @@ const visit = async (url, init, scroll, pressed) => {
     if (kept) scrollBy(0, kept.getBoundingClientRect().top - pressedTop);
     revealAnchor();
   } catch (e) {
-    if (ticket === lastVisit) showConnectionError();
+    if (ticket === lastVisit) showConnectionError(e && e.name === 'AbortError');
   }
 };
 
@@ -1118,9 +1156,13 @@ document.addEventListener('submit', async e => {
   if (submitting) return;
   submitting = true;
   document.documentElement.classList.add('is-busy');
-  await visit(new URL(action, location.href).href, { method: 'POST', body: data }, undefined, e.submitter || form);
-  submitting = false;
-  document.documentElement.classList.remove('is-busy');
+  try {
+    await visit(new URL(action, location.href).href, { method: 'POST', body: data }, undefined, e.submitter || form);
+  } finally {
+    // A-14: что бы ни случилось с ответом, следующая форма должна отправляться
+    submitting = false;
+    document.documentElement.classList.remove('is-busy');
+  }
 });
 
 document.addEventListener('click', e => {
