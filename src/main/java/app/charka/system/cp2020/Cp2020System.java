@@ -308,6 +308,11 @@ public class Cp2020System implements GameSystem {
         return List.of("awareness");
     }
 
+    @Override
+    public List<app.charka.system.Reference> getReference() {
+        return Cp2020Reference.sections();
+    }
+
     /** A-10: зарплата по таблице с. 58 — по лучшей роли и её спецспособности */
     @Override
     public app.charka.system.Earning earnings(Character character, int days) {

@@ -1330,6 +1330,17 @@ html:has(.is-editing) {
 .request-card form { margin: 0; }
 .undo-toast { flex-wrap: wrap; }
 
+/* ---------- A-11: справка правил ---------- */
+.reference-dialog { width: min(640px, calc(100vw - 32px)); }
+.reference-body { max-height: 70vh; overflow-y: auto; padding-right: 12px; }
+.reference-section { border-top: 1px solid var(--border); padding: 8px 0; }
+.reference-section > summary { display: flex; justify-content: space-between; gap: 8px; cursor: pointer; font-weight: 600; }
+.reference-page { color: var(--muted); font-weight: 400; font-size: 13px; }
+.reference-lines { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 8px 0 0; font-size: 14px; }
+.reference-lines dt { color: var(--text-soft); }
+.reference-lines dt.is-note { grid-column: 1 / -1; color: var(--muted); font-size: 13px; }
+.reference-lines dd { margin: 0; text-align: right; font-weight: 600; white-space: nowrap; }
+
 /* ---------- A-10: даунтайм ---------- */
 .downtime-lines { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
 .downtime-days { flex-wrap: wrap; }

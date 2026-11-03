@@ -11,6 +11,7 @@
       <h1 class="page-title" th:text="${campaign.name}">Кампания</h1>
     </div>
     <div class="page-actions">
+      <th:block th:replace="~{fragments/reference :: open-button(${campaign.id})}"></th:block>
       <a th:href="@{'/campaign/' + ${campaign.id}}" class="btn btn-ghost">← К кампании</a>
     </div>
   </div>

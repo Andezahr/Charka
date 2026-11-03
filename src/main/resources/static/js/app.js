@@ -164,6 +164,23 @@ function initPage() {
     });
   });
 
+  // A-11: «📖 Правила» — окно с содержимым по первому открытию, дальше из памяти страницы (lazyHtml)
+  document.querySelectorAll('[data-reference-open]').forEach(button => {
+    const dialog = button.nextElementSibling;
+    button.addEventListener('click', async () => {
+      dialog.showModal();
+      if (!dialog.dataset.ready) {
+        try {
+          dialog.querySelector('[data-reference-body]').innerHTML = await lazyHtml(button.dataset.referenceSrc);
+          dialog.dataset.ready = '1';
+        } catch (e) {
+          dialog.querySelector('[data-reference-body]').textContent = 'Справка не загрузилась — нет связи с сервером';
+        }
+      }
+    });
+    dialog.querySelector('[data-dialog-close]').addEventListener('click', () => dialog.close());
+  });
+
   // A-02: приглашение — у ноутбука несколько адресов, QR-код того, что выбран
   document.querySelectorAll('[data-invite-select]').forEach(select => {
     const codes = select.closest('[data-invite]').querySelectorAll('[data-invite-qr]');

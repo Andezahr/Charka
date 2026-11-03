@@ -80,6 +80,11 @@ public interface GameSystem {
         return List.of();
     }
 
+    /** A-11: справка правил для панели «📖 Правила»; пусто — у системы справки нет */
+    default List<Reference> getReference() {
+        return List.of();
+    }
+
     /**
      * A-10: заработок персонажа, если он работал {@code days} дней; null — у системы нет работы или у персонажа нет роли.
      */

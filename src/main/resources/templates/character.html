@@ -28,6 +28,7 @@
       </div>
     </div>
     <div class="page-actions">
+      <th:block th:if="${character.campaign != null}"><th:block th:replace="~{fragments/reference :: open-button(${character.campaign.id})}"></th:block></th:block>
       <a th:href="@{/}" class="btn btn-ghost">← На главную</a>
       <a th:href="@{'/character/' + ${character.id} + '/counters'}" class="btn">Счётчики</a>
       <a th:href="@{'/character/' + ${character.id} + '/notes'}" class="btn">Заметки</a>

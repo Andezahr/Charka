@@ -113,6 +113,12 @@ final class Cp2020AttackModifiers {
         return new Modifier(code, section, choice, choiceLabel, label, value);
     }
 
+    /** A-11: таблица для справки — подпись и значение со знаком, в том же порядке, что в диалоге атаки */
+    static List<String[]> referenceLines() {
+        return ALL.stream().map(modifier -> new String[]{modifier.partName(),
+                (modifier.value() > 0 ? "+" : "−") + Math.abs(modifier.value())}).toList();
+    }
+
     static List<AttackForm.Section> sections() {
         return sections(code -> true);
     }

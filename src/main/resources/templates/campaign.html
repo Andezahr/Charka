@@ -16,6 +16,7 @@
       </p>
     </div>
     <div class="page-actions">
+      <th:block th:replace="~{fragments/reference :: open-button(${campaign.id})}"></th:block>
       <a th:href="@{/}" class="btn btn-ghost">← На главную</a>
       <th:block th:with="round=${@encounterService.activeRound(campaign.id)}">
         <a th:href="@{'/campaign/' + ${campaign.id} + '/encounter'}" class="btn btn-primary"
