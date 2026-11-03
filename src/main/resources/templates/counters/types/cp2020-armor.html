@@ -54,5 +54,19 @@
   </div>
 </div>
 
+<!-- R-05: броня на листе — SP по зонам одной строкой; ремонт и правка — по «⋯» -->
+<div th:fragment="card-compact" class="cp-compact" id="state-armor" th:with="v=${counter.view}">
+  <div class="cp-compact-head">
+    <span class="cp-compact-title">Броня</span>
+    <span class="cp-armor-line">
+      <span th:each="a : ${v.locations}" class="cp-armor-chip" th:classappend="${a.worn} ? 'is-worn'"
+            th:title="${a.label} + ', бросок d10: ' + ${a.rolls}" th:text="${a.shortLabel} + ' ' + ${a.sp}">Торс 14</span>
+    </span>
+  </div>
+  <details class="cp-more item-more">
+    <summary th:text="${#lists.isEmpty(v.wornItems)} ? 'Ремонт, правка' : ${#strings.listJoin(v.wornItems, ', ')}">Ремонт, правка</summary>
+    <div th:replace="~{:: card}"></div>
+  </details>
+</div>
 </body>
 </html>

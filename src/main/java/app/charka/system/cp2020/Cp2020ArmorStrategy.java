@@ -49,6 +49,12 @@ public class Cp2020ArmorStrategy extends AbstractCounterStrategy {
         return "counters/types/cp2020-armor";
     }
 
+    /** R-05: строка на листе — тот же шаблон, фрагмент {@code card-compact} */
+    @Override
+    public String getCompactTemplate() {
+        return "counters/types/cp2020-armor";
+    }
+
     @Override
     public boolean usesInitialValue() {
         return false;

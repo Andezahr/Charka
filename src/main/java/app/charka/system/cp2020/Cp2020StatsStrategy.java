@@ -84,6 +84,12 @@ public class Cp2020StatsStrategy extends AbstractCounterStrategy {
         return "counters/types/cp2020-stats";
     }
 
+    /** R-05: строка на листе — тот же шаблон, фрагмент {@code card-compact} */
+    @Override
+    public String getCompactTemplate() {
+        return "counters/types/cp2020-stats";
+    }
+
     @Override
     public String getCreateFieldsTemplate() {
         return "counters/types/cp2020-stats";

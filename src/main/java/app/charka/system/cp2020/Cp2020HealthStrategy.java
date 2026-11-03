@@ -118,6 +118,12 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
         return "counters/types/cp2020-health";
     }
 
+    /** R-05: строка на листе — тот же шаблон, фрагмент {@code card-compact} */
+    @Override
+    public String getCompactTemplate() {
+        return "counters/types/cp2020-health";
+    }
+
     @Override
     public String getCreateFieldsTemplate() {
         return "counters/types/cp2020-health";

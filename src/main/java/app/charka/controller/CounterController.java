@@ -21,33 +21,14 @@ import java.util.List;
 public class CounterController {
 
     private final CounterService counterService;
-    private final app.charka.service.counter.HealthCounterService healthCounterService;
-    private final app.charka.model.counters.strategy.CounterStrategyFactory strategyFactory;
 
+    /**
+     * R-06: страницы счётчиков больше нет — они на листе (шапка состояния и карточка «Счётчики»). Адрес остаётся
+     * для старых ссылок и закладок.
+     */
     @GetMapping
-    public String listCounters(@PathVariable Long characterId, Model model) {
-        List<CounterResponseDto> counters = counterService.getAllCountersByCharacterId(characterId);
-        model.addAttribute("counters", counters);
-        model.addAttribute("characterId", characterId);
-        model.addAttribute("counterTypes", counterService.getCounterTypes(characterId));
-        List<app.charka.model.Character> healers = healthCounterService.healers(characterId, careOptions());
-        model.addAttribute("healers", healers);
-        // R-01: шапке нужен сам персонаж; он есть среди тех, кто может лечить (сам себя — последним)
-        healers.stream().filter(healer -> characterId.equals(healer.getId())).findFirst()
-                .ifPresent(character -> model.addAttribute("character", character));
-        counters.stream()
-                .filter(counter -> counter.getView() instanceof app.charka.model.counters.strategy.health.HealthView)
-                .findFirst()
-                .ifPresent(health -> model.addAttribute("defaultCare",
-                        healthCounterService.defaultCare(characterId, health.getId(), healers.isEmpty() ? null : healers.get(0))));
-
-        // Создаем DTO и предзаполняем characterId
-        CounterCreateRequestDto createRequest = new CounterCreateRequestDto();
-        createRequest.setCharacterId(characterId);
-        createRequest.setCounterType("SIMPLE_INTEGER");
-        model.addAttribute("createRequest", createRequest);
-
-        return "counters/list";
+    public String listCounters(@PathVariable Long characterId) {
+        return "redirect:/character/" + characterId + "#counters";
     }
 
     @PostMapping("/{counterId}/update")
@@ -66,7 +47,7 @@ public class CounterController {
             redirectAttributes.addFlashAttribute("errorMessage",
                     "Ошибка увеличения счётчика: " + e.getMessage());
         }
-        return "redirect:/character/" + characterId + "/counters";
+        return "redirect:/character/" + characterId + "#counters";
     }
 
 
@@ -82,7 +63,7 @@ public class CounterController {
             redirectAttributes.addFlashAttribute("errorMessage",
                     "Ошибка сброса счётчика: " + e.getMessage());
         }
-        return "redirect:/character/" + characterId + "/counters";
+        return "redirect:/character/" + characterId + "#counters";
     }
 
     @PostMapping("/{counterId}/set")
@@ -101,7 +82,7 @@ public class CounterController {
             redirectAttributes.addFlashAttribute("errorMessage",
                     "Ошибка установки значения: " + e.getMessage());
         }
-        return "redirect:/character/" + characterId + "/counters";
+        return "redirect:/character/" + characterId + "#counters";
     }
 
     @PostMapping("/create")
@@ -116,7 +97,7 @@ public class CounterController {
         if (result.hasErrors()) {
             redirectAttributes.addFlashAttribute("errorMessage",
                     "Ошибка валидации: " + result.getAllErrors().getFirst().getDefaultMessage());
-            return "redirect:/character/" + characterId + "/counters";
+            return "redirect:/character/" + characterId + "#counters";
         }
 
         try {
@@ -130,7 +111,7 @@ public class CounterController {
             redirectAttributes.addFlashAttribute("errorMessage",
                     "Ошибка создания счётчика: " + e.getMessage());
         }
-        return "redirect:/character/" + characterId + "/counters";
+        return "redirect:/character/" + characterId + "#counters";
     }
 
     /**
@@ -148,7 +129,7 @@ public class CounterController {
             redirectAttributes.addFlashAttribute("errorMessage",
                     "Ошибка изменения счётчика: " + e.getMessage());
         }
-        return "redirect:/character/" + characterId + "/counters";
+        return "redirect:/character/" + characterId + "#counters";
     }
 
     /**
@@ -165,7 +146,7 @@ public class CounterController {
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", "Ошибка: " + e.getMessage());
         }
-        return "redirect:/character/" + characterId + "/counters";
+        return "redirect:/character/" + characterId + "#counters";
     }
 
     @DeleteMapping("/{counterId}")
@@ -180,14 +161,6 @@ public class CounterController {
             redirectAttributes.addFlashAttribute("errorMessage",
                     "Ошибка удаления счётчика: " + e.getMessage());
         }
-        return "redirect:/character/" + characterId + "/counters";
-    }
-
-    /** Медпомощь всех систем здоровья: для порядка медиков, лучший по этим навыкам — первым */
-    private List<app.charka.model.counters.strategy.health.CareOption> careOptions() {
-        return strategyFactory.getAllStrategies().stream()
-                .filter(strategy -> strategy instanceof app.charka.model.counters.strategy.health.HealthCounterStrategy)
-                .flatMap(strategy -> ((app.charka.model.counters.strategy.health.HealthCounterStrategy) strategy).getCareOptions().stream())
-                .toList();
+        return "redirect:/character/" + characterId + "#counters";
     }
 }

@@ -49,6 +49,14 @@ public interface CounterStrategy {
     }
 
     /**
+     * R-05: шаблон с фрагментом {@code card-compact} — строка состояния на листе персонажа (полная карточка — по «⋯»).
+     * null — у типа её нет: счётчик показывается целиком в «Своих счётчиках».
+     */
+    default String getCompactTemplate() {
+        return null;
+    }
+
+    /**
      * Шаблон с фрагментом {@code create-fields} — дополнительные поля формы создания
      * (попадают в {@code attributes[...]}). null — дополнительных полей нет.
      */

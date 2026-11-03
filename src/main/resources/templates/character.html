@@ -34,29 +34,27 @@
     </div>
   </div>
 
-  <div class="stats">
-    <div class="stat">
-      <div class="stat-label">Баланс</div>
-      <div class="stat-value accent" th:text="${moneySum} + ' ' + ${currency.symbol}"
-           th:title="${currency.name}">0</div>
+  <!-- R-05: плитки «Баланс · Здоровье · Инвентарей» ушли: здоровье, броня и статы — в шапке состояния ниже, баланс — в «Деньгах» -->
+  <div th:if="${successMessage != null}" class="alert alert-success" role="status">
+    <div class="alert-text">
+      <div th:text="${successMessage}">Готово</div>
+      <ol th:if="${healthSteps != null and !healthSteps.empty}" class="alert-steps">
+        <li th:each="step : ${healthSteps}" th:text="${step}">шаг</li>
+      </ol>
     </div>
-    <div class="stat" th:if="${healthStatus != null}">
-      <div class="stat-label">Здоровье</div>
-      <div class="stat-value" th:classappend="${healthStatus != 'Цел'} ? 'danger'" th:text="${healthStatus}">Цел</div>
-    </div>
-    <div class="stat" th:if="${healthStatus == null}">
-      <div class="stat-label">Ран</div>
-      <div class="stat-value" th:classappend="${!#lists.isEmpty(character.wounds)} ? 'danger'"
-           th:text="${#lists.size(character.wounds)}">0</div>
-    </div>
-    <div class="stat">
-      <div class="stat-label">Инвентарей</div>
-      <div class="stat-value" th:text="${#lists.size(character.inventories)}">0</div>
-    </div>
+    <button type="button" class="alert-close" aria-label="Закрыть">×</button>
   </div>
 
   <div class="grid grid-main">
     <div class="stack">
+      <!-- R-05: шапка состояния — компактные карточки счётчиков системы (здоровье, броня, статы); полные — по «⋯» -->
+      <section class="card state-card" id="state" th:unless="${#lists.isEmpty(counters.?[compactTemplate != null])}">
+        <div class="card-body state-body">
+          <th:block th:each="counter : ${counters}" th:if="${counter.compactTemplate != null}">
+            <div th:replace="~{__${counter.compactTemplate}__ :: card-compact}"></div>
+          </th:block>
+        </div>
+      </section>
       <!-- РАНЫ -->
       <section class="card">
         <div class="card-head">
@@ -202,6 +200,45 @@
     </div>
 
     <div class="stack">
+      <!-- R-06: «Счётчики» — то, что не в шапке состояния: IP, репутация, свои; «＋ Счётчик» раскрывает форму -->
+      <section class="card" id="counters">
+        <div class="card-head">
+          <h2 class="card-title"><span class="dot"></span>Счётчики</h2>
+        </div>
+        <div class="card-body list" th:unless="${#lists.isEmpty(counters.?[compactTemplate == null])}">
+          <th:block th:each="counter : ${counters}" th:if="${counter.compactTemplate == null}">
+            <th:block th:if="${counter.viewTemplate == 'counters/types/simple'}"><div th:replace="~{counters/types/simple :: row}"></div></th:block>
+            <th:block th:unless="${counter.viewTemplate == 'counters/types/simple'}"><div th:replace="~{__${counter.viewTemplate}__ :: card}"></div></th:block>
+          </th:block>
+        </div>
+        <details class="card-body cp-more item-more">
+          <summary>Счётчик: свой, опыт, патроны</summary>
+          <form th:action="@{/character/{characterId}/counters/create(characterId=${characterId})}"
+                method="post" th:object="${createRequest}" class="form">
+            <input type="hidden" th:field="*{characterId}">
+            <div class="form-row">
+              <input type="text" th:field="*{name}" class="grow" placeholder="Название: опыт, патроны" required autocomplete="off" aria-label="Название">
+              <select th:field="*{counterType}" required data-type-select aria-label="Тип">
+                <option th:each="t : ${counterTypes}" th:value="${t.type}" th:text="${t.displayName}"
+                        th:attr="data-initial=${t.usesInitialValue}">Простой числовой</option>
+              </select>
+            </div>
+            <th:block th:each="t : ${counterTypes}" th:if="${t.createFieldsTemplate != null}">
+              <div class="form" th:attr="data-type-fields=${t.type}" hidden>
+                <th:block th:replace="~{__${t.createFieldsTemplate}__ :: create-fields}"></th:block>
+              </div>
+            </th:block>
+            <div class="form-row">
+              <label class="field" data-initial-field>
+                <span class="label">Начальное значение</span>
+                <input type="number" name="initialValue" value="0" required>
+              </label>
+              <button type="submit" class="btn btn-primary">＋ Создать</button>
+            </div>
+          </form>
+        </details>
+      </section>
+
       <!-- КУБИКИ -->
       <!-- R-04: карточка «Кубики» ушла в «Стол» (кнопка в шапке): броски с листа — «Я — персонаж» -->
 

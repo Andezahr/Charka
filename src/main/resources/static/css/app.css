@@ -129,6 +129,29 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
   box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.35);
 }
 
+/* ---------- R-05: шапка состояния на листе ---------- */
+.state-body { display: flex; flex-direction: column; gap: 12px; }
+.cp-compact + .cp-compact { border-top: 1px solid var(--border); padding-top: 12px; }
+.cp-compact { display: flex; flex-direction: column; gap: 6px; scroll-margin-top: calc(var(--topbar-height) + 12px); }
+.cp-compact-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
+.cp-compact-title { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); min-width: 64px; }
+.cp-track-compact { margin: 0; }
+.cp-armor-line, .cp-stat-line { display: flex; flex-wrap: wrap; gap: 6px; }
+.cp-armor-chip, .cp-stat-chip { padding: 2px 8px; border-radius: 6px; background: var(--surface-3); font-size: 13px; font-variant-numeric: tabular-nums; }
+.cp-armor-chip.is-worn { color: var(--accent); }
+.cp-stat-chip.is-reduced { color: var(--warning); }
+.cp-compact .cp-damage { margin: 0; }
+.cp-compact > .cp-more > .counter { margin-top: 8px; }
+.counter-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 6px 0; border-bottom: 1px solid var(--border); position: relative; }
+.counter-row:last-child { border-bottom: none; }
+.counter-row form { margin: 0; }
+.counter-row-name { flex: 1; min-width: 100px; }
+.counter-row-value { font-family: var(--font-display); font-size: 20px; color: var(--accent); min-width: 32px; text-align: right; }
+.counter-row-delta input[type="number"] { width: 64px; }
+.counter-row-more > summary { list-style: none; cursor: pointer; padding: 4px 8px; color: var(--muted); }
+.counter-row-more > summary::-webkit-details-marker { display: none; }
+.counter-row-more[open] { flex-basis: 100%; }
+
 /* ---------- R-04: «Стол» ---------- */
 .chat-dice { flex-wrap: wrap; gap: 6px; }
 .roll-log-card > summary { list-style: none; cursor: pointer; }

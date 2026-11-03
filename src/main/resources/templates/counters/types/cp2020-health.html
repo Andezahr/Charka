@@ -154,5 +154,47 @@
   </details>
 </div>
 
+<!-- R-05: здоровье на листе — состояние, трек и урон в одну строку; медпомощь, лечение и правка — по «⋯» (полная карточка) -->
+<div th:fragment="card-compact" class="cp-compact cp-health" id="state-health"
+     th:with="h=${counter.view},
+              base=@{/character/{characterId}/counters/{counterId}(characterId=${characterId}, counterId=${counter.id})}"
+     th:classappend="'is-' + ${h.statusCss}">
+  <div class="cp-compact-head">
+    <span class="cp-compact-title">Здоровье</span>
+    <span class="cp-health-status" th:text="${h.statusLabel}">Без ранений</span>
+    <span class="cp-muted-line" th:text="${h.damage} + '/' + ${h.maxDamage} + ' · BTM −' + ${h.btm} + (${h.dead} ? '' : ' · оглушение ≤ ' + ${h.stunTarget}) + (${h.penalty != null} ? ' · ' + ${h.penalty} : '')">3/40 · BTM −2 · оглушение ≤ 6</span>
+  </div>
+  <div class="cp-track cp-track-compact">
+    <div th:each="lvl : ${h.track}" class="cp-track-level" th:classappend="${lvl.css}" th:title="${lvl.name}">
+      <span th:each="i : ${#numbers.sequence(1, 4)}" class="cp-box" th:classappend="${i <= lvl.filled} ? 'is-filled'"></span>
+    </div>
+  </div>
+  <div th:if="${h.deathSaveRequired}" class="cp-callout danger">
+    <span class="cp-callout-text" th:text="'Смертельная рана: спасбросок от смерти, d10 ≤ ' + ${h.deathTarget}">Спасбросок от смерти</span>
+    <form th:action="${base} + '/health/save/DEATH'" method="post"><button type="submit" class="btn btn-sm btn-danger">🎲 Спасбросок</button></form>
+  </div>
+  <div th:if="${h.stunned}" class="cp-callout">
+    <span class="cp-callout-text" th:text="'Оглушён: спасбросок, d10 ≤ ' + ${h.stunTarget}">Оглушён</span>
+    <form th:action="${base} + '/health/save/STUN'" method="post"><button type="submit" class="btn btn-sm">🎲 Прийти в себя</button></form>
+  </div>
+  <form th:unless="${h.dead}" th:action="${base} + '/health/damage'" method="post" class="cp-damage">
+    <input type="hidden" name="autoSave" value="on"><input type="hidden" name="_autoSave" value="on">
+    <div class="form-row">
+      <input type="number" name="amount" min="0" placeholder="Урон" required class="cp-amount" aria-label="Урон">
+      <select name="location" aria-label="Зона попадания">
+        <option value="">Случайная зона</option>
+        <option th:each="l : ${h.locations}" th:value="${l.code}" th:text="${l.label}">Торс</option>
+      </select>
+      <select name="damageType" aria-label="Тип урона">
+        <option th:each="t : ${h.damageTypes}" th:value="${t.code}" th:text="${t.label}">Обычный</option>
+      </select>
+      <button type="submit" class="btn btn-danger">Нанести</button>
+    </div>
+  </form>
+  <details class="cp-more item-more">
+    <summary>Медпомощь, лечение, правка</summary>
+    <div th:replace="~{:: card}"></div>
+  </details>
+</div>
 </body>
 </html>

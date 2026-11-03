@@ -289,6 +289,7 @@ public class CounterService {
 
         strategyFactory.findStrategy(counter.getType()).ifPresent(strategy -> {
             dto.setViewTemplate(strategy.getViewTemplate());
+            dto.setCompactTemplate(strategy.getCompactTemplate());
             dto.setTypeName(strategy.getDisplayName());
             dto.setView(strategy.describe(new CounterContext(counter, siblings)));
         });

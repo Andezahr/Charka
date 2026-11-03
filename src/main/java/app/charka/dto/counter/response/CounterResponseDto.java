@@ -15,6 +15,8 @@ public class CounterResponseDto {
     private Long characterId;
     /** Шаблон с фрагментом card для этого типа счётчика */
     private String viewTemplate = "counters/types/simple";
+    /** R-05: строка состояния на листе; null — у типа её нет */
+    private String compactTemplate;
     /** Название типа для карточки */
     private String typeName;
     /** Данные карточки от стратегии (CounterStrategy.describe); null — карточке хватает value */

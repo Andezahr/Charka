@@ -48,6 +48,7 @@ public class CharacterController {
     private final GameSystemRegistry systemRegistry;
     private final DiceService diceService;
     private final AttackService attackService;
+    private final CounterModel counterModel;
 
     /**
      * A-03: окно «Добавить» по требованию — при первом открытии; app.js хранит его, пока не изменится {@code v}
@@ -96,6 +97,8 @@ public class CharacterController {
         long moneySum = moneyService.calculateBalance(id);
 
         model.addAttribute("character", character);
+        // R-05: шапка состояния (компактные счётчики системы) и карточка «Счётчики»
+        counterModel.fill(id, model);
         model.addAttribute("moneyList", moneyList);
         model.addAttribute("moneySum", moneySum);
         model.addAttribute("expenses", recurringExpenseService.getByCharacter(id));
