@@ -68,8 +68,16 @@ public class EncounterController {
             // M-16: кого игрок не видит на карте — в очереди и списке без имени
             java.util.Set<Long> mine = campaign.getCharacters().stream().filter(accessService::canControl)
                     .map(app.charka.model.Character::getId).collect(java.util.stream.Collectors.toSet());
-            model.addAttribute("hiddenIds", battleFieldService.hiddenFor(campaignId,
-                    accessService.isGm(campaign) ? app.charka.map.BattleFieldService.Viewer.GM : new app.charka.map.BattleFieldService.Viewer(mine)));
+            java.util.Set<Long> hiddenIds = battleFieldService.hiddenFor(campaignId,
+                    accessService.isGm(campaign) ? app.charka.map.BattleFieldService.Viewer.GM : new app.charka.map.BattleFieldService.Viewer(mine));
+            model.addAttribute("hiddenIds", hiddenIds);
+            // M-18: игроку скрытые NPC не попадают в списки целей атаки и противостояния
+            model.addAttribute("hiddenCharacterIds", view.get().rows().stream().filter(row -> hiddenIds.contains(row.participant().getId()))
+                    .map(row -> row.character().getId()).collect(java.util.stream.Collectors.toSet()));
+            // мастеру — кого не видит ни один персонаж игроков: метка в очереди
+            model.addAttribute("unseenIds", accessService.isGm(campaign) ? battleFieldService.hiddenFor(campaignId,
+                    new app.charka.map.BattleFieldService.Viewer(campaign.getCharacters().stream().filter(c -> !c.isNpc())
+                            .map(app.charka.model.Character::getId).collect(java.util.stream.Collectors.toSet()))) : java.util.Set.of());
             if (!accessService.isGm(campaign)) {
                 model.addAttribute("myRows", view.get().rows().stream().filter(row -> accessService.canControl(row.character())).toList());
                 model.addAttribute("turnsAhead", turnsAhead(view.get()));

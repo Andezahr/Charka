@@ -1382,6 +1382,13 @@ html:has(.is-editing) {
 .battle-menu-head { font-weight: 600; }
 .battle-menu-warn { color: var(--danger); font-size: 13px; }
 .battle-menu-note { color: var(--muted); font-size: 13px; }
+.battle-menu-gm { display: flex; flex-direction: column; gap: 6px; padding-top: 8px; border-top: 1px solid var(--border); }
+.battle-menu-gm form { margin: 0; flex-wrap: wrap; }
+.battle-menu-gm select, .battle-menu-gm input { min-width: 0; }
+.battle-ruler { pointer-events: none; }
+.battle-ruler-line { stroke: #facc15; stroke-width: 3; stroke-dasharray: 8 5; }
+.battle-ruler-end { fill: #facc15; }
+.battle-ruler-label { fill: #facc15; font-size: 14px; font-weight: 700; text-anchor: middle; paint-order: stroke; stroke: #0b0e14; stroke-width: 4; }
 .battle-tray { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 16px 0; }
 .battle-tray[hidden] { display: none; }
 .battle-hint { margin: 0; padding: 8px 16px 12px; color: var(--muted); font-size: 13px; }

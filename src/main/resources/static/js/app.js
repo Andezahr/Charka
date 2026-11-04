@@ -1299,7 +1299,7 @@ const CELL = 32;
 const POINTER_SHOW_MS = 4000;
 const battle = {
   url: null, data: null, etag: null, timer: null, view: null, selected: undefined, reach: null, reachFor: null, vision: null,
-  lastChange: 0, dragging: false, pointerMode: false, adding: false, placing: null, seen: new Map(), turn: null, stage: null
+  rulerMode: false, ruler: null, lastChange: 0, dragging: false, pointerMode: false, adding: false, placing: null, seen: new Map(), turn: null, stage: null
 };
 
 const svgEl = (name, attrs, parent) => {
@@ -1363,10 +1363,29 @@ function initBattle() {
     addButton.addEventListener('click', () => {
       battle.adding = !battle.adding;
       battle.pointerMode = false;
+      battle.rulerMode = false;
+      battle.ruler = null;
+      const ruler = document.querySelector('[data-battle-ruler]');
+      if (ruler) ruler.classList.remove('is-active');
       addButton.classList.toggle('is-active', battle.adding);
       const pointer = document.querySelector('[data-battle-pointer]');
       if (pointer) pointer.classList.remove('is-active');
       battleHint(battle.adding ? 'Нажимайте клетки: каждое нажатие ставит фишку. Ещё раз «＋ Фишка» — выключить' : '');
+    });
+  }
+  // R-18a: линейка — тянуть от клетки к клетке, расстояние по мере системы; видна только на этом устройстве
+  const rulerButton = document.querySelector('[data-battle-ruler]');
+  if (rulerButton) {
+    rulerButton.classList.toggle('is-active', battle.rulerMode);
+    rulerButton.addEventListener('click', () => {
+      battle.rulerMode = !battle.rulerMode;
+      battle.pointerMode = false;
+      battle.adding = false;
+      if (!battle.rulerMode) battle.ruler = null;
+      document.querySelectorAll('[data-battle-pointer], [data-battle-add]').forEach(other => other.classList.remove('is-active'));
+      rulerButton.classList.toggle('is-active', battle.rulerMode);
+      battleHint(battle.rulerMode ? 'Тяните от клетки к клетке — расстояние в метрах. Ещё раз «📏» — выключить' : '');
+      renderBattle();
     });
   }
   const pointerButton = document.querySelector('[data-battle-pointer]');
@@ -1375,6 +1394,9 @@ function initBattle() {
     pointerButton.addEventListener('click', () => {
       battle.pointerMode = !battle.pointerMode;
       battle.adding = false;
+      battle.rulerMode = false;
+      battle.ruler = null;
+      if (rulerButton) rulerButton.classList.remove('is-active');
       pointerButton.classList.toggle('is-active', battle.pointerMode);
       if (addButton) addButton.classList.remove('is-active');
       battleHint(battle.pointerMode ? 'Нажмите клетку — её увидят все. От своей фишки можно протянуть стрелку' : '');
@@ -1686,9 +1708,28 @@ function renderBattle() {
     }
   });
 
+  drawRuler(svg);
   stage.replaceChildren(svg);
   wireBattleSvg(svg);
   renderTray();
+}
+
+// Линейка поверх фишек: от центра клетки к центру клетки, подпись — метры по мере системы и клетки
+function drawRuler(svg) {
+  const old = svg.querySelector('.battle-ruler');
+  if (old) old.remove();
+  const ruler = battle.ruler;
+  if (!ruler) return;
+  const group = svgEl('g', { class: 'battle-ruler' }, svg);
+  const [x1, y1, x2, y2] = [(ruler.from.x + 0.5) * CELL, (ruler.from.y + 0.5) * CELL, (ruler.to.x + 0.5) * CELL, (ruler.to.y + 0.5) * CELL];
+  svgEl('line', { x1, y1, x2, y2, class: 'battle-ruler-line' }, group);
+  svgEl('circle', { cx: x1, cy: y1, r: 4, class: 'battle-ruler-end' }, group);
+  svgEl('circle', { cx: x2, cy: y2, r: 4, class: 'battle-ruler-end' }, group);
+  const meters = battleMeters(ruler.from.x, ruler.from.y, ruler.to.x, ruler.to.y);
+  const cells = Math.max(Math.abs(ruler.to.x - ruler.from.x), Math.abs(ruler.to.y - ruler.from.y));
+  const label = svgEl('text', { x: (x1 + x2) / 2, y: (y1 + y2) / 2 - 8, class: 'battle-ruler-label' }, group);
+  label.textContent = meters + ' м';
+  battleHint('📏 ' + meters + ' м · ' + cells + ' кл. по большей стороне');
 }
 
 // Клетка предмета, повёрнутого на rot четвертей: та же формула, что MapObject.cellAt
@@ -1811,8 +1852,13 @@ function wireBattleSvg(svg) {
     // после захвата указателя pointerup приходит на сам svg: дверь запоминаем здесь
     const door = event.target.closest('[data-edge]');
     press = { tokenEl, token: tokenEl ? tokenById(Number(tokenEl.dataset.token)) : null, door: door && door.dataset.edge,
-      x: event.clientX, y: event.clientY, start, moved: false };
+      x: event.clientX, y: event.clientY, start, moved: false, ruler: battle.rulerMode && inside(start) };
     svg.setPointerCapture(event.pointerId);
+    if (press.ruler) {
+      battle.ruler = { from: { x: start.x, y: start.y }, to: { x: start.x, y: start.y } };
+      drawRuler(svg);
+      return;
+    }
     if (!battle.pointerMode) {
       // долгое нажатие: по фишке — атака (телефон без правой кнопки), по пустой клетке — указатель для всех
       longPress = setTimeout(() => {
@@ -1836,6 +1882,14 @@ function wireBattleSvg(svg) {
 
   svg.addEventListener('pointermove', event => {
     if (!press) return;
+    if (press.ruler) {
+      const cell = cellAt(event);
+      if (inside(cell) && (cell.x !== battle.ruler.to.x || cell.y !== battle.ruler.to.y)) {
+        battle.ruler.to = { x: cell.x, y: cell.y };
+        drawRuler(svg);
+      }
+      return;
+    }
     const dx = event.clientX - press.x;
     const dy = event.clientY - press.y;
     if (!press.moved && Math.hypot(dx, dy) < 5) return;
@@ -1872,6 +1926,7 @@ function wireBattleSvg(svg) {
     press = null;
     battle.dragging = false;
     const cell = cellAt(event);
+    if (current.ruler) return;
     if (battle.pointerMode) {
       if (!inside(cell)) return;
       const from = current.token && current.moved && current.token.x !== null ? { x: current.token.x, y: current.token.y } : null;
@@ -1985,12 +2040,63 @@ const battleAttacker = target => {
 async function attackMenu(token, event) {
   if (!token || token.x === null) return;
   const attacker = battleAttacker(token);
-  if (!attacker) {
+  const gm = battle.stage && battle.stage.dataset.gm === 'true';
+  if (!attacker && !gm) {
     battleError('Сначала выберите, кто атакует: нажмите свою фишку');
     return;
   }
   const menu = document.querySelector('[data-battle-menu]');
   if (!menu) return;
+  menu.replaceChildren();
+  if (attacker) await attackSection(menu, attacker, token);
+  else {
+    const head = document.createElement('div');
+    head.className = 'battle-menu-head';
+    head.textContent = token.name;
+    menu.appendChild(head);
+  }
+  if (gm) gmSection(menu, token);
+  const select = document.createElement('button');
+  select.type = 'button';
+  select.className = 'btn btn-sm btn-ghost';
+  select.textContent = 'Выбрать ' + token.name;
+  select.addEventListener('click', () => {
+    closeBattleMenu();
+    selectToken(token.id);
+  });
+  menu.appendChild(select);
+  const holder = menu.parentElement.getBoundingClientRect();
+  const x = event ? event.clientX - holder.left : holder.width / 2;
+  const y = event ? event.clientY - holder.top : holder.height / 2;
+  menu.style.left = Math.min(Math.max(8, x), holder.width - 260) + 'px';
+  menu.style.top = Math.min(Math.max(8, y), Math.max(8, holder.height - menu.offsetHeight - 8)) + 'px';
+  menu.hidden = false;
+  menu.style.top = Math.min(Math.max(8, y), Math.max(8, holder.height - menu.offsetHeight - 8)) + 'px';
+}
+
+// R-15a: правка мастера в меню фишки — те же формы, что в боевом блоке участника: урон вручную, инициатива, убрать из боя
+function gmSection(menu, token) {
+  const row = document.getElementById('combatant-' + token.character);
+  if (!row) return;
+  const forms = [...row.querySelectorAll('.encounter-damage, .encounter-minor form')]
+    .filter(form => !/\/wait$/.test(form.getAttribute('action') || ''));
+  if (!forms.length) return;
+  const box = document.createElement('div');
+  box.className = 'battle-menu-gm';
+  const title = document.createElement('div');
+  title.className = 'battle-menu-note';
+  title.textContent = 'Мастер: ' + token.name;
+  box.appendChild(title);
+  forms.forEach(form => {
+    const copy = form.cloneNode(true);
+    copy.removeAttribute('id');
+    if (copy.dataset.confirm) copy.addEventListener('submit', e => { if (!confirm(copy.dataset.confirm)) e.preventDefault(); });
+    box.appendChild(copy);
+  });
+  menu.appendChild(box);
+}
+
+async function attackSection(menu, attacker, token) {
   let sight = { meters: battleMeters(attacker.x, attacker.y, token.x, token.y), blocked: false, cover: null };
   try {
     const response = await fetch(`${battle.url}/sight?from=${attacker.id}&to=${token.id}`, { cache: 'no-store' });
@@ -2002,7 +2108,6 @@ async function attackMenu(token, event) {
   try { last = localStorage.getItem('charka.battle.weapon.' + attacker.character); } catch (e) { /* только удобство */ }
   dialogs.sort((a, b) => (b.dataset.attack === last) - (a.dataset.attack === last));
 
-  menu.replaceChildren();
   const head = document.createElement('div');
   head.className = 'battle-menu-head';
   head.textContent = `${attacker.name} → ${token.name} · ${sight.meters} м`;
@@ -2041,21 +2146,6 @@ async function attackMenu(token, event) {
     none.textContent = 'Атаковать нечем';
     menu.appendChild(none);
   }
-  const select = document.createElement('button');
-  select.type = 'button';
-  select.className = 'btn btn-sm btn-ghost';
-  select.textContent = 'Выбрать ' + token.name;
-  select.addEventListener('click', () => {
-    closeBattleMenu();
-    selectToken(token.id);
-  });
-  menu.appendChild(select);
-  const holder = menu.parentElement.getBoundingClientRect();
-  const x = event ? event.clientX - holder.left : holder.width / 2;
-  const y = event ? event.clientY - holder.top : holder.height / 2;
-  menu.style.left = Math.min(Math.max(8, x), holder.width - 220) + 'px';
-  menu.style.top = Math.max(8, y) + 'px';
-  menu.hidden = false;
 }
 
 // Можно ли этим оружием по цели: видна или вслепую сквозь одну преграду (если у оружия есть такой модификатор),

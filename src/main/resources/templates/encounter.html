@@ -189,6 +189,7 @@
         </select>
       </label>
       <button type="button" class="btn btn-sm btn-ghost" data-battle-pointer title="Показать клетку всем (Alt+нажатие, долгое нажатие)">👆 Указать</button>
+      <button type="button" class="btn btn-sm btn-ghost" data-battle-ruler title="Измерить расстояние: тяните от клетки к клетке">📏 Линейка</button>
       <span class="battle-zoom">
         <button type="button" class="btn btn-sm btn-ghost" data-battle-zoom="1.25" aria-label="Крупнее">＋</button>
         <button type="button" class="btn btn-sm btn-ghost" data-battle-zoom="0.8" aria-label="Мельче">−</button>
@@ -240,7 +241,7 @@
       </div>
       <th:block th:if="${hasField}">
         <div class="battle-holder">
-          <div class="battle-stage" data-battle-fill th:attr="data-battle=@{${base} + '/map'},data-turn=${view.encounter.round + ':' + (view.current != null ? view.current.id : '')}"></div>
+          <div class="battle-stage" data-battle-fill th:attr="data-gm=${isGm},data-battle=@{${base} + '/map'},data-turn=${view.encounter.round + ':' + (view.current != null ? view.current.id : '')}"></div>
           <div class="battle-menu" data-battle-menu hidden></div>
         </div>
         <div class="battle-tray" data-battle-tray hidden></div>
@@ -283,8 +284,8 @@
             <div th:if="${dark}" class="row encounter-row is-hidden"
                  th:classappend="${(row.current ? 'is-current ' : '') + (row.participant.done ? 'is-done' : '')}">
               <div class="encounter-head">
-                <span class="encounter-init" th:text="${row.participant.initiative}">17</span>
-                <div class="row-main"><span class="row-title">Вне видимости</span></div>
+                <span class="encounter-init">?</span>
+                <div class="row-main"><span class="row-title">?</span><span class="row-meta">Вне видимости</span></div>
               </div>
             </div>
             <div th:unless="${dark}" class="row encounter-row" th:id="${elsewhere} ? null : 'combatant-' + ${row.character.id}"

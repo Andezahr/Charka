@@ -47,6 +47,8 @@ class PlayerTurnTest {
     @Autowired private CharacterService characterService;
     @Autowired private EncounterService encounterService;
     @Autowired private EntityManager entityManager;
+    @Autowired private app.charka.map.BattleMapService battleMapService;
+    @Autowired private app.charka.map.BattleFieldService battleFieldService;
 
     private Campaign campaign;
     private Character mine;
@@ -130,5 +132,31 @@ class PlayerTurnTest {
         entityManager.clear();
         // Колясик ходил последним: раунд кончился, инициатива бросается заново (с. 97)
         assertThat(encounterService.view(campaign.getId()).orElseThrow().encounter().getRound()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("M-16, M-18: враг за стеной у игрока в очереди — «?», в списках целей его нет; мастеру — «👁 нет»")
+    void hiddenEnemy() throws Exception {
+        app.charka.map.MapDoc doc = app.charka.map.MapDoc.empty(12, 8, 2);
+        for (int y = 0; y < 8; y++) {
+            doc.walls().put(app.charka.map.MapDoc.left(6, y), "cover_brick");
+        }
+        Long mapId = battleMapService.save(campaign.getId(), "Стена", doc).getId();
+        battleFieldService.attach(campaign.getId(), mapId);
+        Long banditToken = encounterService.view(campaign.getId()).orElseThrow().rows().stream()
+                .filter(row -> row.character().getId().equals(bandit.getId())).findFirst().orElseThrow().participant().getId();
+        Long mineToken = encounterService.view(campaign.getId()).orElseThrow().rows().stream()
+                .filter(row -> row.character().getId().equals(mine.getId())).findFirst().orElseThrow().participant().getId();
+        Long boosterToken = encounterService.view(campaign.getId()).orElseThrow().rows().stream()
+                .filter(row -> row.character().getId().equals(booster.getId())).findFirst().orElseThrow().participant().getId();
+        battleFieldService.move(campaign.getId(), mineToken, 1, 1, true);
+        battleFieldService.move(campaign.getId(), boosterToken, 2, 1, true);
+        battleFieldService.move(campaign.getId(), banditToken, 10, 1, true);
+
+        String html = page("kolya");
+        assertThat(html).contains("<span class=\"carousel-name\">?</span>", "кто-то вне видимости")
+                .doesNotContain(">Бандит<", "Ходит Бандит");
+        assertThat(html).contains(">Бустер<");
+        assertThat(page("master")).contains(">Бандит<", "👁 нет");
     }
 }
