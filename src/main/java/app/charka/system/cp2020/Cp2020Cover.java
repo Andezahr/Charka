@@ -37,7 +37,10 @@ final class Cp2020Cover {
             // HOMEBREW: предметы карты, которых нет в таблице с. 103; прочность подобрана по похожим строкам
             new Cover("cover_crate", "Деревянный ящик", 5),
             new Cover("cover_dumpster", "Мусорный бак", 10),
-            new Cover("cover_bar", "Стойка бара", 10));
+            new Cover("cover_bar", "Стойка бара", 10),
+            new Cover("cover_desk", "Стол", 5),
+            new Cover("cover_shelf", "Стеллаж", 5),
+            new Cover("cover_container", "Контейнер", 10));
 
     private Cp2020Cover() {
     }

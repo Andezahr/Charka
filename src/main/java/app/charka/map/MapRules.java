@@ -75,12 +75,20 @@ public interface MapRules {
                 new Material("window", "Окно", 0, Material.Layer.WINDOW, true, false),
                 new Material("crate", "Ящик", 0, Material.Layer.OBJECT, true, false),
                 new Material("car", "Машина", 0, Material.Layer.OBJECT, true, false),
+                new Material("desk", "Стол", 0, Material.Layer.OBJECT, true, false),
+                new Material("shelf", "Стеллаж", 0, Material.Layer.OBJECT, true, true),
+                new Material("container", "Контейнер", 0, Material.Layer.OBJECT, true, true),
                 new Material("debris", "Обломки", 0, Material.Layer.TERRAIN, false, false),
-                new Material("water", "Вода", 0, Material.Layer.TERRAIN, false, false));
+                new Material("water", "Вода", 0, Material.Layer.TERRAIN, false, false),
+                new Material("asphalt", "Асфальт", 0, Material.Layer.TERRAIN, false, false),
+                new Material("grass", "Газон", 0, Material.Layer.TERRAIN, false, false));
 
         private final List<MapObject> objects = List.of(
                 MapObject.solid("car", "Машина", 2, 4, "car"),
-                MapObject.solid("crate", "Ящик", 1, 1, "crate"));
+                MapObject.solid("crate", "Ящик", 1, 1, "crate"),
+                MapObject.solid("desk", "Стол", 2, 1, "desk"),
+                MapObject.solid("shelf", "Стеллаж", 3, 1, "shelf"),
+                MapObject.solid("container", "Контейнер", 3, 1, "container"));
 
         @Override
         public int cellMeters() {

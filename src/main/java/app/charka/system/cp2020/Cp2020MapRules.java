@@ -26,7 +26,8 @@ final class Cp2020MapRules implements MapRules {
      * HOMEBREW: высокие предметы закрывают взгляд, остальные (машина, ящик, стойка) ниже роста — поверх видно и стреляют.
      * Высоты в книге нет; цель за столбом видна частично и укрыта им.
      */
-    private static final Set<String> TALL = Set.of("cover_tree", "cover_concrete_pole", "cover_dataterm", "cover_armored_car", "cover_av4");
+    private static final Set<String> TALL = Set.of("cover_tree", "cover_concrete_pole", "cover_dataterm", "cover_armored_car", "cover_av4",
+            "cover_shelf", "cover_container");
 
     private static final List<Material> MATERIALS = buildMaterials();
 
@@ -45,7 +46,11 @@ final class Cp2020MapRules implements MapRules {
             MapObject.solid("dataterm", "DataTerm", 1, 1, "cover_dataterm"),
             MapObject.solid("mailbox", "Почтовый ящик", 1, 1, "cover_mailbox"),
             MapObject.solid("hydrant", "Гидрант", 1, 1, "cover_hydrant"),
-            MapObject.solid("bar", "Стойка бара", 4, 1, "cover_bar"));
+            MapObject.solid("bar", "Стойка бара", 4, 1, "cover_bar"),
+            MapObject.solid("desk", "Стол", 2, 1, "cover_desk"),
+            MapObject.solid("shelf", "Стеллаж", 3, 1, "cover_shelf"),
+            // 20-футовый контейнер 6 × 2,4 м
+            MapObject.solid("container", "Контейнер", 3, 1, "cover_container"));
 
     private static List<Material> buildMaterials() {
         List<Material> materials = new ArrayList<>();
@@ -62,6 +67,8 @@ final class Cp2020MapRules implements MapRules {
         materials.add(new Material("glass", "Стекло", 0, Material.Layer.WINDOW, true, false));
         materials.add(new Material("debris", "Обломки", 0, Material.Layer.TERRAIN, false, false));
         materials.add(new Material("water", "Вода", 0, Material.Layer.TERRAIN, false, false));
+        materials.add(new Material("asphalt", "Асфальт", 0, Material.Layer.TERRAIN, false, false));
+        materials.add(new Material("grass", "Газон", 0, Material.Layer.TERRAIN, false, false));
         return List.copyOf(materials);
     }
 

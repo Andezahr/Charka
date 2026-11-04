@@ -1597,6 +1597,8 @@ const zoomBattle = (factor, cx, cy) => {
 };
 
 const MATERIAL_COLORS = { WALL: '#c7cfdb', DOOR: '#b7834a', WINDOW: '#7dd3fc', OBJECT: '#64748b', TERRAIN: '#3f3a2e' };
+// местность своего цвета; остальная — общим цветом TERRAIN
+const TERRAIN_COLORS = { water: '#1e40af', asphalt: '#2a303b', grass: '#1f4d2b' };
 
 // Карта без фишек: пол, сетка, зоны, местность, предметы, стены, подписи. Общая для поля боя и редактора.
 // under(svg) рисует то, что ложится под стены (досягаемость); editing — показать проёмы, двери не нажимаются
@@ -1622,7 +1624,7 @@ function drawMapLayers(svg, doc, materials, objects, under, editing, backgroundU
   Object.entries(doc.cells).forEach(([key, code]) => {
     const [x, y] = key.split(',').map(Number);
     const material = materials.get(code);
-    svgEl('rect', { x: x * CELL, y: y * CELL, width: CELL, height: CELL, class: 'battle-terrain', fill: code === 'water' ? '#1e40af' : MATERIAL_COLORS.TERRAIN },
+    svgEl('rect', { x: x * CELL, y: y * CELL, width: CELL, height: CELL, class: 'battle-terrain', fill: TERRAIN_COLORS[code] || MATERIAL_COLORS.TERRAIN },
       svg).appendChild(svgEl('title', {})).textContent = material ? material.label : code;
   });
   doc.stamps.forEach(stamp => {
