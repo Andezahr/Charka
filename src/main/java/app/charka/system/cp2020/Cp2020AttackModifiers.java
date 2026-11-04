@@ -19,6 +19,8 @@ final class Cp2020AttackModifiers {
 
     static final int AIMED_SHOT = -4;
     static final String TELESCOPIC = "scope_telescopic";
+    /** Стрельба вслепую сквозь преграду (карта боя ставит сама) */
+    static final String BLIND_FIRE = "blind_fire";
 
     private static final Set<String> AIMING = Set.of("aim_1", "aim_2", "aim_3", "laser", "targeting_scope", "smartgun", "smartgoggles", TELESCOPIC);
 
@@ -29,7 +31,7 @@ final class Cp2020AttackModifiers {
     private static final String COMMON = "Часто";
 
     /** Прицелы, турель и машина бывают только у стрельбы, не у броска */
-    private static final Set<String> FIREARM_ONLY = Set.of("turret", "vehicle", "laser", "targeting_scope", "smartgun", "smartgoggles", TELESCOPIC, "two_weapons", "hip");
+    private static final Set<String> FIREARM_ONLY = Set.of("turret", "vehicle", "laser", "targeting_scope", "smartgun", "smartgoggles", TELESCOPIC, "two_weapons", "hip", BLIND_FIRE);
     private static final Set<String> SHOULDER_ARMS = Set.of("RIF", "SHT", "HVY");
     /** A-05: «N-е действие в раунде», варианты action_2 … action_6 */
     private static final String ACTION = "action_";
@@ -69,6 +71,8 @@ final class Cp2020AttackModifiers {
             flag("fast_draw", SHOOTER, "Быстрое выхватывание", -3),
             flag("ambush", SHOOTER, "Засада", 5),
             flag("blinded", SHOOTER, "Ослеплён светом или пылью", -3),
+            // HOMEBREW: с. 103 говорит о «penalties for blind firing», но в таблице с. 99 числа нет — взят «Blinded» −3
+            flag(BLIND_FIRE, SHOOTER, "Стрельба вслепую", -3),
             flag("turning", SHOOTER, "Разворот к цели", -2),
             // С. 111: подсечка, «−2 to next his attack; you gain +2 to your next attack»
             flag("swept", SHOOTER, "Сбит с ног", -2),

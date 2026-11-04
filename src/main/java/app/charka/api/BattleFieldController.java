@@ -59,6 +59,12 @@ public class BattleFieldController {
         return battleFieldService.reach(campaignId, participantId);
     }
 
+    /** Поле видимости участника и что с каждой другой фишкой */
+    @GetMapping("/participants/{participantId}/view")
+    public BattleFieldService.View view(@PathVariable Long campaignId, @PathVariable Long participantId) {
+        return battleFieldService.view(campaignId, participantId);
+    }
+
     @GetMapping("/sight")
     public BattleFieldService.Sight sight(@PathVariable Long campaignId, @RequestParam Long from, @RequestParam Long to) {
         return battleFieldService.sight(campaignId, from, to);

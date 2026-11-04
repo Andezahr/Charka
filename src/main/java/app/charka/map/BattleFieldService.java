@@ -202,17 +202,28 @@ public class BattleFieldService {
     }
 
     /**
-     * Что между двумя фишками: для диалога атаки.
+     * Что между двумя фишками: для меню и диалога атаки.
      *
-     * @param meters     расстояние по мере системы
-     * @param blocked    нет линии видимости
-     * @param cover      код укрытия цели (вариант модификатора атаки); null — не за укрытием
-     * @param coverLabel название укрытия
+     * @param meters       расстояние по мере системы
+     * @param blocked      цель не видна
+     * @param cover        код укрытия цели (вариант модификатора атаки); при стрельбе вслепую — преграда; null — не за укрытием
+     * @param coverLabel   название укрытия
+     * @param visibility   {@code full} — видна целиком, {@code partial} — частично (из-за угла, в проёме), {@code none} — не видна
+     * @param exposed      сколько из {@link MapGrid#SAMPLES} точек клетки цели видно
+     * @param throughLabel цель не видна, но стрелять можно вслепую сквозь эту преграду; null — нельзя
+     * @param blindOption  модификатор стрельбы вслепую системы ({@link MapRules#blindFireOption}); null — нет
+     * @param inTheWay     кто стоит на линии огня
      */
-    public record Sight(int meters, boolean blocked, String cover, String coverLabel) {
+    public record Sight(int meters, boolean blocked, String cover, String coverLabel, String visibility, int exposed,
+                        String throughLabel, String blindOption, List<String> inTheWay) {
+
+        /** Выстрел возможен: цель видна или есть одна пробиваемая преграда */
+        public boolean canShoot() {
+            return !blocked || throughLabel != null;
+        }
     }
 
-    /** HOMEBREW: укрытие считается, если препятствие не дальше клетки от цели — в книге способа нет */
+    /** HOMEBREW: низкий предмет укрывает цель, если он не дальше клетки от неё — в книге способа нет */
     static final int COVER_NEAR_CELLS = 1;
 
     @Transactional(readOnly = true)
@@ -223,12 +234,65 @@ public class BattleFieldService {
         if (from.getPosX() == null || to.getPosX() == null) {
             throw new IllegalArgumentException("Фишка не на карте");
         }
-        MapGrid grid = grid(encounter);
-        MapRules rules = rules(encounter);
+        return sight(encounter, grid(encounter), rules(encounter), from, to);
+    }
+
+    private Sight sight(Encounter encounter, MapGrid grid, MapRules rules, EncounterParticipant from, EncounterParticipant to) {
         int meters = rules.distance(grid.doc().cell(), from.getPosX(), from.getPosY(), to.getPosX(), to.getPosY());
-        MapGrid.Line line = grid.line(from.getPosX(), from.getPosY(), to.getPosX(), to.getPosY());
-        Optional<MapGrid.Obstacle> cover = line.coverNear(COVER_NEAR_CELLS);
-        return new Sight(meters, line.blocked(), cover.map(o -> o.material().code()).orElse(null), cover.map(o -> o.material().label()).orElse(null));
+        MapGrid.Sight sight = grid.sight(from.getPosX(), from.getPosY(), to.getPosX(), to.getPosY(), COVER_NEAR_CELLS);
+        boolean hidden = sight.visibility() == MapGrid.Visibility.NONE;
+        // вслепую — только если система знает такой модификатор
+        Optional<Material> through = rules.blindFireOption() == null ? Optional.empty() : sight.through();
+        Optional<Material> cover = hidden ? through : sight.cover();
+        List<String> inTheWay = encounter.getParticipants().stream()
+                .filter(p -> p != from && p != to && p.getPosX() != null)
+                .filter(p -> sight.path().stream().anyMatch(cell -> cell[0] == p.getPosX() && cell[1] == p.getPosY()))
+                .map(p -> p.getCharacter().getName()).toList();
+        return new Sight(meters, hidden, cover.map(Material::code).orElse(null), cover.map(Material::label).orElse(null),
+                sight.visibility().name().toLowerCase(), sight.exposed(),
+                through.map(material -> material.label() + (material.sp() > 0 ? " SP " + material.sp() : "")).orElse(null),
+                through.isPresent() ? rules.blindFireOption() : null, inTheWay);
+    }
+
+    /**
+     * Что видит участник: поле видимости и каждая другая фишка.
+     *
+     * @param w       ширина карты: строка {@code cells} идёт по строкам карты
+     * @param cells   по клетке на символ: {@code 1} — видна хотя бы краем, {@code 0} — нет
+     * @param targets остальные фишки на карте
+     */
+    public record View(int w, String cells, List<TargetView> targets) {
+    }
+
+    /**
+     * @param id         участник боя
+     * @param visibility как в {@link Sight#visibility}
+     * @param canShoot   можно стрелять (видна или вслепую сквозь одну преграду)
+     * @param cover      название укрытия; null — нет
+     */
+    public record TargetView(Long id, String visibility, boolean canShoot, String cover) {
+    }
+
+    @Transactional(readOnly = true)
+    public View view(Long campaignId, Long participantId) {
+        Encounter encounter = withMap(campaignId);
+        EncounterParticipant from = participant(encounter, participantId);
+        MapGrid grid = grid(encounter);
+        if (from.getPosX() == null) {
+            return new View(grid.doc().w(), "", List.of());
+        }
+        MapRules rules = rules(encounter);
+        StringBuilder cells = new StringBuilder();
+        for (boolean visible : grid.visibleFrom(from.getPosX(), from.getPosY())) {
+            cells.append(visible ? '1' : '0');
+        }
+        List<TargetView> targets = encounter.getParticipants().stream()
+                .filter(p -> p != from && p.getPosX() != null)
+                .map(p -> {
+                    Sight sight = sight(encounter, grid, rules, from, p);
+                    return new TargetView(p.getId(), sight.visibility(), sight.canShoot(), sight.coverLabel());
+                }).toList();
+        return new View(grid.doc().w(), cells.toString(), targets);
     }
 
     /**

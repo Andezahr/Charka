@@ -22,6 +22,11 @@ final class Cp2020MapRules implements MapRules {
     private static final Set<String> WALLS = Set.of("cover_sheetrock", "cover_block", "cover_brick", "cover_stone");
     /** Низкое укрытие: за ним прячутся, но не стоят на нём */
     private static final Set<String> PASSABLE = Set.of("cover_curb");
+    /**
+     * HOMEBREW: высокие предметы закрывают взгляд, остальные (машина, ящик, стойка) ниже роста — поверх видно и стреляют.
+     * Высоты в книге нет; цель за столбом видна частично и укрыта им.
+     */
+    private static final Set<String> TALL = Set.of("cover_tree", "cover_concrete_pole", "cover_dataterm", "cover_armored_car", "cover_av4");
 
     private static final List<Material> MATERIALS = buildMaterials();
 
@@ -50,7 +55,7 @@ final class Cp2020MapRules implements MapRules {
                     : WALLS.contains(code) ? Material.Layer.WALL : Material.Layer.OBJECT;
             boolean blocksMove = !PASSABLE.contains(code);
             // сквозь машину и ящик не пройти, но поверх видно и стреляют
-            boolean blocksSight = layer != Material.Layer.OBJECT;
+            boolean blocksSight = layer != Material.Layer.OBJECT || TALL.contains(code);
             materials.add(new Material(code, row[1], Integer.parseInt(row[2]), layer, blocksMove, blocksSight));
         }
         // HOMEBREW: стекла в таблице укрытий нет — окно не укрывает, но не пускает
@@ -79,6 +84,12 @@ final class Cp2020MapRules implements MapRules {
     public Map<String, String> defaults() {
         return Map.of("room", "cover_brick", "wall", "cover_sheetrock", "door", "cover_wood_door",
                 "heavy_door", "cover_steel_door", "window", "glass");
+    }
+
+    /** С. 103: «go ahead and shoot through the door; the penalties for blind firing won't stop you» */
+    @Override
+    public String blindFireOption() {
+        return Cp2020AttackModifiers.BLIND_FIRE;
     }
 
     /** Бег MA × 3 м за действие (с. 98) */

@@ -236,6 +236,11 @@ class BattleFieldServiceTest {
             BattleFieldService.Sight closed = field.sight(campaign.getId(), token(player).id(), token(npc).id());
             assertThat(closed.blocked()).isTrue();
             assertThat(closed.meters()).isEqualTo(10);
+            // CP2020, с. 103: сквозь дверь стреляют вслепую, её SP — укрытие
+            assertThat(closed.canShoot()).isTrue();
+            assertThat(closed.throughLabel()).isEqualTo("Деревянная дверь SP 5");
+            assertThat(closed.cover()).isEqualTo("cover_wood_door");
+            assertThat(closed.blindOption()).isEqualTo("blind_fire");
 
             field.toggleDoor(campaign.getId(), MapDoc.left(6, 3));
             assertThat(field.sight(campaign.getId(), token(player).id(), token(npc).id()).blocked()).isFalse();
@@ -253,6 +258,47 @@ class BattleFieldServiceTest {
 
             assertThat(sight.blocked()).isFalse();
             assertThat(sight.cover()).isEqualTo("cover_car");
+        }
+
+        @Test
+        @DisplayName("Сквозь кирпичную стену и вторую стену не стреляют; кто между — на линии огня")
+        void wallAndInTheWay() {
+            start();
+            Character third = member("Олежа", false);
+            encounterService.add(campaign.getId(), third.getId());
+            field.move(campaign.getId(), token(player).id(), 4, 6, true);
+            field.move(campaign.getId(), token(npc).id(), 8, 6, true);
+            BattleFieldService.Sight brick = field.sight(campaign.getId(), token(player).id(), token(npc).id());
+            assertThat(brick.blocked()).isTrue();
+            assertThat(brick.throughLabel()).isEqualTo("Кирпичная стена SP 25");
+
+            field.move(campaign.getId(), token(npc).id(), 4, 1, true);
+            field.move(campaign.getId(), token(third).id(), 4, 3, true);
+            BattleFieldService.Sight line = field.sight(campaign.getId(), token(player).id(), token(npc).id());
+            assertThat(line.visibility()).isEqualTo("full");
+            assertThat(line.inTheWay()).containsExactly("Олежа");
+        }
+
+        @Test
+        @DisplayName("Поле видимости: за стеной темно, цели за ней — не видны, но прострелимы")
+        void view() throws Exception {
+            start();
+            field.move(campaign.getId(), token(player).id(), 2, 6, true);
+            field.move(campaign.getId(), token(npc).id(), 9, 6, true);
+
+            BattleFieldService.View view = field.view(campaign.getId(), token(player).id());
+            assertThat(view.cells()).hasSize(12 * 8);
+            assertThat(view.cells().charAt(6 * 12 + 3)).isEqualTo('1');
+            assertThat(view.cells().charAt(6 * 12 + 9)).isEqualTo('0');
+            assertThat(view.targets()).singleElement().satisfies(target -> {
+                assertThat(target.visibility()).isEqualTo("none");
+                assertThat(target.canShoot()).isTrue();
+            });
+
+            mockMvc.perform(get("/campaign/" + campaign.getId() + "/encounter/map/participants/" + token(player).id() + "/view"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.w").value(12))
+                    .andExpect(jsonPath("$.targets[0].visibility").value("none"));
         }
     }
 

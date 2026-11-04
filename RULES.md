@@ -55,6 +55,10 @@
   **Как часто бросать (A-13, прочитано с изображения с. 97):** «Combat in FNFF is divided up into rounds, each representing @3 seconds. Every round, each player gets to do something. The order of the round is based on an initiative roll of 1D10 plus the players REF stat, with highest rolls moving first to lowest rolls». Бросать ли заново каждый раунд — не сказано; намёк в обе стороны: быстрое выхватывание объявляется «at the start of the round» и даёт «+3 to your initiative roll». Решение автора: **каждый раунд** (по умолчанию у CP2020). Кампания может переключить на «раз за бой» (`Campaign.initiativeEachRound`, переключатель у мастера в бою); тогда +3 выхватывания снимается в начале следующего раунда, а прибавки эффектов со сроком меняют инициативу сами.
 
 **Укрытие (с. 103)** — в коде (`Cp2020Cover`). Высоко сидящему стрелку укрытие не мешает: выбор оставлен мастеру.
+- Сквозь укрытие стреляют: «shoot through the door; the penalties for blind firing won't stop you if you're at point blank range». Числа «blind firing» в таблице модификаторов (с. 99) нет — в коде −3, как «Blinded by light or dust» (HOMEBREW, M-14).
+- Низкая стена: попадание в ногу (7–8 по таблице зон) «pretty silly. Ignore it and re-roll» (с. 104). В коде не сделано: укрытие действует на все зоны своим SP.
+
+**Линия взгляда и обзор (с. 104, рисунок с. 107).** «Whenever you are facing your target and have a clear path between you, you can attack. You can clearly see anything forward of your shoulders.» Стоящего позади не видно. Разворот к цели −2 (таблица с. 99). В коде (M-14): чистый путь по карте — `MapGrid.sight`; направления фишки нет (BACKLOG M-15).
 
 ## Бой: ближний (с. 111–112)
 

@@ -1346,6 +1346,12 @@ html:has(.is-editing) {
 .battle-terrain { opacity: 0.8; }
 .battle-stamp-outline { fill: none; stroke: #94a3b8; stroke-width: 1.5; }
 .battle-reach rect { fill: rgba(74, 222, 128, 0.12); }
+.battle-fog > rect { fill: url(#battle-fog-hatch); pointer-events: none; }
+.battle-fog-shade { fill: rgba(0, 0, 0, 0.55); }
+.battle-fog-line { stroke: rgba(148, 163, 184, 0.28); stroke-width: 3; }
+.battle-token.is-unseen { opacity: 0.4; }
+.battle-token.is-unseen .battle-token-body { stroke-dasharray: 3 3; stroke: #94a3b8; }
+.battle-token-cover { fill: #facc15; stroke: #0b0e14; stroke-width: 1.5; pointer-events: none; }
 .battle-edge { stroke-linecap: round; stroke-width: 5; }
 .battle-edge.wall { stroke: #c7cfdb; }
 .battle-edge.window { stroke: #7dd3fc; stroke-width: 3; }

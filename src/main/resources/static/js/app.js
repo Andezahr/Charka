@@ -1268,7 +1268,7 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 const CELL = 32;
 const POINTER_SHOW_MS = 4000;
 const battle = {
-  url: null, data: null, etag: null, timer: null, view: null, selected: undefined, reach: null, reachFor: null,
+  url: null, data: null, etag: null, timer: null, view: null, selected: undefined, reach: null, reachFor: null, vision: null,
   lastChange: 0, dragging: false, pointerMode: false, adding: false, placing: null, seen: new Map(), turn: null, stage: null
 };
 
@@ -1301,7 +1301,7 @@ function initBattle() {
     return;
   }
   if (battle.url !== stage.dataset.battle) {
-    Object.assign(battle, { url: stage.dataset.battle, data: null, etag: null, view: null, selected: undefined, reach: null, reachFor: null });
+    Object.assign(battle, { url: stage.dataset.battle, data: null, etag: null, view: null, selected: undefined, reach: null, reachFor: null, vision: null });
   }
   battle.stage = stage;
   battle.turn = stage.dataset.turn;
@@ -1428,12 +1428,26 @@ async function loadReach(id) {
     battle.reach = { meters: reach.meters, run: reach.run, cells: new Map(reach.cells.map(cell => [cell[0] + ',' + cell[1], cell[2]])) };
     renderBattle();
   } catch (e) { /* без области: только подсказка */ }
+  loadVision(id);
+}
+
+// Поле видимости выбранной фишки: что вне его — в тени; чужие фишки помечены «не видна» и «частично»
+async function loadVision(id) {
+  try {
+    const response = await fetch(battle.url + '/participants/' + id + '/view', { cache: 'no-store' });
+    if (!response.ok || battle.reachFor !== id) return;
+    const view = await response.json();
+    if (battle.reachFor !== id) return;
+    battle.vision = { id, w: view.w, cells: view.cells, targets: new Map(view.targets.map(target => [target.id, target])) };
+    renderBattle();
+  } catch (e) { /* без тени */ }
 }
 
 function selectToken(id) {
   battle.selected = id;
   battle.reach = null;
   battle.reachFor = null;
+  battle.vision = null;
   if (id) loadReach(id);
   renderBattle();
 }
@@ -1566,6 +1580,25 @@ function renderBattle() {
         svgEl('rect', { x: x * CELL, y: y * CELL, width: CELL, height: CELL }, group);
       });
     }
+    // тень вне поля видимости: подряд идущие клетки строки — один прямоугольник
+    const vision = battle.vision;
+    if (vision && vision.id === battle.selected && vision.cells) {
+      const fog = svgEl('g', { class: 'battle-fog' }, svg);
+      const hatch = svgEl('pattern', { id: 'battle-fog-hatch', width: 10, height: 10, patternUnits: 'userSpaceOnUse', patternTransform: 'rotate(45)' }, fog);
+      svgEl('rect', { width: 10, height: 10, class: 'battle-fog-shade' }, hatch);
+      svgEl('line', { x1: 0, y1: 0, x2: 0, y2: 10, class: 'battle-fog-line' }, hatch);
+      for (let y = 0; y * vision.w < vision.cells.length; y++) {
+        let start = -1;
+        for (let x = 0; x <= vision.w; x++) {
+          const dark = x < vision.w && vision.cells[y * vision.w + x] === '0';
+          if (dark && start < 0) start = x;
+          if (!dark && start >= 0) {
+            svgEl('rect', { x: start * CELL, y: y * CELL, width: (x - start) * CELL, height: CELL }, fog);
+            start = -1;
+          }
+        }
+      }
+    }
   }, false, data.backgroundUrl);
 
   const now = Date.now();
@@ -1583,19 +1616,29 @@ function renderBattle() {
     svgEl('text', { x: (pointer.x + 0.5) * CELL, y: (pointer.y - 0.15) * CELL, class: 'battle-pointer-label' }, group).textContent = pointer.who;
   });
 
+  const seen = battle.vision && battle.vision.id === battle.selected ? battle.vision.targets : null;
   data.tokens.filter(token => token.x !== null).forEach(token => {
+    const sight = seen && seen.get(token.id);
     const group = svgEl('g', {
       class: 'battle-token' + (token.npc ? ' npc' : ' player') + (token.current ? ' is-current' : '') + (token.out ? ' is-out' : '')
         + (token.done ? ' is-done' : '') + (token.alarming ? ' is-alarming' : '') + (token.id === battle.selected ? ' is-selected' : '')
-        + (String(token.character) === me ? ' is-me' : ''),
+        + (String(token.character) === me ? ' is-me' : '')
+        + (sight && sight.visibility === 'none' ? ' is-unseen' : '') + (sight && sight.visibility === 'partial' ? ' is-partial' : ''),
       transform: `translate(${(token.x + 0.5) * CELL} ${(token.y + 0.5) * CELL})`,
       tabindex: 0, 'data-token': token.id, role: 'button',
       'aria-label': token.name + (token.status ? ', ' + token.status : '')
     }, svg);
-    svgEl('title', {}, group).textContent = token.name + (token.status ? ' · ' + token.status : '');
+    svgEl('title', {}, group).textContent = token.name + (token.status ? ' · ' + token.status : '')
+      + (sight ? ' · ' + (sight.visibility === 'none' ? (sight.canShoot ? 'не видна, только вслепую' : 'не видна')
+        : sight.visibility === 'partial' ? 'видна частично' : 'видна') + (sight.cover ? ', укрытие: ' + sight.cover : '') : '');
     svgEl('circle', { r: CELL * 0.46, class: 'battle-token-ring' }, group);
     svgEl('circle', { r: CELL * 0.38, class: 'battle-token-body' }, group);
     svgEl('text', { class: 'battle-token-text', dy: '0.35em' }, group).textContent = token.initials;
+    // щиток: цель за укрытием или видна частично
+    if (sight && sight.visibility !== 'none' && (sight.cover || sight.visibility === 'partial')) {
+      svgEl('path', { d: 'M 0 -6 L 6 -3.5 L 6 1 Q 6 5.5 0 8 Q -6 5.5 -6 1 L -6 -3.5 Z', class: 'battle-token-cover',
+        transform: `translate(${CELL * 0.33} ${-CELL * 0.33})` }, group);
+    }
   });
 
   stage.replaceChildren(svg);
@@ -1919,24 +1962,27 @@ async function attackMenu(token, event) {
   head.className = 'battle-menu-head';
   head.textContent = `${attacker.name} → ${token.name} · ${sight.meters} м`;
   menu.appendChild(head);
-  if (sight.blocked) {
-    const warn = document.createElement('div');
-    warn.className = 'battle-menu-warn';
-    warn.textContent = 'Нет линии видимости';
-    menu.appendChild(warn);
-  } else if (sight.coverLabel) {
-    const cover = document.createElement('div');
-    cover.className = 'battle-menu-note';
-    cover.textContent = 'Укрытие: ' + sight.coverLabel;
-    menu.appendChild(cover);
-  }
+  const line = (text, className) => {
+    const el = document.createElement('div');
+    el.className = className;
+    el.textContent = text;
+    menu.appendChild(el);
+  };
+  if (sight.blocked && sight.throughLabel) line('Не видна — только вслепую сквозь: ' + sight.throughLabel, 'battle-menu-warn');
+  else if (sight.blocked) line('Нет линии видимости', 'battle-menu-warn');
+  else if (sight.visibility === 'partial') line('Видна частично' + (sight.coverLabel ? ' · укрытие: ' + sight.coverLabel : ''), 'battle-menu-note');
+  else if (sight.coverLabel) line('Укрытие: ' + sight.coverLabel, 'battle-menu-note');
+  if (sight.inTheWay && sight.inTheWay.length) line('На линии огня: ' + sight.inTheWay.join(', '), 'battle-menu-warn');
+  const adjacent = Math.max(Math.abs(attacker.x - token.x), Math.abs(attacker.y - token.y)) <= 1;
   dialogs.forEach(dialog => {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'btn btn-sm' + (dialog.dataset.attack === last || dialogs.length === 1 ? ' btn-primary' : '');
     const title = dialog.querySelector('h2');
-    button.textContent = title ? title.textContent.replace(/^[^:]*:\s*/, '') : 'Атака';
-    button.disabled = sight.blocked;
+    const why = attackVerdict(dialog, sight, adjacent);
+    button.textContent = (title ? title.textContent.replace(/^[^:]*:\s*/, '') : 'Атака') + (why.note ? ' · ' + why.note : '');
+    button.disabled = !why.ok;
+    if (why.title) button.title = why.title;
     button.addEventListener('click', () => {
       try { localStorage.setItem('charka.battle.weapon.' + attacker.character, dialog.dataset.attack); } catch (e) { /* только удобство */ }
       closeBattleMenu();
@@ -1965,6 +2011,23 @@ async function attackMenu(token, event) {
   menu.style.left = Math.min(Math.max(8, x), holder.width - 220) + 'px';
   menu.style.top = Math.max(8, y) + 'px';
   menu.hidden = false;
+}
+
+// Можно ли этим оружием по цели: видна или вслепую сквозь одну преграду (если у оружия есть такой модификатор),
+// ближний бой — только с соседней клетки, дальний — не дальше последней полосы дальности (двойная дальность, с. 99)
+function attackVerdict(dialog, sight, adjacent) {
+  const melee = !dialog.querySelector('[data-attack-distance]');
+  const blind = sight.blindOption && dialog.querySelector(`input[type="checkbox"][value="${sight.blindOption}"]`);
+  if (sight.blocked && !(sight.throughLabel && blind && !melee)) return { ok: false, note: 'не видна' };
+  if (melee) return adjacent ? { ok: true, note: '' } : { ok: false, note: 'не рядом' };
+  const bands = [...dialog.querySelectorAll('[data-attack-band]')]
+    .map(band => ({ meters: Number(band.dataset.attackBand), label: band.textContent.trim() }))
+    .sort((a, b) => a.meters - b.meters);
+  const band = bands.find(candidate => sight.meters <= candidate.meters);
+  if (bands.length && !band) return { ok: false, note: 'вне дальности', title: 'Предел оружия ' + bands[bands.length - 1].meters + ' м' };
+  const difficulty = band ? band.label.split('·').pop().trim() : '';
+  const notes = [sight.blocked ? 'вслепую' : '', difficulty ? 'сложн. ' + difficulty : ''].filter(Boolean);
+  return { ok: true, note: notes.join(', '), title: band ? band.label : '' };
 }
 
 // M-10: кого задевает. Взрыв — радиус зоны × единиц заряда от цели, зона огня — половина ширины от цели.
@@ -2030,6 +2093,19 @@ function openAttackFromMap(dialog, target, sight) {
   if (cover) cover.value = sight.cover || '';
   if (cover && sight.cover) {
     const more = cover.closest('details');
+    if (more) more.open = true;
+  }
+  // стрельба вслепую: флажок ставит и снимает карта
+  if (dialog.mapBlind) {
+    const before = dialog.querySelector(`input[type="checkbox"][value="${dialog.mapBlind}"]`);
+    if (before) before.checked = false;
+    dialog.mapBlind = null;
+  }
+  const blind = sight.blocked && sight.blindOption && dialog.querySelector(`input[type="checkbox"][value="${sight.blindOption}"]`);
+  if (blind) {
+    blind.checked = true;
+    dialog.mapBlind = sight.blindOption;
+    const more = blind.closest('details');
     if (more) more.open = true;
   }
   dialog.showModal();
