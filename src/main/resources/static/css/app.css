@@ -1580,3 +1580,58 @@ html:has(.is-editing) {
 }
 .charinfo.is-mine .charinfo-head { border-color: var(--success); box-shadow: 0 0 0 1px var(--success); }
 .charinfo.is-mine .charinfo-label { color: var(--success); font-weight: 700; }
+
+/* J-01: журнал боя в ленте «Стола» */
+.chat-row.is-event { align-items: flex-start; }
+.journal { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; padding: 6px 8px; border-left: 3px solid var(--border-strong);
+  border-radius: 6px; background: var(--surface-2); }
+.journal.is-ok { border-left-color: var(--success); }
+.journal.is-fail { border-left-color: var(--danger); }
+.journal-head { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.journal-title { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.journal-roll { flex: none; display: inline-flex; align-items: baseline; gap: 4px; padding: 1px 8px; border-radius: 999px;
+  background: var(--surface-3); font-variant-numeric: tabular-nums; }
+.journal-roll b { font-family: 'Russo One', sans-serif; font-size: 18px; color: var(--text); }
+.journal-roll small { color: var(--muted); }
+.journal.is-ok .journal-roll b { color: var(--success); }
+.journal.is-fail .journal-roll b { color: var(--danger); }
+.journal-die { width: 14px; height: 14px; align-self: center; border-radius: 3px; border: 2px solid var(--accent);
+  background: radial-gradient(circle, var(--accent) 22%, transparent 26%) center / 6px 6px; }
+.journal-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.jchip { padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--surface-3); color: var(--text-soft); }
+.jchip-hit, .jchip-ok { background: var(--success-soft); color: var(--success); }
+.jchip-miss { background: var(--surface-3); color: var(--muted); }
+.jchip-bad { background: var(--danger-soft); color: var(--danger); }
+.jchip-dmg { background: rgba(248, 113, 113, 0.22); color: #fca5a5; }
+.jchip-armor { background: rgba(148, 163, 184, 0.18); color: #cbd5e1; }
+.jchip-pierce { background: var(--warning-soft); color: var(--warning); }
+.jchip-dead { background: #7f1d1d; color: #fecaca; }
+.jchip-crit { background: rgba(250, 204, 21, 0.2); color: #facc15; }
+.journal-outcome { margin: 0; font-size: 13px; color: var(--text-soft); }
+.journal-steps summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+.journal-steps ol { margin: 4px 0 0; padding-left: 18px; font-size: 12px; color: var(--text-soft); }
+.chat-row.is-round { justify-content: center; }
+.chat-row.is-round > * { grid-column: 1 / -1; }
+.journal-turn { display: flex; align-items: center; justify-content: space-between; gap: 6px; color: var(--muted); font-size: 12px; }
+.journal-round { flex: 1; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; padding: 4px 0;
+  color: var(--warning); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+  border-top: 1px dashed rgba(250, 204, 21, 0.35); }
+.journal-round-note { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--text-soft); }
+
+/* J-02: бросок катится — число мелькает, кубик кувыркается, затем толчок; итог проявляется после */
+.is-rolling [data-after-roll] { opacity: 0; }
+[data-after-roll] { transition: opacity 0.25s ease; }
+.is-rolling .journal-die, .is-rolling.roll-total::before { animation: die-tumble 0.35s linear infinite; }
+.is-rolling .journal-roll b, .is-rolling .journal.is-ok .journal-roll b, .is-rolling .journal.is-fail .journal-roll b, .is-rolling .roll-total b { color: var(--accent); filter: blur(0.4px); }
+.is-rolling .journal.is-ok, .is-rolling .journal.is-fail { border-left-color: var(--border-strong); }
+.is-landed .journal-roll, .is-landed .roll-total { animation: roll-pop 0.35s cubic-bezier(0.2, 1.6, 0.4, 1); }
+.is-landed .journal.is-ok, .is-landed.alert-success { animation: roll-glow-ok 0.9s ease-out; }
+.is-landed .journal.is-fail, .is-landed.alert-error { animation: roll-shake 0.4s ease-out; }
+.is-landed:has(.jchip-crit) .journal-roll { animation: roll-pop 0.35s cubic-bezier(0.2, 1.6, 0.4, 1), roll-crit 1.2s ease-out; }
+.roll-total b { font-weight: 700; }
+@keyframes die-tumble { 0% { transform: rotate(0) scale(1); } 50% { transform: rotate(180deg) scale(1.25); } 100% { transform: rotate(360deg) scale(1); } }
+@keyframes roll-pop { 0% { transform: scale(1.45); } 100% { transform: scale(1); } }
+@keyframes roll-glow-ok { 0% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.55); } 100% { box-shadow: 0 0 0 12px rgba(74, 222, 128, 0); } }
+@keyframes roll-crit { 0% { box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.8); } 100% { box-shadow: 0 0 0 16px rgba(250, 204, 21, 0); } }
+@keyframes roll-shake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-4px); } 40% { transform: translateX(4px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(2px); } }
+@media (prefers-reduced-motion: reduce) { .is-rolling [data-after-roll] { opacity: 1; } }

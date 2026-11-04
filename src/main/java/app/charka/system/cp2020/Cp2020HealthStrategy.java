@@ -259,7 +259,11 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
             event.step("Урон " + amount + " − " + spText + " = " + Math.max(damage, 0));
         }
         if (damage <= 0) {
-            return event.summary(counter.getName() + ": " + (coverSp > 0 ? "укрытие и броня выдержали" : "броня выдержала") + " (" + location.getLabel() + ", SP " + shielding + ")");
+            event.chip("armor", "Не пробил · " + location.getLabel() + ", SP " + shielding);
+            return event.summary(who(counter) + ": " + (coverSp > 0 ? "укрытие и броня выдержали" : "броня выдержала") + " (" + location.getLabel() + ", SP " + shielding + ")");
+        }
+        if (shielding > 0 && type != Cp2020DamageType.BYPASS) {
+            event.chip("pierce", "Пробил SP " + shielding);
         }
         if (type == Cp2020DamageType.ARMOR_PIERCING || (type == Cp2020DamageType.SLUG && !armorStrategy.isHard(armor, location))) {
             damage = Math.max(1, damage / 2);
@@ -295,12 +299,14 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
         counter.setValue(before + damage);
         counter.setFlag(STABILIZED, false);
         event.step("Урон на треке: " + before + " → " + counter.getValue() + " из " + MAX_DAMAGE);
-        String summary = counter.getName() + " получает " + damage + " урона (" + location.getLabel() + ")";
+        String summary = who(counter) + " получает " + damage + " урона (" + location.getLabel() + ")";
+        event.chip("dmg", damage + " урона · " + location.getLabel());
 
         // 4. Смертельные попадания
         if (location == Cp2020Location.HEAD && damage > SEVERE_HIT_THRESHOLD) {
             counter.setFlag(DEAD, true);
             event.step("Больше " + SEVERE_HIT_THRESHOLD + " урона в голову — мгновенная смерть");
+            event.chip("dead", "Убит в голову");
             return event.summary(summary + " — убит выстрелом в голову");
         }
         if (location.isLimb() && damage > SEVERE_HIT_THRESHOLD && !counter.getFlag(lostKey(location))) {
@@ -308,15 +314,18 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
             counter.setFlag(DEATH_SAVE_PENDING, true);
             event.step("Больше " + SEVERE_HIT_THRESHOLD + " урона в конечность — «" + location.getLabel()
                     + "» оторвана или раздроблена. Нужен спасбросок от смерти (Смертельное 0)");
+            event.chip("bad", location.getLabel() + " потеряна");
         }
         if (counter.getValue() > MAX_DAMAGE) {
             counter.setFlag(DEAD, true);
             event.step("Урон превысил " + MAX_DAMAGE + " — смерть");
+            event.chip("dead", "Погиб");
             return event.summary(summary + " — погиб");
         }
 
         int level = woundLevel(counter.getValue());
         event.step("Состояние: " + levelName(level));
+        event.chip("info", levelName(level));
 
         // 5. Оглушение
         if (request.isAutoSave()) {
@@ -341,7 +350,7 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
         }
         return new HealthEvent()
                 .step("Урон на треке: " + before + " → " + after)
-                .summary(counter.getName() + ": вылечено " + (before - after) + ". " + statusLabel(counter));
+                .summary(who(counter) + ": вылечено " + (before - after) + ". " + statusLabel(counter));
     }
 
     /**
@@ -452,14 +461,14 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
         Counter counter = context.getCounter();
         if (option.stabilization()) {
             return success ? stabilize(context)
-                    : new HealthEvent().summary(counter.getName() + ": стабилизировать не удалось, спасброски от смерти продолжаются");
+                    : new HealthEvent().summary(who(counter) + ": стабилизировать не удалось, спасброски от смерти продолжаются");
         }
         if (!success) {
-            return new HealthEvent().summary(counter.getName() + ": лечение не удалось, новая попытка — через день");
+            return new HealthEvent().summary(who(counter) + ": лечение не удалось, новая попытка — через день");
         }
         int level = option == TREAT_MED ? CARE_MEDICAL_TECH : CARE_FIRST_AID;
         counter.getAttributes().put(CARE, Math.max(level, counter.getAttribute(CARE, CARE_NONE)));
-        return new HealthEvent().summary(counter.getName() + ": " + careLabel(counter, counter.getAttribute(CARE, CARE_NONE)));
+        return new HealthEvent().summary(who(counter) + ": " + careLabel(counter, counter.getAttribute(CARE, CARE_NONE)));
     }
 
     @Override
@@ -500,7 +509,7 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
         counter.setFlag(STABILIZED, true);
         counter.setFlag(DEATH_SAVE_PENDING, false);
         return new HealthEvent()
-                .summary(counter.getName() + " стабилизирован — спасброски от смерти больше не нужны");
+                .summary(who(counter) + " стабилизирован — спасброски от смерти больше не нужны");
     }
 
     @Override
@@ -576,12 +585,15 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
         String outcome;
         if (staysStunned && success) {
             outcome = " всё ещё оглушён";
+            event.chip("bad", "Всё ещё оглушён");
         } else if (success) {
             outcome = wasStunned ? " приходит в себя" : " держится на ногах";
+            event.chip("ok", wasStunned ? "Пришёл в себя" : "Устоял: не оглушён");
         } else {
             outcome = " оглушён и выведен из строя";
+            event.chip("bad", "Оглушён");
         }
-        return event.summary(counter.getName() + outcome);
+        return event.summary(who(counter) + outcome);
     }
 
     /** Спасбросок от смерти: d10 ≤ BODY − номер смертельного уровня */
@@ -598,9 +610,11 @@ public class Cp2020HealthStrategy extends AbstractCounterStrategy implements Hea
         counter.setFlag(DEATH_SAVE_PENDING, false);
         if (!success) {
             counter.setFlag(DEAD, true);
-            return event.summary(counter.getName() + " умирает");
+            event.chip("dead", "Умер: спасбросок от смерти провален");
+            return event.summary(who(counter) + " умирает");
         }
-        return event.summary(counter.getName() + " цепляется за жизнь");
+        event.chip("ok", "Выжил: спасбросок от смерти");
+        return event.summary(who(counter) + " цепляется за жизнь");
     }
 
     // ---------- вспомогательное ----------

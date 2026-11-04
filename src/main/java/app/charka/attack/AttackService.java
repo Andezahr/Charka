@@ -47,6 +47,7 @@ public class AttackService {
     private final GameSystemRegistry systemRegistry;
     private final CheckService checkService;
     private final DiceService diceService;
+    private final app.charka.journal.JournalService journalService;
     private final DiceRoller diceRoller;
     private final HealthCounterService healthCounterService;
     private final app.charka.encounter.RoundActions roundActions;
@@ -83,7 +84,7 @@ public class AttackService {
         if (request.luck() > 0) {
             system.spendLuck(attacker, request.luck());
         }
-        AttackResult result = perform(context, rules);
+        AttackResult result = journalService.capture(() -> perform(context, rules), done -> draft(attacker, done));
         // A-05: атака в бою — действие раунда
         roundActions.count(attacker);
         // израсходованный предмет ушёл из инвентаря: его строки на листе больше нет
@@ -107,6 +108,20 @@ public class AttackService {
         return attack(characterId, source, request);
     }
 
+    /**
+     * J-01: атака в журнале — заголовок «Avenger → Бустер 1», итог, фишка «Попал» или «Мимо», урон и спасброски целей
+     * (их фишки собирает журнал), расчёт по шагам.
+     */
+    private static app.charka.journal.JournalService.Draft draft(Character attacker, AttackResult result) {
+        List<app.charka.journal.JournalService.Chip> chips = new ArrayList<>();
+        chips.add(new app.charka.journal.JournalService.Chip(result.hit() ? "hit" : "miss", result.hit() ? "Попал" : "Мимо"));
+        if (result.pendingBlast() != null) {
+            chips.add(new app.charka.journal.JournalService.Chip("info", "Заряд упал мимо — решает мастер"));
+        }
+        return new app.charka.journal.JournalService.Draft(attacker.getCampaign(), attacker, app.charka.journal.JournalService.Kind.ATTACK,
+                result.title(), result.outcome(), result.hit(), result.total(), result.difficulty(), result.steps(), chips);
+    }
+
     private AttackResult perform(AttackContext context, AttackRules rules) {
         AttackPlan plan = rules.plan(context, diceRoller);
         List<String> steps = new ArrayList<>();
@@ -117,6 +132,8 @@ public class AttackService {
 
         AttackOutcome last = null;
         String lastSummary = null;
+        // бросок самого атакующего: его число катится в итоге
+        CheckResult own = null;
         int hitTargets = 0;
         // удача — к первому броску самого атакующего: спасброски целей в зоне огня её не получают
         int luck = context.request().luck();
@@ -136,6 +153,9 @@ public class AttackService {
             CheckResult check = planned.roller() != null
                     ? checkService.checkForCharacter(planned.roller().getId(), request)
                     : checkService.checkForCampaign(context.attacker().getCampaign().getId(), request);
+            if (own == null && planned.roller() != null && planned.roller().getId().equals(context.attacker().getId())) {
+                own = check;
+            }
             steps.addAll(check.steps());
             last = rules.outcome(context, plan, planned, check, diceRoller);
             String summary = apply(context, rules, last, steps);
@@ -145,12 +165,14 @@ public class AttackService {
 
         Long pending = pendingBlast(context, last);
         if (plan.checks().size() > 1 || (last.headline() == null && last.hits().isEmpty())) {
-            return new AttackResult(plan.title(), "Задето целей: " + hitTargets + " из " + plan.checks().size(), hitTargets > 0, steps, pending, false);
+            return new AttackResult(plan.title(), "Задето целей: " + hitTargets + " из " + plan.checks().size(), hitTargets > 0, steps, pending, false)
+                    .withRoll(own == null ? null : own.total(), own == null ? null : own.difficulty());
         }
         int hitCount = last.hits().size();
         String outcome = last.headline() != null ? last.headline()
                 : hitCount > 1 ? "Попаданий: " + hitCount + ". " + lastSummary : lastSummary;
-        return new AttackResult(plan.title(), outcome, last.hit(), steps, pending, false);
+        return new AttackResult(plan.title(), outcome, last.hit(), steps, pending, false)
+                .withRoll(own == null ? null : own.total(), own == null ? null : own.difficulty());
     }
 
     /**
@@ -253,6 +275,10 @@ public class AttackService {
             throw new IllegalArgumentException("Выберите, кого задело");
         }
         List<Character> targets = targets(attacker, targetIds);
+        return journalService.capture(() -> applyBlast(attacker, rules, pending, targets), done -> draft(attacker, done));
+    }
+
+    private AttackResult applyBlast(Character attacker, AttackRules rules, PendingBlast pending, List<Character> targets) {
         AreaDamage blast = new AreaDamage(pending.getWeapon(), pending.getExpression(), pending.getAmount(), pending.getRadius(), pending.getData(), List.of());
         List<String> steps = new ArrayList<>();
         for (Character target : targets) {

@@ -127,6 +127,7 @@ public class DiceService {
         entry.setCreatedAt(LocalDateTime.now());
         entry.setHidden(HiddenRolls.active());
         rollLogRepository.save(entry);
+        app.charka.journal.JournalService.roll(entry);
     }
 
     /** A-09: скрытый бросок мастера — показать всем */

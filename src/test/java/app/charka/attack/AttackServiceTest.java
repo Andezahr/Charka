@@ -50,6 +50,9 @@ class AttackServiceTest {
     @Autowired private ItemService itemService;
     @Autowired private ItemRepository itemRepository;
     @Autowired private EntityManager entityManager;
+    @Autowired private app.charka.repository.JournalEntryRepository journalRepository;
+    @Autowired private app.charka.repository.RollLogRepository rollLogRepository;
+    @Autowired private app.charka.chat.ChatService chatService;
 
     @MockitoBean(answers = Answers.CALLS_REAL_METHODS) private DiceRoller dice;
 
@@ -446,6 +449,55 @@ class AttackServiceTest {
             wreck.getProperties().put(Cp2020Vehicles.DAMAGE, "30");
             entityManager.flush();
             assertThat(attackService.objectTargets(campaign)).isEmpty();
+        }
+    }
+
+    @org.junit.jupiter.api.Nested
+    @DisplayName("Журнал боя (J-01)")
+    class Journal {
+
+        private java.util.List<app.charka.model.JournalEntry> entries() {
+            entityManager.flush();
+            entityManager.clear();
+            Long campaignId = characterRepository.findById(shooter.getId()).orElseThrow().getCampaign().getId();
+            return journalRepository.findByCampaignIdOrderByCreatedAtDescIdDesc(campaignId, org.springframework.data.domain.PageRequest.of(0, 20));
+        }
+
+        @Test
+        @DisplayName("Попадание — одна запись: «Попал», «Пробил SP 14», урон по зоне; броски внутри неё, в ленте отдельно их нет")
+        void hit() {
+            when(dice.roll(anyInt())).thenReturn(9, 6, 6);
+            attackService.attack(shooter.getId(), minami.getId(), atTorso());
+
+            java.util.List<app.charka.model.JournalEntry> entries = entries();
+            assertThat(entries).singleElement().satisfies(entry -> {
+                assertThat(entry.getKind()).isEqualTo("ATTACK");
+                assertThat(entry.getSuccess()).isTrue();
+                assertThat(entry.getTotal()).isEqualTo(15);
+                assertThat(entry.getDifficulty()).isEqualTo(15);
+                assertThat(entry.chipList()).extracting(chip -> chip[0] + ":" + chip[1])
+                        .contains("hit:Попал", "pierce:Цель: Пробил SP 14", "dmg:Цель: 1 урона · Торс");
+                assertThat(entry.stepList()).anyMatch(step -> step.contains("Сложность 15"));
+            });
+            Long campaignId = characterRepository.findById(shooter.getId()).orElseThrow().getCampaign().getId();
+            assertThat(rollLogRepository.findByCampaignIdOrderByCreatedAtDescIdDesc(campaignId, org.springframework.data.domain.PageRequest.of(0, 20)))
+                    .isNotEmpty().allMatch(roll -> entries.get(0).getId().equals(roll.getJournalEntryId()));
+            assertThat(chatService.feed(campaignId, 20, true)).singleElement()
+                    .satisfies(entry -> assertThat(entry.event()).isNotNull());
+        }
+
+        @Test
+        @DisplayName("Броня выдержала — «Не пробил»; промах — «Мимо»")
+        void armorAndMiss() {
+            when(dice.roll(anyInt())).thenReturn(9, 1, 1);
+            attackService.attack(shooter.getId(), minami.getId(), atTorso());
+            assertThat(entries().get(0).chipList()).extracting(chip -> chip[1]).anyMatch(text -> text.contains("Не пробил"));
+
+            when(dice.roll(anyInt())).thenReturn(1);
+            attackService.attack(shooter.getId(), minami.getId(), atTorso());
+            app.charka.model.JournalEntry miss = entries().get(0);
+            assertThat(miss.getSuccess()).isFalse();
+            assertThat(miss.chipList()).extracting(chip -> chip[0] + ":" + chip[1]).contains("miss:Мимо");
         }
     }
 }

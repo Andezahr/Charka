@@ -53,10 +53,28 @@ public class HealthCounterService {
     private final ObjectProvider<GameSystemRegistry> systemRegistry;
     private final WoundRepository woundRepository;
     private final app.charka.encounter.RoundActions roundActions;
+    private final app.charka.journal.JournalService journalService;
+
+    /**
+     * J-01: действие со здоровьем — запись журнала «Урон: Олежа», «Спасбросок: Олежа»; внутри атаки — фишки её записи.
+     */
+    private HealthEvent journaled(Character who, String title, java.util.function.Supplier<HealthEvent> action) {
+        return journalService.capture(() -> {
+            HealthEvent event = action.get();
+            app.charka.journal.JournalService.health(who.getName(), event);
+            return event;
+        }, event -> event == null ? null : new app.charka.journal.JournalService.Draft(who.getCampaign(), who,
+                app.charka.journal.JournalService.Kind.HEALTH, title + ": " + who.getName(), event.getSummary(), null, null, null,
+                event.getSteps(), List.of()));
+    }
 
     @Transactional
     public HealthEvent applyDamage(Long characterId, Long counterId, HealthDamageRequestDto requestDto) {
         CounterContext context = contextFor(characterId, counterId);
+        return journaled(context.getCounter().getCharacter(), "Урон", () -> applyDamage(context, requestDto));
+    }
+
+    private HealthEvent applyDamage(CounterContext context, HealthDamageRequestDto requestDto) {
         DamageRequest request = DamageRequest.builder()
                 .amount(requestDto.getAmount())
                 .location(requestDto.getLocation())
@@ -86,9 +104,12 @@ public class HealthCounterService {
                     return Optional.of(new HealthEvent().step("Цель уже мертва").summary("Цель уже мертва"));
                 }
                 int before = counter.getValue();
-                HealthEvent event = health.applyDamage(context, request);
-                counterRepository.saveAll(siblings);
-                logDamage(context, before, event);
+                HealthEvent event = journaled(counter.getCharacter(), "Урон", () -> {
+                    HealthEvent applied = health.applyDamage(context, request);
+                    counterRepository.saveAll(siblings);
+                    logDamage(context, before, applied);
+                    return applied;
+                });
                 return Optional.of(event);
             }
         }
@@ -110,8 +131,11 @@ public class HealthCounterService {
                 if (health.isDead(context)) {
                     return Optional.of(new HealthEvent().step("Цель уже мертва").summary("Цель уже мертва"));
                 }
-                HealthEvent event = health.save(context, saveType, null, modifier);
-                counterRepository.saveAll(siblings);
+                HealthEvent event = journaled(counter.getCharacter(), "Спасбросок", () -> {
+                    HealthEvent saved = health.save(context, saveType, null, modifier);
+                    counterRepository.saveAll(siblings);
+                    return saved;
+                });
                 return Optional.of(event);
             }
         }
@@ -131,9 +155,11 @@ public class HealthCounterService {
     @Transactional
     public HealthEvent heal(Long characterId, Long counterId, int points) {
         CounterContext context = contextFor(characterId, counterId);
-        HealthEvent event = strategyFor(context).heal(context, points);
-        counterRepository.save(context.getCounter());
-        return event;
+        return journaled(context.getCounter().getCharacter(), "Лечение", () -> {
+            HealthEvent event = strategyFor(context).heal(context, points);
+            counterRepository.save(context.getCounter());
+            return event;
+        });
     }
 
     /**
@@ -148,17 +174,21 @@ public class HealthCounterService {
     @Transactional
     public HealthEvent save(Long characterId, Long counterId, String saveType, Integer roll, int luck) {
         CounterContext context = contextFor(characterId, counterId);
-        HealthEvent event = strategyFor(context).save(context, saveType, roll, 0, luck);
-        counterRepository.save(context.getCounter());
-        return event;
+        return journaled(context.getCounter().getCharacter(), "Спасбросок", () -> {
+            HealthEvent event = strategyFor(context).save(context, saveType, roll, 0, luck);
+            counterRepository.save(context.getCounter());
+            return event;
+        });
     }
 
     @Transactional
     public HealthEvent stabilize(Long characterId, Long counterId) {
         CounterContext context = contextFor(characterId, counterId);
-        HealthEvent event = strategyFor(context).stabilize(context);
-        counterRepository.save(context.getCounter());
-        return event;
+        return journaled(context.getCounter().getCharacter(), "Стабилизация", () -> {
+            HealthEvent event = strategyFor(context).stabilize(context);
+            counterRepository.save(context.getCounter());
+            return event;
+        });
     }
 
     /**
@@ -195,12 +225,19 @@ public class HealthCounterService {
         if (difficulty == null) {
             throw new IllegalArgumentException("Сейчас это не нужно");
         }
-        SkillCheck check = skillService.getObject().check(healerId, option.skillCode(), null, modifier, difficulty, Math.max(0, luck));
+        return journaled(patient, "Медпомощь", () -> care(context, strategy, option, patient, healer, modifier, difficulty, luck));
+    }
+
+    private HealthEvent care(CounterContext context, HealthCounterStrategy strategy, CareOption option, Character patient, Character healer,
+                             int modifier, int difficulty, int luck) {
+        SkillCheck check = skillService.getObject().check(healer.getId(), option.skillCode(), null, modifier, difficulty, Math.max(0, luck));
         HealthEvent event = new HealthEvent();
+        event.chip(Boolean.TRUE.equals(check.result().success()) ? "ok" : "bad", healer.getName() + ": " + (Boolean.TRUE.equals(check.result().success()) ? "помог" : "не помог"));
         event.step(healer.getName() + ", " + check.label() + ": " + check.result().outcome());
         check.result().steps().forEach(step -> event.step("  " + step));
         HealthEvent result = strategy.applyCare(context, option, Boolean.TRUE.equals(check.result().success()));
         result.getSteps().forEach(event::step);
+        result.getChips().forEach(chip -> event.chip(chip.kind(), chip.text()));
         counterRepository.save(context.getCounter());
         if (Boolean.TRUE.equals(check.result().success())) {
             log(patient, healer.getName() + ": " + result.getSummary(), null);

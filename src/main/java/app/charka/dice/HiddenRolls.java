@@ -30,4 +30,9 @@ public final class HiddenRolls {
     static boolean active() {
         return HIDDEN.get();
     }
+
+    /** Идёт скрытый бросок: журнал боя прячет запись так же */
+    public static boolean isActive() {
+        return HIDDEN.get();
+    }
 }

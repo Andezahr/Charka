@@ -44,4 +44,8 @@ public class RollLog {
 
     /** A-09: скрытый бросок мастера — в ленте игроков его нет, мастер может показать всем */
     private boolean hidden;
+
+    /** J-01: бросок — часть записи журнала боя; в ленте показан внутри неё */
+    @Column(name = "journal_entry_id")
+    private Long journalEntryId;
 }

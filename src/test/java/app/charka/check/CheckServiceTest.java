@@ -48,7 +48,7 @@ class CheckServiceTest {
         checkService = new CheckService(registry, sides -> {
             sidesAsked.add(sides);
             return rolls.isEmpty() ? nextRoll : rolls.poll();
-        }, diceService, characterRepository, campaignRepository);
+        }, diceService, app.charka.journal.JournalService.none(), characterRepository, campaignRepository);
     }
 
     private static Character member(Long id, String name, Campaign campaign) {

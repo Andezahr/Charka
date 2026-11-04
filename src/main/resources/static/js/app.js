@@ -43,7 +43,70 @@ const UPLOAD_TIMEOUT = 60000;
 
 // Обработчики элементов страницы: вызывается при загрузке и после каждого обновления на месте.
 // Обработчики на document сюда не класть, они накопятся: они в конце файла
+// J-02: бросок «катится» — число быстро меняется, кубик крутится, затем встаёт с толчком; итог и фишки проявляются после.
+// Около 0,7 с: ощутимо, но не задерживает стол. Новая запись ленты катится один раз (ключи в sessionStorage), итог
+// атаки в строке ([data-roll-now]) — всегда: он приходит только в ответ на действие
+const ROLL_MS = 700;
+const FEED_SEEN_KEY = 'charka.feed.seen';
+
+function rollAnimation(holder, own) {
+  const roll = holder.matches('[data-roll-anim]') ? holder : holder.querySelector('[data-roll-anim]');
+  if (!roll || roll.dataset.rolling) return;
+  const value = roll.querySelector('[data-roll-value]') || roll;
+  const final = Number(roll.dataset.final);
+  if (!Number.isFinite(final)) return;
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  roll.dataset.rolling = '1';
+  const low = Math.max(1, final - 9);
+  const high = Math.max(final + 9, 10);
+  const start = performance.now();
+  holder.classList.add('is-rolling');
+  holder.classList.remove('is-landed');
+  let next = 0;
+  const tick = now => {
+    const t = (now - start) / ROLL_MS;
+    if (t >= 1) {
+      value.textContent = final;
+      holder.classList.remove('is-rolling');
+      // перезапуск анимации толчка
+      void holder.offsetWidth;
+      holder.classList.add('is-landed');
+      delete roll.dataset.rolling;
+      if (own && navigator.vibrate) navigator.vibrate(holder.querySelector('.jchip-crit') ? [30, 40, 60] : 25);
+      return;
+    }
+    // замедляется к концу, как кубик
+    if (now >= next) {
+      let shown;
+      do { shown = low + Math.floor(Math.random() * (high - low + 1)); } while (shown === Number(value.textContent) && high > low);
+      value.textContent = shown;
+      next = now + 40 + 160 * t * t;
+    }
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+function revealRolls() {
+  document.querySelectorAll('[data-roll-now]').forEach(holder => rollAnimation(holder, true));
+  const rows = [...document.querySelectorAll('[data-feed-key]')];
+  if (!rows.length) return;
+  let stored = null;
+  try { stored = JSON.parse(sessionStorage.getItem(FEED_SEEN_KEY) || 'null'); } catch (e) { /* только удобство */ }
+  // первый взгляд на ленту — история не катится
+  const first = stored === null;
+  const seen = new Set(stored || []);
+  rows.forEach(row => {
+    const key = row.dataset.feedKey;
+    if (seen.has(key)) return;
+    seen.add(key);
+    if (!first) rollAnimation(row, false);
+  });
+  try { sessionStorage.setItem(FEED_SEEN_KEY, JSON.stringify([...seen].slice(-400))); } catch (e) { /* только удобство */ }
+}
+
 function initPage() {
+  revealRolls();
 
   // R-14: экран боя — до низа окна под шапкой, какой бы высоты она ни была
   const battleScreen = document.querySelector('.battle-screen');
@@ -951,7 +1014,10 @@ async function pollChat() {
         const changed = chat.etag !== null;
         chat.etag = response.headers.get('ETag');
         const feed = card.querySelector('[data-chat-feed]');
-        if (feed) feed.innerHTML = await response.text();
+        if (feed) {
+          feed.innerHTML = await response.text();
+          revealRolls();
+        }
         if (changed) chat.quietSince = Date.now();
       }
     } catch (e) { /* сеть пропала: попробуем позже */ }

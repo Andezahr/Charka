@@ -91,7 +91,7 @@ public class CampaignController {
         org.springframework.data.domain.Page<app.charka.model.RollLog> rollPage = diceService.pageForCampaign(campaignId, rolls, ROLLS_PER_PAGE);
         model.addAttribute("recentRolls", rollPage.getContent());
         model.addAttribute("rollPage", rollPage);
-        model.addAttribute("feed", chatService.feed(campaignId, ChatController.FEED_SIZE, accessService.isGm(campaign)));
+        model.addAttribute("feed", chatService.feedFor(campaign, ChatController.FEED_SIZE));
         model.addAttribute("awardCounters", awardService.awardableCounters(campaignId));
         model.addAttribute("hasCreation", creations.stream().anyMatch(creation -> creation.getSystemCode().equals(campaign.getSystem())));
         // A-02: приглашение — во вкладке «Настройки» (R-13)

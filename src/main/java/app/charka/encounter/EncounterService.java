@@ -55,6 +55,7 @@ public class EncounterService {
     private static final String INITIATIVE_BONUS = "initiativeBonus";
 
     private final EncounterRepository encounterRepository;
+    private final app.charka.journal.JournalService journalService;
     private final CampaignRepository campaignRepository;
     private final CharacterRepository characterRepository;
     private final GameSystemRegistry systemRegistry;
@@ -264,6 +265,23 @@ public class EncounterService {
     @Transactional
     public Turn next(Long campaignId) {
         Encounter encounter = encounter(campaignId);
+        int round = encounter.getRound();
+        // J-01: новый раунд — запись журнала; урон горения и газа в его начале — её фишки
+        return journalService.capture(() -> nextTurn(encounter), turn -> {
+            if (encounter.getRound() != round) {
+                return new app.charka.journal.JournalService.Draft(encounter.getCampaign(), null, app.charka.journal.JournalService.Kind.ROUND,
+                        "Раунд " + encounter.getRound(), turn.report().isEmpty() ? "Начался" : String.join("; ", turn.report()),
+                        null, null, null, turn.report(), List.of());
+            }
+            // кто ходит теперь — строкой ленты, а не «✓ Следующий ход»
+            Character next = turn.character() == null ? null : encounter.getParticipants().stream()
+                    .map(EncounterParticipant::getCharacter).filter(c -> c.getId().equals(turn.character())).findFirst().orElse(null);
+            return next == null ? null : new app.charka.journal.JournalService.Draft(encounter.getCampaign(), next,
+                    app.charka.journal.JournalService.Kind.TURN, "Ходит " + next.getName(), null, null, null, null, List.of(), List.of());
+        });
+    }
+
+    private Turn nextTurn(Encounter encounter) {
         GameSystem system = system(encounter.getCampaign());
         EncounterParticipant current = current(encounter, system);
         if (current != null) {

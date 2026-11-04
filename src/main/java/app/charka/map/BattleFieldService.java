@@ -122,6 +122,26 @@ public class BattleFieldService {
     }
 
     /**
+     * J-01: имена участников боя для ленты: {@code true} — игрок его не видит, в ленте он «?». Нет скрытых — пусто.
+     */
+    @Transactional(readOnly = true)
+    public java.util.Map<String, Boolean> fogNames(Long campaignId, Viewer viewer) {
+        return encounterRepository.findByCampaignId(campaignId)
+                .filter(encounter -> encounter.getMapDoc() != null)
+                .map(encounter -> {
+                    Set<Long> hidden = fog(encounter, grid(encounter), viewer).hidden();
+                    if (hidden.isEmpty()) {
+                        return java.util.Map.<String, Boolean>of();
+                    }
+                    java.util.Map<String, Boolean> names = new java.util.HashMap<>();
+                    // одно имя у видимого и скрытого — не прячем: видимый важнее
+                    encounter.getParticipants().forEach(p -> names.merge(p.getCharacter().getName(), hidden.contains(p.getId()), Boolean::logicalAnd));
+                    return names;
+                })
+                .orElse(java.util.Map.of());
+    }
+
+    /**
      * M-16: участники, которых игрок сейчас не видит; мастеру, без карты или без тумана — пусто.
      */
     @Transactional(readOnly = true)

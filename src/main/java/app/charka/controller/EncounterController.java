@@ -55,7 +55,7 @@ public class EncounterController {
             model.addAttribute("attackObjects", attackService.objectTargets(campaign));
             model.addAttribute("hasField", view.get().encounter().getMapDoc() != null);
             model.addAttribute("npcTemplates", systemRegistry.get(campaign.getSystem()).getNpcTemplates());
-            model.addAttribute("feed", chatService.feed(campaignId, ChatController.FEED_SIZE, accessService.isGm(campaign)));
+            model.addAttribute("feed", chatService.feedFor(campaign, ChatController.FEED_SIZE));
             // U-03: игрок действует своими персонажами, остальные строки — только смотрит
             model.addAttribute("controllable", view.get().rows().stream().map(row -> row.character())
                     .filter(accessService::canControl).map(app.charka.model.Character::getId).collect(java.util.stream.Collectors.toSet()));
@@ -255,7 +255,8 @@ public class EncounterController {
         try {
             SkillCheck check = encounterService.check(campaignId, participantId, skill, difficulty, modifier, luck);
             redirectAttributes.addFlashAttribute("combatResult", new AttackResult(check.label(), check.result().outcome(),
-                    !Boolean.FALSE.equals(check.result().success()), check.result().steps()));
+                    !Boolean.FALSE.equals(check.result().success()), check.result().steps())
+                    .withRoll(check.result().total(), check.result().difficulty()));
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("encounterError", e.getMessage());
         }

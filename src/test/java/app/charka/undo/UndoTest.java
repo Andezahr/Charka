@@ -263,12 +263,28 @@ class UndoTest {
 
             String feed = mockMvc.perform(get("/campaign/" + campaign.getId() + "/chat"))
                     .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-            assertThat(feed).contains("✓ урон", "/undo/" + offer(damaged).id());
+            // J-01: действие — запись журнала «Урон: Олежа», «↶» стоит на ней
+            assertThat(feed).contains("Урон: Олежа", "is-event", "/undo/" + offer(damaged).id()).doesNotContain("✓ урон");
 
             undo(offer(damaged));
             String after = mockMvc.perform(get("/campaign/" + campaign.getId() + "/chat"))
                     .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
             assertThat(after).contains("↶ Отменено: Олежа: урон").doesNotContain("/undo/");
+        }
+
+        @Test
+        @DisplayName("J-01: три действия подряд — три записи журнала, отдельных строк «✓» нет")
+        void pairsEveryAction() throws Exception {
+            damage(victim, 1);
+            damage(victim, 2);
+            damage(victim, 3);
+            // действие без записи журнала после них не забирает «↶» последней записи
+            mockMvc.perform(post("/character/" + victim.getId() + "/money").param("name", "Пиво").param("amount", "-5"))
+                    .andExpect(status().is3xxRedirection());
+            String feed = mockMvc.perform(get("/campaign/" + campaign.getId() + "/chat"))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            assertThat(feed.split("is-event", -1)).hasSize(4);
+            assertThat(feed).doesNotContain("✓ урон").contains("✓ ");
         }
     }
 }

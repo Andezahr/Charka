@@ -32,7 +32,7 @@ public class ChatController {
     /** Только лента: её подменяет опрос */
     @GetMapping
     public String feed(@PathVariable Long campaignId, Model model) {
-        model.addAttribute("feed", chatService.feed(campaignId, FEED_SIZE, accessService.isGm(campaignService.getById(campaignId))));
+        model.addAttribute("feed", chatService.feedFor(campaignService.getById(campaignId), FEED_SIZE));
         model.addAttribute("campaignId", campaignId);
         return "fragments/chat :: feed";
     }
@@ -42,7 +42,7 @@ public class ChatController {
     public String panel(@PathVariable Long campaignId, @RequestParam(required = false) String returnTo, Model model) {
         app.charka.model.Campaign campaign = campaignService.getById(campaignId);
         boolean gm = accessService.isGm(campaign);
-        model.addAttribute("feed", chatService.feed(campaignId, FEED_SIZE, gm));
+        model.addAttribute("feed", chatService.feedFor(campaign, FEED_SIZE));
         model.addAttribute("campaignId", campaignId);
         model.addAttribute("returnTo", back(campaignId, returnTo));
         model.addAttribute("chatCharacters", accessService.visible(campaign));
