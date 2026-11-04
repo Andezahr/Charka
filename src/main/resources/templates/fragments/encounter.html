@@ -122,5 +122,19 @@
   </div>
 </th:block>
 
+<!-- R-17: портрет в карусели очереди; hidden — участники в тумане (M-16) -->
+<li th:fragment="portrait(row, hidden)" class="carousel-item"
+    th:with="dark=${hidden.contains(row.participant.id)}"
+    th:classappend="${(row.current ? 'is-current ' : '') + (row.participant.done ? 'is-done ' : '') + (row.participant.waiting ? 'is-waiting ' : '')
+                     + (row.card.out ? 'is-out ' : '') + (row.character.npc ? 'npc ' : 'player ') + (dark ? 'is-hidden' : '')}">
+  <button type="button" class="carousel-btn" th:attr="data-select-token=${dark ? null : row.participant.id}"
+          th:title="${dark} ? 'Вне видимости' : ${row.character.name} + (${row.card.status != null} ? ' · ' + ${row.card.status} : '') + ' · инициатива ' + ${row.participant.initiative}">
+    <span class="carousel-init" th:text="${row.participant.initiative}">17</span>
+    <span class="carousel-name" th:text="${dark} ? '?' : ${row.character.name}">Колясик</span>
+    <span th:if="${row.participant.waiting}" class="carousel-mark">ждёт</span>
+    <span th:if="${!dark and row.declaration != null}" class="carousel-mark pink" th:text="${row.declaration.label}">Выхватывает</span>
+  </button>
+</li>
+
 </body>
 </html>

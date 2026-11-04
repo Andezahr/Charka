@@ -1474,3 +1474,102 @@ html:has(.is-editing) {
 /* ---------- A-06: сцены ---------- */
 .scenes-list { margin-top: 16px; }
 .scene-edit .check { white-space: nowrap; }
+
+/* R-14…R-18: бой — карта во весь экран. Сверху Char Info и очередь, слева инструменты, справа «Стол / Очередь / Мастер», снизу ход */
+.page-battle { max-width: none; padding: 8px 12px 12px; }
+.battle-screen {
+  display: grid; gap: 8px;
+  grid-template-columns: 132px minmax(0, 1fr) minmax(300px, 360px);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas: "top top top" "tools map side" "bar bar side";
+  height: calc(100dvh - var(--battle-offset, 120px)); min-height: 520px;
+}
+.battle-screen:not(.has-field) { grid-template-areas: "top top top" "map map side" "bar bar side"; }
+.battle-top { grid-area: top; display: flex; align-items: center; gap: 8px; min-width: 0; position: relative; z-index: 6; }
+.battle-toolbar { grid-area: tools; display: flex; flex-direction: column; gap: 6px; min-height: 0; overflow-y: auto; }
+.battle-toolbar .btn, .battle-toolbar select { width: 100%; justify-content: flex-start; }
+.battle-toolbar .battle-me { flex-direction: column; align-items: stretch; gap: 2px; }
+.battle-toolbar .battle-zoom { margin: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.battle-toolbar .battle-zoom .btn { justify-content: center; padding-inline: 0; }
+.battle-toolbar-sep { width: 100%; border: 0; border-top: 1px solid var(--border); margin: 4px 0; }
+.battle-center { grid-area: map; position: relative; display: flex; flex-direction: column; min-height: 0;
+  border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); overflow: hidden; }
+.battle-center .battle-holder { flex: 1; min-height: 0; }
+.battle-center .battle-stage { height: 100%; border: 0; }
+.battle-center .battle-hint { padding: 6px 12px; border-top: 1px solid var(--border); }
+.battle-center .battle-tray { padding: 6px 12px; border-top: 1px solid var(--border); }
+.battle-alerts { position: absolute; top: 8px; left: 8px; right: 8px; z-index: 4; display: flex; flex-direction: column; gap: 6px;
+  max-height: 60%; overflow-y: auto; pointer-events: none; }
+.battle-alerts > * { pointer-events: auto; max-width: 560px; }
+.battle-alerts .battle-turn { margin: 0; }
+.battle-alerts:empty, .battle-alerts .requests-slot:empty { display: none; }
+.battle-nomap { margin: auto; max-width: 420px; }
+.battle-side { grid-area: side; display: flex; flex-direction: column; min-height: 0; gap: 8px; }
+.side-tabs { display: flex; gap: 4px; }
+.side-tab { flex: 1; padding: 7px 10px; border: 1px solid var(--border); border-radius: 999px; background: none; color: var(--text-soft);
+  font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }
+.side-tab.is-active { background: var(--accent-soft); color: var(--accent); border-color: rgba(34, 211, 238, 0.35); }
+.battle-panel { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+.battle-panel[hidden] { display: none; }
+.battle-panel .list .row { padding: 10px 12px; }
+.battle-bar { grid-area: bar; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 8px 12px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
+.battle-bar .encounter-now { display: flex; gap: 10px; align-items: baseline; }
+.battle-bar-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.battle-bar-actions form { margin: 0; }
+.battle-bar-actions select { max-width: 200px; }
+.battle-bar-next { margin-left: auto; }
+
+/* Char Info: кто ходит; раскрывается поверх карты */
+.charinfo { position: relative; z-index: 8; flex: none; max-width: 340px; }
+.charinfo-head { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+  background: var(--surface); cursor: pointer; list-style: none; white-space: nowrap; overflow: hidden; }
+.charinfo-head::-webkit-details-marker { display: none; }
+.charinfo[open] .charinfo-head { border-color: var(--accent); }
+.charinfo-label { color: var(--muted); font-size: 13px; }
+.charinfo-caret { color: var(--muted); margin-left: auto; }
+.charinfo-body, .me-body { position: absolute; top: calc(100% + 6px); left: 0; width: min(460px, 92vw); max-height: 70vh; overflow-y: auto;
+  padding: 12px; display: flex; flex-direction: column; gap: 8px;
+  border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); box-shadow: var(--shadow); }
+.me-panel { position: relative; z-index: 8; flex: none; }
+.me-portrait { padding: 6px 10px; border: 1px solid var(--success); border-radius: 999px; background: var(--success-soft); color: var(--success);
+  cursor: pointer; list-style: none; white-space: nowrap; font-size: 14px; }
+.me-portrait::-webkit-details-marker { display: none; }
+.me-label { font-weight: 700; }
+
+/* R-17: очередь каруселью */
+.carousel { flex: 1; min-width: 0; display: flex; gap: 6px; margin: 0; padding: 2px; list-style: none; overflow-x: auto; scrollbar-width: thin; }
+.carousel-item { flex: none; }
+.carousel-btn { display: flex; align-items: center; gap: 6px; padding: 5px 10px; border: 1px solid var(--border); border-radius: 999px;
+  background: var(--surface); color: var(--text); font: inherit; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.carousel-item.npc .carousel-btn { border-color: rgba(248, 113, 113, 0.45); }
+.carousel-item.player .carousel-btn { border-color: rgba(34, 211, 238, 0.45); }
+.carousel-item.is-current .carousel-btn { border-color: var(--warning); box-shadow: 0 0 0 1px var(--warning); font-weight: 700; }
+.carousel-item.is-done .carousel-btn, .carousel-item.is-out .carousel-btn, .carousel-item.is-hidden .carousel-btn { opacity: 0.5; }
+.carousel-item.is-out .carousel-name { text-decoration: line-through; }
+.carousel-init { color: var(--muted); font-variant-numeric: tabular-nums; }
+.carousel-mark { padding: 0 6px; border-radius: 999px; background: var(--surface-3); color: var(--text-soft); font-size: 11px; }
+.carousel-mark.pink { color: #f472b6; }
+.carousel-round { flex: none; align-self: center; padding: 4px 8px; color: var(--warning); font-size: 12px; white-space: nowrap;
+  border-left: 2px solid var(--warning); }
+.battle-top-end { display: flex; gap: 6px; align-items: center; flex: none; }
+.battle-top-end .turn-sound { margin: 0; }
+.encounter-row.is-hidden { opacity: 0.55; }
+
+@media (max-width: 900px) {
+  .page-battle { padding: 6px; }
+  .battle-screen { height: auto; min-height: 0; grid-template-columns: minmax(0, 1fr); grid-template-rows: none;
+    grid-template-areas: "top" "map" "bar" "tools" "side"; }
+  .battle-screen:not(.has-field) { grid-template-areas: "top" "map" "bar" "side"; }
+  .battle-top { flex-wrap: wrap; }
+  .carousel { order: 3; flex-basis: 100%; }
+  .battle-center { height: 72dvh; }
+  .battle-bar { position: sticky; bottom: 0; z-index: 5; }
+  .battle-toolbar { flex-direction: row; flex-wrap: wrap; overflow: visible; }
+  .battle-toolbar .btn, .battle-toolbar select { width: auto; }
+  .battle-toolbar .battle-me { flex-direction: row; align-items: center; }
+  .battle-toolbar-sep { display: none; }
+  .battle-panel { overflow: visible; }
+}
+.charinfo.is-mine .charinfo-head { border-color: var(--success); box-shadow: 0 0 0 1px var(--success); }
+.charinfo.is-mine .charinfo-label { color: var(--success); font-weight: 700; }

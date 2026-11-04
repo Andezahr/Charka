@@ -14,8 +14,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -57,9 +59,77 @@ public class BattleFieldService {
      * @param metric    мера расстояния ({@link MapRules#metric})
      * @param materials материалы системы
      * @param objects   готовые предметы системы
+     * @param fog       M-16: что видят персонажи игрока, по клетке на символ ({@code 1} — видно); null — туман не действует
      */
     public record Field(Long mapId, String turn, MapDoc doc, String metric, List<Material> materials, List<MapObject> objects,
-                        List<Token> tokens, List<PointerBoard.Pointer> pointers, String backgroundUrl) {
+                        List<Token> tokens, List<PointerBoard.Pointer> pointers, String backgroundUrl, String fog) {
+    }
+
+    /**
+     * Кто смотрит на карту.
+     *
+     * @param mine персонажи игрока; null — мастер, видит всё
+     */
+    public record Viewer(Set<Long> mine) {
+
+        public static final Viewer GM = new Viewer(null);
+
+        public boolean gm() {
+            return mine == null;
+        }
+    }
+
+    /**
+     * M-16: туман для игроков.
+     *
+     * @param hidden участники, которых игрок не видит
+     * @param cells  клетки, видимые хоть одному его персонажу; null — тумана нет
+     */
+    private record Fog(Set<Long> hidden, String cells) {
+
+        static final Fog NONE = new Fog(Set.of(), null);
+    }
+
+    /**
+     * Что скрыто от игрока. Свои и персонажи других игроков видны всегда (HOMEBREW: команда знает, где свои),
+     * NPC — только если его клетку видит хоть один персонаж игрока на карте хотя бы краем.
+     */
+    private Fog fog(Encounter encounter, MapGrid grid, Viewer viewer) {
+        if (viewer.gm() || !encounter.getCampaign().isFogOfWar()) {
+            return Fog.NONE;
+        }
+        boolean[] seen = new boolean[grid.doc().w() * grid.doc().h()];
+        encounter.getParticipants().stream()
+                .filter(p -> p.getPosX() != null && viewer.mine().contains(p.getCharacter().getId()))
+                .forEach(eye -> {
+                    boolean[] visible = grid.visibleFrom(eye.getPosX(), eye.getPosY());
+                    for (int i = 0; i < seen.length; i++) {
+                        seen[i] |= visible[i];
+                    }
+                });
+        Set<Long> hidden = new HashSet<>();
+        for (EncounterParticipant p : encounter.getParticipants()) {
+            boolean ally = !p.getCharacter().isNpc() || viewer.mine().contains(p.getCharacter().getId());
+            if (!ally && (p.getPosX() == null || !seen[p.getPosY() * grid.doc().w() + p.getPosX()])) {
+                hidden.add(p.getId());
+            }
+        }
+        StringBuilder cells = new StringBuilder(seen.length);
+        for (boolean visible : seen) {
+            cells.append(visible ? '1' : '0');
+        }
+        return new Fog(hidden, cells.toString());
+    }
+
+    /**
+     * M-16: участники, которых игрок сейчас не видит; мастеру, без карты или без тумана — пусто.
+     */
+    @Transactional(readOnly = true)
+    public Set<Long> hiddenFor(Long campaignId, Viewer viewer) {
+        return encounterRepository.findByCampaignId(campaignId)
+                .filter(encounter -> encounter.getMapDoc() != null)
+                .map(encounter -> fog(encounter, grid(encounter), viewer).hidden())
+                .orElse(Set.of());
     }
 
     /**
@@ -67,13 +137,22 @@ public class BattleFieldService {
      */
     @Transactional(readOnly = true)
     public Optional<Field> field(Long campaignId) {
+        return field(campaignId, Viewer.GM);
+    }
+
+    /**
+     * @param viewer игроку не отдаются фишки в тумане (M-16)
+     */
+    @Transactional(readOnly = true)
+    public Optional<Field> field(Long campaignId, Viewer viewer) {
         Optional<EncounterView> view = encounterService.view(campaignId);
         if (view.isEmpty() || view.get().encounter().getMapDoc() == null) {
             return Optional.empty();
         }
         Encounter encounter = view.get().encounter();
         MapRules rules = rules(encounter);
-        List<Token> tokens = view.get().rows().stream().map(row -> {
+        Fog fog = fog(encounter, grid(encounter), viewer);
+        List<Token> tokens = view.get().rows().stream().filter(row -> !fog.hidden().contains(row.participant().getId())).map(row -> {
             EncounterParticipant participant = row.participant();
             return new Token(participant.getId(), row.character().getId(), row.character().getName(), initials(row.character().getName()),
                     row.character().isNpc(), participant.getPosX(), participant.getPosY(), row.current(), participant.isDone(),
@@ -82,7 +161,7 @@ public class BattleFieldService {
         String turn = encounter.getRound() + ":" + (view.get().current() == null ? "" : view.get().current().getId());
         MapDoc doc = MapDoc.parse(encounter.getMapDoc());
         return Optional.of(new Field(encounter.getBattleMapId(), turn, doc, rules.metric(), rules.materials(), rules.objects(), tokens,
-                pointerBoard.live(campaignId), EditableMap.backgroundUrl(campaignId, encounter.getBattleMapId(), doc)));
+                pointerBoard.live(campaignId), EditableMap.backgroundUrl(campaignId, encounter.getBattleMapId(), doc), fog.cells()));
     }
 
     public void move(Long campaignId, Long participantId, int x, int y) {
@@ -228,13 +307,25 @@ public class BattleFieldService {
 
     @Transactional(readOnly = true)
     public Sight sight(Long campaignId, Long fromParticipant, Long toParticipant) {
+        return sight(campaignId, fromParticipant, toParticipant, Viewer.GM);
+    }
+
+    /**
+     * @throws IllegalArgumentException если фишки нет на карте или игрок её не видит (M-16)
+     */
+    @Transactional(readOnly = true)
+    public Sight sight(Long campaignId, Long fromParticipant, Long toParticipant, Viewer viewer) {
         Encounter encounter = withMap(campaignId);
         EncounterParticipant from = participant(encounter, fromParticipant);
         EncounterParticipant to = participant(encounter, toParticipant);
         if (from.getPosX() == null || to.getPosX() == null) {
             throw new IllegalArgumentException("Фишка не на карте");
         }
-        return sight(encounter, grid(encounter), rules(encounter), from, to);
+        MapGrid grid = grid(encounter);
+        if (fog(encounter, grid, viewer).hidden().contains(to.getId())) {
+            throw new IllegalArgumentException("Цель не видна");
+        }
+        return sight(encounter, grid, rules(encounter), from, to);
     }
 
     private Sight sight(Encounter encounter, MapGrid grid, MapRules rules, EncounterParticipant from, EncounterParticipant to) {
@@ -275,9 +366,21 @@ public class BattleFieldService {
 
     @Transactional(readOnly = true)
     public View view(Long campaignId, Long participantId) {
+        return view(campaignId, participantId, Viewer.GM);
+    }
+
+    /**
+     * @throws IllegalArgumentException если игрок смотрит глазами чужого персонажа (M-16)
+     */
+    @Transactional(readOnly = true)
+    public View view(Long campaignId, Long participantId, Viewer viewer) {
         Encounter encounter = withMap(campaignId);
         EncounterParticipant from = participant(encounter, participantId);
+        if (!viewer.gm() && !viewer.mine().contains(from.getCharacter().getId())) {
+            throw new IllegalArgumentException("Поле видимости — только своих персонажей");
+        }
         MapGrid grid = grid(encounter);
+        Set<Long> hidden = fog(encounter, grid, viewer).hidden();
         if (from.getPosX() == null) {
             return new View(grid.doc().w(), "", List.of());
         }
@@ -287,7 +390,7 @@ public class BattleFieldService {
             cells.append(visible ? '1' : '0');
         }
         List<TargetView> targets = encounter.getParticipants().stream()
-                .filter(p -> p != from && p.getPosX() != null)
+                .filter(p -> p != from && p.getPosX() != null && !hidden.contains(p.getId()))
                 .map(p -> {
                     Sight sight = sight(encounter, grid, rules, from, p);
                     return new TargetView(p.getId(), sight.visibility(), sight.canShoot(), sight.coverLabel());
@@ -352,6 +455,22 @@ public class BattleFieldService {
         BattleMap map = battleMapService.get(campaignId, mapId);
         encounter.setMapDoc(map.getDoc());
         encounter.setBattleMapId(map.getId());
+        encounter.getParticipants().forEach(p -> {
+            p.setPosX(null);
+            p.setPosY(null);
+        });
+        TokenPlacer.place(encounter.getParticipants(), grid(encounter));
+    }
+
+    /** R-14: пустая карта под идущий бой — как у боя, начатого без карты */
+    @Transactional
+    public void attachEmpty(Long campaignId) {
+        Encounter encounter = encounterRepository.findByCampaignId(campaignId)
+                .orElseThrow(() -> new IllegalArgumentException("Боя нет"));
+        MapDoc empty = MapDoc.empty(EncounterService.EMPTY_MAP_WIDTH,
+                Math.max(EncounterService.EMPTY_MAP_HEIGHT, encounter.getParticipants().size()), rules(encounter).cellMeters());
+        encounter.setMapDoc(empty.toJson());
+        encounter.setBattleMapId(null);
         encounter.getParticipants().forEach(p -> {
             p.setPosX(null);
             p.setPosY(null);

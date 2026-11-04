@@ -99,14 +99,14 @@ class PlayerTurnTest {
     }
 
     @Test
-    @DisplayName("Не свой ход: сверху «Ходит Бандит · до вас ещё 2», очередь свёрнута, «Следующий ход» не у игрока")
+    @DisplayName("Не свой ход: портрет «Я» — «Ходит Бандит · до вас ещё 2», очередь во вкладке, «Следующий ход» не у игрока")
     void waiting() throws Exception {
         String html = page("kolya");
 
-        assertThat(html).contains("turn-panel", "Ходит Бандит · до вас ещё 2 ход.", "Действия вне очереди", "turn-queue",
+        assertThat(html).contains("me-panel", "Ходит Бандит · до вас ещё 2 ход.", "Действия вне очереди", "data-tab-panel=\"queue\"",
                 "data-turn-watch=\"" + base + "/turn\"", "data-mine=\"" + mine.getId() + "\"")
                 .doesNotContain("Следующий ход →", "Закончить ход →");
-        assertThat(page("master")).contains("Следующий ход →").doesNotContain("turn-panel");
+        assertThat(page("master")).contains("Следующий ход →").doesNotContain("me-panel");
     }
 
     @Test

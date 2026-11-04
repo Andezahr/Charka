@@ -65,6 +65,11 @@ public class EncounterController {
             model.addAttribute("luckLeft", view.get().rows().stream().collect(java.util.stream.Collectors.toMap(
                     row -> row.character().getId(), row -> system.getLuck(row.character()), (first, second) -> first)));
             // A-04: игроку — свой экран сверху: чей ход и сколько до него
+            // M-16: кого игрок не видит на карте — в очереди и списке без имени
+            java.util.Set<Long> mine = campaign.getCharacters().stream().filter(accessService::canControl)
+                    .map(app.charka.model.Character::getId).collect(java.util.stream.Collectors.toSet());
+            model.addAttribute("hiddenIds", battleFieldService.hiddenFor(campaignId,
+                    accessService.isGm(campaign) ? app.charka.map.BattleFieldService.Viewer.GM : new app.charka.map.BattleFieldService.Viewer(mine)));
             if (!accessService.isGm(campaign)) {
                 model.addAttribute("myRows", view.get().rows().stream().filter(row -> accessService.canControl(row.character())).toList());
                 model.addAttribute("turnsAhead", turnsAhead(view.get()));
@@ -102,9 +107,14 @@ public class EncounterController {
 
     /** Положить карту под идущий бой: фишки расставляются заново */
     @PostMapping("/attach")
-    public String attach(@PathVariable Long campaignId, @RequestParam Long map, RedirectAttributes redirectAttributes) {
+    public String attach(@PathVariable Long campaignId, @RequestParam(required = false) Long map, RedirectAttributes redirectAttributes) {
         return attempt(campaignId, redirectAttributes, () -> {
-            battleFieldService.attach(campaignId, map);
+            // R-14: пусто — пустая карта
+            if (map == null) {
+                battleFieldService.attachEmpty(campaignId);
+            } else {
+                battleFieldService.attach(campaignId, map);
+            }
             return null;
         });
     }
@@ -145,6 +155,13 @@ public class EncounterController {
                         "current", view.current() == null ? "" : view.current().getId(),
                         "name", view.current() == null ? "" : view.current().getName()))
                 .orElse(java.util.Map.of("turn", "", "current", "", "name", ""));
+    }
+
+    /** M-16: туман для игроков на карте — выбор кампании */
+    @PostMapping("/fog")
+    public String fog(@PathVariable Long campaignId, @RequestParam boolean on) {
+        encounterService.setFogOfWar(campaignId, on);
+        return redirect(campaignId, null);
     }
 
     /** A-13: инициатива каждый раунд или раз за бой — выбор кампании, с нового раунда */

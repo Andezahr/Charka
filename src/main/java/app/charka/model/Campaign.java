@@ -43,6 +43,10 @@ public class Campaign {
     @Column(name = "initiative_each_round")
     private boolean initiativeEachRound = true;
 
+    /** M-16: туман для игроков на карте боя — игрок видит только фишки, которые видят его персонажи */
+    @Column(name = "fog_of_war")
+    private boolean fogOfWar = true;
+
     private LocalDate startDate;
     @Column(name = "current_date_value")
     private LocalDate currentDate;

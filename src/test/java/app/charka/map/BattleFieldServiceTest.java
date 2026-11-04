@@ -106,10 +106,12 @@ class BattleFieldServiceTest {
         }
 
         @Test
-        @DisplayName("Без карты — поля нет; карту можно положить в идущий бой")
+        @DisplayName("R-14: без выбранной карты — пустая карта, фишки стоят; карту можно сменить в идущем бою")
         void attach() {
             encounterService.start(campaign.getId(), List.of(player.getId(), npc.getId()));
-            assertThat(field.field(campaign.getId())).isEmpty();
+            BattleFieldService.Field empty = field.field(campaign.getId()).orElseThrow();
+            assertThat(empty.doc().walls()).isEmpty();
+            assertThat(empty.tokens()).allMatch(token -> token.x() != null);
 
             field.attach(campaign.getId(), map.getId());
             entityManager.flush();
@@ -299,6 +301,50 @@ class BattleFieldServiceTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.w").value(12))
                     .andExpect(jsonPath("$.targets[0].visibility").value("none"));
+        }
+    }
+
+    @Nested
+    @DisplayName("Туман для игроков (M-16)")
+    class Fog {
+
+        private BattleFieldService.Viewer playerView() {
+            return new BattleFieldService.Viewer(java.util.Set.of(player.getId()));
+        }
+
+        @Test
+        @DisplayName("NPC за стеной игроку не отдаётся, мастеру — да; открыли дверь — виден")
+        void hidden() {
+            start();
+            field.move(campaign.getId(), token(player).id(), 4, 3, true);
+            field.move(campaign.getId(), token(npc).id(), 9, 1, true);
+
+            BattleFieldService.Field seen = field.field(campaign.getId(), playerView()).orElseThrow();
+            assertThat(seen.tokens()).extracting(BattleFieldService.Token::name).containsExactly("Колясик");
+            assertThat(seen.fog()).hasSize(12 * 8).contains("1").contains("0");
+            assertThat(field.field(campaign.getId()).orElseThrow().tokens()).hasSize(2);
+            assertThat(field.field(campaign.getId()).orElseThrow().fog()).isNull();
+            assertThatThrownBy(() -> field.sight(campaign.getId(), token(player).id(), token(npc).id(), playerView()))
+                    .hasMessageContaining("не видна");
+            assertThat(field.hiddenFor(campaign.getId(), playerView())).containsExactly(token(npc).id());
+
+            field.toggleDoor(campaign.getId(), MapDoc.left(6, 3));
+            assertThat(field.field(campaign.getId(), playerView()).orElseThrow().tokens()).hasSize(2);
+        }
+
+        @Test
+        @DisplayName("Поле видимости — только своих персонажей; мастер выключил туман — видно всех")
+        void rules() {
+            start();
+            field.move(campaign.getId(), token(player).id(), 4, 3, true);
+            field.move(campaign.getId(), token(npc).id(), 9, 1, true);
+            assertThatThrownBy(() -> field.view(campaign.getId(), token(npc).id(), playerView()))
+                    .hasMessageContaining("своих");
+            assertThat(field.view(campaign.getId(), token(player).id(), playerView()).targets()).isEmpty();
+
+            encounterService.setFogOfWar(campaign.getId(), false);
+            assertThat(field.field(campaign.getId(), playerView()).orElseThrow().tokens()).hasSize(2);
+            assertThat(field.field(campaign.getId(), playerView()).orElseThrow().fog()).isNull();
         }
     }
 

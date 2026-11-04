@@ -24,10 +24,20 @@ public class BattleFieldController {
     private final app.charka.security.AccessService accessService;
     private final app.charka.service.campaign.CampaignService campaignService;
 
-    /** 404 — боя нет или он без карты */
+    /** 404 — боя нет или он без карты; игроку — без фишек в тумане (M-16) */
     @GetMapping
     public ResponseEntity<BattleFieldService.Field> field(@PathVariable Long campaignId) {
-        return battleFieldService.field(campaignId).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+        return battleFieldService.field(campaignId, viewer(campaignId)).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+    }
+
+    /** Мастер видит всё; игрок — глазами своих персонажей */
+    private BattleFieldService.Viewer viewer(Long campaignId) {
+        app.charka.model.Campaign campaign = campaignService.getById(campaignId);
+        if (accessService.isGm(campaign)) {
+            return BattleFieldService.Viewer.GM;
+        }
+        return new BattleFieldService.Viewer(campaign.getCharacters().stream().filter(accessService::canControl)
+                .map(app.charka.model.Character::getId).collect(java.util.stream.Collectors.toSet()));
     }
 
     @PostMapping("/participants/{participantId}/move")
@@ -62,12 +72,12 @@ public class BattleFieldController {
     /** Поле видимости участника и что с каждой другой фишкой */
     @GetMapping("/participants/{participantId}/view")
     public BattleFieldService.View view(@PathVariable Long campaignId, @PathVariable Long participantId) {
-        return battleFieldService.view(campaignId, participantId);
+        return battleFieldService.view(campaignId, participantId, viewer(campaignId));
     }
 
     @GetMapping("/sight")
     public BattleFieldService.Sight sight(@PathVariable Long campaignId, @RequestParam Long from, @RequestParam Long to) {
-        return battleFieldService.sight(campaignId, from, to);
+        return battleFieldService.sight(campaignId, from, to, viewer(campaignId));
     }
 
     @PostMapping("/door")

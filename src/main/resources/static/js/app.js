@@ -45,6 +45,36 @@ const UPLOAD_TIMEOUT = 60000;
 // Обработчики на document сюда не класть, они накопятся: они в конце файла
 function initPage() {
 
+  // R-14: экран боя — до низа окна под шапкой, какой бы высоты она ни была
+  const battleScreen = document.querySelector('.battle-screen');
+  if (battleScreen) {
+    battleScreen.style.setProperty('--battle-offset', Math.round(battleScreen.getBoundingClientRect().top + scrollY + 12) + 'px');
+  }
+
+  // Вкладки: [data-tabs="ключ"] с кнопками [data-tab] и панелями [data-tab-panel]; выбор запоминается на устройстве.
+  // [data-tab-go="вкладка"] где угодно на странице открывает её
+  document.querySelectorAll('[data-tabs]').forEach(holder => {
+    const key = 'charka.tabs.' + holder.dataset.tabs;
+    const buttons = [...holder.querySelectorAll('[data-tab]')];
+    const show = name => {
+      if (!buttons.some(button => button.dataset.tab === name)) name = buttons[0] && buttons[0].dataset.tab;
+      buttons.forEach(button => {
+        button.classList.toggle('is-active', button.dataset.tab === name);
+        button.setAttribute('aria-selected', button.dataset.tab === name);
+      });
+      holder.querySelectorAll('[data-tab-panel]').forEach(panel => { panel.hidden = panel.dataset.tabPanel !== name; });
+      try { localStorage.setItem(key, name); } catch (e) { /* только удобство */ }
+    };
+    let stored = null;
+    try { stored = localStorage.getItem(key); } catch (e) { /* только удобство */ }
+    show(stored || holder.dataset.tabDefault);
+    buttons.forEach(button => button.addEventListener('click', () => show(button.dataset.tab)));
+    document.querySelectorAll('[data-tab-go]').forEach(go => go.addEventListener('click', () => {
+      show(go.dataset.tabGo);
+      holder.scrollIntoView({ block: 'nearest' });
+    }));
+  });
+
   // Диалог по кнопке: [data-dialog-open="id диалога"]; закрывает [data-dialog-close] внутри него
   document.querySelectorAll('[data-dialog-open]').forEach(btn => {
     const dialog = document.getElementById(btn.dataset.dialogOpen);
@@ -1359,6 +1389,18 @@ function initBattle() {
       renderBattle();
     });
   });
+  // R-17: портрет в карусели очереди выбирает фишку на карте
+  document.querySelectorAll('[data-select-token]').forEach(button => {
+    button.addEventListener('click', () => {
+      const id = Number(button.dataset.selectToken);
+      if (!tokenById(id)) {
+        battleError('Фишки нет на карте');
+        return;
+      }
+      selectToken(id);
+      if (innerWidth < 900) stage.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    });
+  });
   if (battle.data) renderBattle();
   pollBattle();
 }
@@ -1549,7 +1591,8 @@ function renderBattle() {
   const height = doc.h * CELL;
   if (!battle.view) battle.view = { x: -CELL / 2, y: -CELL / 2, w: width + CELL, h: height + CELL };
   // высота поля — по пропорциям карты: широкая улица на телефоне не оставляет пустоты сверху и снизу
-  if (stage.clientWidth) {
+  // R-14: на экране боя поле занимает всю середину, высоту задаёт раскладка
+  if (stage.clientWidth && !('battleFill' in stage.dataset)) {
     stage.style.height = Math.round(Math.min(innerHeight * 0.7, Math.max(240, stage.clientWidth * (doc.h + 1) / (doc.w + 1)))) + 'px';
   }
   const materials = new Map(data.materials.map(material => [material.code, material]));
@@ -1581,8 +1624,10 @@ function renderBattle() {
       });
     }
     // тень вне поля видимости: подряд идущие клетки строки — один прямоугольник
-    const vision = battle.vision;
-    if (vision && vision.id === battle.selected && vision.cells) {
+    // M-16: игроку без выбранной своей фишки — туман по всем его персонажам (сервер не отдал скрытые фишки)
+    const own = battle.vision && battle.vision.id === battle.selected && battle.vision.cells;
+    const vision = own ? battle.vision : data.fog ? { w: doc.w, cells: data.fog } : null;
+    if (vision) {
       const fog = svgEl('g', { class: 'battle-fog' }, svg);
       const hatch = svgEl('pattern', { id: 'battle-fog-hatch', width: 10, height: 10, patternUnits: 'userSpaceOnUse', patternTransform: 'rotate(45)' }, fog);
       svgEl('rect', { width: 10, height: 10, class: 'battle-fog-shade' }, hatch);

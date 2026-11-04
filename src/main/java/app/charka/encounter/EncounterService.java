@@ -117,7 +117,7 @@ public class EncounterService {
     }
 
     /**
-     * @param mapId карта боя кампании: бой играет на её копии, фишки расставляются сами; null — без карты
+     * @param mapId карта боя кампании: бой играет на её копии, фишки расставляются сами; null — пустая карта (R-14)
      */
     @Transactional
     public Encounter start(Long campaignId, List<Long> characterIds, boolean groupPlayers, boolean groupNpcs, Long mapId) {
@@ -148,6 +148,11 @@ public class EncounterService {
             encounter.setMapDoc(map.getDoc());
             encounter.setBattleMapId(map.getId());
             TokenPlacer.place(encounter.getParticipants(), new MapGrid(MapDoc.parse(map.getDoc()), system.getMapRules()));
+        } else {
+            // R-14: боёв без карты нет — пустая карта, фишки встают сами
+            MapDoc empty = MapDoc.empty(EMPTY_MAP_WIDTH, Math.max(EMPTY_MAP_HEIGHT, encounter.getParticipants().size()), system.getMapRules().cellMeters());
+            encounter.setMapDoc(empty.toJson());
+            TokenPlacer.place(encounter.getParticipants(), new MapGrid(empty, system.getMapRules()));
         }
         return encounterRepository.save(encounter);
     }
@@ -635,6 +640,16 @@ public class EncounterService {
     public void setInitiativeEachRound(Long campaignId, boolean eachRound) {
         campaign(campaignId).setInitiativeEachRound(eachRound);
     }
+
+    /** M-16: туман для игроков — выбор кампании */
+    @Transactional
+    public void setFogOfWar(Long campaignId, boolean on) {
+        campaign(campaignId).setFogOfWar(on);
+    }
+
+    /** R-14: пустая карта, если мастер не выбрал: клеток с запасом на участников */
+    public static final int EMPTY_MAP_WIDTH = 24;
+    public static final int EMPTY_MAP_HEIGHT = 16;
 
     /** Первый, кто ещё не ходил; ждавшие получают ход, когда больше ходить некому */
     private EncounterParticipant current(Encounter encounter, GameSystem system) {
