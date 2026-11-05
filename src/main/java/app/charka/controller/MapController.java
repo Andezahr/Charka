@@ -38,7 +38,7 @@ public class MapController {
         model.addAttribute("docs", docs);
         model.addAttribute("defaultWidth", BattleMapService.DEFAULT_WIDTH);
         model.addAttribute("defaultHeight", BattleMapService.DEFAULT_HEIGHT);
-        model.addAttribute("templates", app.charka.map.MapGenerator.TEMPLATES);
+        model.addAttribute("templates", mapGenerator.templates());
         return "maps";
     }
 
@@ -65,7 +65,7 @@ public class MapController {
         model.addAttribute("docUrl", "/campaign/" + campaignId + "/maps/" + mapId + "/doc");
         model.addAttribute("backUrl", "/campaign/" + campaignId + "/maps");
         model.addAttribute("inFight", false);
-        model.addAttribute("templates", app.charka.map.MapGenerator.TEMPLATES);
+        model.addAttribute("templates", mapGenerator.templates());
         return "map-editor";
     }
 
@@ -77,7 +77,7 @@ public class MapController {
                            @RequestParam(required = false) Integer width, @RequestParam(required = false) Integer height,
                            @RequestParam(required = false) Long seed, RedirectAttributes redirectAttributes) {
         try {
-            app.charka.map.MapGenerator.Template chosen = app.charka.map.MapGenerator.template(template);
+            app.charka.map.MapGenerator.Template chosen = mapGenerator.templateOf(template);
             MapDoc doc = mapGenerator.generate(template, width == null ? chosen.width() : width, height == null ? chosen.height() : height,
                     seed == null ? new java.util.Random().nextLong() : seed, battleMapService.rules(campaignId));
             BattleMap map = battleMapService.save(campaignId, chosen.label(), doc);
@@ -86,6 +86,67 @@ public class MapController {
             redirectAttributes.addFlashAttribute("mapError", e.getMessage());
             return "redirect:/campaign/" + campaignId + "/maps";
         }
+    }
+
+    /**
+     * M-20: карта из текста {@link app.charka.map.MapText} (файл или вставка) или из JSON документа карты.
+     * Название — из поля, иначе из заголовка, иначе имя файла.
+     */
+    @PostMapping("/import")
+    public String importMap(@PathVariable Long campaignId,
+                            @RequestParam(value = "file", required = false) org.springframework.web.multipart.MultipartFile file,
+                            @RequestParam(required = false) String text, @RequestParam(required = false) String name,
+                            RedirectAttributes redirectAttributes) {
+        try {
+            String source = text;
+            String fileName = null;
+            if (file != null && !file.isEmpty()) {
+                source = new String(file.getBytes(), java.nio.charset.StandardCharsets.UTF_8);
+                fileName = file.getOriginalFilename();
+            }
+            if (source == null || source.isBlank()) {
+                throw new IllegalArgumentException("Выберите файл карты или вставьте её текст");
+            }
+            MapDoc doc;
+            String title = null;
+            java.util.List<String> warnings = java.util.List.of();
+            if (source.strip().startsWith("{")) {
+                doc = MapDoc.parse(source);
+            } else {
+                app.charka.map.MapText.Parsed parsed = app.charka.map.MapText.parse(source, battleMapService.rules(campaignId));
+                doc = parsed.doc();
+                title = parsed.name();
+                warnings = parsed.warnings();
+            }
+            if (name != null && !name.isBlank()) {
+                title = name;
+            }
+            if (title == null && fileName != null) {
+                title = fileName.replaceFirst("(\\.map)?\\.(txt|json)$", "");
+            }
+            BattleMap map = battleMapService.save(campaignId, title == null || title.isBlank() ? "Карта" : title, doc);
+            if (!warnings.isEmpty()) {
+                redirectAttributes.addFlashAttribute("mapNotice", "Карта загружена, но:\n" + String.join("\n", warnings));
+            }
+            return "redirect:/campaign/" + campaignId + "/maps/" + map.getId() + "/edit";
+        } catch (IllegalArgumentException | java.io.IOException e) {
+            redirectAttributes.addFlashAttribute("mapError", e.getMessage());
+            redirectAttributes.addFlashAttribute("importText", text);
+            return "redirect:/campaign/" + campaignId + "/maps";
+        }
+    }
+
+    /** M-20: карта текстом {@link app.charka.map.MapText} — скачать, поправить, загрузить обратно */
+    @GetMapping("/{mapId}/text")
+    public org.springframework.http.ResponseEntity<String> text(@PathVariable Long campaignId, @PathVariable Long mapId) {
+        BattleMap map = battleMapService.get(campaignId, mapId);
+        String body = app.charka.map.MapText.write(map.getName(), MapDoc.parse(map.getDoc()), battleMapService.rules(campaignId));
+        String file = map.getName().replaceAll("[\\\\/:*?\"<>|]", "_") + app.charka.map.MapText.EXTENSION;
+        return org.springframework.http.ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, org.springframework.http.ContentDisposition
+                        .attachment().filename(file, java.nio.charset.StandardCharsets.UTF_8).build().toString())
+                .contentType(org.springframework.http.MediaType.parseMediaType("text/plain;charset=UTF-8"))
+                .body(body);
     }
 
     /** «🎲 Ещё вариант»: тот же размер, новое зерно; прежний вариант заменяется */

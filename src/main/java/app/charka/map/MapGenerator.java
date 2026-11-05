@@ -1,9 +1,18 @@
 package app.charka.map;
 
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
@@ -13,9 +22,15 @@ import java.util.Set;
  * <p>
  * M-19: большие готовые локации — перекрёсток, порт, офис. План у них постоянный и размер свой, зерно меняет только
  * расстановку машин, ящиков, контейнеров и столов.
+ * <p>
+ * M-20: нарисованные карты — файлы {@code classpath:maps/*.map.txt} в формате {@link MapText}; код шаблона — имя файла,
+ * название и размер — из заголовка. Файл, который не читается, в список не попадает (ошибка в журнале).
  */
+@Slf4j
 @Component
 public class MapGenerator {
+
+    static final String FILES = "classpath*:maps/*" + MapText.EXTENSION;
 
     /**
      * @param code   код шаблона
@@ -43,8 +58,68 @@ public class MapGenerator {
             new Template("office", "Офис корпорации", 60, 40, true),
             new Template("empty", "Пустая", 30, 20));
 
+    /** Нарисованные карты: код → текст */
+    private final Map<String, String> drawn = new LinkedHashMap<>();
+    private final List<Template> templates;
+
+    public MapGenerator() {
+        this(FILES);
+    }
+
+    MapGenerator(String pattern) {
+        List<Template> fromFiles = new ArrayList<>();
+        try {
+            Resource[] resources = new PathMatchingResourcePatternResolver().getResources(pattern);
+            java.util.Arrays.sort(resources, Comparator.comparing(resource -> String.valueOf(resource.getFilename())));
+            for (Resource resource : resources) {
+                String file = String.valueOf(resource.getFilename());
+                String code = file.substring(0, file.length() - MapText.EXTENSION.length());
+                try {
+                    String text = resource.getContentAsString(StandardCharsets.UTF_8);
+                    MapText.Parsed parsed = MapText.parse(text, MapRules.GENERIC);
+                    drawn.put(code, text);
+                    fromFiles.add(new Template(code, parsed.name() == null ? code : parsed.name(),
+                            parsed.doc().w(), parsed.doc().h(), true));
+                } catch (IllegalArgumentException | IOException e) {
+                    log.error("Карта {} не читается: {}", file, e.getMessage());
+                }
+            }
+        } catch (IOException e) {
+            log.error("Нарисованные карты не найдены: {}", e.getMessage());
+        }
+        List<Template> all = new ArrayList<>(TEMPLATES.subList(0, TEMPLATES.size() - 1));
+        all.addAll(fromFiles);
+        all.add(TEMPLATES.getLast());
+        templates = List.copyOf(all);
+    }
+
+    /** Шаблоны генератора и нарисованные карты; «Пустая» — последней */
+    public List<Template> templates() {
+        return templates;
+    }
+
+    /** Нарисованные карты: код → текст {@link MapText} */
+    public Map<String, String> drawn() {
+        return java.util.Collections.unmodifiableMap(drawn);
+    }
+
+    /**
+     * Шаблон генератора (без нарисованных карт).
+     *
+     * @throws IllegalArgumentException если такого нет
+     */
     public static Template template(String code) {
         return TEMPLATES.stream().filter(template -> template.code().equals(code)).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Нет такого шаблона карты: " + code));
+    }
+
+    /**
+     * Шаблон генератора или нарисованная карта.
+     *
+     * @throws IllegalArgumentException если такого нет
+     */
+    public Template templateOf(String code) {
+        return templates.stream().filter(template -> template.code().equals(code)).findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Нет такого шаблона карты: " + code));
     }
 
@@ -52,7 +127,10 @@ public class MapGenerator {
      * @throws IllegalArgumentException если шаблона нет или размер вне пределов
      */
     public MapDoc generate(String code, int width, int height, long seed, MapRules rules) {
-        Template template = template(code);
+        Template template = templateOf(code);
+        if (drawn.containsKey(code)) {
+            return MapText.parse(drawn.get(code), rules).doc();
+        }
         if (template.fixed()) {
             width = template.width();
             height = template.height();

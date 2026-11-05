@@ -83,7 +83,7 @@ class MapGeneratorTest {
     }
 
     /** Из зоны игроков в зону NPC шагами по сторонам; двери проходимы — их открывают */
-    private static boolean reachable(MapDoc doc, MapRules rules) {
+    static boolean reachable(MapDoc doc, MapRules rules) {
         MapGrid grid = new MapGrid(doc, rules);
         MapDoc.Zone from = doc.zones().stream().filter(zone -> zone.kind().equals(MapDoc.PLAYERS)).findFirst().orElseThrow();
         MapDoc.Zone to = doc.zones().stream().filter(zone -> zone.kind().equals(MapDoc.NPCS)).findFirst().orElseThrow();

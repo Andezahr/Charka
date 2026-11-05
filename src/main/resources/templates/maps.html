@@ -66,6 +66,42 @@
           </form>
         </div>
       </section>
+      <!-- M-20: карта текстом (docs/map-format.md) или JSON документа -->
+      <section class="card">
+        <div class="card-head"><h2 class="card-title"><span class="dot"></span>Загрузить карту</h2></div>
+        <div class="card-body">
+          <form th:action="@{${base} + '/import'}" method="post" enctype="multipart/form-data" class="form">
+            <input type="file" name="file" accept=".txt,.json,text/plain,application/json" aria-label="Файл карты">
+            <textarea name="text" class="map-text" rows="8" spellcheck="false" aria-label="Текст карты"
+                      placeholder="…или вставьте текст карты" th:text="${importText}"></textarea>
+            <input type="text" name="name" maxlength="100" placeholder="Название (по умолчанию — из файла)" aria-label="Название">
+            <button type="submit" class="btn btn-primary">⇪ Загрузить и открыть редактор</button>
+          </form>
+          <details class="cp-more item-more">
+            <summary>Как рисовать карту текстом</summary>
+            <pre class="map-legend">name: Бар «Ржавчина»
+size: 6x2
+labels:
+  a: Стойка
+map:
++-+-+-+-+-+-+
+|. . . . a .|
++ +D+-+ + + +
+|P|. R R R R=
++-+-+-+-+-+-+</pre>
+            <pre class="map-legend">Клетка — нечётный столбец и строка, стена — между ними.
+Стены: - | стена   : перегородка   # бетон
+       D дверь  S стальная  d s открытые
+       = окно   o проём     + угол (для глаза)
+Клетки: . пол  , асфальт  " газон  ~ вода  % обломки
+  C машина 2×4  A бронемашина  X ящик  B бак 2×1
+  I столб  T дерево  $ DataTerm  M почта  H гидрант
+  R стойка 4×1  K стол 2×1  L стеллаж 3×1
+  U контейнер 3×1  P зона игроков  N зона NPC
+Предмет — его буквой во всех клетках, поворот по форме.</pre>
+          </details>
+        </div>
+      </section>
       <section class="card">
         <div class="card-head"><h2 class="card-title"><span class="dot"></span>Новая карта</h2></div>
         <div class="card-body">

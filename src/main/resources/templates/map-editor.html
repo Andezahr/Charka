@@ -14,12 +14,18 @@
     </div>
     <div class="page-actions">
       <span class="editor-status" data-editor-status>Сохранено</span>
+      <a th:unless="${inFight}" th:href="@{'/campaign/' + ${campaign.id} + '/maps/' + ${map.id} + '/text'}" class="btn btn-ghost"
+         download title="Карта текстом: поправить в редакторе текста и загрузить обратно на странице «Карты»">⇩ Текстом</a>
       <a th:href="@{${backUrl}}" class="btn btn-ghost" th:text="${inFight} ? '← К бою' : '← К картам'">← К картам</a>
     </div>
   </div>
 
   <div th:if="${mapError != null}" class="alert alert-error" role="alert">
     <span class="alert-text" th:text="${mapError}">Картинка больше 5 МБ</span>
+    <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+  </div>
+  <div th:if="${mapNotice != null}" class="alert alert-warning" role="status">
+    <span class="alert-text" th:text="${mapNotice}">Карта загружена, но…</span>
     <button type="button" class="alert-close" aria-label="Закрыть">×</button>
   </div>
 

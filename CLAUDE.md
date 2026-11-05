@@ -38,7 +38,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 1040 тестов, на 2026-11-05 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 1058 тестов, на 2026-11-05 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -63,7 +63,7 @@ chat/         ChatService (чат кампании: сообщения, брос
 journal/      JournalService (J-01: журнал боя — `capture` собирает действие целиком: броски, проверки, события здоровья; одна запись `JournalEntry` с итогом, фишками и расчётом)
 request/      RollRequestService (запросы бросков мастера игрокам, групповая проверка — A-07, A-08)
 undo/         CampaignSnapshots (снимок игрового состояния кампании строками таблиц с прежними id, восстановление), UndoService (запись, отмена последнего действия, кто может), UndoInterceptor (снимок до и после любого изменяющего запроса), UndoLabels (подпись по адресу)
-map/          MapDoc (документ карты: стены-грани, клетки, предметы, зоны, подписи, подложка), MapRules (правила карты системы, модификатор стрельбы вслепую), MapObject, Material, MapGrid (что в клетке, видимость цели многими лучами, поле видимости, досягаемость), TokenPlacer, BattleMapService (карты кампании, подложка), BattleFieldService (поле идущего боя), PointerBoard (указатели в памяти), MapGenerator, EditableMap
+map/          MapDoc (документ карты: стены-грани, клетки, предметы, зоны, подписи, подложка), MapRules (правила карты системы, модификатор стрельбы вслепую), MapObject, Material, MapGrid (что в клетке, видимость цели многими лучами, поле видимости, досягаемость), TokenPlacer, BattleMapService (карты кампании, подложка), BattleFieldService (поле идущего боя), PointerBoard (указатели в памяти), MapGenerator (шаблоны и нарисованные карты из `resources/maps/*.map.txt`), MapText (текстовая карта: чтение и запись, формат — `docs/map-format.md`; новую карту рисуй в нём), EditableMap
 encounter/    EncounterService (бой кампании: очередь, раунды, ожидание, урон, противостояния), RoundActions (действия участника в раунде, A-05), SceneService (заготовки боя, A-06), CombatContest (противостояние от системы), EncounterView (страница боя), Initiative, InitiativeDeclaration и CombatCard (что отдаёт система)
 check/        CheckRequest/CheckResult/CheckResolver (GenericCheckResolver: d20), OpposedCheckResult, CheckService (правила системы + лог)
 item/         ItemTypeDefinition, ItemField (поля типа предмета, проверка ввода, строка предмета), CatalogItem (строка справочника), ItemAction (кнопка действия на листе), InstalledBlock (вживлённое: блок фишек над инвентарями), ItemSection (секции инвентаря), ItemSummary (краткая строка), ItemAttachments + ItemChip (что показано под предметом: магазины и патроны фишками); всё это отдаёт GameSystem
@@ -172,7 +172,7 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 | POST | `/character/{id}/money`, `.../money/{mid}/delete` | деньги |
 | POST | `/character/{id}/expenses`, `.../expenses/{eid}/delete` | `name`, `amount`, `periodDays` → регулярная трата, списывается при промотке времени |
 | POST | `/character/{id}/installed/{action}` | действие блока вживлённого (CP2020: `THERAPY`, `source`, `amount`), итог в блоке |
-| GET, POST | `/campaign/{id}/maps`, `.../generate`, `.../{mapId}/edit\|copy\|rename\|delete\|regenerate\|background` | карты кампании, генератор, редактор, подложка; GET/POST `.../{mapId}/doc` — документ (JSON, автосохранение) |
+| GET, POST | `/campaign/{id}/maps`, `.../generate`, `.../{mapId}/edit\|copy\|rename\|delete\|regenerate\|background` | карты кампании, генератор, редактор, подложка; GET/POST `.../{mapId}/doc` — документ (JSON, автосохранение); POST `.../import` (`file` или `text`, `name?`) — карта из текста `MapText` или JSON, GET `.../{mapId}/text` — выгрузить текстом (M-20) |
 | GET, POST | `/campaign/{id}/encounter/map`, `.../participants/{pid}/move\|lift\|reach\|view`, `.../tokens` (мастер: персонаж или NPC по шаблону на клетку), `.../sight`, `.../door`, `.../pointer`, `.../doc` | поле боя: JSON с ETag (опрос; игроку — без фишек в тумане и с `fog`), ход фишки (204/400 текстом), досягаемость, поле видимости (`view`: клетки и видна ли каждая фишка), видимость цели (`sight`: целиком/частично/нет, укрытие, вслепую сквозь, кто на линии огня), дверь, указатель, правка копии; POST `/encounter/attach`, `/save-map`, GET `/edit-map` |
 | POST | `/campaign/{id}/undo/{entryId}` | отменить последнее действие кампании (автор или мастер), вернуться на страницу из Referer; плашку «↶ Отменить» после действия кладёт `UndoInterceptor` во flash `undoOffer` |
 | GET, POST | `/campaign/{id}/chat` | лента чата и бросков (фрагмент, ETag, опрос); POST `character?`, `text`, `returnTo` → сообщение |
