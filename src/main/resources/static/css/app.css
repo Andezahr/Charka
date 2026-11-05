@@ -599,6 +599,9 @@ form.inline { display: inline-flex; margin: 0; }
 .alert-error { color: var(--danger); background: var(--danger-soft); border-color: rgba(248, 113, 113, 0.35); }
 .alert-warning { color: var(--warning); background: var(--warning-soft); border-color: rgba(251, 191, 36, 0.35); }
 .alert .alert-text { flex: 1; white-space: pre-line; }
+/* M-21: проверка карты */
+.map-audit { list-style: none; margin: 8px 0; padding: 0; font-size: 13px; color: var(--text-soft); display: grid; gap: 4px; }
+.map-audit .is-warn { color: var(--warning); }
 /* M-20: текст карты — моноширинный, столбцы рисунка не съезжают */
 .map-text { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 12px; line-height: 1.25; white-space: pre; min-height: 160px; }
 .map-legend { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 12px; color: var(--text-soft); white-space: pre; overflow-x: auto; margin: 8px 0 0; }

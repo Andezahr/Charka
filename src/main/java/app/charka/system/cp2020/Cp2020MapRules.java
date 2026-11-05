@@ -99,6 +99,12 @@ final class Cp2020MapRules implements MapRules {
         return Cp2020AttackModifiers.BLIND_FIRE;
     }
 
+    /** HOMEBREW: «средний» персонаж для проверки карты — MA 6, бег 18 м (MA × 3, с. 98); в игре не участвует */
+    @Override
+    public Integer typicalMoveMeters() {
+        return Cp2020Rules.run(6);
+    }
+
     /** Бег MA × 3 м за действие (с. 98) */
     @Override
     public Integer reach(Map<String, StatValue> stats) {

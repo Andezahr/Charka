@@ -62,6 +62,8 @@ public class MapController {
         BattleMap map = battleMapService.get(campaignId, mapId);
         model.addAttribute("map", map);
         model.addAttribute("hasBackground", map.getBackground() != null);
+        // M-21: проверка на играбельность по сохранённой версии; после правок — перезагрузить страницу
+        model.addAttribute("audit", app.charka.map.MapAudit.of(MapDoc.parse(map.getDoc()), battleMapService.rules(campaignId)));
         model.addAttribute("docUrl", "/campaign/" + campaignId + "/maps/" + mapId + "/doc");
         model.addAttribute("backUrl", "/campaign/" + campaignId + "/maps");
         model.addAttribute("inFight", false);

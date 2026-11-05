@@ -57,6 +57,14 @@
       <button type="submit" class="btn btn-sm btn-ghost">🎲 Ещё вариант</button>
     </form>
     <!-- M-11: подложка — план или скан; калибровка «протянуть по одной клетке картинки» -->
+    <!-- M-21: проверка карты (MapAudit, docs/map-design.md) -->
+    <details th:if="${audit != null}" class="cp-more item-more editor-background">
+      <summary th:text="'🧭 Проверка карты' + (${audit.warnings()} > 0 ? ' · замечаний ' + ${audit.warnings()} : ' · можно играть')">🧭 Проверка карты</summary>
+      <ul class="map-audit">
+        <li th:each="c : ${audit.checks()}" th:text="${c.line()}" th:classappend="${c.mark().name() == 'WARN'} ? 'is-warn'">✓ Пути</li>
+      </ul>
+      <p class="hint">По сохранённой карте: после правок обновите страницу. Пороги — ориентиры, открытая улица может быть задумана.</p>
+    </details>
     <details th:unless="${inFight}" class="cp-more item-more editor-background">
       <summary>🖼 Подложка</summary>
       <div class="form-row">

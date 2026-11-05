@@ -578,6 +578,8 @@ public class MapGenerator {
             }
             room(70, 6, 7, 6, inner);
             doorTop(72, 12, door);
+            // M-21: второй выход из конторы к стеллажам
+            doorLeft(70, 7, door);
             window(MapDoc.top(74, 12));
             window(MapDoc.left(70, 9));
             label(73, 10, "Контора");
@@ -664,6 +666,8 @@ public class MapGenerator {
             doorLeft(48, 6, door);
             label(45, 3, "Приёмная");
             maybe(90, "desk", 43, 5, 0);
+            // M-21: из кабинета директора — и через приёмную, и прямо в коридор
+            doorTop(56, 10, door);
             label(53, 2, "Директор");
             stamp("desk", 54, 6, 0);
             maybe(60, "desk", 50, 7, 0);
@@ -809,6 +813,9 @@ public class MapGenerator {
             window(MapDoc.top(Math.max(2, entrance - 3), 1 + hallH));
             window(MapDoc.top(Math.min(hallW, entrance + 3), 1 + hallH));
             stamp("bar", 2 + between(0, 2), 2, 0);
+            // M-21: колонны зала — высокое укрытие, иначе зал простреливается поверх ящиков насквозь
+            stamp("pole", 1 + hallW / 3, 1 + hallH / 2 + 1, 0);
+            stamp("pole", 1 + 2 * hallW / 3, 1 + hallH / 2 + 1, 0);
             scatter("crate", 2, 5, hallW - 2, hallH - 5, 6);
             scatter("crate", 2 + hallW, 2, backW - 1, backH - 1, 30);
             zone(MapDoc.PLAYERS, Math.max(0, entrance - 2), h - 2, 5, 2);
@@ -826,6 +833,10 @@ public class MapGenerator {
             room(w - 1 - officeW, 1, officeW, officeH, material("wall"));
             door(MapDoc.top(w - 1 - officeW / 2 - 1, 1 + officeH), material("door"));
             reserve(w - 1 - officeW / 2 - 1, 1 + officeH, 1, 1);
+            // M-21: второй выход из конторы — иначе весь бой упирается в одну дверь
+            doorLeft(w - 1 - officeW, 1 + officeH / 2, material("door"));
+            stamp("pole", w / 4, h - 6, 0);
+            stamp("pole", w / 2 + 3, h - 6, 0);
             for (int i = 0; i < 3 && 2 + i < w - 2; i++) {
                 door(MapDoc.top(w / 2 - 1 + i, h - 1), material("heavy_door"));
             }

@@ -38,7 +38,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 1058 тестов, на 2026-11-05 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 1062 тестов, на 2026-11-05 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -63,7 +63,7 @@ chat/         ChatService (чат кампании: сообщения, брос
 journal/      JournalService (J-01: журнал боя — `capture` собирает действие целиком: броски, проверки, события здоровья; одна запись `JournalEntry` с итогом, фишками и расчётом)
 request/      RollRequestService (запросы бросков мастера игрокам, групповая проверка — A-07, A-08)
 undo/         CampaignSnapshots (снимок игрового состояния кампании строками таблиц с прежними id, восстановление), UndoService (запись, отмена последнего действия, кто может), UndoInterceptor (снимок до и после любого изменяющего запроса), UndoLabels (подпись по адресу)
-map/          MapDoc (документ карты: стены-грани, клетки, предметы, зоны, подписи, подложка), MapRules (правила карты системы, модификатор стрельбы вслепую), MapObject, Material, MapGrid (что в клетке, видимость цели многими лучами, поле видимости, досягаемость), TokenPlacer, BattleMapService (карты кампании, подложка), BattleFieldService (поле идущего боя), PointerBoard (указатели в памяти), MapGenerator (шаблоны и нарисованные карты из `resources/maps/*.map.txt`), MapText (текстовая карта: чтение и запись, формат — `docs/map-format.md`; новую карту рисуй в нём), EditableMap
+map/          MapDoc (документ карты: стены-грани, клетки, предметы, зоны, подписи, подложка), MapRules (правила карты системы, модификатор стрельбы вслепую), MapObject, Material, MapGrid (что в клетке, видимость цели многими лучами, поле видимости, досягаемость), TokenPlacer, BattleMapService (карты кампании, подложка), BattleFieldService (поле идущего боя), PointerBoard (указатели в памяти), MapGenerator (шаблоны и нарисованные карты из `resources/maps/*.map.txt`), MapText (текстовая карта: чтение и запись, формат — `docs/map-format.md`; новую карту рисуй в нём), MapAudit (проверка играбельности: пути, укрытия, прострел, дистанция, окружение — правила в `docs/map-design.md`), EditableMap. **Карту создаёшь, правишь или переносишь с картинки — сначала навык `.claude/skills/battle-map/SKILL.md`** (инструменты `MapFileCheck`, `MapImageGrid` в тестах)
 encounter/    EncounterService (бой кампании: очередь, раунды, ожидание, урон, противостояния), RoundActions (действия участника в раунде, A-05), SceneService (заготовки боя, A-06), CombatContest (противостояние от системы), EncounterView (страница боя), Initiative, InitiativeDeclaration и CombatCard (что отдаёт система)
 check/        CheckRequest/CheckResult/CheckResolver (GenericCheckResolver: d20), OpposedCheckResult, CheckService (правила системы + лог)
 item/         ItemTypeDefinition, ItemField (поля типа предмета, проверка ввода, строка предмета), CatalogItem (строка справочника), ItemAction (кнопка действия на листе), InstalledBlock (вживлённое: блок фишек над инвентарями), ItemSection (секции инвентаря), ItemSummary (краткая строка), ItemAttachments + ItemChip (что показано под предметом: магазины и патроны фишками); всё это отдаёт GameSystem

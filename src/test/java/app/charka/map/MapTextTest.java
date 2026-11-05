@@ -226,6 +226,8 @@ class MapTextTest {
                 assertThat(parsed.warnings()).as(code).isEmpty();
                 assertThat(parsed.doc().zones()).extracting(MapDoc.Zone::kind).as(code).contains(MapDoc.PLAYERS, MapDoc.NPCS);
                 assertThat(MapGeneratorTest.reachable(parsed.doc(), cp2020())).as(code).isTrue();
+                // M-21: нарисованная карта — без единственного узкого места между сторонами
+                assertThat(MapAudit.of(parsed.doc(), cp2020()).passages()).as(code).isGreaterThanOrEqualTo(2);
             });
         }
 
