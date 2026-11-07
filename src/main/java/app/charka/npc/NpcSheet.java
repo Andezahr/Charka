@@ -11,8 +11,14 @@ import java.util.Set;
  * @param attributes attributes счётчиков: тип счётчика → значения
  * @param skills     уровни навыков по коду
  * @param items      снаряжение из справочника системы
+ * @param texts      текстовое состояние счётчиков (K-12: набор зон тела): тип счётчика → значения
  */
-public record NpcSheet(Set<String> roles, Map<String, Map<String, Integer>> attributes, Map<String, Integer> skills, List<Gear> items) {
+public record NpcSheet(Set<String> roles, Map<String, Map<String, Integer>> attributes, Map<String, Integer> skills, List<Gear> items,
+                       Map<String, Map<String, String>> texts) {
+
+    public NpcSheet(Set<String> roles, Map<String, Map<String, Integer>> attributes, Map<String, Integer> skills, List<Gear> items) {
+        this(roles, attributes, skills, items, Map.of());
+    }
 
     /**
      * @param catalogKey строка справочника

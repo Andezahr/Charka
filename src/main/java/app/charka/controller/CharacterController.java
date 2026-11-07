@@ -50,6 +50,7 @@ public class CharacterController {
     private final AttackService attackService;
     private final CounterModel counterModel;
     private final app.charka.skill.SkillService skillService;
+    private final app.charka.service.ProfileService profileService;
 
     /**
      * A-03: окно «Добавить» по требованию — при первом открытии; app.js хранит его, пока не изменится {@code v}
@@ -86,6 +87,18 @@ public class CharacterController {
     public String mainWeapon(@PathVariable Long id, @org.springframework.web.bind.annotation.RequestParam(required = false) Long item) {
         characterService.setMainWeapon(id, item);
         return "redirect:/character/" + id + "#weapons";
+    }
+
+    /** K-11: поля листа от системы: {@code profile.<ключ>}, {@code pick.<ключ>.<вариант>} */
+    @org.springframework.web.bind.annotation.PostMapping("/profile")
+    public String profile(@PathVariable Long id, @org.springframework.web.bind.annotation.RequestParam Map<String, String> params,
+                          org.springframework.web.servlet.mvc.support.RedirectAttributes redirectAttributes) {
+        try {
+            profileService.update(id, params);
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        }
+        return "redirect:/character/" + id + "#profile";
     }
 
     private static void addCatalog(Model model, GameSystem system, Character character) {
@@ -148,6 +161,8 @@ public class CharacterController {
         model.addAttribute("effectStats", system.getCurrentStats(character).values());
         model.addAttribute("luckLeft", java.util.Map.of(character.getId(), system.getLuck(character)));
         model.addAttribute("healthStatus", system.getHealthStatus(character));
+        // K-11: поля листа от системы (теги, приговор); пусто — блока нет
+        model.addAttribute("profileRows", app.charka.service.ProfileService.rows(character, system.getProfileFields()));
         // журнал здоровья: новые записи сверху
         model.addAttribute("woundLog", character.getWounds().stream()
                 .sorted(java.util.Comparator.comparing(app.charka.model.Wound::getId, java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())))

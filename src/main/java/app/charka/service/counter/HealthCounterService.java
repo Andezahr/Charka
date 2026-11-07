@@ -80,6 +80,7 @@ public class HealthCounterService {
                 .location(requestDto.getLocation())
                 .damageType(requestDto.getDamageType())
                 .autoSave(requestDto.isAutoSave())
+                .extras(requestDto.extras())
                 .build();
         int before = context.getCounter().getValue();
         HealthEvent event = strategyFor(context).applyDamage(context, request);
@@ -251,6 +252,31 @@ public class HealthCounterService {
     @Transactional(readOnly = true)
     public List<CareOption> careOptions(Long characterId, Long counterId) {
         return strategyFor(contextFor(characterId, counterId)).getCareOptions();
+    }
+
+    /** K-08: выбор отдыха у системы здоровья персонажа; пусто — его нет */
+    @Transactional(readOnly = true)
+    public List<app.charka.item.ItemField.Option> restOptions(Counter health) {
+        return strategyFactory.findStrategy(health.getType()).orElse(null) instanceof HealthCounterStrategy strategy
+                ? strategy.getRestOptions() : List.of();
+    }
+
+    @Transactional(readOnly = true)
+    public String rest(Counter health) {
+        return strategyFactory.findStrategy(health.getType()).orElse(null) instanceof HealthCounterStrategy strategy
+                ? strategy.getRest(health) : null;
+    }
+
+    /** K-08: запомнить, как персонаж отдыхает (при промотке времени) */
+    @Transactional
+    public void setRest(Long characterId, String rest) {
+        healthCounter(characterId).ifPresent(health -> {
+            if (strategyFactory.findStrategy(health.getType()).orElse(null) instanceof HealthCounterStrategy strategy
+                    && !strategy.getRestOptions().isEmpty()) {
+                strategy.setRest(health, rest);
+                counterRepository.save(health);
+            }
+        });
     }
 
     /** A-10: счётчик здоровья персонажа; пусто — у системы его нет */

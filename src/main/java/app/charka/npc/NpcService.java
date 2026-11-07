@@ -95,6 +95,7 @@ public class NpcService {
             Character copy = newNpc(source.getCampaign().getId(), name);
             copy.setBirthDate(source.getBirthDate());
             copy.getRoles().addAll(source.getRoles());
+            copy.getProfile().putAll(source.getProfile());
             copySkills(source, copy);
             copyCounters(source, copy);
             copyInventories(source, copy);
@@ -132,6 +133,10 @@ public class NpcService {
         npc.getRoles().addAll(sheet.roles());
         sheet.skills().forEach((code, level) -> addSkill(npc, code, level, null));
         for (Counter counter : npc.getCounters()) {
+            Map<String, String> texts = sheet.texts().get(counter.getType());
+            if (texts != null) {
+                counterService.updateTexts(npc.getId(), counter.getId(), texts);
+            }
             Map<String, Integer> attributes = sheet.attributes().get(counter.getType());
             if (attributes != null) {
                 counterService.updateAttributes(npc.getId(), counter.getId(), attributes);
@@ -176,6 +181,8 @@ public class NpcService {
             target.setValue(counter.getValue());
             target.getAttributes().clear();
             target.getAttributes().putAll(counter.getAttributes());
+            target.getTexts().clear();
+            target.getTexts().putAll(counter.getTexts());
             Counter copied = target;
             strategyFactory.findStrategy(counter.getType()).ifPresent(strategy -> strategy.prepareCopy(copied));
         }

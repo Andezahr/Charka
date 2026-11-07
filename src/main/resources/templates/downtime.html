@@ -63,7 +63,14 @@
           <input type="checkbox" name="worked" th:value="${row.character.id}" th:checked="${!row.character.npc}">
           <span th:text="'Работал · ' + ${row.earning.monthly} + '/мес'">Работал · 3000/мес</span>
         </label>
-        <label th:if="${row.wounded}" class="field downtime-healer">
+        <!-- K-08: у системы без медпомощи (Космозэки) — как отдыхал: сон, сон и еда -->
+        <label th:unless="${#lists.isEmpty(row.rests)}" class="field downtime-healer">
+          <span class="label">Отдых</span>
+          <select th:name="'rest.' + ${row.character.id}">
+            <option th:each="o : ${row.rests}" th:value="${o.value}" th:text="${o.label}" th:selected="${o.value == row.rest}">Сон и еда</option>
+          </select>
+        </label>
+        <label th:if="${row.wounded and #lists.isEmpty(row.rests)}" class="field downtime-healer">
           <span class="label">Лечит</span>
           <select th:name="'healer.' + ${row.character.id}">
             <option value="">без медика</option>

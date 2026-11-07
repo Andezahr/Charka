@@ -104,11 +104,19 @@
   </div>
 </header>
   <!-- A-01: отменить только что сделанное. Вне header: его backdrop-filter держит position: fixed внутри себя. undoOffer кладёт UndoInterceptor после любого действия игры -->
-  <div th:if="${undoOffer != null or undoDone != null or undoError != null or requestResults != null or requestError != null}" class="undo-toast" role="status">
+  <div th:if="${undoOffer != null or rerollOffer != null or undoDone != null or undoError != null or requestResults != null or requestError != null}" class="undo-toast" role="status">
     <form th:if="${undoOffer != null}" method="post" class="undo-form"
           th:action="@{'/campaign/' + ${undoOffer.campaignId()} + '/undo/' + ${undoOffer.id()}}">
       <span class="undo-label" th:text="${undoOffer.label()}">Колясик: выстрел — Militech Avenger</span>
       <button type="submit" class="btn btn-sm">↶ Отменить</button>
+    </form>
+    <!-- K-09: перебросить за вдохновение: тот же запрос ещё раз, действие до него отменяется -->
+    <form th:if="${rerollOffer != null}" method="post" class="undo-form"
+          th:action="@{'/character/' + ${rerollOffer.characterId()} + '/reroll'}">
+      <input th:if="${rerollOffer.entryId() != null}" type="hidden" name="rerollEntry" th:value="${rerollOffer.entryId()}">
+      <input type="hidden" name="rerollPath" th:value="${rerollOffer.path()}">
+      <input th:each="p : ${rerollOffer.params()}" type="hidden" th:name="${p.name()}" th:value="${p.value()}">
+      <button type="submit" class="btn btn-sm" th:text="'↻ Перебросить (вдохновение ' + ${rerollOffer.left()} + ')'">↻ Перебросить</button>
     </form>
     <span th:if="${undoDone != null}" class="undo-label is-done" th:text="${undoDone}">Отменено: …</span>
     <span th:if="${undoError != null}" class="undo-label is-error" th:text="${undoError}">Отменить нельзя</span>

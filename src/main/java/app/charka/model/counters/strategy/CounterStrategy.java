@@ -137,6 +137,13 @@ public interface CounterStrategy {
     }
 
     /**
+     * K-02: изменение текстового состояния ({@code Counter.texts}) из формы; незнакомые ключи — ошибка.
+     */
+    default void updateTexts(Counter counter, Map<String, String> texts) {
+        throw new UnsupportedOperationException("Счётчик типа " + getCounterType() + " не редактирует тексты");
+    }
+
+    /**
      * Особое действие типа (например, ремонт брони).
      *
      * @return сообщение для пользователя

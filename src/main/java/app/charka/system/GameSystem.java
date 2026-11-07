@@ -412,6 +412,26 @@ public interface GameSystem {
     }
 
     /**
+     * K-07: новый бой — способности «раз за бой» восстанавливаются. Вызывать в транзакции.
+     */
+    default void onEncounterStart(Character character) {
+    }
+
+    /**
+     * K-07: тратит ли бег по карте действие раунда (CP2020 — да, бег — действие; Космозэки — нет: действие и перемещение).
+     */
+    default boolean movementIsAction() {
+        return true;
+    }
+
+    /**
+     * K-11: поля листа персонажа, которые система хранит текстом ({@code Character.profile}): теги, приговор. Пусто — нет.
+     */
+    default List<ProfileField> getProfileFields() {
+        return List.of();
+    }
+
+    /**
      * Состояние здоровья одной строкой для шапки листа: «Серьёзное · урон 6». null — счётчика здоровья нет, на листе — число ран.
      */
     default String getHealthStatus(Character character) {

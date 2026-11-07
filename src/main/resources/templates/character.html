@@ -60,6 +60,10 @@
           </details>
         </div>
       </section>
+      <!-- K-11: поля листа от системы — теги, приговор, качества -->
+      <th:block th:if="${profileRows != null and !#lists.isEmpty(profileRows)}">
+        <section th:replace="~{fragments/profile :: card(${profileRows}, ${character.id})}"></section>
+      </th:block>
       <!-- РАНЫ -->
       <!-- R-07: ОРУЖИЕ — основное на виду (с навыком атаки и магазинами), запасное и рукопашная свёрнуты; правилами они не различаются -->
       <section class="card" id="weapons" th:if="${mainWeapon != null or (abilities != null and !#lists.isEmpty(abilities) and !#lists.isEmpty(attackTargets))

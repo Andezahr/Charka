@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<!-- K-11: поля листа, которые объявляет система (ProfileField): теги, приговор, качества. rows — ProfileService.Row -->
+<body>
+
+<!-- Поля ввода: текст с подсказками (datalist), длинный текст, выбор нескольких галочками -->
+<th:block th:fragment="fields(rows)">
+  <th:block th:each="r : ${rows}" th:with="f=${r.field}">
+    <label th:unless="${f.multi or f.long}" class="field">
+      <span class="label" th:text="${f.label}">Прилагательное</span>
+      <input type="text" th:name="'profile.' + ${f.key}" th:value="${r.value}" maxlength="255" autocomplete="off"
+             th:attr="list=${#lists.isEmpty(f.suggestions)} ? null : 'profile-' + ${f.key}" th:placeholder="${f.hint}">
+      <datalist th:unless="${#lists.isEmpty(f.suggestions)}" th:id="'profile-' + ${f.key}">
+        <option th:each="s : ${f.suggestions}" th:value="${s}"></option>
+      </datalist>
+    </label>
+    <label th:if="${f.long}" class="field profile-long">
+      <span class="label" th:text="${f.label}">Предыстория</span>
+      <textarea th:name="'profile.' + ${f.key}" rows="3" maxlength="4000" th:placeholder="${f.hint}" th:text="${r.value}"></textarea>
+    </label>
+    <fieldset th:if="${f.multi}" class="field profile-multi">
+      <legend class="label" th:text="${f.label}">Качества</legend>
+      <input type="hidden" th:name="'multi.' + ${f.key}" value="1">
+      <div class="profile-picks">
+        <label th:each="o : ${f.suggestions}" class="check profile-pick">
+          <input type="checkbox" th:name="'pick.' + ${f.key} + '.' + ${o}" value="1" th:checked="${r.chosen.contains(o)}">
+          <span th:text="${o}">Доброта</span>
+        </label>
+      </div>
+      <p th:if="${f.hint != null}" class="hint hint-left" th:text="${f.hint}">Подсказка</p>
+    </fieldset>
+  </th:block>
+</th:block>
+
+<!-- Карточка на листе: значения, правка по ✎ -->
+<section th:fragment="card(rows, characterId)" class="card" id="profile" data-editable>
+  <div class="card-head">
+    <h2 class="card-title"><span class="dot"></span>Персонаж</h2>
+    <button type="button" class="icon-btn" data-edit-toggle title="Изменить">✎</button>
+  </div>
+  <div class="card-body">
+    <dl class="profile-list">
+      <th:block th:each="r : ${rows}" th:if="${r.value != null}">
+        <dt th:text="${r.field.label}">Приговор</dt>
+        <dd th:text="${r.value}">За кражу рулета</dd>
+      </th:block>
+    </dl>
+    <p th:if="${#lists.isEmpty(rows.?[value != null])}" class="hint hint-left">Теги, приговор и качества не заполнены — ✎</p>
+    <div class="edit-panel">
+      <form th:action="@{'/character/' + ${characterId} + '/profile'}" method="post" class="form">
+        <div class="profile-grid"><th:block th:replace="~{:: fields(${rows})}"></th:block></div>
+        <button type="submit" class="btn btn-sm btn-primary">Сохранить</button>
+      </form>
+    </div>
+  </div>
+</section>
+</body>
+</html>

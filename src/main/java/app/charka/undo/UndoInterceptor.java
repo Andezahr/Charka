@@ -37,7 +37,9 @@ public class UndoInterceptor implements HandlerInterceptor {
             // R-09a: закреплённые навыки — только место на листе
             "/skills/pin",
             // A-07: бросок по запросу — как бросок; запрос уже брошен, отменять его нечем
-            "/requests");
+            "/requests",
+            // K-09: переброс сам отменяет и повторяет действие — повтор получит свою запись
+            "/reroll");
     private static final Pattern SKIPPED_EXACT = Pattern.compile("^/(check|edit)$");
 
     private static final String BEFORE = UndoInterceptor.class.getName() + ".before";
@@ -46,6 +48,10 @@ public class UndoInterceptor implements HandlerInterceptor {
 
     private final UndoService undoService;
     private final UndoLabels labels;
+    private final RerollService rerollService;
+
+    /** K-09: что перебросить за вдохновение, если действие удастся */
+    private static final String REROLL = UndoInterceptor.class.getName() + ".reroll";
 
     @Override
     public boolean preHandle(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull Object handler) {
@@ -69,6 +75,9 @@ public class UndoInterceptor implements HandlerInterceptor {
         } else {
             return true;
         }
+        if (actor != null && RerollService.isRerollable(rest)) {
+            request.setAttribute(REROLL, new RerollService.Offer(actor, null, path, RerollService.params(request.getParameterMap()), 0));
+        }
         if (campaignId == null || rest.isEmpty() || SKIPPED_EXACT.matcher(rest).matches()
                 || SKIPPED.stream().anyMatch(rest::contains)) {
             return true;
@@ -83,10 +92,22 @@ public class UndoInterceptor implements HandlerInterceptor {
     @Override
     public void postHandle(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull Object handler,
                            ModelAndView modelAndView) {
-        if (!(request.getAttribute(BEFORE) instanceof CampaignSnapshots.Snapshot before)) {
-            return;
+        Long entryId = null;
+        if (request.getAttribute(BEFORE) instanceof CampaignSnapshots.Snapshot before) {
+            request.removeAttribute(BEFORE);
+            UndoService.Offer offer = undoService.record(before, (String) request.getAttribute(LABEL), (Long) request.getAttribute(ACTOR)).orElse(null);
+            if (offer != null) {
+                RequestContextUtils.getOutputFlashMap(request).put(OFFER, offer);
+                entryId = offer.id();
+            }
         }
-        undoService.record(before, (String) request.getAttribute(LABEL), (Long) request.getAttribute(ACTOR))
-                .ifPresent(offer -> RequestContextUtils.getOutputFlashMap(request).put(OFFER, offer));
+        if (request.getAttribute(REROLL) instanceof RerollService.Offer reroll) {
+            request.removeAttribute(REROLL);
+            Long entry = entryId;
+            rerollService.inspiration(reroll.characterId())
+                    .filter(left -> left > 0)
+                    .ifPresent(left -> RequestContextUtils.getOutputFlashMap(request).put(RerollService.OFFER,
+                            new RerollService.Offer(reroll.characterId(), entry, reroll.path(), reroll.params(), left)));
+        }
     }
 }

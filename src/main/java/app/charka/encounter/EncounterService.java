@@ -139,6 +139,8 @@ public class EncounterService {
             EncounterParticipant participant = new EncounterParticipant();
             participant.setEncounter(encounter);
             participant.setCharacter(member(campaign, characterId));
+            // K-07: способности «раз за бой» — до инициативы
+            system.onEncounterStart(participant.getCharacter());
             roll(participant, system, dice);
             encounter.getParticipants().add(participant);
         }
@@ -176,8 +178,8 @@ public class EncounterService {
                     system.getCombatCard(character), participant == current,
                     weapons(character, system), targets(character, fighters, system), attackService.pendingBlasts(character.getId()),
                     List.copyOf(participant.getEffects()), abilities(character, system),
-                    RoundActions.done(participant),
-                    system.getAttackRules() == null ? null : system.getAttackRules().actionOption(RoundActions.done(participant)));
+                    RoundActions.done(participant, system.movementIsAction()),
+                    system.getAttackRules() == null ? null : system.getAttackRules().actionOption(RoundActions.done(participant, system.movementIsAction())));
         }).toList();
         Set<Long> inFight = fighters.stream().map(Character::getId).collect(Collectors.toSet());
         List<Character> addable = encounter.getCampaign().getCharacters().stream()
@@ -307,6 +309,20 @@ public class EncounterService {
         if (!participant.isDone()) {
             participant.setWaiting(true);
         }
+    }
+
+    /**
+     * K-07: рывок — действие раунда отдано на ещё одно перемещение (Космозэки: действие можно обменять, перемещение — нет).
+     *
+     * @throws IllegalArgumentException действие в этом раунде уже сделано
+     */
+    @Transactional
+    public void dash(Long campaignId, Long participantId) {
+        EncounterParticipant participant = participant(campaignId, participantId);
+        if (participant.getActions() > 0) {
+            throw new IllegalArgumentException("Действие в этом раунде уже сделано");
+        }
+        participant.setActions(participant.getActions() + 1);
     }
 
     /**
@@ -509,11 +525,27 @@ public class EncounterService {
      */
     @Transactional
     public HealthEvent damage(Long campaignId, Long participantId, int amount, String location, String damageType) {
+        return damage(campaignId, participantId, amount, location, damageType, 1, false);
+    }
+
+    /**
+     * K-03: то же несколькими попаданиями ({@code hits}: броня вычитается из каждого) и оружием «броня ½».
+     */
+    @Transactional
+    public HealthEvent damage(Long campaignId, Long participantId, int amount, String location, String damageType, int hits, boolean armorHalf) {
         Character character = participant(campaignId, participantId).getCharacter();
+        Map<String, Integer> extras = new java.util.HashMap<>();
+        if (hits > 1) {
+            extras.put("hits", hits);
+        }
+        if (armorHalf) {
+            extras.put("armorHalf", 1);
+        }
         DamageRequest request = DamageRequest.builder()
                 .amount(amount)
                 .location(location == null || location.isBlank() ? null : location)
                 .damageType(damageType == null || damageType.isBlank() ? null : damageType)
+                .extras(extras)
                 .build();
         return healthCounterService.applyDamage(character.getId(), request)
                 .orElseThrow(() -> new IllegalArgumentException("У персонажа нет счётчика здоровья"));
@@ -691,6 +723,7 @@ public class EncounterService {
         EncounterParticipant participant = new EncounterParticipant();
         participant.setEncounter(encounter);
         participant.setCharacter(character);
+        system.onEncounterStart(character);
         roll(participant, system, new RoundDice(encounter));
         return participant;
     }

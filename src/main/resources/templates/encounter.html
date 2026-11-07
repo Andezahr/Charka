@@ -110,6 +110,12 @@
               <th:block th:if="${open}"><span th:each="line : ${cur.card.lines}" class="chip" th:text="${line}">SP торса 14</span></th:block>
               <span th:if="${!open}" th:each="w : ${cur.weapons}" class="chip" th:text="${w.item.name}">Minami</span>
               <span th:if="${cur.actionsDone > 0}" class="chip yellow" th:text="'Действий: ' + ${cur.actionsDone}">Действий: 1</span>
+              <!-- K-07: действие + перемещение (Космозэки): действие можно отдать на ещё одно перемещение -->
+              <form th:if="${(isGm or curMine) and cur.actionsDone == 0 and !@gameSystemRegistry.get(campaign.system).movementIsAction()}"
+                    method="post" class="inline" th:action="@{${base} + '/participants/' + ${cur.participant.id} + '/dash'}">
+                <button type="submit" class="chip chip-button" title="Действие на ещё одно перемещение">🏃 Рывок</button>
+              </form>
+              <span th:if="${cur.actionsDone > 0 and !@gameSystemRegistry.get(campaign.system).movementIsAction()}" class="chip" title="Перемещение ещё есть">Действие сделано · можно идти</span>
               <form th:each="effect : ${cur.effects}" class="chip red chip-effect" method="post"
                     th:action="@{${base} + '/participants/' + ${cur.participant.id} + '/effects/' + ${effect.id} + '/remove'}">
                 <span th:text="${effect.summary}">Горит 1D6 · раундов 2</span>

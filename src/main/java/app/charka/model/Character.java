@@ -40,6 +40,13 @@ public class Character {
     @Column(name = "role_code")
     private Set<String> roles = new HashSet<>();
 
+    /** K-11: поля листа, которые объявляет система ({@code GameSystem.getProfileFields()}): теги, приговор */
+    @ElementCollection
+    @CollectionTable(name = "character_profile", joinColumns = @JoinColumn(name = "character_id"))
+    @MapKeyColumn(name = "profile_key")
+    @Column(name = "profile_value", length = 4000)
+    private java.util.Map<String, String> profile = new java.util.HashMap<>();
+
     @ManyToOne
     @JsonBackReference
     private Campaign campaign;

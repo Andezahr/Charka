@@ -14,6 +14,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.Map;
 
 @Controller
 @RequestMapping("/character/{characterId}/counters")
@@ -128,6 +129,25 @@ public class CounterController {
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage",
                     "Ошибка изменения счётчика: " + e.getMessage());
+        }
+        return "redirect:/character/" + characterId + "#counters";
+    }
+
+    /**
+     * K-02: правка текстового состояния — набор зон тела: {@code preset} или {@code zones}.
+     */
+    @PostMapping("/{counterId}/texts")
+    public String updateTexts(@PathVariable Long characterId,
+                              @PathVariable Long counterId,
+                              @RequestParam Map<String, String> texts,
+                              RedirectAttributes redirectAttributes) {
+        Map<String, String> own = new java.util.HashMap<>(texts);
+        own.remove("_csrf");
+        try {
+            CounterResponseDto response = counterService.updateTexts(characterId, counterId, own);
+            redirectAttributes.addFlashAttribute("successMessage", "Счётчик '" + response.getName() + "' обновлён");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Ошибка изменения счётчика: " + e.getMessage());
         }
         return "redirect:/character/" + characterId + "#counters";
     }

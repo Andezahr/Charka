@@ -85,9 +85,14 @@
         <option value="">Случайная зона</option>
         <option th:each="l : ${row.card.locations}" th:value="${l.code}" th:text="${l.label}">Торс</option>
       </select>
-      <select name="damageType" aria-label="Тип урона">
+      <select th:unless="${#lists.isEmpty(row.card.damageTypes)}" name="damageType" aria-label="Тип урона">
         <option th:each="t : ${row.card.damageTypes}" th:value="${t.code}" th:text="${t.label}">Обычный</option>
       </select>
+      <!-- K-03: без типов урона (Космозэки) — сколько попаданий (броня из каждого) и «броня ½» ближнего оружия -->
+      <th:block th:if="${#lists.isEmpty(row.card.damageTypes)}">
+        <label title="Попаданий: броня вычитается из каждого">×<input type="number" name="hits" min="1" max="200" value="1" class="narrow" aria-label="Попаданий"></label>
+        <label class="check" title="Оружие ближнего боя: броня вдвое меньше"><input type="checkbox" name="armorHalf" value="true"> броня ½</label>
+      </th:block>
       <button type="submit" class="btn btn-sm btn-danger">Нанести</button>
     </form>
 

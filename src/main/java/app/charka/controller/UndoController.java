@@ -17,6 +17,24 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class UndoController {
 
     private final UndoService undoService;
+    private final app.charka.undo.RerollService rerollService;
+
+    /**
+     * K-09: перебросить за вдохновение — отменить действие, потратить вдохновение и выполнить тот же запрос ещё раз.
+     * Поля исходного запроса приходят из плашки скрытыми полями.
+     */
+    @PostMapping("/character/{characterId}/reroll")
+    public String reroll(@PathVariable Long characterId,
+                         @org.springframework.web.bind.annotation.RequestParam(required = false) Long rerollEntry,
+                         @org.springframework.web.bind.annotation.RequestParam String rerollPath,
+                         HttpServletRequest request, RedirectAttributes redirectAttributes) {
+        try {
+            return "forward:" + rerollService.prepare(characterId, rerollEntry, rerollPath);
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("undoError", e.getMessage());
+            return "redirect:" + Referers.back(request, "/character/" + characterId);
+        }
+    }
 
     @PostMapping("/campaign/{campaignId}/undo/{entryId}")
     public String undo(@PathVariable Long campaignId, @PathVariable Long entryId, HttpServletRequest request,

@@ -229,6 +229,15 @@ public class EncounterController {
         });
     }
 
+    /** K-07: рывок — действие на перемещение */
+    @PostMapping("/participants/{participantId}/dash")
+    public String dash(@PathVariable Long campaignId, @PathVariable Long participantId, RedirectAttributes redirectAttributes) {
+        return attempt(campaignId, redirectAttributes, () -> {
+            encounterService.dash(campaignId, participantId);
+            return null;
+        });
+    }
+
     @PostMapping("/participants/{participantId}/join")
     public String join(@PathVariable Long campaignId, @PathVariable Long participantId, RedirectAttributes redirectAttributes) {
         return attempt(campaignId, redirectAttributes, () -> {
@@ -309,9 +318,11 @@ public class EncounterController {
                          @RequestParam int amount,
                          @RequestParam(required = false) String location,
                          @RequestParam(required = false) String damageType,
+                         @RequestParam(defaultValue = "1") int hits,
+                         @RequestParam(defaultValue = "false") boolean armorHalf,
                          RedirectAttributes redirectAttributes) {
         return health(campaignId, participantId, "Урон", redirectAttributes,
-                () -> encounterService.damage(campaignId, participantId, amount, location, damageType));
+                () -> encounterService.damage(campaignId, participantId, amount, location, damageType, hits, armorHalf));
     }
 
     @PostMapping("/participants/{participantId}/save/{code}")

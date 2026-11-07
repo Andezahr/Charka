@@ -68,6 +68,21 @@ public interface HealthCounterStrategy extends CounterStrategy {
         throw new UnsupportedOperationException("Медпомощи в этой системе нет");
     }
 
+    /** K-08: как персонаж отдыхает при промотке времени (Космозэки: сон, сон и еда); пусто — выбора нет */
+    default java.util.List<app.charka.item.ItemField.Option> getRestOptions() {
+        return java.util.List.of();
+    }
+
+    /** Текущий выбор отдыха — значение из {@link #getRestOptions()} */
+    default String getRest(Counter counter) {
+        return null;
+    }
+
+    /** Запомнить выбор отдыха; незнакомое значение — ошибка */
+    default void setRest(Counter counter, String rest) {
+        throw new UnsupportedOperationException("Выбора отдыха нет");
+    }
+
     @Override
     HealthView describe(CounterContext context);
 }

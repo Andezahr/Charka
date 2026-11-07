@@ -1,7 +1,7 @@
 # Charka — менеджер персонажей для ролевых игр
 
 Веб-приложение для ведущего/игроков настольных РПГ: кампании, персонажи, их раны, инвентари, деньги, заметки и счётчики, плюс игровой календарь кампании («время летит…» → хроника).
-Изначально ориентировано на Cyberpunk 2020 (дата старта сида — 2037 г., уровни смертельности ран), в планах — поддержка D&D (ячейки заклинаний и т.п.).
+Изначально ориентировано на Cyberpunk 2020 (дата старта сида — 2037 г., уровни смертельности ран); вторая система — хоумбрю «Космозэки» (`KOSMOZEKI`, правила — [`RULES_KOSMOZEKI.md`](RULES_KOSMOZEKI.md)), в планах — D&D (ячейки заклинаний и т.п.).
 
 Язык интерфейса и комментариев — русский. Сообщения исключений — смесь русского и английского.
 
@@ -10,6 +10,8 @@
 **Начинай любую работу с [`TODO.md`](TODO.md)**: там текущий план (задачи с ID, «Готово, когда»), целевая архитектура, домашние правила и журнал решений. Сделанное — [`DONE.md`](DONE.md) (закрытую задачу переносить туда), отложенное до решения автора — [`BACKLOG.md`](BACKLOG.md) (оттуда без просьбы автора не брать). Взял задачу — отметь `[~]`, закончил — `[x]` с датой и строкой итога; новые задачи и изменения плана вноси туда же.
 
 **Интерфейс — [`UI_PLAN.md`](UI_PLAN.md)**: разбор экранов на 2026-11-03 и план перегруппировки (задачи R-xx; отложен в `BACKLOG.md`, пока автор рисует эскизы). До эскизов интерфейс не перестраиваем, новые кнопки ставим рядом с похожими.
+
+**Правила Космозэков — [`RULES_KOSMOZEKI.md`](RULES_KOSMOZEKI.md)**: документ друзей автора плюс ответы автора; что додумали мы — `HOMEBREW`.
 
 **Правила CP2020 — сначала [`RULES.md`](RULES.md)**: выжимка для незакрытых задач, с номерами страниц. Новое правило или расхождение с кодом дописывай туда. **Книга — `cyberpunk 2020 rulebook_text.pdf` в корне проекта** (в `.gitignore`, не коммитить): нужна там, где `RULES.md` отсылает к таблице. Значения правил не бери по памяти. Скан с распознанным текстом, удобнее `pdftotext -layout` в scratchpad; страница PDF = страница книги + 3. Текст распознан с ошибками, а в таблицах строки и номера теряются: таблицы читай с изображения страницы. Его показывает браузерная панель: открой файл и задай `location.hash = '#page=64&navpanes=0&toolbar=0&zoom=95,20,40'` с перезагрузкой (x, y — сдвиг), рендер занимает около 9 секунд.
 
@@ -38,7 +40,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 1085 тестов, на 2026-11-07 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 1100 тестов, на 2026-11-07 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -62,7 +64,7 @@ security/     SecurityConfig, UserService (регистрация, вход), Ac
 chat/         ChatService (чат кампании: сообщения, броски и записи журнала одной лентой; `feedFor` — с «?» вместо врагов в тумане)
 journal/      JournalService (J-01: журнал боя — `capture` собирает действие целиком: броски, проверки, события здоровья; одна запись `JournalEntry` с итогом, фишками и расчётом)
 request/      RollRequestService (запросы бросков мастера игрокам, групповая проверка — A-07, A-08)
-undo/         CampaignSnapshots (снимок игрового состояния кампании строками таблиц с прежними id, восстановление), UndoService (запись, отмена последнего действия, кто может), UndoInterceptor (снимок до и после любого изменяющего запроса), UndoLabels (подпись по адресу)
+undo/         RerollService (K-09: «↻ Перебросить» за вдохновение — отмена и повтор того же запроса), CampaignSnapshots (снимок игрового состояния кампании строками таблиц с прежними id, восстановление), UndoService (запись, отмена последнего действия, кто может), UndoInterceptor (снимок до и после любого изменяющего запроса), UndoLabels (подпись по адресу)
 map/          MapDoc (документ карты: стены-грани, клетки, предметы, зоны, подписи, подложка), MapRules (правила карты системы, модификатор стрельбы вслепую, трудная местность, взрывоопасное), MapObject, Material (M-23: `difficult`, `smoke`, `explosive`), LevelMap (M-22: уровни карты — сетка на уровень, лестницы `stairs`, пустота `void`, взгляд между уровнями), MapLineOfFire (M-17: кто на линии огня — `attack.LineOfFire`), MapBlastService (M-23: взрыв ломает слабое и подрывает бочки — `attack.MapBlast`), MapGrid (что в клетке, видимость цели многими лучами, поле видимости, досягаемость), TokenPlacer, BattleMapService (карты кампании, подложка), BattleFieldService (поле идущего боя), PointerBoard (указатели в памяти), MapGenerator (шаблоны и нарисованные карты из `resources/maps/*.map.txt`), MapText (текстовая карта: чтение и запись, формат — `docs/map-format.md`; новую карту рисуй в нём), MapAudit (проверка играбельности: пути, укрытия, прострел, дистанция, окружение — правила в `docs/map-design.md`), EditableMap. **Карту создаёшь, правишь или переносишь с картинки — сначала навык `.claude/skills/battle-map/SKILL.md`** (инструменты `MapFileCheck`, `MapImageGrid` в тестах)
 encounter/    EncounterService (бой кампании: очередь, раунды, ожидание, урон, противостояния), RoundActions (действия участника в раунде, A-05), SceneService (заготовки боя, A-06), CombatContest (противостояние от системы), EncounterView (страница боя), Initiative, InitiativeDeclaration и CombatCard (что отдаёт система)
 check/        CheckRequest/CheckResult/CheckResolver (GenericCheckResolver: d20), OpposedCheckResult, CheckService (правила системы + лог)
@@ -70,6 +72,7 @@ item/         ItemTypeDefinition, ItemField (поля типа предмета,
 skill/        SkillDefinition, CharacterRole, StatValue, SkillOverride (уровень от чипа), SkillSheet, SkillCheck, SkillOpponent, SkillProgression (контракт прокачки), SkillImprovement, SkillService (навыки, роли, проверка, прокачка)
 system/        GameSystem, GameSystemRegistry, GenericSystem ("GENERIC"), Currency, ExpenseTemplate (типичная регулярная трата); cp2020/ — Cp2020System ("CP2020"),
                стратегии счётчиков, Cp2020Rules, Cp2020Dice (d10: на 10 один дополнительный кубик), Cp2020CheckResolver, Cp2020Skills (каталог, роли), Cp2020Fumbles (таблица книги), Cp2020SkillRules (языки по семьям, бонусы от других навыков, требования), Cp2020ItemTypes (оружие, магазины, боеприпасы), Cp2020Weapons (справочник оружия книги), Cp2020Ammo (таблица боеприпасов книги), Cp2020Magazines (справочник магазинов), Cp2020MagazineRules (цены, размеры, штрафы магазинов; хоумбрю помечен), Cp2020WeaponActions (выстрел, очередь, смена и снаряжение магазина), Cp2020ItemSheet (краткая строка, фишки под оружием, что предложить в окне «Добавить»), Cp2020Armors (справочник брони книги), Cp2020ArmorRules (пропорциональная броня, слои), Cp2020WornArmor (надетая броня), Cp2020ArmorActions (надеть, снять, починить), Cp2020AttackRules (дальняя атака и метание: план, сложность по дальности, зона, урон), Cp2020AreaAttacks (урон по площади и отклонение), Cp2020Effects (особые заряды: горение, оглушение, слепота, газ), Cp2020Cover (укрытие цели), Cp2020Cyberware (справочник киберware), Cp2020Cyber (установка, хирургия, эффекты, блок на листе), Cp2020Cyberlimbs (киберконечности: сторона, опции, прочность, удар), Cp2020Chips (чипы навыков: справочник, лимит INT, обкатка), Cp2020RepStrategy + Cp2020Facedown (репутация, противостояние в трекере), Cp2020Lifestyle (шаблоны трат: еда, жильё по зонам, услуги), Cp2020Creation (мастер создания: очки, пакеты ролей, зарплаты с. 58), Cp2020Lifepath (лайфпас с. 34–39), Cp2020Melee (ближний бой: встречный бросок, урон, рукопашная), Cp2020MartialArts (ключевые приёмы, с. 100), Cp2020AttackModifiers (таблица модификаторов FNFF), Cp2020SkillProgression + Cp2020IpStrategy (очки улучшения), Cp2020Npcs (быстрые NPC, с. 30), Cp2020MapRules (карта: укрытия как материалы, клетка 2 м)
+               kosmozeki/ — KzSystem ("KOSMOZEKI"): KzBody (наборы зон: «Человек», «Зверь», «Робот», свои строками), KzBodyStrategy (`KZ_BODY`: ХП по зонам, броня из каждого попадания, без сознания, отдых), KzCheckResolver (к100 двумя к10, 1 и 100 — криты), KzAttackRules (стрельба DIF + мод − пули, ближний бой, взрывчатка, драка 1к12), KzItems + KzItemActions (оружие, броня, патроны, «Жидкая кожа», перезарядка), KzAbilities, KzHalveStrategy (`KZ_HALVE`, раз за бой), KzPortentStrategy (`KZ_PORTENT`, 3к12), KzProfile + KzCreation (теги, приговор, качества), KzNpcs, KzReference
 dto/counter/   DTO только для счётчиков (единственный модуль, переведённый на DTO)
 exception/     NotFoundException.forId("Entity", id) (NoSuchElementException → 404), наследники CharacterNotFoundException, InventoryNotFoundException;
                GlobalExceptionHandler (страницы → error.html: 404/400/500), ApiExceptionHandler (app.charka.api → text/plain)
@@ -99,6 +102,7 @@ Campaign (name, system, startDate, currentDate, gm?, inviteToken?, initiativeEac
  ├─ Chronicle* (name, startDate, endDate)     — запись о прошедшем периоде
  └─ Character* (name, birthDate, npc, roles, player?, mainWeaponId?, pinnedSkills)  — npc: персонаж мастера; roles: коды из GameSystem.getRoles(), таблица character_role; уровень роли = уровень спецспособности
      ├─ CharacterSkill* (skillCode, level, customName?) — код из каталога системы; уровень 0 у обычного навыка не хранится
+     ├─ profile    (Map ключ → текст, `character_profile`) — K-11: поля листа от системы (теги, приговор)
      ├─ Wound*     (name, severity, date) — журнал здоровья: ручные записи и автозаписи `HealthCounterService` (урон, смерть, медпомощь)
      ├─ Inventory* (name, carried) └─ Item* (name, quantity, cost, description, type, properties) — type: код из GameSystem.getItemTypes()
      ├─ Money*     (name, amount, operationDate) — журнал операций, баланс = сумма amount
@@ -114,7 +118,7 @@ Campaign (name, system, startDate, currentDate, gm?, inviteToken?, initiativeEac
 
 `CounterStrategy` (тип, `getNewValue(String current, Object input)`, `getResetValue()`) → `CounterStrategyFactory` собирает все бины-стратегии в Map по `getCounterType()`. Значения гоняются через `String`, хотя хранятся как `Integer`. Тип счётчика — строка без enum.
 Default-методы стратегии: `getSystems()` (пусто = универсальная; форма и `createCounter` показывают/принимают только типы системы кампании), `getDisplayName()`/`getDefaultName()`, `getViewTemplate()` (шаблон с фрагментом `card` — каждый тип рисует свою карточку, `counters/list.html` не трогаем), `getCreateFieldsTemplate()` (фрагмент `create-fields` — доп. поля формы создания, уходят в `attributes[...]`), `usesInitialValue()`, `getRequiredCounterTypes()` (обязательные счётчики: создаются автоматически, удалить их, пока есть зависимый, нельзя), `isUniquePerCharacter()`, `getDisplayOrder()`, `initialize(counter, params)` (незнакомые ключи пропускать — params общие для всех создаваемых вместе), `reset(counter)`, `describe(CounterContext)` → данные карточки в `CounterResponseDto.view`, `isAwardable()` (начислять всем со страницы кампании), `updateAttributes(counter, map)`, `performAction(ctx, action)`.
-`Counter.attributes` (`Map<String,Integer>`, таблица `counter_attribute`) — доп. состояние стратегии сверх одного числа. `CounterContext` — счётчик + все счётчики персонажа, через него зависимые стратегии читают друг друга.
+`Counter.attributes` (`Map<String,Integer>`, таблица `counter_attribute`) — доп. состояние стратегии сверх одного числа; `Counter.texts` (`counter_text`, K-02) — текстовое (набор зон тела Космозэков), правка — `updateTexts`. `CounterContext` — счётчик + все счётчики персонажа, через него зависимые стратегии читают друг друга.
 
 Стратегии: `SimpleIntegerCounterStrategy` (`"SIMPLE_INTEGER"`, прибавляет input) и связка CP2020 (`system/cp2020/`, доступна только кампаниям CP2020):
 - `strategy/health/HealthCounterStrategy` — точка расширения для систем здоровья (урон, лечение, `healOverTime`, спасброски по коду, стабилизация, `describe` → `HealthView`). `DiceRoller` — кубики (в тестах подменяются).
@@ -182,6 +186,10 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 | GET, POST | `/campaign/{id}/chat` | лента чата и бросков (фрагмент, ETag, опрос); POST `character?`, `text`, `returnTo` → сообщение |
 | GET, POST | `/campaign/{id}/settings`, POST `/campaign/{id}/rename` (`name`) | R-13: «Настройки» мастера — название, игроки, приглашение (QR), экспорт |
 | GET | `/campaign/{id}/gm` | перенаправляет на обзор (R-10): строки экрана мастера — список персонажей кампании (`fragments/roster :: row`) |
+| POST | `/character/{id}/profile` | K-11: поля листа от системы — `profile.<ключ>`, `multi.<ключ>` + `pick.<ключ>.<вариант>` |
+| POST | `/character/{id}/reroll` | K-09: `rerollPath`, `rerollEntry?` и поля исходного запроса → отменить, вдохновение −1, повторить (forward) |
+| POST | `/character/{id}/counters/{cid}/texts` | K-02: `preset` или `zones` → набор зон тела (`Counter.texts`) |
+| POST | `/campaign/{id}/encounter/participants/{pid}/dash` | K-07: рывок — действие на перемещение |
 | POST | `/character/{id}/effects`, `.../effects/{eid}/delete` | `template` (готовый эффект системы) или `name`, `stat`, `modifier`, `duration`, `unit` → временный эффект; раунды идут в трекере, дни — при промотке |
 | POST | `/character/{id}/contacts`, `.../{cid}/edit\|delete` | контакты: `name`, `role`, `relation`, `owes`, `note` |
 | GET | `/character/{id}/notes/` | заметки (фильтр `?categoryId=`) |

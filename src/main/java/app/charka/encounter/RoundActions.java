@@ -30,7 +30,14 @@ public class RoundActions {
      * Сколько действий уже сделано в этом раунде: счётчик и бег по карте — тоже действие.
      */
     public static int done(EncounterParticipant participant) {
-        return participant.getActions() + (participant.getMovedMeters() > 0 ? 1 : 0);
+        return done(participant, true);
+    }
+
+    /**
+     * @param movementIsAction K-07: бег — действие (CP2020); у Космозэков перемещение отдельно от действия
+     */
+    public static int done(EncounterParticipant participant, boolean movementIsAction) {
+        return participant.getActions() + (movementIsAction && participant.getMovedMeters() > 0 ? 1 : 0);
     }
 
     private Optional<EncounterParticipant> participant(Character character) {

@@ -41,8 +41,11 @@ public class DowntimeService {
      * @param wounded   есть урон: можно выбрать медика
      * @param healers   кто может лечить, лучший медик первым
      * @param healer    кого предложить: лучший медик, если у него есть навык; null — без медика
+     * @param rests     K-08: как можно отдыхать (Космозэки); пусто — выбора нет, вместо него медик
+     * @param rest      что выбрано сейчас
      */
-    public record Row(Character character, Earning earning, boolean wounded, List<Character> healers, Long healer) {
+    public record Row(Character character, Earning earning, boolean wounded, List<Character> healers, Long healer,
+                      List<app.charka.item.ItemField.Option> rests, String rest) {
     }
 
     @Transactional(readOnly = true)
@@ -57,7 +60,9 @@ public class DowntimeService {
                             && !system.getCombatCard(character).out();
                     List<Character> healers = wounded ? healthCounterService.healers(character.getId(), List.of()) : List.of();
                     Long healer = wounded ? bestHealer(character, healers, health) : null;
-                    return new Row(character, system.earnings(character, 30), wounded, healers, healer);
+                    List<app.charka.item.ItemField.Option> rests = health == null ? List.of() : healthCounterService.restOptions(health);
+                    return new Row(character, system.earnings(character, 30), wounded, rests.isEmpty() ? healers : List.of(),
+                            healer, rests, health == null ? null : healthCounterService.rest(health));
                 })
                 .toList();
     }
@@ -88,12 +93,21 @@ public class DowntimeService {
      */
     @Transactional
     public List<String> apply(Long campaignId, int days, String name, Set<Long> worked, Map<Long, Long> healers) {
+        return apply(campaignId, days, name, worked, healers, Map.of());
+    }
+
+    /**
+     * @param rests K-08: персонаж → как отдыхал (Космозэки: сон, сон и еда); запоминается и лечит при промотке
+     */
+    @Transactional
+    public List<String> apply(Long campaignId, int days, String name, Set<Long> worked, Map<Long, Long> healers, Map<Long, String> rests) {
         if (days < 1 || days > 366) {
             throw new IllegalArgumentException("Дней — от 1 до 366");
         }
         Campaign campaign = campaignService.getById(campaignId);
         GameSystem system = systemRegistry.get(campaign.getSystem());
         List<String> report = new ArrayList<>();
+        rests.forEach(healthCounterService::setRest);
         for (Character character : campaign.getCharacters()) {
             Long healerId = healers.get(character.getId());
             if (healerId == null) {

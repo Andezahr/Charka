@@ -48,7 +48,11 @@ public class DowntimeController {
                         @RequestParam(required = false) List<Long> worked, @RequestParam Map<String, String> params,
                         RedirectAttributes redirectAttributes) {
         Map<Long, Long> healers = new HashMap<>();
+        Map<Long, String> rests = new HashMap<>();
         params.forEach((key, value) -> {
+            if (key.startsWith("rest.") && value != null && !value.isBlank()) {
+                rests.put(Long.valueOf(key.substring("rest.".length())), value);
+            }
             if (key.startsWith(HEALER) && value != null && !value.isBlank()) {
                 healers.put(Long.valueOf(key.substring(HEALER.length())), Long.valueOf(value));
             }
@@ -57,7 +61,7 @@ public class DowntimeController {
         // кнопки «Неделя», «Месяц» несут число сами; «Промотать» — то, что введено
         int period = days != null ? days : customDays != null ? customDays : 0;
         try {
-            redirectAttributes.addFlashAttribute("downtimeReport", downtimeService.apply(campaignId, period, name, workers, healers));
+            redirectAttributes.addFlashAttribute("downtimeReport", downtimeService.apply(campaignId, period, name, workers, healers, rests));
             redirectAttributes.addFlashAttribute("downtimeDays", period);
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("downtimeError", e.getMessage());
