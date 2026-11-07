@@ -51,6 +51,8 @@ public class AttackService {
     private final DiceRoller diceRoller;
     private final HealthCounterService healthCounterService;
     private final app.charka.encounter.RoundActions roundActions;
+    private final LineOfFire lineOfFire;
+    private final MapBlast mapBlast;
 
     /**
      * @param characterId атакующий; предмет другого персонажа считается ненайденным
@@ -158,21 +160,107 @@ public class AttackService {
             }
             steps.addAll(check.steps());
             last = rules.outcome(context, plan, planned, check, diceRoller);
+            last = stray(context, rules, plan, last, check);
             String summary = apply(context, rules, last, steps);
             lastSummary = summary != null ? summary : lastSummary;
             hitTargets += last.hits().isEmpty() ? 0 : 1;
         }
 
+        // M-23: граната упала на цель на карте — взрыв ломает слабое вокруг и подрывает бочки
+        if (mapBlast != null && plan.blast() != null && plan.blast().amount() != null && last != null && last.hit()
+                && !context.targets().isEmpty()) {
+            MapBlast.Result changed = mapBlast.explodeAt(context.targets().get(0), plan.blast().amount(), plan.blast().radius(), diceRoller);
+            steps.addAll(changed.steps());
+            detonations(context.attacker(), rules, changed, steps);
+        }
         Long pending = pendingBlast(context, last);
         if (plan.checks().size() > 1 || (last.headline() == null && last.hits().isEmpty())) {
             return new AttackResult(plan.title(), "Задето целей: " + hitTargets + " из " + plan.checks().size(), hitTargets > 0, steps, pending, false)
                     .withRoll(own == null ? null : own.total(), own == null ? null : own.difficulty());
         }
         int hitCount = last.hits().size();
-        String outcome = last.headline() != null ? last.headline()
+        // M-17: промах по цели попал в стоящего на линии огня — заголовок и его раны
+        boolean stray = !last.hit() && !last.hits().isEmpty() && last.headline() != null && lastSummary != null;
+        String outcome = stray ? last.headline() + ": " + lastSummary
+                : last.headline() != null ? last.headline()
                 : hitCount > 1 ? "Попаданий: " + hitCount + ". " + lastSummary : lastSummary;
         return new AttackResult(plan.title(), outcome, last.hit(), steps, pending, false)
                 .withRoll(own == null ? null : own.total(), own == null ? null : own.difficulty());
+    }
+
+    /**
+     * M-17: одиночная атака по одной цели на карте не попала — промах может попасть в того, кто стоит на линии огня.
+     * Решает система ({@link AttackRules#strayHit}); заряд по площади и зона огня идут своим порядком.
+     */
+    private AttackOutcome stray(AttackContext context, AttackRules rules, AttackPlan plan, AttackOutcome outcome, CheckResult check) {
+        if (lineOfFire == null || outcome.hit() || !outcome.hits().isEmpty() || outcome.scattered() != null
+                || plan.blast() != null || plan.checks().size() != 1 || context.targets().size() != 1 || context.targetItem() != null) {
+            return outcome;
+        }
+        List<LineOfFire.Bystander> bystanders = lineOfFire.between(context.attacker(), context.targets().get(0));
+        if (bystanders.isEmpty()) {
+            return outcome;
+        }
+        LineOfFire.Bystander first = bystanders.get(0);
+        return rules.strayHit(context, check, first.character(), first.meters(), diceRoller)
+                .map(stray -> {
+                    List<String> steps = new ArrayList<>(outcome.steps());
+                    steps.addAll(stray.steps());
+                    return new AttackOutcome(steps, stray.hits(), null, List.of(),
+                            stray.headline() != null ? stray.headline() : outcome.headline(), false);
+                })
+                .orElse(outcome);
+    }
+
+    /**
+     * M-23: попали в бочку или баллон на карте — он взрывается, задевает всех в радиусе и рвёт соседнее.
+     *
+     * @param byCharacterId кто стрелял; null — мастер
+     * @throws IllegalArgumentException если в клетке нечему взрываться или боя на карте нет
+     */
+    @Transactional
+    public AttackResult detonate(Long campaignId, int x, int y, Long byCharacterId) {
+        Character by = byCharacterId == null ? null : characterRepository.findById(byCharacterId)
+                .filter(found -> found.getCampaign() != null && found.getCampaign().getId().equals(campaignId))
+                .orElseThrow(CharacterNotFoundException.forId(byCharacterId));
+        Campaign campaign = encounterRepository.findByCampaignId(campaignId)
+                .orElseThrow(() -> new IllegalArgumentException("Боя на карте нет")).getCampaign();
+        AttackRules rules = systemRegistry.get(campaign.getSystem()).getAttackRules();
+        if (rules == null || mapBlast == null) {
+            throw new IllegalArgumentException("У этой системы нет взрывов");
+        }
+        return journalService.capture(() -> {
+            List<String> steps = new ArrayList<>();
+            MapBlast.Result changed = mapBlast.detonate(campaignId, x, y, diceRoller);
+            steps.addAll(changed.steps());
+            int caught = detonations(by, rules, changed, steps);
+            String what = changed.detonations().stream().map(MapBlast.Detonation::label).collect(Collectors.joining(", "));
+            return new AttackResult("💥 " + what, "Задето: " + caught, caught > 0, steps).withoutItemRow();
+        }, done -> new app.charka.journal.JournalService.Draft(campaign, by, app.charka.journal.JournalService.Kind.ATTACK,
+                done.title(), done.outcome(), done.hit(), null, null, done.steps(), List.of()));
+    }
+
+    /**
+     * Урон подорванного: всем в радиусе, тем же порядком, что заряд по площади.
+     *
+     * @param by кто вызвал взрыв; null — урон пишется в лог от имени задетого
+     * @return сколько задето
+     */
+    private int detonations(Character by, AttackRules rules, MapBlast.Result changed, List<String> steps) {
+        int caught = 0;
+        for (MapBlast.Detonation detonation : changed.detonations()) {
+            steps.addAll(detonation.steps());
+            AreaDamage area = new AreaDamage(detonation.label(), detonation.expression(), detonation.amount(), detonation.radius(),
+                    Map.of(), List.of());
+            for (Character target : detonation.caught()) {
+                steps.add(target.getName() + ":");
+                AttackHit hit = rules.blastHit(area, diceRoller);
+                steps.addAll(hit.steps());
+                applyHit(by != null ? by : target, detonation.label(), target, target.getName(), hit, steps);
+                caught++;
+            }
+        }
+        return caught;
     }
 
     /**

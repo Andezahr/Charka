@@ -355,14 +355,18 @@ public class BattleFieldService {
         // вслепую — только если система знает такой модификатор
         Optional<Material> through = rules.blindFireOption() == null ? Optional.empty() : sight.through();
         Optional<Material> cover = hidden ? through : sight.cover();
+        // M-23: сквозь дым — вслепую; преграда за ним, если есть, остаётся укрытием
+        String throughLabel = through.map(material -> material.label() + (material.sp() > 0 ? " SP " + material.sp() : "")).orElse(null);
+        if (hidden && sight.smoke() && rules.blindFireOption() != null) {
+            throughLabel = throughLabel == null ? "дым" : "дым и " + throughLabel;
+        }
         List<String> inTheWay = encounter.getParticipants().stream()
                 .filter(p -> p != from && p != to && p.getPosX() != null)
                 .filter(p -> sight.path().stream().anyMatch(cell -> cell[0] == p.getPosX() && cell[1] == p.getPosY()))
                 .map(p -> p.getCharacter().getName()).toList();
         return new Sight(meters, hidden, cover.map(Material::code).orElse(null), cover.map(Material::label).orElse(null),
                 sight.visibility().name().toLowerCase(), sight.exposed(),
-                through.map(material -> material.label() + (material.sp() > 0 ? " SP " + material.sp() : "")).orElse(null),
-                through.isPresent() ? rules.blindFireOption() : null, inTheWay);
+                throughLabel, throughLabel != null ? rules.blindFireOption() : null, inTheWay);
     }
 
     /**
@@ -433,6 +437,34 @@ public class BattleFieldService {
         }
         doc.walls().put(edgeKey, new MapDoc.Edge(edge.kind(), edge.material(), !edge.open()).toString());
         encounter.setMapDoc(doc.toJson());
+    }
+
+    /**
+     * M-23: выбить дверь, разбить окно — грань становится проёмом. Стену ломает только мастер (или взрыв, {@link MapBlastService}).
+     * HOMEBREW: в книге нет правила, как выбить дверь; бросок, если нужен, мастер просит отдельно.
+     *
+     * @param gm ломает мастер
+     * @throws IllegalArgumentException если грани нет или игрок ломает стену
+     */
+    @Transactional
+    public String breakEdge(Long campaignId, String edgeKey, boolean gm) {
+        Encounter encounter = withMap(campaignId);
+        MapDoc doc = MapDoc.parse(encounter.getMapDoc());
+        MapDoc.Edge edge = doc.edge(edgeKey);
+        if (edge == null || edge.kind() == MapDoc.Edge.Kind.GAP) {
+            throw new IllegalArgumentException("Здесь нечего ломать");
+        }
+        if (edge.kind() == MapDoc.Edge.Kind.WALL && !gm) {
+            throw new IllegalArgumentException("Стену ломает мастер — или взрыв");
+        }
+        doc.walls().put(edgeKey, "gap");
+        encounter.setMapDoc(doc.toJson());
+        String material = edge.material() == null ? "" : rules(encounter).material(edge.material()).map(m -> " (" + m.label() + ")").orElse("");
+        return switch (edge.kind()) {
+            case DOOR -> "Дверь выбита" + material;
+            case WINDOW -> "Окно разбито" + material + ": можно пролезть";
+            default -> "Стена проломлена" + material;
+        };
     }
 
     /**

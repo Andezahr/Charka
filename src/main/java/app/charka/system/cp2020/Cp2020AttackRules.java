@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.UnaryOperator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -214,6 +215,40 @@ final class Cp2020AttackRules implements AttackRules {
         List<AttackOutcome.TargetedHit> hits = hits(weapon, forTarget, result, object != null, dice).stream()
                 .map(hit -> new AttackOutcome.TargetedHit(target, hit, object)).toList();
         return AttackOutcome.hits(steps, hits, hits.isEmpty() ? result.outcome() + ", но ни одна пуля не дошла" : null, !hits.isEmpty());
+    }
+
+    /**
+     * M-17. HOMEBREW: книга не говорит, куда уходит промах. Одиночный выстрел или очередь мимо цели попадает в первого,
+     * кто стоит на линии огня, если тот же бросок не меньше сложности по расстоянию до него (с. 99): ближе — легче.
+     * Одна пуля, зона случайная; укрытие цели к стоящему не относится. Автоогонь, зона огня, взрыв и ближний бой — своим порядком.
+     */
+    @Override
+    public java.util.Optional<AttackOutcome> strayHit(AttackContext context, CheckResult missed, Character bystander, int meters, DiceRoller dice) {
+        AttackRequest request = context.request();
+        Item weapon = context.item();
+        if (missed == null || weapon == null || Cp2020Melee.applies(context) || isZoneFire(request) || AUTO.equals(mode(request))
+                || Cp2020AreaAttacks.isArea(weapon)) {
+            return java.util.Optional.empty();
+        }
+        Map<String, StatValue> stats = context.stats(context.attacker());
+        int need;
+        try {
+            need = hitNumber(meters, rangeFor(weapon, request, form(weapon, stats), stats));
+        } catch (IllegalArgumentException e) {
+            return java.util.Optional.empty();
+        }
+        String line = "На линии огня — " + bystander.getName() + " в " + meters + " м: бросок " + missed.total();
+        if (missed.total() < need) {
+            return java.util.Optional.of(AttackOutcome.miss(List.of(line + " < " + need + " — пуля прошла мимо (хоумбрю)"), null));
+        }
+        List<String> steps = new ArrayList<>();
+        steps.add(line + " ≥ " + need + " — шальная пуля попала в " + bystander.getName() + " (хоумбрю)");
+        Set<String> options = request.options().stream().filter(code -> !Cp2020Cover.isCover(code)).collect(Collectors.toSet());
+        AttackRequest toBystander = new AttackRequest(List.of(bystander.getId()), bystander.getName(), meters, null, request.skillCode(),
+                options, request.modifier(), SINGLE, 1, 0, 0);
+        AttackHit hit = oneHit(weapon, toBystander, new ArrayList<>(), dice);
+        return java.util.Optional.of(AttackOutcome.hits(steps, List.of(new AttackOutcome.TargetedHit(bystander, hit)),
+                "Мимо цели, шальная пуля — " + bystander.getName(), false));
     }
 
     private AttackOutcome blastLanded(AttackContext context, AreaDamage blast, List<String> steps, DiceRoller dice) {

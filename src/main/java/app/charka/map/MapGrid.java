@@ -117,8 +117,10 @@ public final class MapGrid {
      * @param cover      укрытие цели: самое прочное из того, что её частично закрывает, и низких предметов рядом с ней
      * @param through    цель не видна, но между центрами ровно одна преграда с прочностью: сквозь неё стреляют вслепую
      * @param path       клетки на линии между центрами без стрелка и цели: кто в них стоит — на линии огня
+     * @param smoke      M-23: цель не видна из-за дыма (на линии или в её клетке): стрелять можно вслепую
      */
-    public record Sight(Visibility visibility, int exposed, Optional<Material> cover, Optional<Material> through, List<int[]> path) {
+    public record Sight(Visibility visibility, int exposed, Optional<Material> cover, Optional<Material> through, List<int[]> path,
+                        boolean smoke) {
     }
 
     /** Точек в клетке: центр и четыре у углов */
@@ -137,6 +139,13 @@ public final class MapGrid {
      */
     public Sight sight(int fx, int fy, int tx, int ty, int near) {
         Ray center = trace(fx + 0.5, fy + 0.5, tx + 0.5, ty + 0.5, fx, fy, tx, ty, false);
+        // M-23: стоящего в дыму не видно, кроме как вплотную
+        if (cellsFrom(fx, fy, tx, ty) > 1 && material(tx, ty).map(Material::smoke).orElse(false)) {
+            List<Obstacle> hard = center.blockers().stream().filter(o -> o.material() == null || !o.material().smoke()).toList();
+            Optional<Material> through = hard.size() == 1 && hard.get(0).material() != null && hard.get(0).material().sp() > 0
+                    ? Optional.of(hard.get(0).material()) : Optional.empty();
+            return new Sight(Visibility.NONE, 0, through, through, center.path(), hard.isEmpty() || through.isPresent());
+        }
         int exposed = 0;
         List<Material> hiding = new ArrayList<>();
         for (double[] to : OFFSETS) {
@@ -161,11 +170,15 @@ public final class MapGrid {
         Visibility visibility = exposed == SAMPLES ? Visibility.FULL : exposed == 0 ? Visibility.NONE : Visibility.PARTIAL;
         Optional<Material> cover = Optional.empty();
         Optional<Material> through = Optional.empty();
+        boolean smoke = false;
         if (visibility == Visibility.NONE) {
-            List<Obstacle> blockers = center.blockers();
+            // M-23: дым закрывает взгляд, но не пули — считаются только твёрдые преграды
+            List<Obstacle> blockers = center.blockers().stream().filter(o -> o.material() == null || !o.material().smoke()).toList();
+            boolean smoked = blockers.size() < center.blockers().size();
             if (blockers.size() == 1 && blockers.get(0).material() != null && blockers.get(0).material().sp() > 0) {
                 through = Optional.of(blockers.get(0).material());
             }
+            smoke = smoked && (blockers.isEmpty() || through.isPresent());
         } else {
             List<Material> candidates = new ArrayList<>();
             new Line(false, center.obstacles()).coverNear(near).map(Obstacle::material).ifPresent(candidates::add);
@@ -175,7 +188,7 @@ public final class MapGrid {
             // HOMEBREW: из нескольких укрытий берётся самое прочное
             cover = candidates.stream().filter(material -> material.sp() > 0).max(Comparator.comparingInt(Material::sp));
         }
-        return new Sight(visibility, exposed, cover, through, center.path());
+        return new Sight(visibility, exposed, cover, through, center.path(), smoke);
     }
 
     /**
@@ -341,7 +354,9 @@ public final class MapGrid {
                 if (blocked(nx, ny) || !canStep(x, y, nx, ny)) {
                     continue;
                 }
-                double cost = head[0] + (step[0] != 0 && step[1] != 0 ? Math.sqrt(2) : 1) * cell;
+                // M-23: шаг на трудную местность дороже
+                int factor = material(nx, ny).map(Material::difficult).orElse(false) ? rules.difficultFactor() : 1;
+                double cost = head[0] + (step[0] != 0 && step[1] != 0 ? Math.sqrt(2) : 1) * cell * factor;
                 // полметра запаса: 9 клеток по 2 м при беге 18 м
                 if (cost > meters + 0.5 || cost >= best.getOrDefault(pack(nx, ny), Double.MAX_VALUE)) {
                     continue;

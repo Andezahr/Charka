@@ -1661,3 +1661,8 @@ html:has(.is-editing) {
 /* A-15: переключатель режима мастера на карте; «За NPC» подсвечен, чтобы мастер видел, что ходит за NPC */
 .gm-mode.is-active { color: var(--danger); border-color: var(--danger); background: var(--danger-soft); }
 [data-god-only][hidden] { display: none !important; }
+
+/* M-23: дым поверх пола полупрозрачный, трудная местность — штриховка, взрывоопасное — значок */
+.battle-terrain.battle-smoke { fill-opacity: 0.55; }
+.battle-terrain.battle-difficult { stroke: rgba(255, 255, 255, 0.12); stroke-dasharray: 3 4; }
+.battle-explosive { font-size: 16px; text-anchor: middle; dominant-baseline: central; pointer-events: none; }

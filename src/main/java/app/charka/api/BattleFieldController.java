@@ -25,6 +25,7 @@ public class BattleFieldController {
     private final BattleFieldService battleFieldService;
     private final app.charka.security.AccessService accessService;
     private final app.charka.service.campaign.CampaignService campaignService;
+    private final app.charka.attack.AttackService attackService;
 
     /** 404 — боя нет или он без карты; игроку — без фишек в тумане (M-16) */
     @GetMapping
@@ -98,6 +99,32 @@ public class BattleFieldController {
     public ResponseEntity<Void> door(@PathVariable Long campaignId, @RequestParam String edge) {
         battleFieldService.toggleDoor(campaignId, edge);
         return ResponseEntity.noContent().build();
+    }
+
+    /** M-23: выбить дверь, разбить окно; стену — мастер */
+    @PostMapping(value = "/break", produces = "text/plain;charset=UTF-8")
+    public ResponseEntity<String> breakEdge(@PathVariable Long campaignId, @RequestParam String edge, HttpServletRequest request) {
+        boolean gm = accessService.isGm(campaignService.getById(campaignId));
+        return ResponseEntity.ok(battleFieldService.breakEdge(campaignId, edge, gm));
+    }
+
+    /** M-23: попали в бочку или баллон — взрыв; {@code by} — кто стрелял, пусто — мастер */
+    @PostMapping(value = "/detonate", produces = "text/plain;charset=UTF-8")
+    public ResponseEntity<String> detonate(@PathVariable Long campaignId, @RequestParam int x, @RequestParam int y,
+                                           @RequestParam(required = false) Long by) {
+        if (by == null && !accessService.isGm(campaignService.getById(campaignId))) {
+            throw new IllegalArgumentException("Выберите, кто стрелял: «Я —» или своя фишка");
+        }
+        if (by != null) {
+            app.charka.model.Character shooter = campaignService.getById(campaignId).getCharacters().stream()
+                    .filter(character -> character.getId().equals(by)).findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("Нет такого персонажа"));
+            if (!accessService.canControl(shooter)) {
+                throw new IllegalArgumentException("Стреляет свой персонаж");
+            }
+        }
+        app.charka.attack.AttackResult result = attackService.detonate(campaignId, x, y, by);
+        return ResponseEntity.ok(result.title() + " · " + result.outcome());
     }
 
     @PostMapping("/pointer")

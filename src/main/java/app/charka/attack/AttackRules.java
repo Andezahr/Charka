@@ -88,6 +88,18 @@ public interface AttackRules {
     }
 
     /**
+     * M-17: атака по цели не попала, а между стрелком и целью кто-то стоит. Попадёт ли промах в него.
+     *
+     * @param missed    итог проверки, которая не попала
+     * @param bystander первый стоящий на линии огня от стрелка
+     * @param meters    расстояние от стрелка до него
+     * @return попадание по стоящему с шагами расчёта; пусто — пуля ушла мимо всех или правило к этой атаке не относится
+     */
+    default java.util.Optional<AttackOutcome> strayHit(AttackContext context, CheckResult missed, Character bystander, int meters, DiceRoller dice) {
+        return java.util.Optional.empty();
+    }
+
+    /**
      * Попадание сохранённого заряда по цели, которую выбрал мастер: заряд упал мимо.
      */
     default AttackHit blastHit(AreaDamage blast, DiceRoller dice) {

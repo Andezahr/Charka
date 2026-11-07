@@ -50,7 +50,16 @@ final class Cp2020MapRules implements MapRules {
             MapObject.solid("desk", "Стол", 2, 1, "cover_desk"),
             MapObject.solid("shelf", "Стеллаж", 3, 1, "cover_shelf"),
             // 20-футовый контейнер 6 × 2,4 м
-            MapObject.solid("container", "Контейнер", 3, 1, "cover_container"));
+            MapObject.solid("container", "Контейнер", 3, 1, "cover_container"),
+            MapObject.solid("fuel_barrel", "Бочка с горючим", 1, 1, "cover_fuel_barrel"),
+            MapObject.solid("gas_cylinder", "Газовый баллон", 1, 1, "cover_gas_cylinder"));
+
+    /**
+     * M-23, HOMEBREW: в книге нет взрыва бочки и баллона. Бочка — как шашка TNT (с. 111: 3 м, 4D10), баллон — слабее и уже.
+     */
+    private static final Map<String, Explosive> EXPLOSIVES = Map.of(
+            "cover_fuel_barrel", new Explosive("Бочка с горючим", "4d10", 3),
+            "cover_gas_cylinder", new Explosive("Газовый баллон", "3d10", 2));
 
     private static List<Material> buildMaterials() {
         List<Material> materials = new ArrayList<>();
@@ -65,8 +74,14 @@ final class Cp2020MapRules implements MapRules {
         }
         // HOMEBREW: стекла в таблице укрытий нет — окно не укрывает, но не пускает
         materials.add(new Material("glass", "Стекло", 0, Material.Layer.WINDOW, true, false));
-        materials.add(new Material("debris", "Обломки", 0, Material.Layer.TERRAIN, false, false));
-        materials.add(new Material("water", "Вода", 0, Material.Layer.TERRAIN, false, false));
+        // M-23, HOMEBREW: обломки и вода — трудная местность, бег вдвое дороже; в книге правила нет
+        materials.add(Material.difficult("debris", "Обломки"));
+        materials.add(Material.difficult("water", "Вода"));
+        // M-23: дым закрывает взгляд; стрельба сквозь него — «Blinded by light or dust» −3 (с. 99), как вслепую
+        materials.add(Material.smoke("smoke", "Дым"));
+        // M-23, HOMEBREW: взрывоопасное — прочность как у бака и бочки, урон и радиус в EXPLOSIVES
+        materials.add(Material.explosive("cover_fuel_barrel", "Бочка с горючим", 5));
+        materials.add(Material.explosive("cover_gas_cylinder", "Газовый баллон", 10));
         materials.add(new Material("asphalt", "Асфальт", 0, Material.Layer.TERRAIN, false, false));
         materials.add(new Material("grass", "Газон", 0, Material.Layer.TERRAIN, false, false));
         return List.copyOf(materials);
@@ -91,6 +106,11 @@ final class Cp2020MapRules implements MapRules {
     public Map<String, String> defaults() {
         return Map.of("room", "cover_brick", "wall", "cover_sheetrock", "door", "cover_wood_door",
                 "heavy_door", "cover_steel_door", "window", "glass");
+    }
+
+    @Override
+    public java.util.Optional<Explosive> explosive(String material) {
+        return java.util.Optional.ofNullable(EXPLOSIVES.get(material));
     }
 
     /** С. 103: «go ahead and shoot through the door; the penalties for blind firing won't stop you» */

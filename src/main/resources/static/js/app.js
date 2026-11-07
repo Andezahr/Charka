@@ -1643,7 +1643,9 @@ const zoomBattle = (factor, cx, cy) => {
 
 const MATERIAL_COLORS = { WALL: '#c7cfdb', DOOR: '#b7834a', WINDOW: '#7dd3fc', OBJECT: '#64748b', TERRAIN: '#3f3a2e' };
 // местность своего цвета; остальная — общим цветом TERRAIN
-const TERRAIN_COLORS = { water: '#1e40af', asphalt: '#2a303b', grass: '#1f4d2b' };
+const TERRAIN_COLORS = { water: '#1e40af', asphalt: '#2a303b', grass: '#1f4d2b', smoke: '#9ca3af' };
+// M-23: взрывоопасное — своим цветом, чтобы его было видно издалека
+const EXPLOSIVE_COLOR = '#c2410c';
 
 // Карта без фишек: пол, сетка, зоны, местность, предметы, стены, подписи. Общая для поля боя и редактора.
 // under(svg) рисует то, что ложится под стены (досягаемость); editing — показать проёмы, двери не нажимаются
@@ -1669,8 +1671,11 @@ function drawMapLayers(svg, doc, materials, objects, under, editing, backgroundU
   Object.entries(doc.cells).forEach(([key, code]) => {
     const [x, y] = key.split(',').map(Number);
     const material = materials.get(code);
-    svgEl('rect', { x: x * CELL, y: y * CELL, width: CELL, height: CELL, class: 'battle-terrain', fill: TERRAIN_COLORS[code] || MATERIAL_COLORS.TERRAIN },
-      svg).appendChild(svgEl('title', {})).textContent = material ? material.label : code;
+    const kind = material && material.smoke ? ' battle-smoke' : material && material.difficult ? ' battle-difficult' : '';
+    svgEl('rect', { x: x * CELL, y: y * CELL, width: CELL, height: CELL, class: 'battle-terrain' + kind, fill: TERRAIN_COLORS[code] || MATERIAL_COLORS.TERRAIN },
+      svg).appendChild(svgEl('title', {})).textContent = (material ? material.label : code)
+      + (material && material.difficult ? ' · трудная местность: бег вдвое дороже' : '')
+      + (material && material.smoke ? ' · закрывает взгляд, стрельба вслепую' : '');
   });
   doc.stamps.forEach(stamp => {
     const object = objects.get(stamp.code);
@@ -1687,8 +1692,11 @@ function drawMapLayers(svg, doc, materials, objects, under, editing, backgroundU
         const material = materials.get(code);
         svgEl('rect', {
           x: (stamp.x + dx) * CELL + 1, y: (stamp.y + dy) * CELL + 1, width: CELL - 2, height: CELL - 2, rx: 3,
-          fill: MATERIAL_COLORS.OBJECT, 'fill-opacity': material && material.sp >= 30 ? 0.95 : 0.7
+          fill: material && material.explosive ? EXPLOSIVE_COLOR : MATERIAL_COLORS.OBJECT, 'fill-opacity': material && material.sp >= 30 ? 0.95 : 0.7
         }, group);
+        if (material && material.explosive && !editing) {
+          svgEl('text', { x: (stamp.x + dx + 0.5) * CELL, y: (stamp.y + dy + 0.5) * CELL, class: 'battle-explosive' }, group).textContent = '💥';
+        }
       }
     }
     svgEl('rect', { x: stamp.x * CELL, y: stamp.y * CELL, width: w * CELL, height: h * CELL, class: 'battle-stamp-outline' }, group);
@@ -1711,7 +1719,11 @@ function drawMapLayers(svg, doc, materials, objects, under, editing, backgroundU
     const title = svgEl('title', {}, line);
     title.textContent = (material ? material.label + (material.sp ? ' SP ' + material.sp : '') : value)
       + (type === 'door' && !editing ? (state === 'open' ? ' · открыта, нажмите — закрыть' : ' · закрыта, нажмите — открыть') : '');
-    if (type === 'door' && !editing) line.dataset.edge = key;
+    if (!editing) {
+      // M-23: правая кнопка или долгое нажатие по грани — выбить, разбить; дверь ещё и открывается нажатием
+      line.dataset.edge = key;
+      line.dataset.edgeKind = type;
+    }
   });
   doc.labels.forEach(label => {
     svgEl('text', { x: (label.x + 0.5) * CELL, y: (label.y + 0.5) * CELL, class: 'battle-label' }, svg).textContent = label.text;
@@ -1967,7 +1979,7 @@ function wireBattleSvg(svg) {
     const pressed = tokenEl ? tokenById(Number(tokenEl.dataset.token)) : null;
     // A-15: в «За NPC» фишка игрока — только цель (долгое нажатие — атака), не тянется и не выбирается
     const locked = lockedToken(pressed);
-    press = { tokenEl: locked ? null : tokenEl, token: locked ? null : pressed, locked: locked ? pressed : null, door: door && door.dataset.edge,
+    press = { tokenEl: locked ? null : tokenEl, token: locked ? null : pressed, locked: locked ? pressed : null, door: door && door.dataset.edge, doorKind: door && door.dataset.edgeKind,
       x: event.clientX, y: event.clientY, start, moved: false, ruler: battle.rulerMode && inside(start) };
     svg.setPointerCapture(event.pointerId);
     if (press.ruler) {
@@ -1985,6 +1997,8 @@ function wireBattleSvg(svg) {
         const own = held.token && (held.token.id === battle.selected || String(held.token.character) === battleMe());
         if (held.locked) attackMenu(held.locked, event);
         else if (held.token && !own) attackMenu(held.token, event);
+        else if (!held.token && held.door) edgeMenu(held.door, held.doorKind, event);
+        else if (!held.token && explosiveAt(start.x, start.y)) explosiveMenu(start.x, start.y, event);
         else if (inside(start)) sendPointer(start.x, start.y);
       }, 600);
     }
@@ -1994,7 +2008,17 @@ function wireBattleSvg(svg) {
   svg.addEventListener('contextmenu', event => {
     event.preventDefault();
     const tokenEl = event.target.closest('[data-token]');
-    if (tokenEl) attackMenu(tokenById(Number(tokenEl.dataset.token)), event);
+    if (tokenEl) {
+      attackMenu(tokenById(Number(tokenEl.dataset.token)), event);
+      return;
+    }
+    const edge = event.target.closest('[data-edge]');
+    if (edge) {
+      edgeMenu(edge.dataset.edge, edge.dataset.edgeKind, event);
+      return;
+    }
+    const cell = cellAt(event);
+    if (explosiveAt(cell.x, cell.y)) explosiveMenu(cell.x, cell.y, event);
   });
 
   svg.addEventListener('pointermove', event => {
@@ -2064,7 +2088,7 @@ function wireBattleSvg(svg) {
       battleHint('За NPC: ' + current.locked.name + ' — фишка игрока. Атака по ней — правой кнопкой или долгим нажатием');
       return;
     }
-    if (current.door && !current.token) {
+    if (current.door && current.doorKind === 'door' && !current.token) {
       toggleDoor(current.door);
       return;
     }
@@ -2135,6 +2159,95 @@ async function toggleDoor(edge) {
   }
   battle.lastChange = Date.now();
   pollBattle();
+}
+
+// M-23: взрывоопасный предмет в клетке (бочка, баллон)
+function explosiveAt(x, y) {
+  if (!battle.data) return false;
+  const materials = new Map(battle.data.materials.map(material => [material.code, material]));
+  const objects = new Map(battle.data.objects.map(object => [object.code, object]));
+  return battle.data.doc.stamps.some(stamp => {
+    const object = objects.get(stamp.code);
+    if (!object) return false;
+    const rot = ((stamp.rot % 4) + 4) % 4;
+    const w = rot % 2 === 0 ? object.w : object.h;
+    const h = rot % 2 === 0 ? object.h : object.w;
+    if (x < stamp.x || y < stamp.y || x >= stamp.x + w || y >= stamp.y + h) return false;
+    const material = materials.get(stampCell(object, rot, x - stamp.x, y - stamp.y));
+    return Boolean(material && material.explosive);
+  });
+}
+
+// Меню по месту нажатия: заголовок и кнопки действий [подпись, пояснение, что сделать]
+function battleMenuAt(event, title, actions) {
+  const menu = document.querySelector('[data-battle-menu]');
+  if (!menu) return;
+  menu.replaceChildren();
+  const head = document.createElement('div');
+  head.className = 'battle-menu-head';
+  head.textContent = title;
+  menu.appendChild(head);
+  actions.forEach(([label, note, run]) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'btn btn-sm';
+    button.textContent = label;
+    button.addEventListener('click', () => {
+      closeBattleMenu();
+      run();
+    });
+    menu.appendChild(button);
+    if (note) {
+      const line = document.createElement('div');
+      line.className = 'battle-menu-note';
+      line.textContent = note;
+      menu.appendChild(line);
+    }
+  });
+  const holder = menu.parentElement.getBoundingClientRect();
+  const x = event ? event.clientX - holder.left : holder.width / 2;
+  const y = event ? event.clientY - holder.top : holder.height / 2;
+  menu.style.left = Math.min(Math.max(8, x), holder.width - 260) + 'px';
+  menu.hidden = false;
+  menu.style.top = Math.min(Math.max(8, y), Math.max(8, holder.height - menu.offsetHeight - 8)) + 'px';
+}
+
+async function battlePost(path, params) {
+  try {
+    const response = await fetch(battle.url + path, { method: 'POST', body: new URLSearchParams(params) });
+    const text = await response.text();
+    if (response.ok) battleHint(text);
+    else battleError(text);
+  } catch (e) {
+    battleError('Нет связи с сервером');
+  }
+  battle.lastChange = Date.now();
+  pollBattle();
+}
+
+// M-23: грань — выбить дверь, разбить окно; стену — мастер
+function edgeMenu(edge, kind, event) {
+  const actions = [];
+  if (kind === 'door') actions.push(['💥 Выбить дверь', 'Станет проёмом. Бросок, если нужен, просит мастер', () => battlePost('/break', { edge })]);
+  if (kind === 'window') actions.push(['💥 Разбить окно', 'Можно пролезть', () => battlePost('/break', { edge })]);
+  if (kind === 'wall' && battleGm()) actions.push(['💥 Проломить стену', 'Мастер: стена станет проёмом', () => battlePost('/break', { edge })]);
+  if (!actions.length) {
+    battleHint(kind === 'wall' ? 'Стену ломает мастер — или взрыв' : '');
+    return;
+  }
+  battleMenuAt(event, kind === 'door' ? 'Дверь' : kind === 'window' ? 'Окно' : 'Стена', actions);
+}
+
+// M-23: попали в бочку — взрыв задевает всех в радиусе; стрелок — выбранная или своя фишка
+function explosiveMenu(x, y, event) {
+  const shooter = tokenById(battle.selected) || battle.data.tokens.find(token => String(token.character) === battleMe());
+  const params = { x, y };
+  if (shooter) params.by = shooter.character;
+  battleMenuAt(event, 'Взрывоопасно', [[
+    '💥 Взорвать' + (shooter ? ' — стрелял ' + shooter.name : ''),
+    'Если выстрел по ней попал: урон всем в радиусе, соседнее рвётся следом',
+    () => battlePost('/detonate', params)
+  ]]);
 }
 
 const closeBattleMenu = () => {
@@ -2246,7 +2359,8 @@ async function attackSection(menu, attacker, token) {
   else if (sight.blocked) line('Нет линии видимости', 'battle-menu-warn');
   else if (sight.visibility === 'partial') line('Видна частично' + (sight.coverLabel ? ' · укрытие: ' + sight.coverLabel : ''), 'battle-menu-note');
   else if (sight.coverLabel) line('Укрытие: ' + sight.coverLabel, 'battle-menu-note');
-  if (sight.inTheWay && sight.inTheWay.length) line('На линии огня: ' + sight.inTheWay.join(', '), 'battle-menu-warn');
+  // M-17: промах одиночным выстрелом или очередью может попасть в первого из них (хоумбрю)
+  if (sight.inTheWay && sight.inTheWay.length) line('На линии огня: ' + sight.inTheWay.join(', ') + ' — промах может попасть', 'battle-menu-warn');
   const adjacent = Math.max(Math.abs(attacker.x - token.x), Math.abs(attacker.y - token.y)) <= 1;
   dialogs.forEach(dialog => {
     const button = document.createElement('button');

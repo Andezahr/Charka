@@ -40,7 +40,7 @@ public final class MapText {
     private static final Pattern LABEL_MARK = Pattern.compile("(\\S)\\s*:\\s*(.+)");
 
     /** Запасные символы для материалов и предметов, которых нет в легенде по умолчанию */
-    private static final String SPARE_CELLS = "&*;^<>?!()[]{}EFGJOQSVWYZ";
+    private static final String SPARE_CELLS = "&;^<>?!()[]{}EJOQSVWYZ";
     private static final String SPARE_EDGES = "ABCEFGHIJKLMNOPQRTUVXYZ";
     private static final String LABEL_MARKS = "abcdefghijklmnopqrstuvwxyz0123456789";
 
@@ -55,6 +55,9 @@ public final class MapText {
         map.put('"', "grass");
         map.put('~', "water");
         map.put('%', "debris");
+        map.put('*', "smoke");
+        map.put('F', "fuel_barrel");
+        map.put('G', "gas_cylinder");
         map.put('C', "car");
         map.put('A', "armored_car");
         map.put('X', "crate");

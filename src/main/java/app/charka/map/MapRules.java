@@ -74,6 +74,33 @@ public interface MapRules {
         return null;
     }
 
+    /**
+     * M-23: во сколько раз дороже шаг на клетку трудной местности ({@link Material#difficult}).
+     */
+    default int difficultFactor() {
+        return 2;
+    }
+
+    /**
+     * M-23: что рвётся, если по нему попасть или его накроет взрыв: бочка с горючим, баллон.
+     *
+     * @param material код материала клетки
+     * @return пусто — не взрывается
+     */
+    default Optional<Explosive> explosive(String material) {
+        return Optional.empty();
+    }
+
+    /**
+     * Взрыв предмета карты.
+     *
+     * @param label  что взорвалось
+     * @param damage бросок урона, {@code 4d10}
+     * @param radius радиус, м
+     */
+    record Explosive(String label, String damage, int radius) {
+    }
+
     /** Без системы: прямая в метрах, материалы без прочности */
     MapRules GENERIC = new MapRules() {
 
@@ -87,8 +114,9 @@ public interface MapRules {
                 new Material("desk", "Стол", 0, Material.Layer.OBJECT, true, false),
                 new Material("shelf", "Стеллаж", 0, Material.Layer.OBJECT, true, true),
                 new Material("container", "Контейнер", 0, Material.Layer.OBJECT, true, true),
-                new Material("debris", "Обломки", 0, Material.Layer.TERRAIN, false, false),
-                new Material("water", "Вода", 0, Material.Layer.TERRAIN, false, false),
+                Material.difficult("debris", "Обломки"),
+                Material.difficult("water", "Вода"),
+                Material.smoke("smoke", "Дым"),
                 new Material("asphalt", "Асфальт", 0, Material.Layer.TERRAIN, false, false),
                 new Material("grass", "Газон", 0, Material.Layer.TERRAIN, false, false));
 

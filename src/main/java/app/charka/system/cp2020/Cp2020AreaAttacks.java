@@ -101,7 +101,9 @@ final class Cp2020AreaAttacks {
                         Cp2020HealthStrategy.POISON_SAVE, Cp2020Effects.GAS.equals(effect) ? 1 : 0))
                 .build();
         // HOMEBREW: книга не говорит, куда приходится догорание; туда же, куда первый урон
-        Map<String, String> burn = Map.of(LOCATION, location.name(), DAMAGE_TYPE, blast.data().get(DAMAGE_TYPE));
+        // M-23: у взрыва бочки типа урона нет — обычный
+        Map<String, String> burn = blast.data().get(DAMAGE_TYPE) == null ? Map.of(LOCATION, location.name())
+                : Map.of(LOCATION, location.name(), DAMAGE_TYPE, blast.data().get(DAMAGE_TYPE));
         return new AttackHit(location.getLabel(), blast.expression(), steps, damage, Cp2020Effects.save(effect), Cp2020Effects.lingering(effect, blast.expression(), burn));
     }
 
