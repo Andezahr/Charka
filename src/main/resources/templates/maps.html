@@ -5,16 +5,6 @@
 <header th:replace="~{fragments/layout :: nav(${campaign}, null, 'maps')}"></header>
 
 <main class="page" th:with="base=${'/campaign/' + campaign.id + '/maps'}">
-  <div class="page-head">
-    <div>
-      <span class="eyebrow">Карты боя</span>
-      <h1 class="page-title" th:text="${campaign.name}">Кампания</h1>
-      <p class="page-sub">Заготовки: бой играет на копии, открытые двери и взорванные стены заготовку не меняют.</p>
-    </div>
-    <div class="page-actions">
-    </div>
-  </div>
-
   <div th:if="${mapError != null}" class="alert alert-error" role="alert">
     <span class="alert-text" th:text="${mapError}">Назовите карту</span>
     <button type="button" class="alert-close" aria-label="Закрыть">×</button>
@@ -56,26 +46,46 @@
 
     <div class="stack">
       <section class="card">
-        <div class="card-head"><h2 class="card-title"><span class="dot pink"></span>Сгенерировать</h2></div>
+        <!-- R-21: новая карта одной карточкой — по шаблону (одно нажатие) или пустая -->
+        <div class="card-head"><h2 class="card-title"><span class="dot yellow"></span>Новая карта</h2></div>
         <div class="card-body">
           <form th:action="@{${base} + '/generate'}" method="post" class="form-row">
             <select name="template" class="grow" aria-label="Шаблон" data-remember="map-template">
               <option th:each="t : ${templates}" th:value="${t.code}" th:text="${t.label} + ' · ' + ${t.width} + '×' + ${t.height}">Улица</option>
             </select>
-            <button type="submit" class="btn btn-primary">🎲 Создать</button>
+            <button type="submit" class="btn btn-primary">🎲 По шаблону</button>
+          </form>
+        </div>
+        <div class="card-body">
+          <form th:action="@{${base}}" method="post" class="form">
+            <label class="field">
+              <span class="label">Название</span>
+              <input type="text" name="name" maxlength="100" required placeholder="Бар «Последний шанс»">
+            </label>
+            <div class="field-grid">
+              <label class="field">
+                <span class="label">Ширина, клеток</span>
+                <input type="number" name="width" min="1" max="200" th:value="${defaultWidth}">
+              </label>
+              <label class="field">
+                <span class="label">Высота, клеток</span>
+                <input type="number" name="height" min="1" max="200" th:value="${defaultHeight}">
+              </label>
+            </div>
+            <button type="submit" class="btn btn-primary">＋ Пустая — в редактор</button>
           </form>
         </div>
       </section>
       <!-- M-20: карта текстом (docs/map-format.md) или JSON документа -->
       <section class="card">
-        <div class="card-head"><h2 class="card-title"><span class="dot"></span>Загрузить карту</h2></div>
+        <div class="card-head"><h2 class="card-title"><span class="dot yellow"></span>Загрузить карту</h2></div>
         <div class="card-body">
           <form th:action="@{${base} + '/import'}" method="post" enctype="multipart/form-data" class="form">
-            <input type="file" name="file" accept=".txt,.json,text/plain,application/json" aria-label="Файл карты">
+            <label class="btn btn-sm file-pick" data-file-pick><input type="file" name="file" accept=".txt,.json,text/plain,application/json" aria-label="Файл карты"><span data-file-name>📄 Выбрать файл карты…</span></label>
             <textarea name="text" class="map-text" rows="8" spellcheck="false" aria-label="Текст карты"
                       placeholder="…или вставьте текст карты" th:text="${importText}"></textarea>
             <input type="text" name="name" maxlength="100" placeholder="Название (по умолчанию — из файла)" aria-label="Название">
-            <button type="submit" class="btn btn-primary">⇪ Загрузить и открыть редактор</button>
+            <button type="submit" class="btn btn-primary">⬆ Загрузить и открыть редактор</button>
           </form>
           <details class="cp-more item-more">
             <summary>Как рисовать карту текстом</summary>
@@ -100,28 +110,6 @@ map:
   U контейнер 3×1  P зона игроков  N зона NPC
 Предмет — его буквой во всех клетках, поворот по форме.</pre>
           </details>
-        </div>
-      </section>
-      <section class="card">
-        <div class="card-head"><h2 class="card-title"><span class="dot"></span>Новая карта</h2></div>
-        <div class="card-body">
-          <form th:action="@{${base}}" method="post" class="form">
-            <label class="field">
-              <span class="label">Название</span>
-              <input type="text" name="name" maxlength="100" required placeholder="Бар «Последний шанс»">
-            </label>
-            <div class="field-grid">
-              <label class="field">
-                <span class="label">Ширина, клеток</span>
-                <input type="number" name="width" min="1" max="200" th:value="${defaultWidth}">
-              </label>
-              <label class="field">
-                <span class="label">Высота, клеток</span>
-                <input type="number" name="height" min="1" max="200" th:value="${defaultHeight}">
-              </label>
-            </div>
-            <button type="submit" class="btn btn-primary">＋ Создать и открыть редактор</button>
-          </form>
         </div>
       </section>
     </div>

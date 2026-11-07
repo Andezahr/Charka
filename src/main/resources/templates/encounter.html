@@ -27,7 +27,7 @@
   <!-- A-06: подготовленные сцены — бой одним нажатием -->
   <section th:if="${view == null and isGm}" class="card">
     <div class="card-head">
-      <h2 class="card-title"><span class="dot yellow"></span>Сцены</h2>
+      <h2 class="card-title"><span class="dot red"></span>Сцены</h2>
       <a th:href="@{'/campaign/' + ${campaign.id} + '/scenes'}" class="btn btn-sm btn-ghost">✎ Сцены</a>
     </div>
     <div class="card-body list" th:unless="${#lists.isEmpty(scenes)}">
@@ -188,6 +188,8 @@
           <option th:each="row : ${view.rows}" th:if="${controllable.contains(row.character.id)}" th:value="${row.character.id}" th:text="${row.character.name}">Колясик</option>
         </select>
       </label>
+      <!-- A-15: режим мастера на этом устройстве — «Бог» или «За NPC»; надпись ставит app.js (applyGmMode) -->
+      <button th:if="${isGm}" type="button" class="btn btn-sm btn-ghost gm-mode" data-gm-mode>👁 Бог</button>
       <button type="button" class="btn btn-sm btn-ghost" data-battle-pointer title="Показать клетку всем (Alt+нажатие, долгое нажатие)">👆 Указать</button>
       <button type="button" class="btn btn-sm btn-ghost" data-battle-ruler title="Измерить расстояние: тяните от клетки к клетке">📏 Линейка</button>
       <span class="battle-zoom">
@@ -198,8 +200,8 @@
       <th:block th:if="${isGm}">
         <hr class="battle-toolbar-sep">
         <!-- Мастер: кто-то из кампании или новый NPC встаёт в бой прямо на нажатую клетку -->
-        <button type="button" class="btn btn-sm btn-ghost" data-battle-add title="Выберите, кого, и нажимайте клетки: каждое нажатие — фишка">＋ Фишка</button>
-        <select data-battle-add-who data-remember="battle-add" aria-label="Кого поставить">
+        <button type="button" class="btn btn-sm btn-ghost" data-battle-add data-god-only title="Выберите, кого, и нажимайте клетки: каждое нажатие — фишка">＋ Фишка</button>
+        <select data-battle-add-who data-god-only data-remember="battle-add" aria-label="Кого поставить">
           <optgroup label="Новый NPC" th:unless="${#lists.isEmpty(npcTemplates)}">
             <option th:each="t : ${npcTemplates}" th:value="'t:' + ${t.code}" th:text="${t.label}">Бандит</option>
           </optgroup>
@@ -208,7 +210,7 @@
             <option th:each="c : ${view.addable}" th:value="'c:' + ${c.id}" th:text="${c.name} + (${c.npc} ? ' · NPC' : '')">Олежа</option>
           </optgroup>
         </select>
-        <a th:href="@{${base} + '/edit-map'}" class="btn btn-sm btn-ghost" title="Взорвали стену, сдвинули ящик: правится копия этого боя">✎ Править</a>
+        <a th:href="@{${base} + '/edit-map'}" class="btn btn-sm btn-ghost" data-god-only title="Взорвали стену, сдвинули ящик: правится копия этого боя">✎ Править</a>
         <button type="button" class="btn btn-sm btn-ghost" data-tab-go="gm" title="Сменить карту, сохранить как карту, туман, закончить бой">⋯ Мастер</button>
       </th:block>
     </div>
@@ -337,7 +339,7 @@
 
       <div th:if="${isGm}" class="battle-panel stack" data-tab-panel="gm">
         <section class="card" th:unless="${#lists.isEmpty(view.addable)}">
-          <div class="card-head"><h2 class="card-title"><span class="dot yellow"></span>Вступает в бой</h2></div>
+          <div class="card-head"><h2 class="card-title"><span class="dot red"></span>Вступает в бой</h2></div>
           <div class="card-body">
             <form th:action="@{${base} + '/participants'}" method="post" class="form-row">
               <select name="character" class="grow" required aria-label="Кого ввести в бой">
@@ -383,7 +385,7 @@
               <input type="text" name="name" class="grow" maxlength="100" required placeholder="Название" aria-label="Название новой карты">
               <button type="submit" class="btn btn-sm btn-ghost" title="Открытые двери и правки этого боя станут новой картой">Сохранить как карту</button>
             </form>
-            <a th:if="${hasField}" th:href="@{${base} + '/edit-map'}" class="btn btn-sm btn-ghost" title="Взорвали стену, сдвинули ящик: правится копия этого боя">✎ Править карту боя</a>
+            <a th:if="${hasField}" th:href="@{${base} + '/edit-map'}" class="btn btn-sm btn-ghost" data-god-only title="Взорвали стену, сдвинули ящик: правится копия этого боя">✎ Править карту боя</a>
             <a th:href="@{'/campaign/' + ${campaign.id} + '/maps'}" class="btn btn-sm btn-ghost">🗺 Карты кампании</a>
           </div>
         </section>

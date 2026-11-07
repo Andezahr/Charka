@@ -40,7 +40,7 @@
     <!-- Форма создания нового счётчика -->
     <aside class="card">
       <div class="card-head">
-        <h2 class="card-title"><span class="dot green"></span>Новый счётчик</h2>
+        <h2 class="card-title"><span class="dot"></span>Новый счётчик</h2>
       </div>
       <div class="card-body">
         <form th:action="@{/character/{characterId}/counters/create(characterId=${characterId})}"
@@ -68,7 +68,7 @@
             <input type="number" id="initialValue" name="initialValue"
                    th:value="${createRequest.initialValue != null} ? ${createRequest.initialValue} : 0" required>
           </div>
-          <button type="submit" class="btn btn-primary btn-block">＋ Создать</button>
+          <button type="submit" class="btn btn-primary btn-block">＋ Счётчик</button>
         </form>
       </div>
     </aside>

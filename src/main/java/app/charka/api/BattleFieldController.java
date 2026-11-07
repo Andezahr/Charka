@@ -1,6 +1,8 @@
 package app.charka.api;
 
 import app.charka.map.BattleFieldService;
+import app.charka.security.GmMode;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -42,10 +44,20 @@ public class BattleFieldController {
 
     @PostMapping("/participants/{participantId}/move")
     public ResponseEntity<Void> move(@PathVariable Long campaignId, @PathVariable Long participantId,
-                                     @RequestParam int x, @RequestParam int y, @RequestParam(defaultValue = "false") boolean free) {
-        // без ограничения бега ставит только мастер
-        if (free && !accessService.isGm(campaignService.getById(campaignId))) {
+                                     @RequestParam int x, @RequestParam int y, @RequestParam(defaultValue = "false") boolean free,
+                                     HttpServletRequest request) {
+        boolean gm = accessService.isGm(campaignService.getById(campaignId));
+        // без ограничения бега ставит только мастер, и только в режиме «Бог» (A-15)
+        if (free && !gm) {
             throw new IllegalArgumentException("Без ограничения бега ставит только мастер");
+        }
+        if (gm && GmMode.npcOnly(request)) {
+            if (free) {
+                throw new IllegalArgumentException("В режиме «За NPC» — только по бегу; без ограничения — в режиме «Бог»");
+            }
+            if (!battleFieldService.isNpc(campaignId, participantId)) {
+                throw new IllegalArgumentException("В режиме «За NPC» фишки игроков не двигаются");
+            }
         }
         battleFieldService.move(campaignId, participantId, x, y, free);
         return ResponseEntity.noContent().build();
@@ -54,7 +66,9 @@ public class BattleFieldController {
     /** «＋ Фишка» мастера: {@code character} — кто из кампании или {@code template} — новый NPC; клетка {@code x}, {@code y} */
     @PostMapping("/tokens")
     public ResponseEntity<String> addToken(@PathVariable Long campaignId, @RequestParam(required = false) Long character,
-                                           @RequestParam(required = false) String template, @RequestParam int x, @RequestParam int y) {
+                                           @RequestParam(required = false) String template, @RequestParam int x, @RequestParam int y,
+                                           HttpServletRequest request) {
+        godOnly(request, "＋ Фишка");
         return ResponseEntity.ok(battleFieldService.addToken(campaignId, character, template, x, y));
     }
 
@@ -102,8 +116,16 @@ public class BattleFieldController {
 
     /** Мастер правит копию карты боя: документ целиком */
     @PostMapping(value = "/doc", consumes = "application/json")
-    public ResponseEntity<Void> doc(@PathVariable Long campaignId, @RequestBody String json) {
+    public ResponseEntity<Void> doc(@PathVariable Long campaignId, @RequestBody String json, HttpServletRequest request) {
+        godOnly(request, "Правка карты");
         battleFieldService.updateDoc(campaignId, json);
         return ResponseEntity.noContent().build();
+    }
+
+    /** A-15: инструменты, которых нет в режиме «За NPC» (маршруты только для мастера — {@code AccessInterceptor}) */
+    private static void godOnly(HttpServletRequest request, String what) {
+        if (GmMode.npcOnly(request)) {
+            throw new IllegalArgumentException(what + " — в режиме «Бог»");
+        }
     }
 }

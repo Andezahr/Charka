@@ -16,7 +16,7 @@
         <button type="submit" class="btn btn-sm btn-ghost" th:text="${inv.carried} ? 'Убрать с листа' : 'Носить: на лист'"
                 th:title="${inv.carried} ? 'Не носится: только здесь, в «Снаряжении»' : 'Носимый: показывать на листе'">Убрать с листа</button>
       </form>
-      <button type="button" class="btn btn-sm btn-primary" th:attr="data-add-item=${inv.id},data-add-item-name=${inv.name}">＋ Добавить</button>
+      <button type="button" class="btn btn-sm btn-primary" th:attr="data-add-item=${inv.id},data-add-item-name=${inv.name}">＋ Предмет</button>
       <button type="button" class="icon-btn" data-edit-toggle title="Переименовать">✎</button>
       <form th:action="@{'/character/' + ${character.id} + '/inventories/' + ${inv.id} + '/delete'}"
             method="post" class="inline" data-confirm="Удалить инвентарь вместе со всеми предметами?">
@@ -94,7 +94,7 @@
         <input type="text" name="name" class="grow" placeholder="Аренда, еда" required autocomplete="off">
         <input type="number" name="amount" class="narrow" min="1" th:placeholder="${currency.symbol}" required aria-label="Сумма за период">
         <input type="number" name="periodDays" class="narrow" min="1" value="30" required aria-label="Раз в сколько дней" title="Раз в сколько дней">
-        <button type="submit" class="btn btn-sm btn-primary">＋</button>
+        <button type="submit" class="btn btn-sm btn-primary">＋ Трата</button>
       </form>
     </details>
   </div>

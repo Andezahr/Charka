@@ -54,7 +54,7 @@
     <!-- NPC мастера -->
     <section class="card" id="npcs" th:if="${isGm}">
       <div class="card-head">
-        <h2 class="card-title"><span class="dot red"></span>NPC</h2>
+        <h2 class="card-title"><span class="dot"></span>NPC</h2>
         <span class="badge" th:text="${#lists.size(npcs)}">0</span>
         <!-- R-12: новый NPC — в диалоге; шаблон запоминается (data-remember) -->
         <button type="button" class="btn btn-sm btn-primary add-btn" data-dialog-open="npc-dialog">＋ NPC</button>
@@ -76,7 +76,7 @@
             </label>
             <div class="form-row dialog-actions">
               <button type="button" class="btn btn-ghost" data-dialog-close>Отмена</button>
-              <button type="submit" class="btn btn-primary">＋ Создать</button>
+              <button type="submit" class="btn btn-primary">＋ NPC</button>
             </div>
           </form>
         </dialog>

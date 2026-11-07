@@ -15,7 +15,7 @@
     <div class="page-actions">
       <span class="editor-status" data-editor-status>Сохранено</span>
       <a th:unless="${inFight}" th:href="@{'/campaign/' + ${campaign.id} + '/maps/' + ${map.id} + '/text'}" class="btn btn-ghost"
-         download title="Карта текстом: поправить в редакторе текста и загрузить обратно на странице «Карты»">⇩ Текстом</a>
+         download title="Карта текстом: поправить в редакторе текста и загрузить обратно на странице «Карты»">⬇ Текстом</a>
       <a th:href="@{${backUrl}}" class="btn btn-ghost" th:text="${inFight} ? '← К бою' : '← К картам'">← К картам</a>
     </div>
   </div>
@@ -69,7 +69,7 @@
       <summary>🖼 Подложка</summary>
       <div class="form-row">
         <form th:action="@{'/campaign/' + ${campaign.id} + '/maps/' + ${map.id} + '/background'}" method="post" enctype="multipart/form-data" class="form-row">
-          <input type="file" name="file" accept="image/png,image/jpeg,image/webp,image/gif" required aria-label="Картинка до 5 МБ">
+          <label class="btn btn-sm file-pick" data-file-pick><input type="file" name="file" accept="image/png,image/jpeg,image/webp,image/gif" required aria-label="Картинка до 5 МБ"><span data-file-name>🖼 Выбрать картинку…</span></label>
           <button type="submit" class="btn btn-sm">Загрузить</button>
         </form>
         <th:block th:if="${hasBackground}">

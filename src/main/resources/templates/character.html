@@ -160,7 +160,7 @@
                 <span class="label">Начальное значение</span>
                 <input type="number" name="initialValue" value="0" required>
               </label>
-              <button type="submit" class="btn btn-primary">＋ Создать</button>
+              <button type="submit" class="btn btn-primary">＋ Счётчик</button>
             </div>
           </form>
         </details>
@@ -172,7 +172,7 @@
       <!-- ЭФФЕКТЫ: препараты и прочее со сроком; раунды идут в бою, часы и дни — с промоткой времени -->
       <section class="card" id="effects">
         <div class="card-head">
-          <h2 class="card-title"><span class="dot"></span>Эффекты</h2>
+          <h2 class="card-title"><span class="dot red"></span>Эффекты</h2>
           <span class="badge" th:text="${#lists.size(character.effects)}">0</span>
         </div>
         <div th:if="${effectResult != null}" class="alert alert-success" th:text="${effectResult}">Boost: +1 INT на 4 ч</div>
@@ -199,7 +199,7 @@
             <select name="template" class="grow" required aria-label="Готовый эффект">
               <option th:each="t : ${effectTemplates}" th:value="${t.code}" th:text="${t.name} + ' · ' + ${t.summary}">Boost</option>
             </select>
-            <button type="submit" class="btn btn-sm btn-primary" title="Срок бросается сам">＋</button>
+            <button type="submit" class="btn btn-sm btn-primary" title="Срок бросается сам">＋ Эффект</button>
           </form>
           <details class="add-own">
             <summary>Свой эффект</summary>
@@ -216,7 +216,7 @@
                 <option th:each="u : ${T(app.charka.effect.EffectTemplate.DurationUnit).values()}" th:value="${u}" th:text="${u.label}">раунды</option>
               </select>
               <input type="text" name="note" class="grow" placeholder="Что ещё делает" autocomplete="off">
-              <button type="submit" class="btn btn-sm btn-primary">＋</button>
+              <button type="submit" class="btn btn-sm btn-primary">＋ Эффект</button>
             </form>
           </details>
         </div>

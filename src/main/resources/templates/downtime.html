@@ -19,7 +19,7 @@
 
   <section th:if="${downtimeReport != null}" class="card downtime-report">
     <div class="card-head">
-      <h2 class="card-title"><span class="dot green"></span>Прошло <th:block th:text="${downtimeDays}">7</th:block> дн.</h2>
+      <h2 class="card-title"><span class="dot pink"></span>Прошло <th:block th:text="${downtimeDays}">7</th:block> дн.</h2>
       <form th:if="${undoOffer != null}" method="post" th:action="@{'/campaign/' + ${campaign.id} + '/undo/' + ${undoOffer.id()}}">
         <button type="submit" class="btn btn-sm">↶ Отменить и изменить</button>
       </form>

@@ -25,7 +25,7 @@
 <!-- A-07, A-08: мастер просит бросок — у одного или у всех сразу. Игроки отмечены; NPC мастер бросает сам при отправке -->
 <section th:fragment="ask-form(campaign)" class="card" id="ask-roll"
          th:with="choices=${@rollRequestService.choices(campaign.id)}">
-  <div class="card-head"><h2 class="card-title"><span class="dot pink"></span>Попросить бросок</h2></div>
+  <div class="card-head"><h2 class="card-title"><span class="dot"></span>Попросить бросок</h2></div>
   <div class="card-body">
     <form th:action="@{'/campaign/' + ${campaign.id} + '/requests'}" method="post" class="form">
       <div class="form-row">

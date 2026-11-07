@@ -1,13 +1,17 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <body>
-<!-- R-09: журнал здоровья — новые записи сверху; форма ручной записи (сломанное ребро, яд) — над ним -->
+<!-- R-09: журнал здоровья — новые записи сверху. R-23: журнал пишется сам (урон, медпомощь),
+     ручная запись (сломанное ребро, яд) — раскрытием -->
 <div th:fragment="log" class="wound-log">
-  <form th:action="@{'/character/' + ${character.id} + '/wounds'}" method="post" class="form-row">
-    <input type="text" name="name" class="grow" th:placeholder="${healthStatus != null} ? 'Запись: сломано ребро' : 'Описание раны'" required autocomplete="off">
-    <input type="number" name="severity" class="narrow" placeholder="Тяжесть" min="1" step="1">
-    <button type="submit" class="btn btn-sm btn-primary">＋ Запись</button>
-  </form>
+  <details class="add-own" th:open="${#lists.isEmpty(woundLog) and healthStatus == null}">
+    <summary>Запись вручную</summary>
+    <form th:action="@{'/character/' + ${character.id} + '/wounds'}" method="post" class="form-row">
+      <input type="text" name="name" class="grow" th:placeholder="${healthStatus != null} ? 'Запись: сломано ребро' : 'Описание раны'" required autocomplete="off">
+      <input type="number" name="severity" class="narrow" placeholder="Тяжесть" min="1" step="1">
+      <button type="submit" class="btn btn-sm btn-primary">＋ Запись</button>
+    </form>
+  </details>
   <div class="list">
     <!-- Журнал: новые сверху; видно 8, старые свёрнуты -->
     <th:block th:each="wound, state : ${woundLog}" th:if="${state.index < 8}">

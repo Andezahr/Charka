@@ -9,45 +9,41 @@
     <span class="alert-text" th:text="${errorMessage}">Ошибка</span>
     <button type="button" class="alert-close" aria-label="Закрыть">×</button>
   </div>
-  <div class="page-head">
-    <div>
-      <span class="eyebrow">Менеджер персонажей</span>
-      <h1 class="page-title">Добро пожаловать в Charka</h1>
-      <p class="page-sub">Кампании, персонажи, их раны, инвентари, деньги и заметки — в одном месте.</p>
-    </div>
-  </div>
-
   <div class="grid grid-2">
-    <!-- Кампании -->
+    <!-- R-19: вошедшему — сразу списки; создание и импорт кампании — в диалоге -->
     <section class="card">
       <div class="card-head">
-        <h2 class="card-title"><span class="dot pink"></span>Кампании</h2>
+        <h2 class="card-title"><span class="dot"></span>Мои кампании</h2>
         <span class="badge" th:text="${#lists.size(campaigns)}">0</span>
-      </div>
-      <div class="card-body">
-        <form th:action="@{/campaigns}" method="post" class="form">
-          <div class="field">
-            <label for="campaign-name">Новая кампания</label>
-            <input id="campaign-name" type="text" name="name" placeholder="Название" required autocomplete="off">
-          </div>
-          <div class="form-row">
-            <select name="system" aria-label="Игровая система" required>
-              <option th:each="s : ${systems}" th:value="${s.code}" th:text="${s.displayName}"
-                      th:selected="${s.code == 'CP2020'}">Система</option>
-            </select>
-          </div>
-          <div class="form-row">
-            <input type="date" name="startDate" aria-label="Дата начала (по умолчанию — сегодня)"
-                   title="Дата начала (по умолчанию — сегодня)">
-            <button type="submit" class="btn btn-primary">＋ Создать</button>
-          </div>
-        </form>
-      </div>
-      <div class="card-body">
-        <form th:action="@{/campaigns/import}" method="post" enctype="multipart/form-data" class="form-row">
-          <input type="file" name="file" accept=".json,application/json" class="grow" required aria-label="JSON экспорта кампании">
-          <button type="submit" class="btn btn-sm">⬆ Импорт</button>
-        </form>
+        <button type="button" class="btn btn-sm btn-primary add-btn" data-dialog-open="campaign-dialog">＋ Кампания</button>
+        <dialog class="dialog" id="campaign-dialog">
+          <h2 class="card-title">Новая кампания</h2>
+          <form th:action="@{/campaigns}" method="post" class="form">
+            <input type="text" name="name" placeholder="Название" required autocomplete="off" aria-label="Название" autofocus>
+            <div class="form-row">
+              <select name="system" aria-label="Игровая система" required class="grow">
+                <option th:each="s : ${systems}" th:value="${s.code}" th:text="${s.displayName}"
+                        th:selected="${s.code == 'CP2020'}">Система</option>
+              </select>
+              <input type="date" name="startDate" aria-label="Дата начала (по умолчанию — сегодня)"
+                     title="Дата начала (по умолчанию — сегодня)">
+            </div>
+            <div class="form-row dialog-actions">
+              <button type="button" class="btn btn-ghost" data-dialog-close>Отмена</button>
+              <button type="submit" class="btn btn-primary">＋ Кампания</button>
+            </div>
+          </form>
+          <form th:action="@{/campaigns/import}" method="post" enctype="multipart/form-data" class="form dialog-import">
+            <span class="muted">или из файла экспорта</span>
+            <div class="form-row">
+              <label class="btn btn-sm file-pick grow" data-file-pick>
+                <input type="file" name="file" accept=".json,application/json" required aria-label="JSON экспорта кампании">
+                <span data-file-name>📄 Выбрать JSON…</span>
+              </label>
+              <button type="submit" class="btn btn-sm">⬆ Импорт</button>
+            </div>
+          </form>
+        </dialog>
       </div>
       <div class="card-body list">
         <a th:each="campaign : ${campaigns}" th:href="@{'/campaign/' + ${campaign.id}}" class="row">
@@ -73,7 +69,7 @@
     <!-- Персонажи -->
     <section class="card">
       <div class="card-head">
-        <h2 class="card-title"><span class="dot"></span>Персонажи</h2>
+        <h2 class="card-title"><span class="dot"></span>Мои персонажи</h2>
         <span class="badge" th:text="${#lists.size(characters)}">0</span>
       </div>
       <div class="card-body list">

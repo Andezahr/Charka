@@ -138,6 +138,18 @@ function initPage() {
     }));
   });
 
+  // R-19: выбор файла кнопкой — имя выбранного файла вместо подписи
+  document.querySelectorAll('[data-file-pick]').forEach(pick => {
+    const input = pick.querySelector('input[type=file]');
+    const label = pick.querySelector('[data-file-name]');
+    const empty = label.textContent;
+    input.addEventListener('change', () => {
+      const file = input.files && input.files[0];
+      label.textContent = file ? '📄 ' + file.name : empty;
+      pick.classList.toggle('is-picked', !!file);
+    });
+  });
+
   // Диалог по кнопке: [data-dialog-open="id диалога"]; закрывает [data-dialog-close] внутри него
   document.querySelectorAll('[data-dialog-open]').forEach(btn => {
     const dialog = document.getElementById(btn.dataset.dialogOpen);
@@ -1384,6 +1396,25 @@ const battleMe = () => {
   try { return localStorage.getItem(meKey(battle.url)) || ''; } catch (e) { return ''; }
 };
 
+// A-15: режим мастера на этом устройстве — cookie, её же проверяет сервер (GmMode). «За NPC» — только свои NPC и по бегу
+const GM_MODE_COOKIE = 'charka.gmMode';
+const gmModeNpc = () => document.cookie.split('; ').includes(GM_MODE_COOKIE + '=npc');
+const battleGm = () => Boolean(battle.stage && battle.stage.dataset.gm === 'true');
+// мастер в «За NPC»: фишки игроков не выбираются и не двигаются
+const npcOnly = () => battleGm() && gmModeNpc();
+const lockedToken = token => Boolean(token && npcOnly() && !token.npc);
+function applyGmMode() {
+  const npc = gmModeNpc();
+  document.querySelectorAll('[data-gm-mode]').forEach(button => {
+    button.textContent = npc ? '👹 За NPC' : '👁 Бог';
+    button.classList.toggle('is-active', npc);
+    button.title = npc
+      ? 'За NPC: ходите только своими NPC и по бегу. Нажмите — режим «Бог»'
+      : 'Бог: любые фишки, Shift — без лимита бега, ＋ Фишка, правка карты. Нажмите — режим «За NPC»';
+  });
+  document.querySelectorAll('[data-god-only]').forEach(el => { el.hidden = npc; });
+}
+
 // Мера «прямая»: та же формула, что MapRules.distance на сервере
 const battleMeters = (x1, y1, x2, y2) => Math.round(Math.hypot(x2 - x1, y2 - y1) * battle.data.doc.cell);
 
@@ -1422,6 +1453,20 @@ function initBattle() {
       renderBattle();
     });
   }
+  const modeButton = document.querySelector('[data-gm-mode]');
+  if (modeButton) {
+    modeButton.addEventListener('click', () => {
+      const npc = !gmModeNpc();
+      document.cookie = GM_MODE_COOKIE + '=' + (npc ? 'npc' : 'god') + '; path=/; max-age=31536000; SameSite=Lax';
+      battle.adding = false;
+      const chosen = tokenById(battle.selected);
+      if (npc && lockedToken(chosen)) battle.selected = undefined;
+      applyGmMode();
+      battleHint(npc ? 'За NPC: двигаются только NPC, по бегу' : 'Бог: любые фишки, Shift — без лимита бега');
+      renderBattle();
+    });
+  }
+  applyGmMode();
   // «＋ Фишка» мастера: режим остаётся включённым — несколько бандитов подряд
   const addButton = document.querySelector('[data-battle-add]');
   if (addButton) {
@@ -1693,7 +1738,7 @@ function renderBattle() {
   if (battle.selected === undefined) {
     battle.selected = null;
     const mine = data.tokens.find(token => String(token.character) === me && token.x !== null);
-    const current = data.tokens.find(token => token.current && token.x !== null);
+    const current = data.tokens.find(token => token.current && token.x !== null && !lockedToken(token));
     const chosen = mine || (me === '' ? current : null);
     if (chosen) {
       battle.selected = chosen.id;
@@ -1919,7 +1964,10 @@ function wireBattleSvg(svg) {
     const start = cellAt(event);
     // после захвата указателя pointerup приходит на сам svg: дверь запоминаем здесь
     const door = event.target.closest('[data-edge]');
-    press = { tokenEl, token: tokenEl ? tokenById(Number(tokenEl.dataset.token)) : null, door: door && door.dataset.edge,
+    const pressed = tokenEl ? tokenById(Number(tokenEl.dataset.token)) : null;
+    // A-15: в «За NPC» фишка игрока — только цель (долгое нажатие — атака), не тянется и не выбирается
+    const locked = lockedToken(pressed);
+    press = { tokenEl: locked ? null : tokenEl, token: locked ? null : pressed, locked: locked ? pressed : null, door: door && door.dataset.edge,
       x: event.clientX, y: event.clientY, start, moved: false, ruler: battle.rulerMode && inside(start) };
     svg.setPointerCapture(event.pointerId);
     if (press.ruler) {
@@ -1935,7 +1983,8 @@ function wireBattleSvg(svg) {
         press = null;
         // долгое нажатие на выбранную или свою фишку — не атака по себе
         const own = held.token && (held.token.id === battle.selected || String(held.token.character) === battleMe());
-        if (held.token && !own) attackMenu(held.token, event);
+        if (held.locked) attackMenu(held.locked, event);
+        else if (held.token && !own) attackMenu(held.token, event);
         else if (inside(start)) sendPointer(start.x, start.y);
       }, 600);
     }
@@ -1970,7 +2019,7 @@ function wireBattleSvg(svg) {
       // M-16: бег за раунд — MA × 3 м по пути в обход стен (с. 98); сервер сверит, мастер с Shift ставит без ограничения
       const known = battle.reach && battle.reachFor === press.token.id && battle.reach.run;
       const path = known ? battle.reach.cells.get(cell.x + ',' + cell.y) : undefined;
-      const free = event.shiftKey;
+      const free = event.shiftKey && !npcOnly();
       const far = known && path === undefined && !free;
       press.tokenEl.classList.toggle('is-far', Boolean(far));
       if (free) battleHint('Без ограничения бега (мастер)');
@@ -2002,13 +2051,17 @@ function wireBattleSvg(svg) {
       return;
     }
     if (current.token && current.moved) {
-      if (inside(cell) && (cell.x !== current.token.x || cell.y !== current.token.y)) moveToken(current.token, cell.x, cell.y, event.shiftKey);
+      if (inside(cell) && (cell.x !== current.token.x || cell.y !== current.token.y)) moveToken(current.token, cell.x, cell.y, event.shiftKey && !npcOnly());
       else renderBattle();
       return;
     }
     if (current.moved) return;
     if (event.altKey && inside(cell)) {
       sendPointer(cell.x, cell.y);
+      return;
+    }
+    if (current.locked) {
+      battleHint('За NPC: ' + current.locked.name + ' — фишка игрока. Атака по ней — правой кнопкой или долгим нажатием');
       return;
     }
     if (current.door && !current.token) {
@@ -2019,7 +2072,7 @@ function wireBattleSvg(svg) {
       tokenClick(current.token);
       return;
     }
-    if (battle.adding && inside(cell) && !current.token) {
+    if (battle.adding && !npcOnly() && inside(cell) && !current.token) {
       addToken(cell.x, cell.y);
       return;
     }
@@ -2100,8 +2153,11 @@ function tokenClick(token) {
 // Кто атакует: выбранная фишка, иначе своя по «Я — …», у мастера — чей ход
 const battleAttacker = target => {
   const candidates = [tokenById(battle.selected), battle.data.tokens.find(token => String(token.character) === battleMe()),
-    battle.data.tokens.find(token => token.current)];
-  return candidates.find(token => token && token.id !== target.id && token.x !== null) || null;
+    battle.data.tokens.find(token => token.current),
+    // A-15: в «За NPC» без выбора атакует NPC (ближайший к цели), а не игрок
+    npcOnly() ? battle.data.tokens.filter(token => token.npc && token.x !== null && token.id !== target.id)
+      .sort((a, b) => Math.hypot(a.x - target.x, a.y - target.y) - Math.hypot(b.x - target.x, b.y - target.y))[0] : null];
+  return candidates.find(token => token && token.id !== target.id && token.x !== null && !lockedToken(token)) || null;
 };
 
 // Меню атаки: расстояние, линия видимости и укрытие считает сервер, оружие — из строки атакующего
@@ -2132,7 +2188,7 @@ async function attackMenu(token, event) {
     closeBattleMenu();
     selectToken(token.id);
   });
-  menu.appendChild(select);
+  if (!lockedToken(token)) menu.appendChild(select);
   const holder = menu.parentElement.getBoundingClientRect();
   const x = event ? event.clientX - holder.left : holder.width / 2;
   const y = event ? event.clientY - holder.top : holder.height / 2;

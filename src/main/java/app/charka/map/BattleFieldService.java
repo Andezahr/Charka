@@ -516,6 +516,16 @@ public class BattleFieldService {
         return encounter;
     }
 
+    /**
+     * A-15: фишка — NPC мастера (в режиме «За NPC» мастер двигает только их)
+     *
+     * @throws NotFoundException если боя или участника нет
+     */
+    @Transactional(readOnly = true)
+    public boolean isNpc(Long campaignId, Long participantId) {
+        return participant(withMap(campaignId), participantId).getCharacter().isNpc();
+    }
+
     private static EncounterParticipant participant(Encounter encounter, Long participantId) {
         return encounter.getParticipants().stream().filter(p -> p.getId().equals(participantId)).findFirst()
                 .orElseThrow(NotFoundException.forId("EncounterParticipant", participantId));
