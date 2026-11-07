@@ -60,6 +60,10 @@ public class EncounterParticipant {
     @Column(name = "pos_y")
     private Integer posY;
 
+    /** M-22: уровень карты, на котором стоит фишка; 0 — нижний */
+    @Column(name = "pos_level", nullable = false)
+    private int posLevel;
+
     @OneToMany(mappedBy = "participant", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id ASC")
     private List<CombatEffect> effects = new ArrayList<>();

@@ -39,20 +39,22 @@ public class MapLineOfFire implements LineOfFire {
         Encounter encounter = found.get();
         Optional<EncounterParticipant> from = placed(encounter, attacker);
         Optional<EncounterParticipant> to = placed(encounter, target);
-        if (from.isEmpty() || to.isEmpty()) {
+        // M-22: шальная пуля — только на одном уровне
+        if (from.isEmpty() || to.isEmpty() || from.get().getPosLevel() != to.get().getPosLevel()) {
             return List.of();
         }
+        int level = from.get().getPosLevel();
         MapRules rules = systemRegistry.get(encounter.getCampaign().getSystem()).getMapRules();
         if (rules == null) {
             return List.of();
         }
-        MapGrid grid = new MapGrid(MapDoc.parse(encounter.getMapDoc()), rules);
+        MapGrid grid = new MapGrid(MapDoc.parse(encounter.getMapDoc()).level(level), rules);
         int fx = from.get().getPosX();
         int fy = from.get().getPosY();
         List<int[]> path = grid.sight(fx, fy, to.get().getPosX(), to.get().getPosY(), BattleFieldService.COVER_NEAR_CELLS).path();
         int cell = grid.doc().cell();
         return encounter.getParticipants().stream()
-                .filter(p -> p != from.get() && p != to.get() && p.getPosX() != null)
+                .filter(p -> p != from.get() && p != to.get() && p.getPosX() != null && p.getPosLevel() == level)
                 .filter(p -> path.stream().anyMatch(c -> c[0] == p.getPosX() && c[1] == p.getPosY()))
                 .map(p -> new Bystander(p.getCharacter(), rules.distance(cell, fx, fy, p.getPosX(), p.getPosY())))
                 .sorted(Comparator.comparingInt(Bystander::meters))

@@ -46,7 +46,7 @@ public class BattleFieldController {
     @PostMapping("/participants/{participantId}/move")
     public ResponseEntity<Void> move(@PathVariable Long campaignId, @PathVariable Long participantId,
                                      @RequestParam int x, @RequestParam int y, @RequestParam(defaultValue = "false") boolean free,
-                                     HttpServletRequest request) {
+                                     @RequestParam(required = false) Integer level, HttpServletRequest request) {
         boolean gm = accessService.isGm(campaignService.getById(campaignId));
         // без ограничения бега ставит только мастер, и только в режиме «Бог» (A-15)
         if (free && !gm) {
@@ -60,17 +60,32 @@ public class BattleFieldController {
                 throw new IllegalArgumentException("В режиме «За NPC» фишки игроков не двигаются");
             }
         }
-        battleFieldService.move(campaignId, participantId, x, y, free);
+        battleFieldService.move(campaignId, participantId, x, y, free, level);
         return ResponseEntity.noContent().build();
+    }
+
+    /** M-22: по лестнице на соседний уровень; {@code level} — куда, если лестница ведёт и вверх, и вниз */
+    @PostMapping(value = "/participants/{participantId}/climb", produces = "text/plain;charset=UTF-8")
+    public ResponseEntity<String> climb(@PathVariable Long campaignId, @PathVariable Long participantId,
+                                        @RequestParam(required = false) Integer level, @RequestParam(defaultValue = "false") boolean free,
+                                        HttpServletRequest request) {
+        boolean gm = accessService.isGm(campaignService.getById(campaignId));
+        if (free && (!gm || GmMode.npcOnly(request))) {
+            throw new IllegalArgumentException("Без ограничения бега — мастер в режиме «Бог»");
+        }
+        if (gm && GmMode.npcOnly(request) && !battleFieldService.isNpc(campaignId, participantId)) {
+            throw new IllegalArgumentException("В режиме «За NPC» фишки игроков не двигаются");
+        }
+        return ResponseEntity.ok(battleFieldService.climb(campaignId, participantId, level, free));
     }
 
     /** «＋ Фишка» мастера: {@code character} — кто из кампании или {@code template} — новый NPC; клетка {@code x}, {@code y} */
     @PostMapping("/tokens")
     public ResponseEntity<String> addToken(@PathVariable Long campaignId, @RequestParam(required = false) Long character,
                                            @RequestParam(required = false) String template, @RequestParam int x, @RequestParam int y,
-                                           HttpServletRequest request) {
+                                           @RequestParam(defaultValue = "0") int level, HttpServletRequest request) {
         godOnly(request, "＋ Фишка");
-        return ResponseEntity.ok(battleFieldService.addToken(campaignId, character, template, x, y));
+        return ResponseEntity.ok(battleFieldService.addToken(campaignId, character, template, x, y, level));
     }
 
     @PostMapping("/participants/{participantId}/lift")
@@ -96,22 +111,23 @@ public class BattleFieldController {
     }
 
     @PostMapping("/door")
-    public ResponseEntity<Void> door(@PathVariable Long campaignId, @RequestParam String edge) {
-        battleFieldService.toggleDoor(campaignId, edge);
+    public ResponseEntity<Void> door(@PathVariable Long campaignId, @RequestParam String edge, @RequestParam(defaultValue = "0") int level) {
+        battleFieldService.toggleDoor(campaignId, edge, level);
         return ResponseEntity.noContent().build();
     }
 
     /** M-23: выбить дверь, разбить окно; стену — мастер */
     @PostMapping(value = "/break", produces = "text/plain;charset=UTF-8")
-    public ResponseEntity<String> breakEdge(@PathVariable Long campaignId, @RequestParam String edge, HttpServletRequest request) {
+    public ResponseEntity<String> breakEdge(@PathVariable Long campaignId, @RequestParam String edge,
+                                            @RequestParam(defaultValue = "0") int level, HttpServletRequest request) {
         boolean gm = accessService.isGm(campaignService.getById(campaignId));
-        return ResponseEntity.ok(battleFieldService.breakEdge(campaignId, edge, gm));
+        return ResponseEntity.ok(battleFieldService.breakEdge(campaignId, edge, gm, level));
     }
 
     /** M-23: попали в бочку или баллон — взрыв; {@code by} — кто стрелял, пусто — мастер */
     @PostMapping(value = "/detonate", produces = "text/plain;charset=UTF-8")
     public ResponseEntity<String> detonate(@PathVariable Long campaignId, @RequestParam int x, @RequestParam int y,
-                                           @RequestParam(required = false) Long by) {
+                                           @RequestParam(defaultValue = "0") int level, @RequestParam(required = false) Long by) {
         if (by == null && !accessService.isGm(campaignService.getById(campaignId))) {
             throw new IllegalArgumentException("Выберите, кто стрелял: «Я —» или своя фишка");
         }
@@ -123,7 +139,7 @@ public class BattleFieldController {
                 throw new IllegalArgumentException("Стреляет свой персонаж");
             }
         }
-        app.charka.attack.AttackResult result = attackService.detonate(campaignId, x, y, by);
+        app.charka.attack.AttackResult result = attackService.detonate(campaignId, level, x, y, by);
         return ResponseEntity.ok(result.title() + " · " + result.outcome());
     }
 

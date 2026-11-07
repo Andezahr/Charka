@@ -27,6 +27,16 @@ public record Material(String code, String label, int sp, Layer layer, boolean b
         return new Material(code, label, 0, Layer.TERRAIN, false, false, true, false, false);
     }
 
+    /** M-22: пустота — пола нет, видно нижний уровень; встать нельзя */
+    public static Material voidCell() {
+        return new Material(LevelMap.VOID, "Пустота (видно вниз)", 0, Layer.TERRAIN, true, false);
+    }
+
+    /** M-22: лестница — на соседнем уровне в той же клетке тоже лестница */
+    public static Material stairs() {
+        return new Material(LevelMap.STAIRS, "Лестница", 0, Layer.TERRAIN, false, false);
+    }
+
     /** Взрывоопасный предмет: не пройти, поверх видно */
     public static Material explosive(String code, String label, int sp) {
         return new Material(code, label, sp, Layer.OBJECT, true, false, false, false, true);

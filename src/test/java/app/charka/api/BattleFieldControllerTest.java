@@ -77,7 +77,7 @@ class BattleFieldControllerTest {
             mockMvc.perform(post(moveUrl(PLAYER_TOKEN)).param("x", "3").param("y", "4").cookie(NPC_MODE))
                     .andExpect(status().isBadRequest())
                     .andExpect(content().string("В режиме «За NPC» фишки игроков не двигаются"));
-            verify(battleFieldService, never()).move(anyLong(), anyLong(), anyInt(), anyInt(), anyBoolean());
+            verify(battleFieldService, never()).move(anyLong(), anyLong(), anyInt(), anyInt(), anyBoolean(), any());
         }
 
         @Test
@@ -85,7 +85,7 @@ class BattleFieldControllerTest {
         void npcMovesByRun() throws Exception {
             mockMvc.perform(post(moveUrl(NPC_TOKEN)).param("x", "3").param("y", "4").cookie(NPC_MODE))
                     .andExpect(status().isNoContent());
-            verify(battleFieldService).move(CAMPAIGN, NPC_TOKEN, 3, 4, false);
+            verify(battleFieldService).move(CAMPAIGN, NPC_TOKEN, 3, 4, false, null);
         }
 
         @Test
@@ -93,7 +93,7 @@ class BattleFieldControllerTest {
         void freeRefused() throws Exception {
             mockMvc.perform(post(moveUrl(NPC_TOKEN)).param("x", "3").param("y", "4").param("free", "true").cookie(NPC_MODE))
                     .andExpect(status().isBadRequest());
-            verify(battleFieldService, never()).move(anyLong(), anyLong(), anyInt(), anyInt(), anyBoolean());
+            verify(battleFieldService, never()).move(anyLong(), anyLong(), anyInt(), anyInt(), anyBoolean(), any());
         }
 
         @Test
@@ -118,7 +118,7 @@ class BattleFieldControllerTest {
         void playerTokenFree() throws Exception {
             mockMvc.perform(post(moveUrl(PLAYER_TOKEN)).param("x", "3").param("y", "4").param("free", "true").cookie(GOD_MODE))
                     .andExpect(status().isNoContent());
-            verify(battleFieldService).move(CAMPAIGN, PLAYER_TOKEN, 3, 4, true);
+            verify(battleFieldService).move(CAMPAIGN, PLAYER_TOKEN, 3, 4, true, null);
         }
 
         @Test
@@ -126,7 +126,7 @@ class BattleFieldControllerTest {
         void defaultIsGod() throws Exception {
             mockMvc.perform(post(moveUrl(PLAYER_TOKEN)).param("x", "3").param("y", "4"))
                     .andExpect(status().isNoContent());
-            verify(battleFieldService).move(CAMPAIGN, PLAYER_TOKEN, 3, 4, false);
+            verify(battleFieldService).move(CAMPAIGN, PLAYER_TOKEN, 3, 4, false, null);
         }
     }
 
@@ -140,7 +140,7 @@ class BattleFieldControllerTest {
             when(accessService.isGm(any())).thenReturn(false);
             mockMvc.perform(post(moveUrl(PLAYER_TOKEN)).param("x", "3").param("y", "4").cookie(NPC_MODE))
                     .andExpect(status().isNoContent());
-            verify(battleFieldService).move(CAMPAIGN, PLAYER_TOKEN, 3, 4, false);
+            verify(battleFieldService).move(CAMPAIGN, PLAYER_TOKEN, 3, 4, false, null);
         }
     }
 }

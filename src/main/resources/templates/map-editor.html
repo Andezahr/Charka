@@ -13,6 +13,8 @@
       <p class="page-sub" th:if="${inFight}">Правится копия боя: игроки увидят изменения на следующем опросе, заготовка не меняется.</p>
     </div>
     <div class="page-actions">
+      <!-- M-22: уровни карты: вкладки, «＋ Этаж» -->
+      <span class="editor-levels" data-editor-levels></span>
       <span class="editor-status" data-editor-status>Сохранено</span>
       <a th:unless="${inFight}" th:href="@{'/campaign/' + ${campaign.id} + '/maps/' + ${map.id} + '/text'}" class="btn btn-ghost"
          download title="Карта текстом: поправить в редакторе текста и загрузить обратно на странице «Карты»">⬇ Текстом</a>

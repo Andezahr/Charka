@@ -56,28 +56,38 @@ public class MapBlastService implements MapBlast {
             return Result.NONE;
         }
         MapRules rules = rules(encounter.get());
-        MapDoc doc = MapDoc.parse(encounter.get().getMapDoc());
+        int level = placed.get().getPosLevel();
+        MapDoc whole = MapDoc.parse(encounter.get().getMapDoc());
+        if (!whole.hasLevel(level)) {
+            return Result.NONE;
+        }
+        MapDoc doc = whole.level(level);
         List<String> steps = new ArrayList<>();
         Deque<MapDoc.Stamp> queue = new ArrayDeque<>();
         wreck(doc, rules, new Blast(null, placed.get().getPosX(), placed.get().getPosY(), amount, radius), steps, queue);
-        return chain(encounter.get(), doc, rules, queue, steps, dice);
+        return chain(encounter.get(), whole, level, doc, rules, queue, steps, dice);
     }
 
     @Override
     @Transactional
-    public Result detonate(Long campaignId, int x, int y, DiceRoller dice) {
+    public Result detonate(Long campaignId, int level, int x, int y, DiceRoller dice) {
         Encounter encounter = withMap(campaignId).orElseThrow(() -> new IllegalArgumentException("Боя на карте нет"));
         MapRules rules = rules(encounter);
-        MapDoc doc = MapDoc.parse(encounter.getMapDoc());
+        MapDoc whole = MapDoc.parse(encounter.getMapDoc());
+        if (!whole.hasLevel(level)) {
+            throw new IllegalArgumentException("Нет такого уровня карты");
+        }
+        MapDoc doc = whole.level(level);
         MapDoc.Stamp stamp = stampAt(doc, rules, x, y)
                 .filter(found -> explosiveOf(rules, found).isPresent())
                 .orElseThrow(() -> new IllegalArgumentException("Здесь нечему взрываться"));
         Deque<MapDoc.Stamp> queue = new ArrayDeque<>(List.of(stamp));
-        return chain(encounter, doc, rules, queue, new ArrayList<>(), dice);
+        return chain(encounter, whole, level, doc, rules, queue, new ArrayList<>(), dice);
     }
 
     /** Подорвать по очереди всё взрывоопасное, что задело; каждый взрыв ломает своё и может задеть следующее */
-    private Result chain(Encounter encounter, MapDoc doc, MapRules rules, Deque<MapDoc.Stamp> queue, List<String> steps, DiceRoller dice) {
+    private Result chain(Encounter encounter, MapDoc whole, int level, MapDoc doc, MapRules rules, Deque<MapDoc.Stamp> queue,
+                         List<String> steps, DiceRoller dice) {
         List<Detonation> detonations = new ArrayList<>();
         Set<MapDoc.Stamp> done = new HashSet<>();
         while (!queue.isEmpty()) {
@@ -100,9 +110,9 @@ public class MapBlastService implements MapBlast {
             Blast blast = new Blast(stamp, stamp.x(), stamp.y(), amount, explosive.radius());
             wreck(doc, rules, blast, own, queue);
             detonations.add(new Detonation(explosive.label(), explosive.damage(), amount, explosive.radius(), own,
-                    caught(encounter, doc, rules, blast)));
+                    caught(encounter, level, doc, rules, blast)));
         }
-        encounter.setMapDoc(doc.toJson());
+        encounter.setMapDoc(whole.withLevel(level, doc).toJson());
         return new Result(steps, detonations);
     }
 
@@ -143,10 +153,11 @@ public class MapBlastService implements MapBlast {
     }
 
     /** Кто в радиусе и не за целой стеной или закрытой дверью; предметы взрыв огибает */
-    private static List<Character> caught(Encounter encounter, MapDoc doc, MapRules rules, Blast blast) {
+    private static List<Character> caught(Encounter encounter, int level, MapDoc doc, MapRules rules, Blast blast) {
         MapGrid grid = new MapGrid(doc, rules);
+        // M-22: взрыв не проходит сквозь перекрытия
         return encounter.getParticipants().stream()
-                .filter(p -> p.getPosX() != null)
+                .filter(p -> p.getPosX() != null && p.getPosLevel() == level)
                 .filter(p -> rules.distance(doc.cell(), blast.x(), blast.y(), p.getPosX(), p.getPosY()) <= blast.radius())
                 .filter(p -> grid.line(blast.x(), blast.y(), p.getPosX(), p.getPosY()).obstacles().stream()
                         .noneMatch(o -> o.material() != null

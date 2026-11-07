@@ -117,6 +117,8 @@ public interface MapRules {
                 Material.difficult("debris", "Обломки"),
                 Material.difficult("water", "Вода"),
                 Material.smoke("smoke", "Дым"),
+                Material.voidCell(),
+                Material.stairs(),
                 new Material("asphalt", "Асфальт", 0, Material.Layer.TERRAIN, false, false),
                 new Material("grass", "Газон", 0, Material.Layer.TERRAIN, false, false));
 

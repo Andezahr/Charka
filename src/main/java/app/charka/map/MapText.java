@@ -40,7 +40,9 @@ public final class MapText {
     private static final Pattern LABEL_MARK = Pattern.compile("(\\S)\\s*:\\s*(.+)");
 
     /** Запасные символы для материалов и предметов, которых нет в легенде по умолчанию */
-    private static final String SPARE_CELLS = "&;^<>?!()[]{}EJOQSVWYZ";
+    private static final String SPARE_CELLS = "&;<>?!()[]{}EJOQSVWYZ";
+    /** M-22: раздел рисунка уровня — «map: 1 Второй этаж z=3» */
+    private static final Pattern SECTION = Pattern.compile("map:\\s*(?:(\\d+)\\s*)?(.*?)\\s*(?:z\\s*=\\s*(\\d+)\\s*м?)?");
     private static final String SPARE_EDGES = "ABCEFGHIJKLMNOPQRTUVXYZ";
     private static final String LABEL_MARKS = "abcdefghijklmnopqrstuvwxyz0123456789";
 
@@ -58,6 +60,9 @@ public final class MapText {
         map.put('*', "smoke");
         map.put('F', "fuel_barrel");
         map.put('G', "gas_cylinder");
+        // M-22: уровни — лестница на соседний уровень в той же клетке, пустота (видно вниз)
+        map.put('^', LevelMap.STAIRS);
+        map.put('#', LevelMap.VOID);
         map.put('C', "car");
         map.put('A', "armored_car");
         map.put('X', "crate");
@@ -198,47 +203,90 @@ public final class MapText {
             if (mapLine < 0) {
                 throw new IllegalArgumentException("Нет раздела «map:» с рисунком карты");
             }
+            // M-22: каждый раздел «map:» — уровень, снизу вверх
+            List<Integer> starts = new ArrayList<>();
+            for (int i = mapLine; i < lines.length; i++) {
+                if (lines[i].strip().startsWith("map:") && SECTION.matcher(lines[i].strip()).matches()) {
+                    starts.add(i);
+                }
+            }
+            MapDoc ground = null;
+            String groundName = null;
+            List<MapDoc.Floor> floors = new ArrayList<>();
+            for (int section = 0; section < starts.size(); section++) {
+                int start = starts.get(section);
+                int end = section + 1 < starts.size() ? starts.get(section + 1) : lines.length;
+                mapLine = start;
+                java.util.regex.Matcher title = SECTION.matcher(lines[start].strip());
+                title.matches();
+                String levelName = title.group(2) == null || title.group(2).isBlank() ? null : title.group(2).strip();
+                MapDoc level = grid(start, end, ground);
+                if (ground == null) {
+                    ground = level;
+                    groundName = levelName;
+                    continue;
+                }
+                if (!level.zones().isEmpty()) {
+                    warnings.add("Уровень «" + (levelName == null ? section + 1 + " этаж" : levelName) + "»: зоны старта — только на нижнем, пропущены");
+                }
+                int z = title.group(3) != null ? Integer.parseInt(title.group(3)) : section * MapDoc.FLOOR_HEIGHT;
+                floors.add(new MapDoc.Floor(levelName == null ? (section + 1) + " этаж" : levelName, z,
+                        level.walls(), level.cells(), level.stamps(), level.labels()));
+            }
+            if (!errors.isEmpty()) {
+                throw new IllegalArgumentException(String.join("\n", errors));
+            }
+            for (MapDoc.Label label : placedLabels) {
+                if (ground.inside(label.x(), label.y())) {
+                    ground.labels().add(label);
+                } else {
+                    warnings.add("Подпись «" + label.text() + "» в клетке " + label.x() + "," + label.y() + " за краем карты пропущена");
+                }
+            }
+            MapDoc doc = new MapDoc(ground.v(), ground.w(), ground.h(), ground.cell(), ground.walls(), ground.cells(), ground.stamps(),
+                    ground.zones(), ground.labels(), null, starts.size() > 1 ? groundName : null, floors);
+            doc.validate();
+            return new Parsed(name, doc, List.copyOf(warnings));
+        }
+
+        /**
+         * Рисунок одного раздела: строки после «map:» до следующего раздела.
+         *
+         * @param ground нижний уровень: размер выше — его; null — это он и есть
+         */
+        private MapDoc grid(int start, int end, MapDoc ground) {
             List<String> grid = new ArrayList<>();
-            for (int i = mapLine + 1; i < lines.length; i++) {
+            for (int i = start + 1; i < end; i++) {
                 grid.add(lines[i]);
             }
             while (!grid.isEmpty() && grid.getLast().isBlank()) {
                 grid.removeLast();
             }
             int longest = grid.stream().mapToInt(String::length).max().orElse(0);
-            int w = width != null ? width : longest / 2;
-            int h = height != null ? height : grid.size() / 2;
+            Integer fixedW = ground != null ? Integer.valueOf(ground.w()) : width;
+            Integer fixedH = ground != null ? Integer.valueOf(ground.h()) : height;
+            int w = fixedW != null ? fixedW : longest / 2;
+            int h = fixedH != null ? fixedH : grid.size() / 2;
             if (w < 1 || h < 1) {
                 throw new IllegalArgumentException("Рисунок карты пуст");
             }
-            if (width != null && longest > 2 * w + 1) {
+            if (fixedW != null && longest > 2 * w + 1) {
                 for (int r = 0; r < grid.size(); r++) {
                     if (grid.get(r).stripTrailing().length() > 2 * w + 1) {
                         error(mapLine + 1 + r, 2 * w + 1, "строка длиннее ширины " + w + " (" + (2 * w + 1) + " символов)");
                     }
                 }
             }
-            if (height != null && grid.size() > 2 * h + 1) {
+            if (fixedH != null && grid.size() > 2 * h + 1) {
                 error(mapLine + 2 + 2 * h, -1, "строк больше высоты " + h + " (" + (2 * h + 1) + " строк рисунка)");
             }
             unevenRows(grid);
-            MapDoc doc = MapDoc.empty(w, h, cell != null ? cell : rules.cellMeters());
+            MapDoc doc = MapDoc.empty(w, h, ground != null ? ground.cell() : cell != null ? cell : rules.cellMeters());
             doc.validate();
             Grid g = new Grid(grid, w, h);
             edgesOf(g, doc);
             cellsOf(g, doc);
-            if (!errors.isEmpty()) {
-                throw new IllegalArgumentException(String.join("\n", errors));
-            }
-            for (MapDoc.Label label : placedLabels) {
-                if (doc.inside(label.x(), label.y())) {
-                    doc.labels().add(label);
-                } else {
-                    warnings.add("Подпись «" + label.text() + "» в клетке " + label.x() + "," + label.y() + " за краем карты пропущена");
-                }
-            }
-            doc.validate();
-            return new Parsed(name, doc, List.copyOf(warnings));
+            return doc;
         }
 
         /**
@@ -271,7 +319,7 @@ public final class MapText {
             String section = "";
             for (int i = 0; i < lines.length; i++) {
                 String line = lines[i].strip();
-                if (line.equals("map:")) {
+                if (line.equals("map:") || SECTION.matcher(line).matches() && line.startsWith("map:")) {
                     mapLine = i;
                     return;
                 }
@@ -587,13 +635,9 @@ public final class MapText {
     /**
      * Карта текстом: обратное к {@link #parse}. Поворот предмета на пол-оборота и подложка не сохраняются.
      */
-    public static String write(String name, MapDoc doc, MapRules rules) {
-        int w = doc.w();
-        int h = doc.h();
-        char[][] grid = new char[2 * h + 1][2 * w + 1];
-        for (char[] row : grid) {
-            java.util.Arrays.fill(row, ' ');
-        }
+    public static String write(String name, MapDoc whole, MapRules rules) {
+        int w = whole.w();
+        int h = whole.h();
         Map<String, Character> cellChars = new LinkedHashMap<>();
         CELLS.forEach((ch, spec) -> {
             if (ch != ' ') {
@@ -613,114 +657,125 @@ public final class MapText {
         int[] spareCell = {0};
         int[] spareEdge = {0};
 
-        // грани
-        doc.walls().forEach((key, value) -> {
-            String[] parts = key.split(",");
-            int x = Integer.parseInt(parts[0]);
-            int y = Integer.parseInt(parts[1]);
-            boolean horizontal = "h".equals(parts[2]);
-            Character ch = edgeChars.get(value);
-            if (ch == null && spareEdge[0] < SPARE_EDGES.length()) {
-                ch = SPARE_EDGES.charAt(spareEdge[0]++);
-                edgeChars.put(value, ch);
-                edgeLegend.add("edge " + ch + " = " + value);
-            }
-            if (ch == null) {
-                return;
-            }
-            if (ch == '-' && value.equals(roomValue) && !horizontal) {
-                ch = '|';
-            }
-            if (horizontal) {
-                grid[2 * y][2 * x + 1] = ch;
-            } else {
-                grid[2 * y + 1][2 * x] = ch;
-            }
-        });
-        // углы — для глаза
-        for (int r = 0; r <= 2 * h; r += 2) {
-            for (int c = 0; c <= 2 * w; c += 2) {
-                boolean wall = (c > 0 && grid[r][c - 1] != ' ') || (c < 2 * w && grid[r][c + 1] != ' ')
-                        || (r > 0 && grid[r - 1][c] != ' ') || (r < 2 * h && grid[r + 1][c] != ' ');
-                if (wall) {
-                    grid[r][c] = '+';
-                }
-            }
-        }
-        // клетки: местность, предметы, зоны
-        boolean[][] busy = new boolean[w][h];
-        doc.cells().forEach((key, material) -> {
-            String[] parts = key.split(",");
-            int x = Integer.parseInt(parts[0]);
-            int y = Integer.parseInt(parts[1]);
-            Character ch = spareFor(material, cellChars, cellLegend, spareCell);
-            if (ch != null) {
-                grid[2 * y + 1][2 * x + 1] = ch;
-            }
-        });
-        for (int y = 0; y < h; y++) {
-            for (int x = 0; x < w; x++) {
-                if (grid[2 * y + 1][2 * x + 1] == ' ') {
-                    grid[2 * y + 1][2 * x + 1] = '.';
-                }
-            }
-        }
-        for (MapDoc.Stamp stamp : doc.stamps()) {
-            MapObject object = rules.object(stamp.code()).orElse(null);
-            Character ch = object == null ? null : spareFor(stamp.code(), cellChars, cellLegend, spareCell);
-            if (ch == null) {
-                continue;
-            }
-            for (int dy = 0; dy < object.height(stamp.rot()); dy++) {
-                for (int dx = 0; dx < object.width(stamp.rot()); dx++) {
-                    int x = stamp.x() + dx;
-                    int y = stamp.y() + dy;
-                    if (doc.inside(x, y)) {
-                        grid[2 * y + 1][2 * x + 1] = ch;
-                        busy[x][y] = true;
-                    }
-                }
-            }
-        }
-        for (MapDoc.Zone zone : doc.zones()) {
-            Character ch = cellChars.get(zone.kind());
-            for (int y = zone.y(); y < zone.y() + zone.h(); y++) {
-                for (int x = zone.x(); x < zone.x() + zone.w(); x++) {
-                    if (ch != null && doc.inside(x, y) && !busy[x][y]) {
-                        grid[2 * y + 1][2 * x + 1] = ch;
-                        busy[x][y] = true;
-                    }
-                }
-            }
-        }
-        // подписи: меткой в рисунке, если клетка свободна, иначе координатами
         List<String> labelLines = new ArrayList<>();
         Map<String, Character> labelMarks = new LinkedHashMap<>();
-        int nextMark = 0;
-        // по рядам, как их читает parse: второй круг даёт тот же текст
-        List<MapDoc.Label> labels = new ArrayList<>(doc.labels());
-        labels.sort(java.util.Comparator.comparingInt(MapDoc.Label::y).thenComparingInt(MapDoc.Label::x));
-        for (MapDoc.Label label : labels) {
-            boolean free = doc.inside(label.x(), label.y()) && !busy[label.x()][label.y()];
-            Character mark = labelMarks.get(label.text());
-            if (free && mark == null && nextMark < LABEL_MARKS.length()) {
-                mark = LABEL_MARKS.charAt(nextMark++);
-                labelMarks.put(label.text(), mark);
-                labelLines.add("  " + mark + ": " + label.text());
+        int[] nextMark = {0};
+        // M-22: уровни — по разделу «map:» снизу вверх, легенда общая
+        List<char[][]> grids = new ArrayList<>();
+        for (int level = 0; level < whole.levelCount(); level++) {
+            MapDoc doc = whole.level(level);
+            boolean ground = level == 0;
+            char[][] grid = new char[2 * h + 1][2 * w + 1];
+            for (char[] row : grid) {
+                java.util.Arrays.fill(row, ' ');
             }
-            if (free && mark != null) {
-                grid[2 * label.y() + 1][2 * label.x() + 1] = mark;
-                busy[label.x()][label.y()] = true;
-            } else {
-                labelLines.add("  " + label.x() + "," + label.y() + ": " + label.text());
+            // грани
+            doc.walls().forEach((key, value) -> {
+                String[] parts = key.split(",");
+                int x = Integer.parseInt(parts[0]);
+                int y = Integer.parseInt(parts[1]);
+                boolean horizontal = "h".equals(parts[2]);
+                Character ch = edgeChars.get(value);
+                if (ch == null && spareEdge[0] < SPARE_EDGES.length()) {
+                    ch = SPARE_EDGES.charAt(spareEdge[0]++);
+                    edgeChars.put(value, ch);
+                    edgeLegend.add("edge " + ch + " = " + value);
+                }
+                if (ch == null) {
+                    return;
+                }
+                if (ch == '-' && value.equals(roomValue) && !horizontal) {
+                    ch = '|';
+                }
+                if (horizontal) {
+                    grid[2 * y][2 * x + 1] = ch;
+                } else {
+                    grid[2 * y + 1][2 * x] = ch;
+                }
+            });
+            // углы — для глаза
+            for (int r = 0; r <= 2 * h; r += 2) {
+                for (int c = 0; c <= 2 * w; c += 2) {
+                    boolean wall = (c > 0 && grid[r][c - 1] != ' ') || (c < 2 * w && grid[r][c + 1] != ' ')
+                            || (r > 0 && grid[r - 1][c] != ' ') || (r < 2 * h && grid[r + 1][c] != ' ');
+                    if (wall) {
+                        grid[r][c] = '+';
+                    }
+                }
             }
+            // клетки: местность, предметы, зоны
+            boolean[][] busy = new boolean[w][h];
+            doc.cells().forEach((key, material) -> {
+                String[] parts = key.split(",");
+                int x = Integer.parseInt(parts[0]);
+                int y = Integer.parseInt(parts[1]);
+                Character ch = spareFor(material, cellChars, cellLegend, spareCell);
+                if (ch != null) {
+                    grid[2 * y + 1][2 * x + 1] = ch;
+                }
+            });
+            for (int y = 0; y < h; y++) {
+                for (int x = 0; x < w; x++) {
+                    if (grid[2 * y + 1][2 * x + 1] == ' ') {
+                        grid[2 * y + 1][2 * x + 1] = '.';
+                    }
+                }
+            }
+            for (MapDoc.Stamp stamp : doc.stamps()) {
+                MapObject object = rules.object(stamp.code()).orElse(null);
+                Character ch = object == null ? null : spareFor(stamp.code(), cellChars, cellLegend, spareCell);
+                if (ch == null) {
+                    continue;
+                }
+                for (int dy = 0; dy < object.height(stamp.rot()); dy++) {
+                    for (int dx = 0; dx < object.width(stamp.rot()); dx++) {
+                        int x = stamp.x() + dx;
+                        int y = stamp.y() + dy;
+                        if (doc.inside(x, y)) {
+                            grid[2 * y + 1][2 * x + 1] = ch;
+                            busy[x][y] = true;
+                        }
+                    }
+                }
+            }
+            for (MapDoc.Zone zone : doc.zones()) {
+                Character ch = cellChars.get(zone.kind());
+                for (int y = zone.y(); y < zone.y() + zone.h(); y++) {
+                    for (int x = zone.x(); x < zone.x() + zone.w(); x++) {
+                        if (ch != null && doc.inside(x, y) && !busy[x][y]) {
+                            grid[2 * y + 1][2 * x + 1] = ch;
+                            busy[x][y] = true;
+                        }
+                    }
+                }
+            }
+            // подписи: меткой в рисунке, если клетка свободна, иначе координатами
+            // по рядам, как их читает parse: второй круг даёт тот же текст
+            List<MapDoc.Label> labels = new ArrayList<>(doc.labels());
+            labels.sort(java.util.Comparator.comparingInt(MapDoc.Label::y).thenComparingInt(MapDoc.Label::x));
+            for (MapDoc.Label label : labels) {
+                boolean free = doc.inside(label.x(), label.y()) && !busy[label.x()][label.y()];
+                Character mark = labelMarks.get(label.text());
+                if (free && mark == null && nextMark[0] < LABEL_MARKS.length()) {
+                    mark = LABEL_MARKS.charAt(nextMark[0]++);
+                    labelMarks.put(label.text(), mark);
+                    labelLines.add("  " + mark + ": " + label.text());
+                }
+                if (free && mark != null) {
+                    grid[2 * label.y() + 1][2 * label.x() + 1] = mark;
+                    busy[label.x()][label.y()] = true;
+                } else if (ground) {
+                    labelLines.add("  " + label.x() + "," + label.y() + ": " + label.text());
+                }
+            }
+            grids.add(grid);
         }
 
         StringBuilder out = new StringBuilder();
         out.append("# Charka — текстовая карта. Формат: docs/map-format.md\n");
         out.append("name: ").append(name == null ? "" : name).append('\n');
         out.append("size: ").append(w).append('x').append(h).append('\n');
-        out.append("cell: ").append(doc.cell()).append('\n');
+        out.append("cell: ").append(whole.cell()).append('\n');
         if (!cellLegend.isEmpty() || !edgeLegend.isEmpty()) {
             out.append("legend:\n");
             cellLegend.forEach(line -> out.append("  ").append(line).append('\n'));
@@ -730,9 +785,17 @@ public final class MapText {
             out.append("labels:\n");
             labelLines.forEach(line -> out.append(line).append('\n'));
         }
-        out.append("map:\n");
-        for (char[] row : grid) {
-            out.append(new String(row).stripTrailing()).append('\n');
+        for (int level = 0; level < grids.size(); level++) {
+            if (whole.levelCount() == 1) {
+                out.append("map:\n");
+            } else {
+                int z = whole.levelZ(level);
+                boolean usual = z == level * MapDoc.FLOOR_HEIGHT;
+                out.append("map: ").append(level).append(' ').append(whole.levelName(level)).append(usual ? "" : " z=" + z).append('\n');
+            }
+            for (char[] row : grids.get(level)) {
+                out.append(new String(row).stripTrailing()).append('\n');
+            }
         }
         return out.toString();
     }

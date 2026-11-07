@@ -58,7 +58,7 @@
 - Сквозь укрытие стреляют: «shoot through the door; the penalties for blind firing won't stop you if you're at point blank range». Числа «blind firing» в таблице модификаторов (с. 99) нет — в коде −3, как «Blinded by light or dust» (HOMEBREW, M-14).
 - Низкая стена: попадание в ногу (7–8 по таблице зон) «pretty silly. Ignore it and re-roll» (с. 104). В коде не сделано: укрытие действует на все зоны своим SP.
 
-- Высота (с. 103): «cover doesn't count jack if the guy shooting at you is higher than you are» — укрытие не действует, если стрелок выше цели. Падения в книге нет; прыжок — LEAP = RUN / 4 с разбега (с. 21), пара киберног — 6 м вверх, 8 м с разбега (с. 90).
+- Высота (с. 103): «cover doesn't count jack if the guy shooting at you is higher than you are» — укрытие не действует, если стрелок выше цели. В коде — для стрельбы с верхнего уровня карты (`LevelMap.sight`, M-22); на одном уровне выбор за мастером. Падения в книге нет; прыжок — LEAP = RUN / 4 с разбега (с. 21), пара киберног — 6 м вверх, 8 м с разбега (с. 90).
 - Разрушения укрытий в книге нет (износ −1 SP при пробитии — только у брони, с. 101). Дым и пыль — модификатор «Blinded by light or dust» −3 (с. 99). Куда уходит промах, книга не говорит. В коде — хоумбрю M-17 и M-23 (таблица в `TODO.md`).
 
 **Линия взгляда и обзор (с. 104, рисунок с. 107).** «Whenever you are facing your target and have a clear path between you, you can attack. You can clearly see anything forward of your shoulders.» Стоящего позади не видно. Разворот к цели −2 (таблица с. 99). В коде (M-14): чистый путь по карте — `MapGrid.sight`; направления фишки нет (BACKLOG M-15).

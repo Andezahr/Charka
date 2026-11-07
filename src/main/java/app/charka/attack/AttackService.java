@@ -220,6 +220,14 @@ public class AttackService {
      */
     @Transactional
     public AttackResult detonate(Long campaignId, int x, int y, Long byCharacterId) {
+        return detonate(campaignId, 0, x, y, byCharacterId);
+    }
+
+    /**
+     * @param level M-22: уровень карты
+     */
+    @Transactional
+    public AttackResult detonate(Long campaignId, int level, int x, int y, Long byCharacterId) {
         Character by = byCharacterId == null ? null : characterRepository.findById(byCharacterId)
                 .filter(found -> found.getCampaign() != null && found.getCampaign().getId().equals(campaignId))
                 .orElseThrow(CharacterNotFoundException.forId(byCharacterId));
@@ -231,7 +239,7 @@ public class AttackService {
         }
         return journalService.capture(() -> {
             List<String> steps = new ArrayList<>();
-            MapBlast.Result changed = mapBlast.detonate(campaignId, x, y, diceRoller);
+            MapBlast.Result changed = mapBlast.detonate(campaignId, level, x, y, diceRoller);
             steps.addAll(changed.steps());
             int caught = detonations(by, rules, changed, steps);
             String what = changed.detonations().stream().map(MapBlast.Detonation::label).collect(Collectors.joining(", "));

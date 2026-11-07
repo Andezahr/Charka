@@ -67,7 +67,7 @@ public class CampaignSnapshots {
     /** Что не откатывается и не делает действие отменяемым: карта боя и положение фишек */
     private static final Map<String, Set<String>> KEPT = Map.of(
             "encounter", Set.of("map_doc"),
-            "encounter_participant", Set.of("pos_x", "pos_y"));
+            "encounter_participant", Set.of("pos_x", "pos_y", "pos_level"));
 
     /**
      * @param currentDate игровая дата кампании, ISO
@@ -184,8 +184,8 @@ public class CampaignSnapshots {
         jdbc.query("SELECT id, map_doc FROM encounter WHERE campaign_id = ?", rs -> {
             kept.put("encounter:" + rs.getLong(1), mapOf("map_doc", rs.getString(2)));
         }, campaignId);
-        jdbc.query(PARTICIPANTS.replace("SELECT p.id", "SELECT p.id, p.pos_x, p.pos_y").replace("{C}", "?"), rs -> {
-            kept.put("encounter_participant:" + rs.getLong(1), mapOf("pos_x", rs.getObject(2), "pos_y", rs.getObject(3)));
+        jdbc.query(PARTICIPANTS.replace("SELECT p.id", "SELECT p.id, p.pos_x, p.pos_y, p.pos_level").replace("{C}", "?"), rs -> {
+            kept.put("encounter_participant:" + rs.getLong(1), mapOf("pos_x", rs.getObject(2), "pos_y", rs.getObject(3), "pos_level", rs.getObject(4)));
         }, campaignId);
         return kept;
     }

@@ -79,6 +79,9 @@ final class Cp2020MapRules implements MapRules {
         materials.add(Material.difficult("water", "Вода"));
         // M-23: дым закрывает взгляд; стрельба сквозь него — «Blinded by light or dust» −3 (с. 99), как вслепую
         materials.add(Material.smoke("smoke", "Дым"));
+        // M-22: уровни карты
+        materials.add(Material.voidCell());
+        materials.add(Material.stairs());
         // M-23, HOMEBREW: взрывоопасное — прочность как у бака и бочки, урон и радиус в EXPLOSIVES
         materials.add(Material.explosive("cover_fuel_barrel", "Бочка с горючим", 5));
         materials.add(Material.explosive("cover_gas_cylinder", "Газовый баллон", 10));

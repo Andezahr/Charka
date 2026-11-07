@@ -190,6 +190,8 @@
       </label>
       <!-- A-15: режим мастера на этом устройстве — «Бог» или «За NPC»; надпись ставит app.js (applyGmMode) -->
       <button th:if="${isGm}" type="button" class="btn btn-sm btn-ghost gm-mode" data-gm-mode>👁 Бог</button>
+      <!-- M-22: фишка на лестнице — «⇅ На 2 этаж» одним нажатием -->
+      <span class="battle-climb" data-battle-climb hidden></span>
       <button type="button" class="btn btn-sm btn-ghost" data-battle-pointer title="Показать клетку всем (Alt+нажатие, долгое нажатие)">👆 Указать</button>
       <button type="button" class="btn btn-sm btn-ghost" data-battle-ruler title="Измерить расстояние: тяните от клетки к клетке">📏 Линейка</button>
       <span class="battle-zoom">
@@ -242,6 +244,8 @@
         </div>
       </div>
       <th:block th:if="${hasField}">
+        <!-- M-22: вкладки уровней многоуровневой карты; app.js заполняет, у плоской карты скрыты -->
+        <div class="battle-levels" data-battle-levels hidden></div>
         <div class="battle-holder">
           <div class="battle-stage" data-battle-fill th:attr="data-gm=${isGm},data-battle=@{${base} + '/map'},data-turn=${view.encounter.round + ':' + (view.current != null ? view.current.id : '')}"></div>
           <div class="battle-menu" data-battle-menu hidden></div>

@@ -46,9 +46,11 @@ public class BattleFieldService {
      * @param alarming состояние требует внимания: красное кольцо
      * @param moved    сколько метров пробежал в этом раунде
      * @param actionOption модификатор атаки за следующее действие в раунде (A-05: после бега и выстрела); null — нет
+     * @param level        M-22: уровень карты, 0 — нижний
      */
     public record Token(Long id, Long character, String name, String initials, boolean npc, Integer x, Integer y,
-                        boolean current, boolean done, boolean out, boolean alarming, String status, int moved, String actionOption) {
+                        boolean current, boolean done, boolean out, boolean alarming, String status, int moved, String actionOption,
+                        int level) {
     }
 
     /**
@@ -60,9 +62,10 @@ public class BattleFieldService {
      * @param materials материалы системы
      * @param objects   готовые предметы системы
      * @param fog       M-16: что видят персонажи игрока, по клетке на символ ({@code 1} — видно); null — туман не действует
+     * @param fogLevels M-22: то же по уровням карты, {@code fog} — нижний; null — туман не действует
      */
     public record Field(Long mapId, String turn, MapDoc doc, String metric, List<Material> materials, List<MapObject> objects,
-                        List<Token> tokens, List<PointerBoard.Pointer> pointers, String backgroundUrl, String fog) {
+                        List<Token> tokens, List<PointerBoard.Pointer> pointers, String backgroundUrl, String fog, List<String> fogLevels) {
     }
 
     /**
@@ -83,42 +86,56 @@ public class BattleFieldService {
      * M-16: туман для игроков.
      *
      * @param hidden участники, которых игрок не видит
-     * @param cells  клетки, видимые хоть одному его персонажу; null — тумана нет
+     * @param cells  клетки, видимые хоть одному его персонажу, по уровням карты; null — тумана нет
      */
-    private record Fog(Set<Long> hidden, String cells) {
+    private record Fog(Set<Long> hidden, List<String> cells) {
 
         static final Fog NONE = new Fog(Set.of(), null);
+
+        String ground() {
+            return cells == null ? null : cells.get(0);
+        }
     }
 
     /**
      * Что скрыто от игрока. Свои и персонажи других игроков видны всегда (HOMEBREW: команда знает, где свои),
      * NPC — только если его клетку видит хоть один персонаж игрока на карте хотя бы краем.
      */
-    private Fog fog(Encounter encounter, MapGrid grid, Viewer viewer) {
+    private Fog fog(Encounter encounter, Viewer viewer) {
         if (viewer.gm() || !encounter.getCampaign().isFogOfWar()) {
             return Fog.NONE;
         }
-        boolean[] seen = new boolean[grid.doc().w() * grid.doc().h()];
+        LevelMap levels = levels(encounter);
+        int size = levels.doc().w() * levels.doc().h();
+        boolean[][] seen = new boolean[levels.levels()][size];
         encounter.getParticipants().stream()
-                .filter(p -> p.getPosX() != null && viewer.mine().contains(p.getCharacter().getId()))
+                .filter(p -> p.getPosX() != null && viewer.mine().contains(p.getCharacter().getId()) && levels.doc().hasLevel(p.getPosLevel()))
                 .forEach(eye -> {
-                    boolean[] visible = grid.visibleFrom(eye.getPosX(), eye.getPosY());
-                    for (int i = 0; i < seen.length; i++) {
-                        seen[i] |= visible[i];
+                    // M-22: со своего уровня и вниз сквозь пустоту
+                    boolean[][] visible = levels.visibleFrom(eye.getPosLevel(), eye.getPosX(), eye.getPosY());
+                    for (int l = 0; l < seen.length; l++) {
+                        for (int i = 0; i < size; i++) {
+                            seen[l][i] |= visible[l][i];
+                        }
                     }
                 });
         Set<Long> hidden = new HashSet<>();
         for (EncounterParticipant p : encounter.getParticipants()) {
             boolean ally = !p.getCharacter().isNpc() || viewer.mine().contains(p.getCharacter().getId());
-            if (!ally && (p.getPosX() == null || !seen[p.getPosY() * grid.doc().w() + p.getPosX()])) {
+            boolean placed = p.getPosX() != null && levels.doc().hasLevel(p.getPosLevel());
+            if (!ally && (!placed || !seen[p.getPosLevel()][p.getPosY() * levels.doc().w() + p.getPosX()])) {
                 hidden.add(p.getId());
             }
         }
-        StringBuilder cells = new StringBuilder(seen.length);
-        for (boolean visible : seen) {
-            cells.append(visible ? '1' : '0');
+        List<String> cells = new java.util.ArrayList<>();
+        for (boolean[] level : seen) {
+            StringBuilder line = new StringBuilder(size);
+            for (boolean visible : level) {
+                line.append(visible ? '1' : '0');
+            }
+            cells.add(line.toString());
         }
-        return new Fog(hidden, cells.toString());
+        return new Fog(hidden, cells);
     }
 
     /**
@@ -129,7 +146,7 @@ public class BattleFieldService {
         return encounterRepository.findByCampaignId(campaignId)
                 .filter(encounter -> encounter.getMapDoc() != null)
                 .map(encounter -> {
-                    Set<Long> hidden = fog(encounter, grid(encounter), viewer).hidden();
+                    Set<Long> hidden = fog(encounter, viewer).hidden();
                     if (hidden.isEmpty()) {
                         return java.util.Map.<String, Boolean>of();
                     }
@@ -148,7 +165,7 @@ public class BattleFieldService {
     public Set<Long> hiddenFor(Long campaignId, Viewer viewer) {
         return encounterRepository.findByCampaignId(campaignId)
                 .filter(encounter -> encounter.getMapDoc() != null)
-                .map(encounter -> fog(encounter, grid(encounter), viewer).hidden())
+                .map(encounter -> fog(encounter, viewer).hidden())
                 .orElse(Set.of());
     }
 
@@ -171,17 +188,18 @@ public class BattleFieldService {
         }
         Encounter encounter = view.get().encounter();
         MapRules rules = rules(encounter);
-        Fog fog = fog(encounter, grid(encounter), viewer);
+        Fog fog = fog(encounter, viewer);
         List<Token> tokens = view.get().rows().stream().filter(row -> !fog.hidden().contains(row.participant().getId())).map(row -> {
             EncounterParticipant participant = row.participant();
             return new Token(participant.getId(), row.character().getId(), row.character().getName(), initials(row.character().getName()),
                     row.character().isNpc(), participant.getPosX(), participant.getPosY(), row.current(), participant.isDone(),
-                    row.card().out(), row.card().alarming(), row.card().status(), participant.getMovedMeters(), row.actionOption());
+                    row.card().out(), row.card().alarming(), row.card().status(), participant.getMovedMeters(), row.actionOption(),
+                    participant.getPosLevel());
         }).toList();
         String turn = encounter.getRound() + ":" + (view.get().current() == null ? "" : view.get().current().getId());
         MapDoc doc = MapDoc.parse(encounter.getMapDoc());
         return Optional.of(new Field(encounter.getBattleMapId(), turn, doc, rules.metric(), rules.materials(), rules.objects(), tokens,
-                pointerBoard.live(campaignId), EditableMap.backgroundUrl(campaignId, encounter.getBattleMapId(), doc), fog.cells()));
+                pointerBoard.live(campaignId), EditableMap.backgroundUrl(campaignId, encounter.getBattleMapId(), doc), fog.ground(), fog.cells()));
     }
 
     public void move(Long campaignId, Long participantId, int x, int y) {
@@ -197,18 +215,41 @@ public class BattleFieldService {
      */
     @Transactional
     public void move(Long campaignId, Long participantId, int x, int y, boolean free) {
+        move(campaignId, participantId, x, y, free, null);
+    }
+
+    /**
+     * M-22: то же на уровне карты. Уровень меняют только фишка из лотка и мастер без ограничения бега; остальные — по лестнице
+     * ({@link #climb}).
+     *
+     * @param level уровень; null — тот же, где фишка
+     * @throws IllegalArgumentException если уровня нет или фишка на карте переходит на другой уровень не по лестнице
+     */
+    @Transactional
+    public void move(Long campaignId, Long participantId, int x, int y, boolean free, Integer level) {
         Encounter encounter = withMap(campaignId);
         EncounterParticipant participant = participant(encounter, participantId);
-        MapGrid grid = grid(encounter);
+        LevelMap levels = levels(encounter);
+        int target = level == null ? participant.getPosLevel() : level;
+        if (!levels.doc().hasLevel(target)) {
+            throw new IllegalArgumentException("Нет такого уровня карты");
+        }
+        if (target != participant.getPosLevel() && participant.getPosX() != null && !free) {
+            throw new IllegalArgumentException("На другой уровень — по лестнице");
+        }
+        if (target != participant.getPosLevel()) {
+            participant.setPosLevel(target);
+            participant.setPosX(null);
+            participant.setPosY(null);
+        }
+        MapGrid grid = levels.grid(target);
         if (!grid.doc().inside(x, y)) {
             throw new IllegalArgumentException("За краем карты");
         }
         if (grid.blocked(x, y)) {
             throw new IllegalArgumentException("Туда не встать: " + grid.material(x, y).map(Material::label).orElse("занято"));
         }
-        boolean taken = encounter.getParticipants().stream()
-                .anyMatch(other -> other != participant && Integer.valueOf(x).equals(other.getPosX()) && Integer.valueOf(y).equals(other.getPosY()));
-        if (taken) {
+        if (taken(encounter, participant, target, x, y)) {
             throw new IllegalArgumentException("Клетка занята");
         }
         Integer run = free || participant.getPosX() == null ? null : runOf(encounter, participant);
@@ -243,8 +284,16 @@ public class BattleFieldService {
      */
     @Transactional
     public String addToken(Long campaignId, Long characterId, String template, int x, int y) {
+        return addToken(campaignId, characterId, template, x, y, 0);
+    }
+
+    /**
+     * @param level M-22: уровень карты
+     */
+    @Transactional
+    public String addToken(Long campaignId, Long characterId, String template, int x, int y, int level) {
         Encounter encounter = withMap(campaignId);
-        MapGrid grid = grid(encounter);
+        MapGrid grid = levels(encounter).grid(level);
         if (!grid.doc().inside(x, y)) {
             throw new IllegalArgumentException("За краем карты");
         }
@@ -259,11 +308,10 @@ public class BattleFieldService {
                     encounterService.add(campaignId, id);
                     return encounter.getParticipants().stream().filter(p -> p.getCharacter().getId().equals(id)).findFirst().orElseThrow();
                 });
-        boolean taken = encounter.getParticipants().stream()
-                .anyMatch(other -> other != participant && Integer.valueOf(x).equals(other.getPosX()) && Integer.valueOf(y).equals(other.getPosY()));
-        if (taken) {
+        if (taken(encounter, participant, level, x, y)) {
             throw new IllegalArgumentException("Клетка занята");
         }
+        participant.setPosLevel(level);
         participant.setPosX(x);
         participant.setPosY(y);
         return participant.getCharacter().getName();
@@ -297,7 +345,7 @@ public class BattleFieldService {
             return new Reach(run, run, List.of());
         }
         int left = Math.max(0, run - participant.getMovedMeters());
-        return new Reach(left, run, grid(encounter).reach(participant.getPosX(), participant.getPosY(), left));
+        return new Reach(left, run, levels(encounter).grid(participant.getPosLevel()).reach(participant.getPosX(), participant.getPosY(), left));
     }
 
     /**
@@ -341,16 +389,21 @@ public class BattleFieldService {
         if (from.getPosX() == null || to.getPosX() == null) {
             throw new IllegalArgumentException("Фишка не на карте");
         }
-        MapGrid grid = grid(encounter);
-        if (fog(encounter, grid, viewer).hidden().contains(to.getId())) {
+        if (fog(encounter, viewer).hidden().contains(to.getId())) {
             throw new IllegalArgumentException("Цель не видна");
         }
-        return sight(encounter, grid, rules(encounter), from, to);
+        return sight(encounter, levels(encounter), rules(encounter), from, to);
     }
 
-    private Sight sight(Encounter encounter, MapGrid grid, MapRules rules, EncounterParticipant from, EncounterParticipant to) {
-        int meters = rules.distance(grid.doc().cell(), from.getPosX(), from.getPosY(), to.getPosX(), to.getPosY());
-        MapGrid.Sight sight = grid.sight(from.getPosX(), from.getPosY(), to.getPosX(), to.getPosY(), COVER_NEAR_CELLS);
+    private Sight sight(Encounter encounter, LevelMap levels, MapRules rules, EncounterParticipant from, EncounterParticipant to) {
+        int meters = levels.distance(from.getPosLevel(), from.getPosX(), from.getPosY(), to.getPosLevel(), to.getPosX(), to.getPosY());
+        Optional<MapGrid.Sight> between = levels.sight(from.getPosLevel(), from.getPosX(), from.getPosY(),
+                to.getPosLevel(), to.getPosX(), to.getPosY(), COVER_NEAR_CELLS);
+        if (between.isEmpty()) {
+            // M-22: уровни не видят друг друга здесь — пол или перекрытие между ними
+            return new Sight(meters, true, null, null, MapGrid.Visibility.NONE.name().toLowerCase(), 0, null, null, List.of());
+        }
+        MapGrid.Sight sight = between.get();
         boolean hidden = sight.visibility() == MapGrid.Visibility.NONE;
         // вслепую — только если система знает такой модификатор
         Optional<Material> through = rules.blindFireOption() == null ? Optional.empty() : sight.through();
@@ -361,7 +414,7 @@ public class BattleFieldService {
             throughLabel = throughLabel == null ? "дым" : "дым и " + throughLabel;
         }
         List<String> inTheWay = encounter.getParticipants().stream()
-                .filter(p -> p != from && p != to && p.getPosX() != null)
+                .filter(p -> p != from && p != to && p.getPosX() != null && p.getPosLevel() == from.getPosLevel())
                 .filter(p -> sight.path().stream().anyMatch(cell -> cell[0] == p.getPosX() && cell[1] == p.getPosY()))
                 .map(p -> p.getCharacter().getName()).toList();
         return new Sight(meters, hidden, cover.map(Material::code).orElse(null), cover.map(Material::label).orElse(null),
@@ -403,8 +456,9 @@ public class BattleFieldService {
         if (!viewer.gm() && !viewer.mine().contains(from.getCharacter().getId())) {
             throw new IllegalArgumentException("Поле видимости — только своих персонажей");
         }
-        MapGrid grid = grid(encounter);
-        Set<Long> hidden = fog(encounter, grid, viewer).hidden();
+        LevelMap levels = levels(encounter);
+        MapGrid grid = levels.grid(levels.doc().hasLevel(from.getPosLevel()) ? from.getPosLevel() : 0);
+        Set<Long> hidden = fog(encounter, viewer).hidden();
         if (from.getPosX() == null) {
             return new View(grid.doc().w(), "", List.of());
         }
@@ -416,7 +470,7 @@ public class BattleFieldService {
         List<TargetView> targets = encounter.getParticipants().stream()
                 .filter(p -> p != from && p.getPosX() != null && !hidden.contains(p.getId()))
                 .map(p -> {
-                    Sight sight = sight(encounter, grid, rules, from, p);
+                    Sight sight = sight(encounter, levels, rules, from, p);
                     return new TargetView(p.getId(), sight.visibility(), sight.canShoot(), sight.coverLabel());
                 }).toList();
         return new View(grid.doc().w(), cells.toString(), targets);
@@ -429,14 +483,23 @@ public class BattleFieldService {
      */
     @Transactional
     public void toggleDoor(Long campaignId, String edgeKey) {
+        toggleDoor(campaignId, edgeKey, 0);
+    }
+
+    /**
+     * @param level M-22: уровень карты
+     */
+    @Transactional
+    public void toggleDoor(Long campaignId, String edgeKey, int level) {
         Encounter encounter = withMap(campaignId);
         MapDoc doc = MapDoc.parse(encounter.getMapDoc());
-        MapDoc.Edge edge = doc.edge(edgeKey);
+        MapDoc view = doc.level(level);
+        MapDoc.Edge edge = view.edge(edgeKey);
         if (edge == null || edge.kind() != MapDoc.Edge.Kind.DOOR) {
             throw new IllegalArgumentException("Здесь нет двери");
         }
-        doc.walls().put(edgeKey, new MapDoc.Edge(edge.kind(), edge.material(), !edge.open()).toString());
-        encounter.setMapDoc(doc.toJson());
+        view.walls().put(edgeKey, new MapDoc.Edge(edge.kind(), edge.material(), !edge.open()).toString());
+        encounter.setMapDoc(doc.withLevel(level, view).toJson());
     }
 
     /**
@@ -448,8 +511,17 @@ public class BattleFieldService {
      */
     @Transactional
     public String breakEdge(Long campaignId, String edgeKey, boolean gm) {
+        return breakEdge(campaignId, edgeKey, gm, 0);
+    }
+
+    /**
+     * @param level M-22: уровень карты
+     */
+    @Transactional
+    public String breakEdge(Long campaignId, String edgeKey, boolean gm, int level) {
         Encounter encounter = withMap(campaignId);
-        MapDoc doc = MapDoc.parse(encounter.getMapDoc());
+        MapDoc whole = MapDoc.parse(encounter.getMapDoc());
+        MapDoc doc = whole.level(level);
         MapDoc.Edge edge = doc.edge(edgeKey);
         if (edge == null || edge.kind() == MapDoc.Edge.Kind.GAP) {
             throw new IllegalArgumentException("Здесь нечего ломать");
@@ -458,7 +530,7 @@ public class BattleFieldService {
             throw new IllegalArgumentException("Стену ломает мастер — или взрыв");
         }
         doc.walls().put(edgeKey, "gap");
-        encounter.setMapDoc(doc.toJson());
+        encounter.setMapDoc(whole.withLevel(level, doc).toJson());
         String material = edge.material() == null ? "" : rules(encounter).material(edge.material()).map(m -> " (" + m.label() + ")").orElse("");
         return switch (edge.kind()) {
             case DOOR -> "Дверь выбита" + material;
@@ -475,13 +547,15 @@ public class BattleFieldService {
         Encounter encounter = withMap(campaignId);
         MapDoc doc = MapDoc.parse(json);
         encounter.setMapDoc(doc.toJson());
-        // фишки за новым краем или в новом предмете уходят в лоток
-        MapGrid grid = grid(encounter);
+        // фишки за новым краем, в новом предмете или на удалённом уровне уходят в лоток
+        LevelMap levels = levels(encounter);
         encounter.getParticipants().stream()
-                .filter(p -> p.getPosX() != null && grid.blocked(p.getPosX(), p.getPosY()))
+                .filter(p -> p.getPosX() != null
+                        && (!levels.doc().hasLevel(p.getPosLevel()) || levels.grid(p.getPosLevel()).blocked(p.getPosX(), p.getPosY())))
                 .forEach(p -> {
                     p.setPosX(null);
                     p.setPosY(null);
+                    p.setPosLevel(0);
                 });
     }
 
@@ -510,6 +584,7 @@ public class BattleFieldService {
         encounter.getParticipants().forEach(p -> {
             p.setPosX(null);
             p.setPosY(null);
+            p.setPosLevel(0);
         });
         TokenPlacer.place(encounter.getParticipants(), grid(encounter));
     }
@@ -526,6 +601,7 @@ public class BattleFieldService {
         encounter.getParticipants().forEach(p -> {
             p.setPosX(null);
             p.setPosY(null);
+            p.setPosLevel(0);
         });
         TokenPlacer.place(encounter.getParticipants(), grid(encounter));
     }
@@ -537,6 +613,57 @@ public class BattleFieldService {
             throw new IllegalArgumentException("За краем карты");
         }
         return pointerBoard.add(campaignId, x, y, fromX, fromY, who);
+    }
+
+    /**
+     * M-22: подняться или спуститься по лестнице: фишка на клетке лестницы переходит на соседний уровень в ту же клетку.
+     * Лестница стоит бега ({@link LevelMap#stairsCost}); мастер без ограничения не тратит.
+     *
+     * @param level куда; null — единственный, куда ведёт лестница
+     * @return куда пришёл: «2 этаж»
+     * @throws IllegalArgumentException если фишка не на лестнице, клетка наверху занята или бега не хватает
+     */
+    @Transactional
+    public String climb(Long campaignId, Long participantId, Integer level, boolean free) {
+        Encounter encounter = withMap(campaignId);
+        EncounterParticipant participant = participant(encounter, participantId);
+        if (participant.getPosX() == null) {
+            throw new IllegalArgumentException("Фишка не на карте");
+        }
+        LevelMap levels = levels(encounter);
+        List<Integer> to = levels.stairsFrom(participant.getPosLevel(), participant.getPosX(), participant.getPosY());
+        if (to.isEmpty()) {
+            throw new IllegalArgumentException("Здесь нет лестницы");
+        }
+        int target = level != null ? level : to.get(0);
+        if (!to.contains(target)) {
+            throw new IllegalArgumentException("Лестница не ведёт на этот уровень");
+        }
+        if (taken(encounter, participant, target, participant.getPosX(), participant.getPosY())) {
+            throw new IllegalArgumentException("Наверху занято");
+        }
+        Integer run = free ? null : runOf(encounter, participant);
+        if (run != null) {
+            int cost = levels.stairsCost(participant.getPosLevel(), target);
+            int left = Math.max(0, run - participant.getMovedMeters());
+            if (cost > left) {
+                throw new IllegalArgumentException("Лестница — " + cost + " м бега, осталось " + left + " из " + run + " м");
+            }
+            participant.setMovedMeters(participant.getMovedMeters() + cost);
+        }
+        participant.setPosLevel(target);
+        return levels.doc().levelName(target);
+    }
+
+    /** Клетка уровня занята другой фишкой */
+    private static boolean taken(Encounter encounter, EncounterParticipant participant, int level, int x, int y) {
+        return encounter.getParticipants().stream()
+                .anyMatch(other -> other != participant && other.getPosLevel() == level
+                        && Integer.valueOf(x).equals(other.getPosX()) && Integer.valueOf(y).equals(other.getPosY()));
+    }
+
+    private LevelMap levels(Encounter encounter) {
+        return new LevelMap(MapDoc.parse(encounter.getMapDoc()), rules(encounter));
     }
 
     private Encounter withMap(Long campaignId) {

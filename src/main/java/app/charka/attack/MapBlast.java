@@ -23,9 +23,11 @@ public interface MapBlast {
     /**
      * Подорвать взрывоопасный предмет в клетке: попали в бочку.
      *
+     * @param level M-22: уровень карты
+     *
      * @throws IllegalArgumentException если в клетке нечему взрываться
      */
-    Result detonate(Long campaignId, int x, int y, DiceRoller dice);
+    Result detonate(Long campaignId, int level, int x, int y, DiceRoller dice);
 
     /**
      * Подорванный предмет.

@@ -1420,6 +1420,21 @@ const battleMeters = (x1, y1, x2, y2) => Math.round(Math.hypot(x2 - x1, y2 - y1)
 
 const tokenById = id => battle.data && battle.data.tokens.find(token => token.id === id);
 
+// M-22: уровень многоуровневой карты как плоский документ — та же формула, что MapDoc.level
+const levelDoc = (doc, level) => {
+  if (!level || !doc.levels || !doc.levels.length) return doc;
+  const floor = doc.levels[level - 1];
+  if (!floor) return doc;
+  return { ...doc, walls: floor.walls, cells: floor.cells, stamps: floor.stamps, labels: floor.labels, zones: [], bg: null };
+};
+const levelName = (doc, level) => level ? doc.levels[level - 1].name : (doc.ground || '1 этаж');
+const levelCount = doc => 1 + ((doc.levels && doc.levels.length) || 0);
+// какой уровень показан: выбранный вкладкой, иначе уровень выбранной фишки
+const battleLevel = () => {
+  const count = battle.data ? levelCount(battle.data.doc) : 1;
+  return battle.level !== undefined && battle.level < count ? battle.level : 0;
+};
+
 function initBattle() {
   const stage = document.querySelector('[data-battle]');
   if (!stage) {
@@ -1620,6 +1635,8 @@ async function loadVision(id) {
 
 function selectToken(id) {
   battle.selected = id;
+  const chosen = tokenById(id);
+  if (chosen) battle.level = chosen.level || 0;
   battle.reach = null;
   battle.reachFor = null;
   battle.vision = null;
@@ -1643,7 +1660,7 @@ const zoomBattle = (factor, cx, cy) => {
 
 const MATERIAL_COLORS = { WALL: '#c7cfdb', DOOR: '#b7834a', WINDOW: '#7dd3fc', OBJECT: '#64748b', TERRAIN: '#3f3a2e' };
 // местность своего цвета; остальная — общим цветом TERRAIN
-const TERRAIN_COLORS = { water: '#1e40af', asphalt: '#2a303b', grass: '#1f4d2b', smoke: '#9ca3af' };
+const TERRAIN_COLORS = { water: '#1e40af', asphalt: '#2a303b', grass: '#1f4d2b', smoke: '#9ca3af', void: '#020305', stairs: '#6b5b3e' };
 // M-23: взрывоопасное — своим цветом, чтобы его было видно издалека
 const EXPLOSIVE_COLOR = '#c2410c';
 
@@ -1676,6 +1693,9 @@ function drawMapLayers(svg, doc, materials, objects, under, editing, backgroundU
       svg).appendChild(svgEl('title', {})).textContent = (material ? material.label : code)
       + (material && material.difficult ? ' · трудная местность: бег вдвое дороже' : '')
       + (material && material.smoke ? ' · закрывает взгляд, стрельба вслепую' : '');
+    if (code === 'stairs') {
+      svgEl('text', { x: (x + 0.5) * CELL, y: (y + 0.5) * CELL, class: 'battle-stairs' }, svg).textContent = '⇅';
+    }
   });
   doc.stamps.forEach(stamp => {
     const object = objects.get(stamp.code);
@@ -1733,7 +1753,8 @@ function renderBattle() {
   const stage = battle.stage;
   const data = battle.data;
   if (!stage || !data || !stage.isConnected) return;
-  const doc = data.doc;
+  const level = battleLevel();
+  const doc = levelDoc(data.doc, level);
   const width = doc.w * CELL;
   const height = doc.h * CELL;
   if (!battle.view) battle.view = { x: -CELL / 2, y: -CELL / 2, w: width + CELL, h: height + CELL };
@@ -1754,16 +1775,21 @@ function renderBattle() {
     const chosen = mine || (me === '' ? current : null);
     if (chosen) {
       battle.selected = chosen.id;
+      if (battle.level === undefined) battle.level = chosen.level || 0;
       loadReach(chosen.id);
     }
   }
+  renderLevels();
+  renderClimb();
+  const selectedToken = tokenById(battle.selected);
+  const onLevel = token => (token.level || 0) === level;
 
   const svg = svgEl('svg', {
     viewBox: [battle.view.x, battle.view.y, battle.view.w, battle.view.h].join(' '),
     class: 'battle-svg', role: 'img', 'aria-label': 'Карта боя', 'data-metric': data.metric
   });
   drawMapLayers(svg, doc, materials, objects, svg => {
-    if (battle.reach && battle.selected) {
+    if (battle.reach && battle.selected && selectedToken && onLevel(selectedToken)) {
       const group = svgEl('g', { class: 'battle-reach' }, svg);
       battle.reach.cells.forEach((cost, key) => {
         const [x, y] = key.split(',').map(Number);
@@ -1772,8 +1798,9 @@ function renderBattle() {
     }
     // тень вне поля видимости: подряд идущие клетки строки — один прямоугольник
     // M-16: игроку без выбранной своей фишки — туман по всем его персонажам (сервер не отдал скрытые фишки)
-    const own = battle.vision && battle.vision.id === battle.selected && battle.vision.cells;
-    const vision = own ? battle.vision : data.fog ? { w: doc.w, cells: data.fog } : null;
+    const own = battle.vision && battle.vision.id === battle.selected && battle.vision.cells && selectedToken && onLevel(selectedToken);
+    const fogCells = data.fogLevels ? data.fogLevels[level] : data.fog;
+    const vision = own ? battle.vision : fogCells ? { w: doc.w, cells: fogCells } : null;
     if (vision) {
       const fog = svgEl('g', { class: 'battle-fog' }, svg);
       const hatch = svgEl('pattern', { id: 'battle-fog-hatch', width: 10, height: 10, patternUnits: 'userSpaceOnUse', patternTransform: 'rotate(45)' }, fog);
@@ -1791,7 +1818,7 @@ function renderBattle() {
         }
       }
     }
-  }, false, data.backgroundUrl);
+  }, false, level === 0 ? data.backgroundUrl : null);
 
   const now = Date.now();
   data.pointers.forEach(pointer => {
@@ -1809,10 +1836,12 @@ function renderBattle() {
   });
 
   const seen = battle.vision && battle.vision.id === battle.selected ? battle.vision.targets : null;
-  data.tokens.filter(token => token.x !== null).forEach(token => {
+  // M-22: на показанном уровне — все фишки; с уровня ниже — те, что видны сквозь пустоту (притушены)
+  const throughVoid = token => (token.level || 0) < level && doc.cells[token.x + ',' + token.y] === 'void';
+  data.tokens.filter(token => token.x !== null && (onLevel(token) || throughVoid(token))).forEach(token => {
     const sight = seen && seen.get(token.id);
     const group = svgEl('g', {
-      class: 'battle-token' + (token.npc ? ' npc' : ' player') + (token.current ? ' is-current' : '') + (token.out ? ' is-out' : '')
+      class: 'battle-token' + (token.npc ? ' npc' : ' player') + (onLevel(token) ? '' : ' is-below') + (token.current ? ' is-current' : '') + (token.out ? ' is-out' : '')
         + (token.done ? ' is-done' : '') + (token.alarming ? ' is-alarming' : '') + (token.id === battle.selected ? ' is-selected' : '')
         + (String(token.character) === me ? ' is-me' : '')
         + (sight && sight.visibility === 'none' ? ' is-unseen' : '') + (sight && sight.visibility === 'partial' ? ' is-partial' : ''),
@@ -1820,7 +1849,8 @@ function renderBattle() {
       tabindex: 0, 'data-token': token.id, role: 'button',
       'aria-label': token.name + (token.status ? ', ' + token.status : '')
     }, svg);
-    svgEl('title', {}, group).textContent = token.name + (token.status ? ' · ' + token.status : '')
+    svgEl('title', {}, group).textContent = token.name + (onLevel(token) ? '' : ' · внизу: ' + levelName(data.doc, token.level || 0))
+      + (token.status ? ' · ' + token.status : '')
       + (sight ? ' · ' + (sight.visibility === 'none' ? (sight.canShoot ? 'не видна, только вслепую' : 'не видна')
         : sight.visibility === 'partial' ? 'видна частично' : 'видна') + (sight.cover ? ', укрытие: ' + sight.cover : '') : '');
     svgEl('circle', { r: CELL * 0.46, class: 'battle-token-ring' }, group);
@@ -1837,6 +1867,70 @@ function renderBattle() {
   stage.replaceChildren(svg);
   wireBattleSvg(svg);
   renderTray();
+}
+
+// M-22: вкладки уровней: название и сколько фишек там стоит
+function renderLevels() {
+  const holder = document.querySelector('[data-battle-levels]');
+  if (!holder || !battle.data) return;
+  const doc = battle.data.doc;
+  const count = levelCount(doc);
+  holder.hidden = count < 2;
+  holder.replaceChildren();
+  if (count < 2) return;
+  const shown = battleLevel();
+  for (let level = count - 1; level >= 0; level--) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    const here = battle.data.tokens.filter(token => token.x !== null && (token.level || 0) === level).length;
+    button.className = 'btn btn-sm' + (level === shown ? ' btn-primary' : ' btn-ghost');
+    button.textContent = levelName(doc, level) + (here ? ' · ' + here : '');
+    button.addEventListener('click', () => {
+      battle.level = level;
+      renderBattle();
+    });
+    holder.appendChild(button);
+  }
+}
+
+// M-22: выбранная фишка стоит на лестнице — кнопки «⇅ На 2 этаж»; та же проверка, что LevelMap.stairsFrom
+function renderClimb() {
+  const holder = document.querySelector('[data-battle-climb]');
+  if (!holder || !battle.data) return;
+  holder.replaceChildren();
+  const token = tokenById(battle.selected);
+  const doc = battle.data.doc;
+  const stairsAt = level => level >= 0 && level < levelCount(doc) && levelDoc(doc, level).cells[token.x + ',' + token.y] === 'stairs';
+  const from = token ? token.level || 0 : 0;
+  const targets = token && token.x !== null && stairsAt(from) ? [from + 1, from - 1].filter(stairsAt) : [];
+  holder.hidden = targets.length === 0 || lockedToken(token);
+  targets.forEach(level => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'btn btn-sm btn-primary';
+    button.textContent = (level > from ? '⇡ ' : '⇣ ') + levelName(doc, level);
+    button.title = 'По лестнице: ' + token.name + ' → ' + levelName(doc, level) + ' (бег за подъём — вдвое больше высоты)';
+    button.addEventListener('click', async () => {
+      try {
+        const response = await fetch(battle.url + '/participants/' + token.id + '/climb', {
+          method: 'POST', body: new URLSearchParams({ level })
+        });
+        const text = await response.text();
+        if (!response.ok) {
+          battleError(text);
+          return;
+        }
+        battle.level = level;
+        battleHint(token.name + ' → ' + text);
+        loadReach(token.id);
+      } catch (e) {
+        battleError('Нет связи с сервером');
+      }
+      battle.lastChange = Date.now();
+      pollBattle();
+    });
+    holder.appendChild(button);
+  });
 }
 
 // Линейка поверх фишек: от центра клетки к центру клетки, подпись — метры по мере системы и клетки
@@ -1899,13 +1993,15 @@ function renderTray() {
 }
 
 async function moveToken(token, x, y, free) {
-  const before = { x: token.x, y: token.y };
+  const before = { x: token.x, y: token.y, level: token.level };
+  // M-22: на другой уровень — только из лотка или мастер без ограничения; иначе сервер откажет
+  if (token.x === null || free) token.level = battleLevel();
   token.x = x;
   token.y = y;
   renderBattle();
   try {
     const response = await fetch(battle.url + '/participants/' + token.id + '/move', {
-      method: 'POST', body: new URLSearchParams({ x, y, free: Boolean(free) })
+      method: 'POST', body: new URLSearchParams({ x, y, free: Boolean(free), level: battleLevel() })
     });
     if (!response.ok) {
       Object.assign(token, before);
@@ -1929,7 +2025,7 @@ async function addToken(x, y) {
   const who = document.querySelector('[data-battle-add-who]');
   if (!who || !who.value) return;
   const [kind, value] = [who.value.slice(0, 2), who.value.slice(2)];
-  const params = new URLSearchParams({ x, y });
+  const params = new URLSearchParams({ x, y, level: battleLevel() });
   if (kind === 'c:') params.set('character', value);
   else params.set('template', value);
   try {
@@ -2152,7 +2248,7 @@ function wireBattleSvg(svg) {
 
 async function toggleDoor(edge) {
   try {
-    const response = await fetch(battle.url + '/door', { method: 'POST', body: new URLSearchParams({ edge }) });
+    const response = await fetch(battle.url + '/door', { method: 'POST', body: new URLSearchParams({ edge, level: battleLevel() }) });
     if (!response.ok) battleError(await response.text());
   } catch (e) {
     battleError('Нет связи с сервером');
@@ -2166,7 +2262,7 @@ function explosiveAt(x, y) {
   if (!battle.data) return false;
   const materials = new Map(battle.data.materials.map(material => [material.code, material]));
   const objects = new Map(battle.data.objects.map(object => [object.code, object]));
-  return battle.data.doc.stamps.some(stamp => {
+  return levelDoc(battle.data.doc, battleLevel()).stamps.some(stamp => {
     const object = objects.get(stamp.code);
     if (!object) return false;
     const rot = ((stamp.rot % 4) + 4) % 4;
@@ -2214,7 +2310,7 @@ function battleMenuAt(event, title, actions) {
 
 async function battlePost(path, params) {
   try {
-    const response = await fetch(battle.url + path, { method: 'POST', body: new URLSearchParams(params) });
+    const response = await fetch(battle.url + path, { method: 'POST', body: new URLSearchParams({ ...params, level: battleLevel() }) });
     const text = await response.text();
     if (response.ok) battleHint(text);
     else battleError(text);
@@ -2486,7 +2582,7 @@ function openAttackFromMap(dialog, target, sight) {
 
 // Редактор карты (M-06, M-07). Все инструменты — операции над словарями документа: грань стены — ключ «x,y,h|v»,
 // поэтому общая стена двух комнат одна сама собой, а ластик удаляет ключ. Документ сохраняется целиком через 2 с после правки
-const editor = { url: null, data: null, doc: null, undo: [], redo: [], tool: 'room', size: 1, rot: 0, zone: 'players', gap: 1,
+const editor = { url: null, data: null, doc: null, root: null, level: 0, undo: [], redo: [], tool: 'room', size: 1, rot: 0, zone: 'players', gap: 1,
   density: 15, saveTimer: null, view: null, selection: null, clipboard: null, hover: null, space: false };
 
 const EDITOR_TOOLS = { k: 'calibrate', r: 'room', w: 'wall', f: 'fill', b: 'brush', o: 'object', l: 'row', s: 'scatter', z: 'zone', t: 'label', v: 'select', x: 'eraser' };
@@ -2508,7 +2604,7 @@ function initEditor() {
     return;
   }
   if (editor.url !== holder.dataset.mapEditor) {
-    Object.assign(editor, { url: holder.dataset.mapEditor, data: null, doc: null, undo: [], redo: [], view: null, selection: null });
+    Object.assign(editor, { url: holder.dataset.mapEditor, data: null, doc: null, root: null, level: 0, undo: [], redo: [], view: null, selection: null });
   }
   editor.tool = editorMemory('tool') || 'room';
   holder.querySelectorAll('[data-tool]').forEach(button => button.addEventListener('click', () => setTool(button.dataset.tool)));
@@ -2516,14 +2612,70 @@ function initEditor() {
   holder.querySelector('[data-editor-redo]').addEventListener('click', redoEdit);
   // правка ещё не сохранена — рисуем своё; иначе берём с сервера: «Ещё вариант» заменил карту там
   if (editor.data && editor.saveTimer) {
+    renderEditorLevels();
     renderEditor();
     return;
   }
   fetch(editor.url, { cache: 'no-store' }).then(response => response.json()).then(data => {
     editor.data = data;
-    editor.doc = data.doc;
-    renderEditor();
+    editor.root = data.doc;
+    setEditorLevel(0);
   }).catch(() => editorStatus('Карта не загрузилась', true));
+}
+
+// M-22: правится один уровень — его вид делит стены, клетки, предметы и подписи с корнем документа
+function setEditorLevel(level, silent) {
+  const root = editor.root;
+  root.levels = root.levels || [];
+  editor.level = Math.min(Math.max(0, level), root.levels.length);
+  editor.doc = levelDoc(root, editor.level);
+  editor.selection = null;
+  renderEditorLevels();
+  if (!silent) renderEditor();
+}
+
+function renderEditorLevels() {
+  const holder = document.querySelector('[data-editor-levels]');
+  if (!holder || !editor.root) return;
+  holder.replaceChildren();
+  const count = levelCount(editor.root);
+  for (let level = count - 1; level >= 0; level--) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'btn btn-sm' + (level === editor.level ? ' btn-primary' : ' btn-ghost');
+    button.textContent = levelName(editor.root, level);
+    button.title = 'Править этот уровень. Лестница — клетка «Лестница» на соседних уровнях в одном месте, «Пустота» — видно вниз';
+    button.addEventListener('click', () => setEditorLevel(level));
+    holder.appendChild(button);
+  }
+  const add = document.createElement('button');
+  add.type = 'button';
+  add.className = 'btn btn-sm btn-ghost';
+  add.textContent = '＋ Этаж';
+  add.title = 'Новый уровень над верхним: этаж, крыша, балкон';
+  add.addEventListener('click', () => {
+    beginEdit();
+    const number = levelCount(editor.root);
+    editor.root.levels.push({ name: (number + 1) + ' этаж', z: number * 3, walls: {}, cells: {}, stamps: [], labels: [] });
+    setEditorLevel(number);
+    editDone();
+  });
+  holder.appendChild(add);
+  if (editor.level > 0 && editor.level === count - 1) {
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'btn btn-sm btn-ghost';
+    remove.textContent = '✕ Уровень';
+    remove.title = 'Убрать верхний уровень со всем, что на нём нарисовано';
+    remove.addEventListener('click', () => {
+      if (!confirm('Убрать уровень «' + levelName(editor.root, editor.level) + '» со всем, что на нём?')) return;
+      beginEdit();
+      editor.root.levels.pop();
+      setEditorLevel(editor.level - 1);
+      editDone();
+    });
+    holder.appendChild(remove);
+  }
 }
 
 const editorStatus = (text, error) => {
@@ -2560,7 +2712,7 @@ const toolObject = () => {
 
 // Снимок до правки: Ctrl+Z возвращает его
 const beginEdit = () => {
-  editor.undo.push(JSON.stringify(editor.doc));
+  editor.undo.push(JSON.stringify(editor.root));
   if (editor.undo.length > 100) editor.undo.shift();
   editor.redo = [];
 };
@@ -2577,7 +2729,7 @@ async function saveEditor() {
   editor.saveTimer = null;
   editorStatus('Сохраняю…');
   try {
-    const response = await fetch(editor.url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editor.doc) });
+    const response = await fetch(editor.url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editor.root) });
     if (!response.ok) {
       editorStatus('Не сохранено: ' + await response.text(), true);
       return;
@@ -2590,15 +2742,17 @@ async function saveEditor() {
 
 function undoEdit() {
   if (!editor.undo.length) return;
-  editor.redo.push(JSON.stringify(editor.doc));
-  editor.doc = JSON.parse(editor.undo.pop());
+  editor.redo.push(JSON.stringify(editor.root));
+  editor.root = JSON.parse(editor.undo.pop());
+  setEditorLevel(editor.level, true);
   editDone();
 }
 
 function redoEdit() {
   if (!editor.redo.length) return;
-  editor.undo.push(JSON.stringify(editor.doc));
-  editor.doc = JSON.parse(editor.redo.pop());
+  editor.undo.push(JSON.stringify(editor.root));
+  editor.root = JSON.parse(editor.redo.pop());
+  setEditorLevel(editor.level, true);
   editDone();
 }
 
@@ -2606,7 +2760,7 @@ function redoEdit() {
 window.addEventListener('pagehide', () => {
   if (editor.url && editor.saveTimer && editor.doc) {
     // keepalive вместо sendBeacon: маяку не задать заголовок CSRF
-    fetch(editor.url, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editor.doc) });
+    fetch(editor.url, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editor.root) });
   }
 });
 
@@ -2765,7 +2919,9 @@ function eraseAt(hit) {
   delete editor.doc.cells[cellKey(hit.x, hit.y)];
   const index = stampAt(hit.x, hit.y);
   if (index >= 0) editor.doc.stamps.splice(index, 1);
-  editor.doc.labels = editor.doc.labels.filter(label => label.x !== hit.x || label.y !== hit.y);
+  // на месте: у верхнего уровня список общий с документом (M-22)
+  const keptLabels = editor.doc.labels.filter(label => label.x !== hit.x || label.y !== hit.y);
+  editor.doc.labels.splice(0, editor.doc.labels.length, ...keptLabels);
   editor.doc.zones = editor.doc.zones.filter(zone => !(hit.x >= zone.x && hit.y >= zone.y && hit.x < zone.x + zone.w && hit.y < zone.y + zone.h));
 }
 
