@@ -37,6 +37,9 @@ public class RollRequestService {
 
     public static final String SKILL_PREFIX = "skill:";
     public static final String SAVE_PREFIX = "save:";
+    /** KF-10: простая проверка: «check:» и подпись мастера («Взлом замка») */
+    public static final String CHECK_PREFIX = "check:";
+    private static final String CHECK_LABEL = "Проверка";
 
     /** Что можно попросить: значение для формы и подпись */
     public record Choice(String value, String label) {
@@ -48,12 +51,19 @@ public class RollRequestService {
     private final GameSystemRegistry systemRegistry;
     private final SkillService skillService;
     private final HealthCounterService healthCounterService;
+    private final app.charka.check.CheckService checkService;
 
-    /** Спасброски системы, потом навыки каталога по алфавиту; свои навыки (языки) не предлагаются */
+    /**
+     * Спасброски системы, потом навыки каталога по алфавиту; свои навыки (языки) не предлагаются.
+     * KF-10: в системе без навыков (Космозэки, «Без системы») первой идёт простая проверка — иначе просить было нечего.
+     */
     @Transactional(readOnly = true)
     public List<Choice> choices(Long campaignId) {
         GameSystem system = systemRegistry.get(campaign(campaignId).getSystem());
         List<Choice> choices = new ArrayList<>();
+        if (plainChecks(system)) {
+            choices.add(new Choice(CHECK_PREFIX, CHECK_LABEL));
+        }
         system.getRequestableSaves().forEach(save -> choices.add(new Choice(SAVE_PREFIX + save.value(), save.label())));
         system.getSkillCatalog().stream()
                 .filter(skill -> !skill.custom())
@@ -63,6 +73,24 @@ public class RollRequestService {
     }
 
     /** Открытые запросы кампании, старые сверху */
+    /** KF-10: просить простую проверку — где нет каталога навыков */
+    public static boolean plainChecks(GameSystem system) {
+        return system.getSkillCatalog().isEmpty();
+    }
+
+    /** KF-10: что проверяли — подпись без сложности в конце */
+    private static String subjectOf(RollRequest request) {
+        String label = request.getLabel();
+        String tail = request.getDifficulty() == null ? null : " " + request.getDifficulty();
+        return tail != null && label.endsWith(tail) ? label.substring(0, label.length() - tail.length()) : label;
+    }
+
+    /** KF-10: в форме спрашивать «Что проверяем» */
+    @Transactional(readOnly = true)
+    public boolean plainChecks(Long campaignId) {
+        return plainChecks(systemRegistry.get(campaign(campaignId).getSystem()));
+    }
+
     @Transactional(readOnly = true)
     public List<RollRequest> open(Long campaignId) {
         return requestRepository.findByCampaignIdAndDoneAtIsNullOrderByIdAsc(campaignId);
@@ -86,13 +114,27 @@ public class RollRequestService {
      */
     @Transactional
     public List<String> ask(Long campaignId, List<Long> characterIds, String what, Integer difficulty, boolean rollNow, boolean hideNpcs) {
+        return ask(campaignId, characterIds, what, difficulty, rollNow, hideNpcs, null);
+    }
+
+    /**
+     * @param subject KF-10: что проверяем — подпись простой проверки («Взлом замка»); у навыка и спасброска не нужна
+     */
+    @Transactional
+    public List<String> ask(Long campaignId, List<Long> characterIds, String what, Integer difficulty, boolean rollNow, boolean hideNpcs,
+                            String subject) {
         Campaign campaign = campaign(campaignId);
         if (characterIds == null || characterIds.isEmpty()) {
             throw new IllegalArgumentException("Выберите, кто бросает");
         }
         Choice choice = choices(campaignId).stream().filter(candidate -> candidate.value().equals(what)).findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Такой проверки нет: " + what));
+        boolean plain = what.startsWith(CHECK_PREFIX);
         boolean skill = what.startsWith(SKILL_PREFIX);
+        String title = plain && subject != null && !subject.isBlank() ? subject.strip() : choice.label();
+        if (title.length() > 200) {
+            title = title.substring(0, 200);
+        }
         String groupKey = characterIds.size() > 1 ? UUID.randomUUID().toString().replace("-", "").substring(0, 16) : null;
         List<RollRequest> created = new ArrayList<>();
         for (Long characterId : characterIds) {
@@ -101,10 +143,10 @@ public class RollRequestService {
             RollRequest request = new RollRequest();
             request.setCampaignId(campaignId);
             request.setCharacter(character);
-            request.setKind(skill ? RollRequest.SKILL : RollRequest.SAVE);
-            request.setCode(what.substring(what.indexOf(':') + 1));
-            request.setDifficulty(skill ? difficulty : null);
-            request.setLabel(choice.label() + (skill && difficulty != null ? " " + difficulty : ""));
+            request.setKind(plain ? RollRequest.CHECK : skill ? RollRequest.SKILL : RollRequest.SAVE);
+            request.setCode(plain ? RollRequest.CHECK : what.substring(what.indexOf(':') + 1));
+            request.setDifficulty(skill || plain ? difficulty : null);
+            request.setLabel(title + ((skill || plain) && difficulty != null ? " " + difficulty : ""));
             // скрытый NPC в общую строку группы не попадает: она видна всем
             request.setGroupKey(hideNpcs && character.isNpc() ? null : groupKey);
             request.setCreatedAt(LocalDateTime.now());
@@ -154,7 +196,15 @@ public class RollRequestService {
             throw new IllegalArgumentException("Уже брошено: " + request.getResult());
         }
         Character character = request.getCharacter();
-        if (RollRequest.SKILL.equals(request.getKind())) {
+        if (RollRequest.CHECK.equals(request.getKind())) {
+            // KF-10: кубик проверки вне боя (Космозэки: 1к12) против сложности мастера; подпись в журнале — что проверяли
+            app.charka.check.CheckResult result = checkService.tableCheckForCharacter(character.getId(),
+                    new app.charka.check.CheckRequest(subjectOf(request), 0, request.getDifficulty()));
+            request.setTotal(result.total());
+            request.setSuccess(result.success());
+            request.setResult(request.getLabel() + ": " + result.total()
+                    + (result.success() == null ? "" : result.success() ? " — успех" : " — провал"));
+        } else if (RollRequest.SKILL.equals(request.getKind())) {
             SkillCheck check = skillService.check(character.getId(), request.getCode(), null, 0, request.getDifficulty());
             request.setTotal(check.result().total());
             request.setSuccess(check.result().success());

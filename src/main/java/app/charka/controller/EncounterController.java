@@ -55,11 +55,15 @@ public class EncounterController {
             model.addAttribute("attackObjects", attackService.objectTargets(campaign));
             model.addAttribute("hasField", view.get().encounter().getMapDoc() != null);
             model.addAttribute("npcTemplates", systemRegistry.get(campaign.getSystem()).getNpcTemplates());
+            // KF-05: что мастер может положить на карту — справочник системы по группам
+            model.addAttribute("lootCatalog", systemRegistry.get(campaign.getSystem()).getItemCatalog().stream()
+                    .collect(java.util.stream.Collectors.groupingBy(app.charka.item.CatalogItem::group,
+                            java.util.LinkedHashMap::new, java.util.stream.Collectors.toList())));
             model.addAttribute("feed", chatService.feedFor(campaign, ChatController.FEED_SIZE));
             // U-03: игрок действует своими персонажами, остальные строки — только смотрит
             model.addAttribute("controllable", view.get().rows().stream().map(row -> row.character())
                     .filter(accessService::canControl).map(app.charka.model.Character::getId).collect(java.util.stream.Collectors.toSet()));
-            model.addAttribute("difficultyPresets", systemRegistry.get(campaign.getSystem()).getCheckResolver().getDifficultyPresets());
+            model.addAttribute("difficultyPresets", systemRegistry.get(campaign.getSystem()).getTableCheckResolver().getDifficultyPresets());
             model.addAttribute("contests", systemRegistry.get(campaign.getSystem()).getCombatContests());
             app.charka.system.GameSystem system = systemRegistry.get(campaign.getSystem());
             model.addAttribute("luckLeft", view.get().rows().stream().collect(java.util.stream.Collectors.toMap(

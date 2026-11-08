@@ -35,6 +35,15 @@ public record AttackForm(String damage, Integer range, String unavailable, List<
     }
 
     /**
+     * KF-01: атака только вплотную — с соседней клетки, по диагонали тоже. Все режимы без расстояния, по одной цели и не по
+     * предметам: удар рукой или клинком. Стрельба без вопроса о расстоянии (Космозэки) и бросок гранаты — не вплотную.
+     */
+    public boolean isMelee() {
+        return distanceLabel == null && !modes.isEmpty()
+                && modes.stream().allMatch(mode -> mode.noDistance() && !mode.objects() && !mode.multiTarget());
+    }
+
+    /**
      * @param code           код режима
      * @param label          подпись
      * @param rounds         режим спрашивает число патронов или единиц

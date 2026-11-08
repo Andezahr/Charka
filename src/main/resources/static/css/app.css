@@ -1708,3 +1708,46 @@ html:has(.is-editing) {
 .profile-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px 12px; margin-top: 10px; }
 .profile-grid .profile-multi, .profile-grid .profile-long { grid-column: 1 / -1; }
 .profile-grid input, .profile-grid textarea { width: 100%; }
+
+/* ---------- KF-06: действие не прошло — причина там, где нажимали ---------- */
+.action-error.is-floating {
+  position: fixed; left: 50%; bottom: 72px; transform: translateX(-50%); z-index: 60;
+  width: max-content; max-width: calc(100vw - 32px); box-shadow: var(--shadow);
+}
+dialog .action-error { margin-bottom: 12px; }
+
+/* ---------- KF-04, KF-08: кнопка кампании, меню аккаунта, настройки у имени ---------- */
+.campaign-home { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; max-width: 320px; padding: 6px 16px 6px 12px;
+  border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 600; font-size: 15px;
+  box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.35); white-space: nowrap; }
+.campaign-home:hover { background: var(--accent); color: var(--bg, #0b0f14); }
+.campaign-home.is-current { box-shadow: inset 0 0 0 2px var(--accent); }
+.campaign-home-icon { font-size: 18px; line-height: 1; }
+.campaign-home-name { overflow: hidden; text-overflow: ellipsis; }
+.topbar-logout { margin: 0; }
+.topbar-settings.is-active { color: var(--accent); }
+.user-menu-list { left: auto; right: 0; }
+.user-icon, .user-menu-logout { display: none; }
+.user-menu-logout { margin: 4px 0 0; padding-top: 4px; border-top: 1px solid var(--border); }
+.user-menu-logout .btn { width: 100%; justify-content: flex-start; }
+@media (max-width: 560px) {
+  .crumbs { flex: 1 1 auto; }
+  .campaign-home { min-width: 0; max-width: 100%; min-height: 36px; padding: 4px 12px 4px 10px; font-size: 14px; }
+  .topbar-spacer { flex: 0 0 0; }
+  .topbar-label, .user-name, .topbar-logout { display: none; }
+  .user-icon { display: inline; }
+  .user-menu-logout { display: block; }
+  .topbar-user { margin-left: 0; gap: 2px; }
+}
+
+/* ---------- KF-09: лента без бросков ---------- */
+.chat-only-messages { padding: 0 16px 6px; font-size: 13px; color: var(--muted); }
+.chat.only-messages .chat-row.is-roll,
+.chat.only-messages .chat-row.is-event,
+.chat.only-messages .chat-row.is-action { display: none; }
+
+/* ---------- KF-05: предмет на карте ---------- */
+.battle-loot { cursor: pointer; }
+.battle-loot-box { fill: var(--surface-3); stroke: var(--warning, #facc15); stroke-width: 1.2; }
+.battle-loot-icon { font-size: 9px; text-anchor: middle; pointer-events: none; }
+.battle-loot:hover .battle-loot-box, .battle-loot:focus .battle-loot-box { stroke-width: 2; }

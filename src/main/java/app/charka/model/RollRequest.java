@@ -27,6 +27,8 @@ public class RollRequest {
     public static final String SKILL = "SKILL";
     /** Спасбросок системы (CP2020: оглушение, смерть) */
     public static final String SAVE = "SAVE";
+    /** KF-10: простая проверка вне боя по правилам системы — где нет навыков (Космозэки: 1к12 против сложности) */
+    public static final String CHECK = "CHECK";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

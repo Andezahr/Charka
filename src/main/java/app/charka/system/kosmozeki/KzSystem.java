@@ -43,6 +43,7 @@ public class KzSystem implements GameSystem {
     private static final Currency CURRENCY = new Currency("Черкаши", "ч.");
 
     private static final CheckResolver CHECK_RESOLVER = new KzCheckResolver();
+    private static final CheckResolver TABLE_CHECK_RESOLVER = new KzTableCheckResolver();
 
     private static final AttackRules ATTACK_RULES = new KzAttackRules();
 
@@ -92,6 +93,12 @@ public class KzSystem implements GameSystem {
     @Override
     public CheckResolver getCheckResolver() {
         return CHECK_RESOLVER;
+    }
+
+    /** KF-09: вне боя — 1к12 против сложности, которую называет мастер */
+    @Override
+    public CheckResolver getTableCheckResolver() {
+        return TABLE_CHECK_RESOLVER;
     }
 
     @Override

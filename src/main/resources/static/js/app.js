@@ -41,6 +41,35 @@ const UPLOAD_TIMEOUT = 60000;
   window.reportClientError = report;
 })();
 
+// KF-06: окно внутри свёрнутого <details> или скрытой вкладки не рисуется, а showModal всё равно делает страницу
+// неотзывчивой — «экран боя завис, помогает только перезагрузка» (диалог атаки лежит в свёрнутом Char Info).
+// Свёрнутых предков раскрываем на время окна; если окно всё равно не видно (скрытая вкладка) — оно на время
+// переезжает в <body> и возвращается на место, когда закрыто
+(() => {
+  const show = HTMLDialogElement.prototype.showModal;
+  HTMLDialogElement.prototype.showModal = function () {
+    const folded = [];
+    for (let node = this.parentElement; node; node = node.parentElement) {
+      if (node.tagName === 'DETAILS' && !node.open) folded.push(node);
+    }
+    folded.forEach(details => { details.open = true; });
+    let placeholder = null;
+    const parent = this.parentElement;
+    if (parent && parent !== document.body && !parent.getClientRects().length && getComputedStyle(parent).display !== 'contents') {
+      placeholder = document.createComment('dialog');
+      this.replaceWith(placeholder);
+      document.body.appendChild(this);
+    }
+    if (folded.length || placeholder) {
+      this.addEventListener('close', () => {
+        folded.forEach(details => { details.open = false; });
+        if (placeholder && placeholder.isConnected) placeholder.replaceWith(this);
+      }, { once: true });
+    }
+    return show.call(this);
+  };
+})();
+
 // Обработчики элементов страницы: вызывается при загрузке и после каждого обновления на месте.
 // Обработчики на document сюда не класть, они накопятся: они в конце файла
 // J-02: бросок «катится» — число быстро меняется, кубик крутится, затем встаёт с толчком; итог и фишки проявляются после.
@@ -87,8 +116,12 @@ function rollAnimation(holder, own) {
   requestAnimationFrame(tick);
 }
 
+// KF-03: итог действия катится один раз — опрос ленты зовёт revealRolls снова, и без метки кубик крутился дважды
 function revealRolls() {
-  document.querySelectorAll('[data-roll-now]').forEach(holder => rollAnimation(holder, true));
+  document.querySelectorAll('[data-roll-now]:not([data-rolled])').forEach(holder => {
+    holder.dataset.rolled = '1';
+    rollAnimation(holder, true);
+  });
   const rows = [...document.querySelectorAll('[data-feed-key]')];
   if (!rows.length) return;
   let stored = null;
@@ -986,7 +1019,22 @@ async function pollRequests() {
 // форма отправляется как обычно; после отправки курсор снова в поле
 const chat = { url: null, etag: null, timer: null, quietSince: 0, refocus: false };
 
+// KF-09: «💬 Только сообщения» — броски, проверки и журнал боя прячутся из ленты у этого игрока, на этом устройстве
+const ONLY_MESSAGES_KEY = 'charka.chat.onlyMessages';
+function syncOnlyMessages() {
+  let on = false;
+  try { on = localStorage.getItem(ONLY_MESSAGES_KEY) === '1'; } catch (e) { /* только удобство */ }
+  document.querySelectorAll('[data-chat]').forEach(card => card.classList.toggle('only-messages', on));
+  document.querySelectorAll('[data-chat-only-messages]').forEach(box => { box.checked = on; });
+}
+document.addEventListener('change', e => {
+  if (!e.target.matches('[data-chat-only-messages]')) return;
+  try { localStorage.setItem(ONLY_MESSAGES_KEY, e.target.checked ? '1' : '0'); } catch (err) { /* только удобство */ }
+  syncOnlyMessages();
+});
+
 function initChat() {
+  syncOnlyMessages();
   const card = document.querySelector('[data-chat]');
   clearTimeout(chat.timer);
   if (!card) {
@@ -1277,6 +1325,40 @@ const showConnectionError = timedOut => {
   (document.querySelector('main') || document.body).prepend(alert);
 };
 
+// KF-06: ответ-ошибка на действие: текст причины со страницы ошибки (или текстом), в открытом окне — внутри него
+// (поверх модального окна ничего не видно), иначе — плашкой внизу экрана, которая не прячет страницу
+const showActionError = (status, body, pressed) => {
+  let message = '';
+  try {
+    const page = new DOMParser().parseFromString(body, 'text/html');
+    const sub = page.querySelector('.page-sub');
+    message = sub ? sub.textContent.trim() : (page.querySelector('.page-title') ? '' : page.body.textContent.trim().slice(0, 300));
+  } catch (e) { /* без текста */ }
+  const title = status === 404 ? 'Не найдено' : status === 403 ? 'Нет доступа' : status >= 500 ? 'Ошибка сервера' : 'Действие не выполнено';
+  const alert = document.createElement('div');
+  alert.className = 'alert alert-error action-error';
+  alert.setAttribute('role', 'alert');
+  const text = document.createElement('span');
+  text.className = 'alert-text';
+  text.textContent = title + (message ? ': ' + message : '') + (status >= 500 ? '. Обновите страницу и проверьте, что изменилось.' : '');
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.className = 'alert-close';
+  close.setAttribute('aria-label', 'Закрыть');
+  close.textContent = '×';
+  close.addEventListener('click', () => alert.remove());
+  alert.append(text, close);
+  const dialog = pressed && pressed.closest && pressed.closest('dialog[open]');
+  if (dialog) {
+    dialog.querySelectorAll('.action-error').forEach(old => old.remove());
+    dialog.prepend(alert);
+    return;
+  }
+  document.querySelectorAll('.action-error.is-floating').forEach(old => old.remove());
+  alert.classList.add('is-floating');
+  document.body.appendChild(alert);
+};
+
 // scroll — куда вернуться при ходьбе по истории; без него та же страница остаётся на месте, новая открывается сверху.
 // pressed — нажатая кнопка: её строка остаётся под пальцем, даже если сообщение над ней исчезло или добавилось
 const visit = async (url, init, scroll, pressed) => {
@@ -1293,6 +1375,11 @@ const visit = async (url, init, scroll, pressed) => {
     }
     const html = await page.response.text();
     if (ticket !== lastVisit) return;
+    // KF-06: действие не прошло — страница (и бой на ней) остаётся, причина видна там, где нажимали
+    if (!page.response.ok && init && init.method === 'POST') {
+      showActionError(page.response.status, html, pressed);
+      return;
+    }
     const target = new URL(page.url, location.href);
     const samePage = target.pathname + target.search === location.pathname + location.search;
     const x = scrollX;
@@ -1498,6 +1585,22 @@ function initBattle() {
       if (pointer) pointer.classList.remove('is-active');
       battleHint(battle.adding ? 'Нажимайте клетки: каждое нажатие ставит фишку. Ещё раз «＋ Фишка» — выключить' : '');
     });
+  }
+  // KF-05: «＋ Предмет» мастера — как «＋ Фишка»: режим остаётся, каждое нажатие клетки кладёт выбранный предмет
+  const lootButton = document.querySelector('[data-battle-loot]');
+  if (lootButton) {
+    lootButton.classList.toggle('is-active', !!battle.looting);
+    lootButton.addEventListener('click', () => {
+      battle.looting = !battle.looting;
+      battle.adding = false;
+      battle.pointerMode = false;
+      battle.rulerMode = false;
+      battle.ruler = null;
+      document.querySelectorAll('[data-battle-pointer], [data-battle-add], [data-battle-ruler]').forEach(other => other.classList.remove('is-active'));
+      lootButton.classList.toggle('is-active', battle.looting);
+      battleHint(battle.looting ? 'Нажимайте клетки: каждое нажатие кладёт предмет. Ещё раз «＋ Предмет» — выключить' : '');
+    });
+    if (addButton) addButton.addEventListener('click', () => { battle.looting = false; lootButton.classList.remove('is-active'); });
   }
   // R-18a: линейка — тянуть от клетки к клетке, расстояние по мере системы; видна только на этом устройстве
   const rulerButton = document.querySelector('[data-battle-ruler]');
@@ -1863,6 +1966,15 @@ function renderBattle() {
     }
   });
 
+  // KF-05: предметы на карте — значок в углу клетки поверх фишки: нажатие — «Подобрать»
+  (data.loot || []).filter(loot => (loot.level || 0) === level).forEach(loot => {
+    const group = svgEl('g', { class: 'battle-loot', transform: `translate(${(loot.x + 0.78) * CELL} ${(loot.y + 0.22) * CELL})`,
+      tabindex: 0, role: 'button', 'data-loot': loot.id, 'aria-label': 'Предмет: ' + loot.name }, svg);
+    svgEl('title', {}, group).textContent = loot.name + (loot.quantity > 1 ? ' ×' + loot.quantity : '') + ' — нажмите, чтобы подобрать';
+    svgEl('rect', { x: -CELL * 0.2, y: -CELL * 0.2, width: CELL * 0.4, height: CELL * 0.4, rx: 3, class: 'battle-loot-box' }, group);
+    svgEl('text', { class: 'battle-loot-icon', dy: '0.35em' }, group).textContent = '📦';
+  });
+
   drawRuler(svg);
   stage.replaceChildren(svg);
   wireBattleSvg(svg);
@@ -2042,6 +2154,55 @@ async function addToken(x, y) {
   }
 }
 
+// KF-05: предметы на карте. Адрес — рядом с картой боя: /campaign/{id}/encounter/loot
+const lootUrl = () => battle.url.replace(/\/map$/, '/loot');
+
+async function lootPost(path, params, done) {
+  try {
+    const response = await fetch(lootUrl() + path, { method: 'POST', body: new URLSearchParams(params) });
+    const text = await response.text();
+    if (!response.ok) {
+      battleError(text || 'Не получилось');
+      return;
+    }
+    battleHint(text);
+    // строка участника получает новое оружие, отмена — плашку: страница обновляется на месте, карта и режим остаются
+    battle.lastChange = Date.now();
+    if (done) await visit(location.href);
+    else pollBattle();
+  } catch (e) {
+    battleError('Нет связи с сервером');
+  }
+}
+
+function placeLoot(x, y) {
+  const what = document.querySelector('[data-battle-loot-what]');
+  if (!what || !what.value) return;
+  lootPost('', { key: what.value, x, y, level: battleLevel() }, false);
+}
+
+// Кто может подобрать: фишки на этой клетке и соседних, на том же уровне. Игрок — свои и выбранная, мастер — любые;
+// выбранная и чей ход — первыми
+function lootMenu(lootId, event) {
+  const loot = (battle.data.loot || []).find(candidate => candidate.id === lootId);
+  if (!loot) return;
+  const gm = battle.stage && battle.stage.dataset.gm === 'true';
+  const me = battleMe();
+  const near = battle.data.tokens.filter(token => token.x !== null && !token.out && (token.level || 0) === (loot.level || 0)
+      && Math.max(Math.abs(token.x - loot.x), Math.abs(token.y - loot.y)) <= 1
+      && (gm ? !lockedToken(token) : (String(token.character) === me || token.id === battle.selected)))
+    .sort((a, b) => (b.id === battle.selected) - (a.id === battle.selected) || (b.current === true) - (a.current === true));
+  const actions = near.map(token => ['Подобрать: ' + token.name, null,
+    () => lootPost('/' + loot.id + '/take', { participant: token.id }, true)]);
+  if (gm) actions.push(['Убрать с карты', null, () => lootPost('/' + loot.id + '/remove', {}, false)]);
+  const title = '📦 ' + loot.name + (loot.quantity > 1 ? ' ×' + loot.quantity : '');
+  if (!actions.length) {
+    battleHint(title + ': подойдите вплотную, чтобы подобрать');
+    return;
+  }
+  battleMenuAt(event, title, actions);
+}
+
 async function sendPointer(x, y, from) {
   const me = battleMe();
   const meToken = battle.data.tokens.find(token => String(token.character) === me);
@@ -2068,7 +2229,8 @@ function wireBattleSvg(svg) {
 
   svg.addEventListener('pointerdown', event => {
     if (event.button !== 0) return;
-    const tokenEl = event.target.closest('[data-token]');
+    const lootEl = event.target.closest('[data-loot]');
+    const tokenEl = lootEl ? null : event.target.closest('[data-token]');
     const start = cellAt(event);
     // после захвата указателя pointerup приходит на сам svg: дверь запоминаем здесь
     const door = event.target.closest('[data-edge]');
@@ -2076,7 +2238,8 @@ function wireBattleSvg(svg) {
     // A-15: в «За NPC» фишка игрока — только цель (долгое нажатие — атака), не тянется и не выбирается
     const locked = lockedToken(pressed);
     press = { tokenEl: locked ? null : tokenEl, token: locked ? null : pressed, locked: locked ? pressed : null, door: door && door.dataset.edge, doorKind: door && door.dataset.edgeKind,
-      x: event.clientX, y: event.clientY, start, moved: false, ruler: battle.rulerMode && inside(start) };
+      x: event.clientX, y: event.clientY, start, moved: false, ruler: battle.rulerMode && inside(start),
+      loot: lootEl ? Number(lootEl.dataset.loot) : null };
     svg.setPointerCapture(event.pointerId);
     if (press.ruler) {
       battle.ruler = { from: { x: start.x, y: start.y }, to: { x: start.x, y: start.y } };
@@ -2188,8 +2351,16 @@ function wireBattleSvg(svg) {
       toggleDoor(current.door);
       return;
     }
+    if (current.loot && !battle.looting) {
+      lootMenu(current.loot, event);
+      return;
+    }
     if (current.token) {
       tokenClick(current.token);
+      return;
+    }
+    if (battle.looting && !npcOnly() && inside(cell)) {
+      placeLoot(cell.x, cell.y);
       return;
     }
     if (battle.adding && !npcOnly() && inside(cell) && !current.token) {
@@ -2485,7 +2656,8 @@ async function attackSection(menu, attacker, token) {
 // Можно ли этим оружием по цели: видна или вслепую сквозь одну преграду (если у оружия есть такой модификатор),
 // ближний бой — только с соседней клетки, дальний — не дальше последней полосы дальности (двойная дальность, с. 99)
 function attackVerdict(dialog, sight, adjacent) {
-  const melee = !dialog.querySelector('[data-attack-distance]');
+  // KF-01: вплотную ли — говорит сервер (data-attack-melee); стрельба Космозэков расстояния не спрашивает, но она не ближний бой
+  const melee = 'attackMelee' in dialog.dataset ? dialog.dataset.attackMelee === 'true' : !dialog.querySelector('[data-attack-distance]');
   const blind = sight.blindOption && dialog.querySelector(`input[type="checkbox"][value="${sight.blindOption}"]`);
   if (sight.blocked && !(sight.throughLabel && blind && !melee)) return { ok: false, note: 'не видна' };
   if (melee) return adjacent ? { ok: true, note: '' } : { ok: false, note: 'не рядом' };

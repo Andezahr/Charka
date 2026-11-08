@@ -68,6 +68,10 @@ public final class KzItems {
             new Option(KzBody.LEFT_LEG, "Левая нога"),
             new Option(ZONE_ALL, "Всё тело"));
 
+    /** KF-02: патроны выбираются из списка — «Другой…» оставляет своё название; у оружия и запаса одно и то же слово */
+    static final List<String> CALIBERS = List.of("Пистолетные", "Винтовочные", "Дробь", "Снайперские");
+    private static final List<Option> CALIBER_OPTIONS = CALIBERS.stream().map(caliber -> new Option(caliber, caliber)).toList();
+
     private static final ItemField DMG_FIELD = ItemField.number(DMG, "Урон (DMG)", "", " урона", 0, 1000);
     private static final ItemField DIF_FIELD = ItemField.number(DIF, "Сложность попадания (DIF)", "DIF ", "", 0, 200);
     private static final ItemField NOTES_FIELD = ItemField.text(NOTES, "Свойства").asAdvanced();
@@ -77,7 +81,7 @@ public final class KzItems {
             ItemField.number(ROF, "Скорострельность (ROF)", "ROF ", "", 1, 200),
             DIF_FIELD,
             ItemField.number(CAPACITY, "Патронов в магазине (AMMO)", "", " в магазине", 1, 1000),
-            ItemField.text(CALIBER, "Патроны"),
+            ItemField.suggested(CALIBER, "Патроны", false, "", CALIBER_OPTIONS),
             ItemField.number(LOADED, "Сейчас в магазине", "", "", 0, 1000).asAdvanced(),
             ItemField.number(EDMG, "Стихийный урон (EDMG)", "+", " стихии", 0, 1000).asAdvanced(),
             NOTES_FIELD), KzItems::checkRanged, List.of(LOADED)).inSection("Оружие");
@@ -99,7 +103,7 @@ public final class KzItems {
     }, List.of(WORN)).inSection("Броня");
 
     public static final ItemTypeDefinition AMMO_TYPE = new ItemTypeDefinition(AMMO, "Патроны", List.of(
-            ItemField.requiredText(CALIBER, "Каких"))).inSection("Патроны").withStacking();
+            ItemField.suggested(CALIBER, "Каких", true, "Патроны: ", CALIBER_OPTIONS))).inSection("Патроны").withStacking();
 
     public static final ItemTypeDefinition MEDICINE_TYPE = new ItemTypeDefinition(MEDICINE, "Лечилка", List.of(
             ItemField.number(HEAL_ONE, "ХП в одну зону", "+", " в зону", 0, 1000),
@@ -234,7 +238,7 @@ public final class KzItems {
                 Map.of(DMG, "20", ATTACKS, "1", DIF, "25", ARMOR_HALF, "1"), 1));
         catalog.add(entry("kz-grenade", "Оружие", "Граната", EXPLOSIVE, "HOMEBREW: заготовка; зоны выбирает мастер",
                 Map.of(DMG, "30", DIF, "30"), 1));
-        for (String caliber : List.of("Пистолетные", "Винтовочные", "Дробь", "Снайперские")) {
+        for (String caliber : CALIBERS) {
             catalog.add(entry("kz-ammo-" + caliber, "Патроны", "Патроны: " + caliber.toLowerCase(), AMMO, null,
                     Map.of(CALIBER, caliber), 10));
         }

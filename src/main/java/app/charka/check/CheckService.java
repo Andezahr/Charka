@@ -36,10 +36,24 @@ public class CheckService {
      */
     @Transactional
     public CheckResult checkForCharacter(Long characterId, CheckRequest request) {
+        return checkForCharacter(characterId, request, false);
+    }
+
+    /**
+     * KF-09: проверка «за столом» — из чата, кубиков, запроса мастера — бросается кубиком проверки вне боя
+     * ({@code GameSystem.getTableCheckResolver()}); атаки и навыки идут через {@link #checkForCharacter(Long, CheckRequest)}.
+     */
+    @Transactional
+    public CheckResult tableCheckForCharacter(Long characterId, CheckRequest request) {
+        return checkForCharacter(characterId, request, true);
+    }
+
+    private CheckResult checkForCharacter(Long characterId, CheckRequest request, boolean table) {
         Character character = characterRepository.findById(characterId)
                 .orElseThrow(CharacterNotFoundException.forId(characterId));
         return journalService.capture(() -> {
-            CheckResult result = systemRegistry.forCharacter(character).getCheckResolver().resolve(request, diceRoller);
+            app.charka.system.GameSystem system = systemRegistry.forCharacter(character);
+            CheckResult result = (table ? system.getTableCheckResolver() : system.getCheckResolver()).resolve(request, diceRoller);
             log(character.getCampaign(), character, request, result);
             app.charka.journal.JournalService.check(result);
             return result;
@@ -67,11 +81,21 @@ public class CheckService {
      */
     @Transactional
     public CheckResult checkForCampaign(Long campaignId, CheckRequest request) {
+        return checkForCampaign(campaignId, request, false);
+    }
+
+    /** KF-09: проверка мастера за столом — кубиком проверки вне боя */
+    @Transactional
+    public CheckResult tableCheckForCampaign(Long campaignId, CheckRequest request) {
+        return checkForCampaign(campaignId, request, true);
+    }
+
+    private CheckResult checkForCampaign(Long campaignId, CheckRequest request, boolean table) {
         Campaign campaign = campaignRepository.findById(campaignId)
                 .orElseThrow(NotFoundException.forId("Campaign", campaignId));
         return journalService.capture(() -> {
-            CheckResult result = systemRegistry.find(campaign.getSystem()).orElseGet(systemRegistry::getGeneric)
-                    .getCheckResolver().resolve(request, diceRoller);
+            app.charka.system.GameSystem system = systemRegistry.find(campaign.getSystem()).orElseGet(systemRegistry::getGeneric);
+            CheckResult result = (table ? system.getTableCheckResolver() : system.getCheckResolver()).resolve(request, diceRoller);
             log(campaign, null, request, result);
             app.charka.journal.JournalService.check(result);
             return result;

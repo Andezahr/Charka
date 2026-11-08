@@ -34,6 +34,7 @@ public class BattleFieldService {
     private final GameSystemRegistry systemRegistry;
     private final PointerBoard pointerBoard;
     private final app.charka.npc.NpcService npcService;
+    private final app.charka.repository.MapLootRepository mapLootRepository;
 
     /**
      * Фишка участника.
@@ -65,7 +66,16 @@ public class BattleFieldService {
      * @param fogLevels M-22: то же по уровням карты, {@code fog} — нижний; null — туман не действует
      */
     public record Field(Long mapId, String turn, MapDoc doc, String metric, List<Material> materials, List<MapObject> objects,
-                        List<Token> tokens, List<PointerBoard.Pointer> pointers, String backgroundUrl, String fog, List<String> fogLevels) {
+                        List<Token> tokens, List<PointerBoard.Pointer> pointers, String backgroundUrl, String fog, List<String> fogLevels,
+                        List<Loot> loot) {
+    }
+
+    /**
+     * KF-05: предмет на карте. Игроку — только на клетках, которые видят его персонажи (M-16).
+     *
+     * @param quantity сколько строк справочника
+     */
+    public record Loot(Long id, int x, int y, int level, String name, int quantity) {
     }
 
     /**
@@ -198,8 +208,23 @@ public class BattleFieldService {
         }).toList();
         String turn = encounter.getRound() + ":" + (view.get().current() == null ? "" : view.get().current().getId());
         MapDoc doc = MapDoc.parse(encounter.getMapDoc());
+        List<Loot> loot = mapLootRepository.findByEncounterIdOrderByIdAsc(encounter.getId()).stream()
+                .filter(item -> fog.cells() == null || seen(fog.cells(), doc.w(), item.getPosLevel(), item.getPosX(), item.getPosY()))
+                .map(item -> new Loot(item.getId(), item.getPosX(), item.getPosY(), item.getPosLevel(), item.getName(), item.getQuantity()))
+                .toList();
         return Optional.of(new Field(encounter.getBattleMapId(), turn, doc, rules.metric(), rules.materials(), rules.objects(), tokens,
-                pointerBoard.live(campaignId), EditableMap.backgroundUrl(campaignId, encounter.getBattleMapId(), doc), fog.ground(), fog.cells()));
+                pointerBoard.live(campaignId), EditableMap.backgroundUrl(campaignId, encounter.getBattleMapId(), doc), fog.ground(), fog.cells(),
+                loot));
+    }
+
+    /** M-16: видна ли клетка игроку по строкам тумана */
+    private static boolean seen(List<String> cells, int w, int level, int x, int y) {
+        if (level < 0 || level >= cells.size()) {
+            return false;
+        }
+        int index = y * w + x;
+        String line = cells.get(level);
+        return index >= 0 && index < line.length() && line.charAt(index) == '1';
     }
 
     public void move(Long campaignId, Long participantId, int x, int y) {

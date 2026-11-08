@@ -218,6 +218,17 @@
             <option th:each="c : ${view.addable}" th:value="'c:' + ${c.id}" th:text="${c.name} + (${c.npc} ? ' · NPC' : '')">Олежа</option>
           </optgroup>
         </select>
+        <!-- KF-05: предмет на карту — персонаж рядом подберёт одним нажатием; оружие сразу в меню атаки -->
+        <th:block th:if="${lootCatalog != null and !#maps.isEmpty(lootCatalog)}">
+          <button type="button" class="btn btn-sm btn-ghost" data-battle-loot data-god-only
+                  th:attr="data-loot-url=@{'/campaign/' + ${campaign.id} + '/encounter/loot'}"
+                  title="Выберите предмет и нажмите клетку: персонаж рядом подберёт его одним нажатием">＋ Предмет</button>
+          <select data-battle-loot-what data-god-only data-remember="battle-loot" aria-label="Какой предмет положить">
+            <optgroup th:each="g : ${lootCatalog}" th:label="${g.key}">
+              <option th:each="e : ${g.value}" th:value="${e.key}" th:text="${e.name}">Нож</option>
+            </optgroup>
+          </select>
+        </th:block>
         <a th:href="@{${base} + '/edit-map'}" class="btn btn-sm btn-ghost" data-god-only title="Взорвали стену, сдвинули ящик: правится копия этого боя">✎ Править</a>
         <button type="button" class="btn btn-sm btn-ghost" data-tab-go="gm" title="Сменить карту, сохранить как карту, туман, закончить бой">⋯ Мастер</button>
       </th:block>

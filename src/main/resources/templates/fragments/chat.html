@@ -48,11 +48,14 @@
           <input type="number" name="modifier" class="narrow" placeholder="±Мод." aria-label="Модификатор" data-check-mod>
         </div>
         <div class="form-row">
-          <select name="difficulty" aria-label="Сложность">
+          <!-- KF-09: ступени сложности — если они есть у системы; нет (Космозэки: 1к12) — сложность вписывается числом -->
+          <select th:if="${!#maps.isEmpty(tableSystem.getTableCheckResolver().getDifficultyPresets())}" name="difficulty" aria-label="Сложность">
             <option value="">Без сложности</option>
-            <option th:each="p : ${tableSystem.getCheckResolver().getDifficultyPresets()}" th:value="${p.value}" th:text="${p.key} + ' ' + ${p.value}">Средне 15</option>
+            <option th:each="p : ${tableSystem.getTableCheckResolver().getDifficultyPresets()}" th:value="${p.value}" th:text="${p.key} + ' ' + ${p.value}">Средне 15</option>
           </select>
-          <input type="number" name="luck" class="narrow" min="0" placeholder="🍀" aria-label="Удача" title="Удача к броску">
+          <input th:if="${#maps.isEmpty(tableSystem.getTableCheckResolver().getDifficultyPresets())}" type="number" name="difficulty"
+                 class="narrow" min="0" placeholder="Сложн." aria-label="Сложность" title="Сложность, которую назвал мастер; пусто — без сложности">
+          <input th:if="${tableSystem.hasLuck()}" type="number" name="luck" class="narrow" min="0" placeholder="🍀" aria-label="Удача" title="Удача к броску">
           <input type="text" name="label" class="grow" placeholder="Что проверяем" autocomplete="off" aria-label="Что проверяем" data-check-mod>
           <label th:if="${tableGm}" class="check dice-hidden"><input type="checkbox" name="hidden" value="true" data-remember="dice-hidden"><span>🙈</span></label>
           <button type="submit" class="btn btn-sm">🎲 Проверка</button>
@@ -60,6 +63,10 @@
       </form>
     </details>
   </div>
+  <!-- KF-09: броски и журнал можно убрать из ленты у себя — остаются сообщения; выбор запоминается на устройстве -->
+  <label class="check chat-only-messages" title="Скрыть броски, проверки и журнал боя — только сообщения">
+    <input type="checkbox" data-chat-only-messages><span>💬 Только сообщения</span>
+  </label>
   <div class="card-body list chat-feed" data-chat-feed>
     <th:block th:replace="~{fragments/chat :: feed}"></th:block>
   </div>
@@ -74,7 +81,7 @@
   <!-- A-01: у последнего действия кампании — «↶», если его можно отменить тому, кто смотрит -->
   <th:block th:with="undo=${@undoService.offer(campaignId)}">
   <div th:each="e : ${feed}" class="chat-row" th:attr="data-feed-key=${e.key()}"
-       th:classappend="${(e.event != null ? 'is-event' : (e.roll != null ? 'is-roll' : (e.action ? 'is-action' : ''))) + (e.roll != null and e.roll.hidden ? ' is-hidden' : '') + (e.event != null and e.event.hidden ? ' is-hidden' : '') + (e.event != null and (e.event.kind == 'ROUND' or e.event.kind == 'TURN') ? ' is-round' : '')}"
+       th:classappend="${(e.event != null ? 'is-event' : (e.roll != null ? 'is-roll' : (e.action ? 'is-action' : (e.text != null and (#strings.startsWith(e.text, '🎲') or #strings.startsWith(e.text, 'Проверка ')) ? 'is-roll' : '')))) + (e.roll != null and e.roll.hidden ? ' is-hidden' : '') + (e.event != null and e.event.hidden ? ' is-hidden' : '') + (e.event != null and (e.event.kind == 'ROUND' or e.event.kind == 'TURN') ? ' is-round' : '')}"
        th:title="${e.roll != null} ? ${e.roll.expression} + ': ' + ${e.roll.details} : ${#temporals.format(e.at, 'dd.MM HH:mm')}">
     <!-- J-01: запись журнала боя — что произошло: заголовок, бросок против сложности, фишки итога, расчёт под «Как посчитано» -->
     <th:block th:if="${e.event != null}" th:with="ev=${e.event}">

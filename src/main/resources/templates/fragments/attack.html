@@ -3,7 +3,7 @@
 <body>
 <!-- Диалог атаки оружием; что спрашивать, задаёт AttackForm системы. Модификаторы открыты сразу: в атаке они главное содержимое. -->
 <dialog th:fragment="dialog(characterId, item, form, targets)" class="dialog attack-dialog" th:id="'attack-' + ${item.id}"
-        th:attr="data-attack=${item.id},data-radius=${form.radius}">
+        th:attr="data-attack=${item.id},data-radius=${form.radius},data-attack-melee=${form.melee}">
   <form th:action="${attackUrl != null} ? @{${attackUrl}} : @{'/character/' + ${characterId} + '/items/' + ${item.id} + '/attack'}" method="post" class="form">
     <input th:if="${returnCampaign != null}" type="hidden" name="returnCampaign" th:value="${returnCampaign}">
     <div>

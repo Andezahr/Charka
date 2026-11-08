@@ -31,14 +31,11 @@
       <span class="brand-name">Charka</span>
     </a>
     <nav class="crumbs" th:if="${c != null}" aria-label="Где я">
-      <details class="crumb-menu" data-menu>
-        <summary class="crumb" th:classappend="${character == null} ? 'is-current'" th:text="${c.name} + ' ▾'">Последний шанс ▾</summary>
-        <div class="crumb-list">
-          <a th:href="@{'/campaign/' + ${c.id}}" class="crumb-open">Обзор кампании</a>
-          <a th:each="other : ${@campaignService.getAll().?[@accessService.canOpen(#this) and id != __${c.id}__]}"
-             th:href="@{'/campaign/' + ${other.id}}" th:text="${other.name}">Другая кампания</a>
-        </div>
-      </details>
+      <!-- KF-04: большая кнопка — на общий экран кампании, где идёт игра; смена кампании — в меню аккаунта справа -->
+      <a th:href="@{'/campaign/' + ${c.id}}" class="campaign-home" th:classappend="${active == 'overview'} ? 'is-current'"
+         th:title="'Общий экран кампании «' + ${c.name} + '»'">
+        <span class="campaign-home-icon" aria-hidden="true">⌂</span><span class="campaign-home-name" th:text="${c.name}">Последний шанс</span>
+      </a>
       <th:block th:if="${character != null}">
         <span class="crumb-sep">›</span>
         <details class="crumb-menu" data-menu>
@@ -70,11 +67,31 @@
         <div data-table-body><p class="empty">Загрузка…</p></div>
       </dialog>
     </th:block>
-    <!-- U-03: кто вошёл и выход -->
-    <form th:if="${me != null}" th:action="@{/logout}" method="post" class="topbar-user">
-      <span th:text="${me.username}">kolya</span>
-      <button type="submit" class="btn btn-sm btn-ghost">Выйти</button>
-    </form>
+    <!-- KF-08: «Настройки» кампании — у имени аккаунта и «Выйти»; U-03: кто вошёл и выход.
+         KF-04: другие кампании — в меню под именем, подальше от игры -->
+    <div class="topbar-user">
+      <a th:if="${gm}" th:href="@{'/campaign/' + ${c.id} + '/settings'}" class="btn btn-sm btn-ghost topbar-settings"
+         th:classappend="${active == 'settings'} ? 'is-active'" title="Настройки кампании: название, игроки, приглашение, экспорт">⚙<span class="topbar-label"> Настройки</span></a>
+      <details th:if="${me != null}" class="crumb-menu user-menu" data-menu>
+        <summary class="crumb" title="Аккаунт и другие кампании"><span class="user-icon" aria-hidden="true">👤</span><span class="user-name" th:text="${me.username}">kolya</span> ▾</summary>
+        <div class="crumb-list user-menu-list">
+          <a th:href="@{/}" class="crumb-open">Все мои кампании</a>
+          <!-- на телефоне «Выйти» — здесь, в шапке ему места нет -->
+          <form th:action="@{/logout}" method="post" class="user-menu-logout">
+            <button type="submit" class="btn btn-sm btn-ghost" th:text="'Выйти (' + ${me.username} + ')'">Выйти</button>
+          </form>
+          <th:block th:with="openId=${c != null ? c.id : -1}">
+          <th:block th:with="others=${@campaignService.getAll().?[@accessService.canOpen(#this) and id != __${openId}__]}">
+            <span class="crumb-group" th:unless="${#lists.isEmpty(others)}">Перейти в кампанию</span>
+            <a th:each="other : ${others}" th:href="@{'/campaign/' + ${other.id}}" th:text="${other.name}">Другая кампания</a>
+          </th:block>
+          </th:block>
+        </div>
+      </details>
+      <form th:if="${me != null}" th:action="@{/logout}" method="post" class="topbar-logout">
+        <button type="submit" class="btn btn-sm btn-ghost">Выйти</button>
+      </form>
+    </div>
   </div>
   <!-- Вкладки: у персонажа — его страницы, иначе — страницы кампании. Строка прокручивается вбок, не переносится -->
   <div class="subnav" th:if="${c != null or character != null}">
@@ -98,7 +115,7 @@
         <!-- R-10: вкладки «Мастер» нет — его строки на обзоре; /campaign/{id}/gm перенаправляет туда -->
         <a th:href="@{'/campaign/' + ${c.id} + '/scenes'}" th:classappend="${active == 'scenes'} ? 'is-active'">Сцены</a>
         <a th:href="@{'/campaign/' + ${c.id} + '/maps'}" th:classappend="${active == 'maps'} ? 'is-active'">Карты</a>
-        <a th:href="@{'/campaign/' + ${c.id} + '/settings'}" th:classappend="${active == 'settings'} ? 'is-active'">Настройки</a>
+        <!-- KF-08: «Настройки» — в шапке у имени аккаунта -->
       </th:block>
     </nav>
   </div>

@@ -87,7 +87,7 @@ public class CampaignController {
         model.addAttribute("briefs", campaign.getCharacters().stream()
                 .collect(Collectors.toMap(Character::getId, gameSystem::getCharacterBrief)));
         model.addAttribute("quickDice", gameSystem.getQuickDice());
-        model.addAttribute("difficultyPresets", gameSystem.getCheckResolver().getDifficultyPresets());
+        model.addAttribute("difficultyPresets", gameSystem.getTableCheckResolver().getDifficultyPresets());
         org.springframework.data.domain.Page<app.charka.model.RollLog> rollPage = diceService.pageForCampaign(campaignId, rolls, ROLLS_PER_PAGE);
         model.addAttribute("recentRolls", rollPage.getContent());
         model.addAttribute("rollPage", rollPage);

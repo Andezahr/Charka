@@ -55,10 +55,10 @@ public class RollRequestController {
     public String ask(@PathVariable Long campaignId, @RequestParam(name = "character", required = false) List<Long> characters,
                       @RequestParam String what, @RequestParam(required = false) Integer difficulty,
                       @RequestParam(defaultValue = "false") boolean rollNow, @RequestParam(defaultValue = "false") boolean hidden,
-                      HttpServletRequest request,
+                      @RequestParam(required = false) String subject, HttpServletRequest request,
                       RedirectAttributes redirectAttributes) {
         try {
-            List<String> results = requestService.ask(campaignId, characters, what, difficulty, rollNow, hidden);
+            List<String> results = requestService.ask(campaignId, characters, what, difficulty, rollNow, hidden, subject);
             redirectAttributes.addFlashAttribute("requestResults", results.isEmpty() ? List.of("Запрос отправлен") : results);
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("requestError", e.getMessage());

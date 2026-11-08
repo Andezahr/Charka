@@ -437,4 +437,20 @@ public interface GameSystem {
     default String getHealthStatus(Character character) {
         return null;
     }
+
+    /**
+     * KF-07: как в этой системе называются люди, которых знает персонаж (карточка на странице заметок). Ядро — «Знакомые»;
+     * у CP2020 — «Контакты», как в книге.
+     */
+    default String getContactsTitle() {
+        return "Знакомые";
+    }
+
+    /**
+     * KF-09: проверка вне боя — из чата, «Кубиков» и запроса мастера. Обычно та же, что у навыков и атак; у Космозэков —
+     * 1к12 против сложности, а попадание — к100.
+     */
+    default CheckResolver getTableCheckResolver() {
+        return getCheckResolver();
+    }
 }

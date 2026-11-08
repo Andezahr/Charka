@@ -109,9 +109,17 @@ public class ChatController {
                 app.charka.dice.HiddenRolls.run(hidden && gm, () -> skill.startsWith("custom:")
                         ? skillService.check(who.getId(), null, Long.valueOf(skill.substring("custom:".length())), modifier, difficulty, Math.max(0, luck))
                         : skillService.check(who.getId(), skill, null, modifier, difficulty, Math.max(0, luck)));
+            } else if (character != null && !skillService.hasCatalog(character)) {
+                // KF-09: в системе без навыков (Космозэки) персонаж проверяется сам — кубиком проверки вне боя, ±Мод против
+                // сложности; раньше игрок получал «Выберите, кто проверяет», а мастер бросал от своего имени
+                app.charka.model.Character who = characterRepository.findById(character)
+                        .filter(c -> c.getCampaign() != null && c.getCampaign().getId().equals(campaignId) && accessService.canControl(c))
+                        .orElseThrow(() -> new IllegalArgumentException("Проверять можно только за себя"));
+                app.charka.check.CheckRequest request = new app.charka.check.CheckRequest(label, modifier, difficulty);
+                app.charka.dice.HiddenRolls.run(hidden && gm, () -> checkService.tableCheckForCharacter(who.getId(), request));
             } else if (gm) {
                 app.charka.check.CheckRequest request = new app.charka.check.CheckRequest(label, modifier, difficulty);
-                app.charka.dice.HiddenRolls.run(hidden, () -> checkService.checkForCampaign(campaignId, request));
+                app.charka.dice.HiddenRolls.run(hidden, () -> checkService.tableCheckForCampaign(campaignId, request));
             } else {
                 throw new IllegalArgumentException("Выберите, кто проверяет");
             }

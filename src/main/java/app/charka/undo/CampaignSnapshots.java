@@ -46,6 +46,8 @@ public class CampaignSnapshots {
     private static final List<Table> TABLES = List.of(
             new Table("chronicle", "campaign_id = {C}"),
             new Table("encounter", "campaign_id = {C}"),
+            // KF-05: предметы на карте — подобрал и отменил, предмет снова лежит
+            new Table("map_loot", "encounter_id IN (" + ENCOUNTER + ")"),
             new Table("encounter_participant", "encounter_id IN (" + ENCOUNTER + ")"),
             new Table("combat_effect", "participant_id IN (" + PARTICIPANTS + ")"),
             new Table("combat_effect_data", "effect_id IN (" + EFFECTS + ")"),

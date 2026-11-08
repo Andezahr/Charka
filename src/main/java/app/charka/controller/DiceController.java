@@ -69,7 +69,7 @@ public class DiceController {
                                     @RequestParam(required = false) String label,
                                     RedirectAttributes redirectAttributes) {
         CheckRequest request = new CheckRequest(label, modifier, difficulty);
-        addCheck(redirectAttributes, checkService.checkForCharacter(characterId, request), label);
+        addCheck(redirectAttributes, checkService.tableCheckForCharacter(characterId, request), label);
         return "redirect:/character/" + characterId + "#dice";
     }
 
@@ -81,7 +81,7 @@ public class DiceController {
                                    @RequestParam(defaultValue = "false") boolean hidden,
                                    RedirectAttributes redirectAttributes) {
         CheckRequest request = new CheckRequest(label, modifier, difficulty);
-        addCheck(redirectAttributes, app.charka.dice.HiddenRolls.run(hidden, () -> checkService.checkForCampaign(campaignId, request)), label);
+        addCheck(redirectAttributes, app.charka.dice.HiddenRolls.run(hidden, () -> checkService.tableCheckForCampaign(campaignId, request)), label);
         return "redirect:/campaign/" + campaignId + "#dice";
     }
 

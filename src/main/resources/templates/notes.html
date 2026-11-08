@@ -120,19 +120,24 @@
       </div>
     </section>
 
-    <!-- Контакты: кто это, как относится, кто кому должен -->
-    <section class="card" id="contacts" data-editable>
+    <!-- Контакты: кто это, как относится, кто кому должен.
+         KF-07: карточку называет система (CP2020 — «Контакты», остальные — «Знакомые»); добавить — имя, кто это и отношение
+         одной строкой; отношений три, старые («Семья», «Роман») показываются как есть; долг — в заметке, отдельное поле
+         видно только у тех, у кого он уже записан -->
+    <section class="card" id="contacts" data-editable
+             th:with="contactsTitle=${@gameSystemRegistry.get(character.campaign.system).contactsTitle},
+                      relations=${ {T(app.charka.model.Contact.Relation).FRIEND, T(app.charka.model.Contact.Relation).NEUTRAL, T(app.charka.model.Contact.Relation).ENEMY} }">
       <div class="card-head">
-        <h2 class="card-title"><span class="dot"></span>Контакты</h2>
+        <h2 class="card-title"><span class="dot"></span><th:block th:text="${contactsTitle}">Знакомые</th:block></h2>
         <span class="badge" th:text="${#lists.size(character.contacts)}">0</span>
-        <button type="button" class="btn btn-sm btn-primary add-btn" data-edit-toggle>＋ Контакт</button>
+        <button type="button" class="btn btn-sm btn-primary add-btn" data-edit-toggle>＋ Человек</button>
       </div>
       <div class="edit-panel open-form">
         <form th:action="@{|/character/${character.id}/contacts|}" method="post" class="form-row">
-          <input type="text" name="name" class="grow" placeholder="Имя" required autocomplete="off">
-          <input type="text" name="role" class="grow" placeholder="Кто это: фиксер, коп" autocomplete="off">
+          <input type="text" name="name" class="grow" placeholder="Имя или кличка" required autocomplete="off">
+          <input type="text" name="role" class="grow" placeholder="Кто это" autocomplete="off">
           <select name="relation" aria-label="Отношение">
-            <option th:each="r : ${T(app.charka.model.Contact.Relation).values()}" th:value="${r}" th:text="${r.label}"
+            <option th:each="r : ${relations}" th:value="${r}" th:text="${r.label}"
                     th:selected="${r.name() == 'NEUTRAL'}">Нейтрально</option>
           </select>
           <button type="submit" class="btn btn-sm btn-primary">＋</button>
@@ -143,14 +148,15 @@
           <div class="row-main">
             <div class="row-title">
               <span th:text="${contact.name}">Рог</span>
-              <span class="chip" th:classappend="${contact.relation.name() == 'ENEMY' or contact.relation.name() == 'RIVAL'} ? 'red' : (${contact.relation.name() == 'NEUTRAL'} ? '' : 'green')"
+              <span th:unless="${contact.relation.name() == 'NEUTRAL'}" class="chip"
+                    th:classappend="${contact.relation.name() == 'ENEMY' or contact.relation.name() == 'RIVAL'} ? 'red' : 'green'"
                     th:text="${contact.relation.label}">Друг</span>
+              <span th:if="${contact.role != null}" class="row-meta" th:text="${contact.role}">фиксер</span>
             </div>
-            <div class="row-meta">
-              <span th:if="${contact.role != null}" th:text="${contact.role}">фиксер</span>
+            <div th:if="${contact.owes != null or contact.note != null}" class="row-desc">
               <span th:if="${contact.owes != null}" class="chip" th:text="${contact.owes}">должен 500</span>
+              <th:block th:text="${contact.note}">заметка</th:block>
             </div>
-            <div th:if="${contact.note != null}" class="row-desc" th:text="${contact.note}">заметка</div>
           </div>
           <div class="row-actions">
             <button type="button" class="icon-btn" data-edit-toggle title="Править">✎</button>
@@ -160,15 +166,16 @@
               <input type="text" name="name" class="grow" th:value="${contact.name}" required placeholder="Имя">
               <input type="text" name="role" class="grow" th:value="${contact.role}" placeholder="Кто это">
               <select name="relation" aria-label="Отношение">
-                <option th:each="r : ${T(app.charka.model.Contact.Relation).values()}" th:value="${r}" th:text="${r.label}"
-                        th:selected="${r == contact.relation}">Друг</option>
+                <option th:each="r : ${relations}" th:value="${r}" th:text="${r.label}" th:selected="${r == contact.relation}">Друг</option>
+                <option th:unless="${#lists.contains(relations, contact.relation)}" th:value="${contact.relation}"
+                        th:text="${contact.relation.label}" selected>Семья</option>
               </select>
-              <input type="text" name="owes" class="grow" th:value="${contact.owes}" placeholder="Кто кому должен">
-              <input type="text" name="note" class="grow" th:value="${contact.note}" placeholder="Заметка" maxlength="1000">
+              <input th:if="${contact.owes != null}" type="text" name="owes" class="grow" th:value="${contact.owes}" placeholder="Кто кому должен">
+              <input type="text" name="note" class="grow" th:value="${contact.note}" placeholder="Заметка: что о нём помнить, кто кому должен" maxlength="1000">
               <button type="submit" class="btn btn-sm btn-primary">OK</button>
             </form>
             <form th:action="@{|/character/${character.id}/contacts/${contact.id}/delete|}" method="post" class="inline"
-                  th:attr="data-confirm='Удалить контакт «' + ${contact.name} + '»?'">
+                  th:attr="data-confirm='Удалить «' + ${contact.name} + '»?'">
               <button type="submit" class="btn btn-sm danger">Удалить</button>
             </form>
           </div>

@@ -24,7 +24,7 @@
 
 <!-- A-07, A-08: мастер просит бросок — у одного или у всех сразу. Игроки отмечены; NPC мастер бросает сам при отправке -->
 <section th:fragment="ask-form(campaign)" class="card" id="ask-roll"
-         th:with="choices=${@rollRequestService.choices(campaign.id)}">
+         th:with="choices=${@rollRequestService.choices(campaign.id)},plain=${@rollRequestService.plainChecks(campaign.id)}">
   <div class="card-head"><h2 class="card-title"><span class="dot"></span>Попросить бросок</h2></div>
   <div class="card-body">
     <form th:action="@{'/campaign/' + ${campaign.id} + '/requests'}" method="post" class="form">
@@ -32,11 +32,17 @@
         <select name="what" class="grow" required aria-label="Что бросать" data-remember="request-what">
           <option th:each="c : ${choices}" th:value="${c.value}" th:text="${c.label}">Внимательность</option>
         </select>
-        <input type="number" name="difficulty" class="narrow" min="1" max="50" placeholder="DC" aria-label="Сложность"
-               title="Сложность проверки навыка; спасброску не нужна" th:attr="list=${'dc-' + campaign.id}">
+        <!-- KF-10: max — не ступень одной системы: у Космозэков свои числа -->
+        <input type="number" name="difficulty" class="narrow" min="1" max="1000" th:placeholder="${plain} ? 'Сложн.' : 'DC'" aria-label="Сложность"
+               title="Сложность проверки; спасброску не нужна" th:attr="list=${'dc-' + campaign.id}">
         <datalist th:id="${'dc-' + campaign.id}">
           <option th:each="p : ${difficultyPresets}" th:value="${p.value}" th:label="${p.key}">15</option>
         </datalist>
+      </div>
+      <!-- KF-10: простая проверка — что проверяем, мастер пишет словами; пусто — «Проверка» -->
+      <div th:if="${plain}" class="form-row">
+        <input type="text" name="subject" class="grow" maxlength="200" autocomplete="off" placeholder="Что проверяем: взлом, погоня…"
+               aria-label="Что проверяем">
       </div>
       <div class="chips request-targets">
         <label th:each="c : ${campaign.characters}" class="check">

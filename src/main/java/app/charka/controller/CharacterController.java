@@ -255,7 +255,7 @@ public class CharacterController {
                 .collect(Collectors.toMap(Inventory::getId, inventory -> ItemSection.of(inventory, system.getItemTypes(), attachments, excluded))));
         model.addAttribute("roles", system.rolesOf(character));
         model.addAttribute("quickDice", system.getQuickDice());
-        model.addAttribute("difficultyPresets", system.getCheckResolver().getDifficultyPresets());
+        model.addAttribute("difficultyPresets", system.getTableCheckResolver().getDifficultyPresets());
         model.addAttribute("recentRolls", diceService.recentForCharacter(id, 5));
         // R-09a: проверка частых навыков одним нажатием
         model.addAttribute("frequentChecks", gear ? List.of() : skillService.frequentChecks(id));

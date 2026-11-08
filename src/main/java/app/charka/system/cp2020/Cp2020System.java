@@ -78,6 +78,12 @@ public class Cp2020System implements GameSystem {
         return "Cyberpunk 2020";
     }
 
+    /** KF-07: в книге — Contacts: фиксеры, копы, бывшие */
+    @Override
+    public String getContactsTitle() {
+        return "Контакты";
+    }
+
     @Override
     public Currency getCurrency() {
         return CURRENCY;

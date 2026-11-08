@@ -40,7 +40,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 1100 тестов, на 2026-11-07 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 1105 тестов, на 2026-11-08 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -97,6 +97,7 @@ Campaign (name, system, startDate, currentDate, gm?, inviteToken?, initiativeEac
  ├─ RollRequest* (character, kind SKILL/SAVE, code, label, difficulty?, groupKey?, doneAt?, success?, total?, result?) — запрос броска от мастера
  ├─ UndoEntry* (userId?, characterId?, label, createdAt, snapshot JSON) — отмена (A-01), последние 20, без коллекции, не экспортируется
  ├─ BattleMap* (name, doc JSON, background) — карта боя, заготовка
+ ├─ MapLoot* (encounterId, posX, posY, posLevel, catalogKey, name, quantity) — KF-05: предмет на карте идущего боя, уходит вместе с боем
  ├─ Scene* (name, battleMapId?, withPlayers, groupPlayers, groupNpcs) └─ SceneNpc* (templateCode?, character?, name?, count, advanced, ambush) — заготовка боя (A-06), без коллекции в Campaign
  ├─ Encounter (round, groupPlayers, groupNpcs, mapDoc — копия карты, battleMapId) └─ EncounterParticipant* (character, initiative, initiativeDetails, turnOrder, done, waiting, declaration, posX, posY, posLevel, movedMeters, actions) └─ CombatEffect* (label, roundsLeft, damage, attackOption, data) — идущий бой, один на кампанию; закончился — удаляется
  ├─ Chronicle* (name, startDate, endDate)     — запись о прошедшем периоде
@@ -182,9 +183,10 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 | GET, POST | `/campaign/{id}/encounter/map` (A-15: мастер с cookie «За NPC» — двигает только NPC и по бегу, `tokens` и `doc` — отказ), `.../participants/{pid}/move\|lift\|reach\|view`, `.../tokens` (мастер: персонаж или NPC по шаблону на клетку), `.../sight`, `.../door`, `.../pointer`, `.../doc` | поле боя: JSON с ETag (опрос; игроку — без фишек в тумане и с `fog`), ход фишки (204/400 текстом), досягаемость, поле видимости (`view`: клетки и видна ли каждая фишка), видимость цели (`sight`: целиком/частично/нет, укрытие, вслепую сквозь, кто на линии огня), дверь, указатель, правка копии; POST `/encounter/attach`, `/save-map`, GET `/edit-map` |
 | POST | `/campaign/{id}/encounter/map/participants/{pid}/climb` (`level?`) | M-22: по лестнице на соседний уровень (бег |Δz| × 2); у `move`, `tokens`, `door`, `break`, `detonate` — `level` |
 | POST | `/campaign/{id}/encounter/map/break` (`edge`), `.../map/detonate` (`x`, `y`, `by?`) | M-23: выбить дверь, разбить окно (стену — мастер); подорвать бочку или баллон — урон всем в радиусе, цепочка, журнал |
+| POST | `/campaign/{id}/encounter/loot` (`key`, `quantity?`, `x`, `y`, `level?`; мастер), `.../loot/{lid}/take` (`participant`), `.../loot/{lid}/remove` (мастер) | KF-05: предмет справочника на карте боя; подобрать с соседней клетки — в носимый инвентарь, оружие становится основным (текст итога) |
 | POST | `/campaign/{id}/undo/{entryId}` | отменить последнее действие кампании (автор или мастер), вернуться на страницу из Referer; плашку «↶ Отменить» после действия кладёт `UndoInterceptor` во flash `undoOffer` |
 | GET, POST | `/campaign/{id}/chat` | лента чата и бросков (фрагмент, ETag, опрос); POST `character?`, `text`, `returnTo` → сообщение |
-| GET, POST | `/campaign/{id}/settings`, POST `/campaign/{id}/rename` (`name`) | R-13: «Настройки» мастера — название, игроки, приглашение (QR), экспорт |
+| GET, POST | `/campaign/{id}/settings`, POST `/campaign/{id}/rename` (`name`) | R-13: «Настройки» мастера — название, игроки, приглашение (QR), экспорт; KF-08: кнопка «⚙» в шапке у имени аккаунта |
 | GET | `/campaign/{id}/gm` | перенаправляет на обзор (R-10): строки экрана мастера — список персонажей кампании (`fragments/roster :: row`) |
 | POST | `/character/{id}/profile` | K-11: поля листа от системы — `profile.<ключ>`, `multi.<ключ>` + `pick.<ключ>.<вариант>` |
 | POST | `/character/{id}/reroll` | K-09: `rerollPath`, `rerollEntry?` и поля исходного запроса → отменить, вдохновение −1, повторить (forward) |

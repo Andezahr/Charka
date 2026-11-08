@@ -361,4 +361,87 @@ class KzSystemTest {
             assertThat(hp(target, KzBody.HEAD)).isEqualTo(70);
         }
     }
+
+    @Autowired private app.charka.check.CheckService checkService;
+    @Autowired private app.charka.request.RollRequestService rollRequestService;
+    @Autowired private app.charka.encounter.EncounterService encounterService;
+    @Autowired private app.charka.map.BattleFieldService battleFieldService;
+    @Autowired private app.charka.map.MapLootService mapLootService;
+
+    @Nested
+    @DisplayName("Исправления после игры (KZ_FIX.md)")
+    class Fixes {
+
+        @Test
+        @DisplayName("KF-09: проверка за столом — 1к12 против сложности, попадание в бою — по-прежнему к100")
+        void tableCheck() {
+            when(dice.roll(anyInt())).thenReturn(9);
+            CheckResult table = checkService.tableCheckForCharacter(shooter.getId(), new CheckRequest("Взлом", 1, 10));
+
+            assertThat(table.notation()).isEqualTo("1d12+1");
+            assertThat(table.total()).isEqualTo(10);
+            assertThat(table.success()).isTrue();
+            assertThat(registry.get(KzSystem.CODE).getTableCheckResolver().getDifficultyPresets()).isEmpty();
+
+            rollD100(42);
+            assertThat(checkService.checkForCharacter(shooter.getId(), new CheckRequest("Попадание", 0, 30)).notation()).startsWith("d100");
+        }
+
+        @Test
+        @DisplayName("KF-01: вплотную — только нож и драка; пистолет и граната — нет")
+        void melee() {
+            app.charka.attack.AttackRules rules = registry.get(KzSystem.CODE).getAttackRules();
+            assertThat(rules.form(AttackSource.of(add(shooter, "kz-knife")), Map.of()).isMelee()).isTrue();
+            assertThat(rules.form(AttackSource.ability(KzAttackRules.BRAWL, "Драка"), Map.of()).isMelee()).isTrue();
+            assertThat(rules.form(AttackSource.of(add(shooter, "kz-pistol")), Map.of()).isMelee()).isFalse();
+            assertThat(rules.form(AttackSource.of(add(shooter, "kz-grenade")), Map.of()).isMelee()).isFalse();
+        }
+
+        @Test
+        @DisplayName("KF-02: патроны выбираются из списка")
+        void caliberList() {
+            assertThat(KzItems.RANGED_TYPE.fields().stream().filter(field -> field.key().equals(KzItems.CALIBER)).findFirst().orElseThrow()
+                    .isSuggested()).isTrue();
+            assertThat(KzItems.AMMO_TYPE.fields().get(0).isSuggested()).isTrue();
+        }
+
+        @Test
+        @DisplayName("KF-10: без навыков мастер просит простую проверку — бросок 1к12 против сложности")
+        void requestCheck() {
+            assertThat(rollRequestService.choices(campaign.getId()).get(0).value()).isEqualTo(app.charka.request.RollRequestService.CHECK_PREFIX);
+            when(dice.roll(anyInt())).thenReturn(8);
+            entityManager.flush();
+            entityManager.clear();
+
+            List<String> results = rollRequestService.ask(campaign.getId(), List.of(shooter.getId()),
+                    app.charka.request.RollRequestService.CHECK_PREFIX, 7, true, false, "Взлом замка");
+
+            assertThat(results).singleElement().asString().contains("Взлом замка 7: 8 — успех");
+        }
+
+        @Test
+        @DisplayName("KF-05: предмет на карте — подобрать с соседней клетки, оружие становится основным")
+        void loot() {
+            encounterService.start(campaign.getId(), List.of(shooter.getId(), target.getId()));
+            Long participant = encounterService.view(campaign.getId()).orElseThrow().rows().stream()
+                    .filter(row -> row.character().getId().equals(shooter.getId())).findFirst().orElseThrow().participant().getId();
+            battleFieldService.move(campaign.getId(), participant, 5, 5, true);
+            mapLootService.place(campaign.getId(), "kz-knife", 1, 6, 6, 0);
+            mapLootService.place(campaign.getId(), "kz-pistol", 1, 9, 9, 0);
+            entityManager.flush();
+            List<app.charka.map.BattleFieldService.Loot> loot = battleFieldService.field(campaign.getId()).orElseThrow().loot();
+            assertThat(loot).extracting(app.charka.map.BattleFieldService.Loot::name).containsExactly("Нож", "Стандартный пистолет");
+
+            assertThatThrownBy(() -> mapLootService.take(campaign.getId(), loot.get(1).id(), participant)).hasMessageContaining("Далеко");
+            assertThat(mapLootService.take(campaign.getId(), loot.get(0).id(), participant)).contains("основное оружие");
+            entityManager.flush();
+            entityManager.clear();
+
+            Character owner = characterRepository.findById(shooter.getId()).orElseThrow();
+            Item knife = owner.getInventories().stream().flatMap(inventory -> inventory.getContent().stream())
+                    .filter(item -> item.getName().equals("Нож")).findFirst().orElseThrow();
+            assertThat(owner.getMainWeaponId()).isEqualTo(knife.getId());
+            assertThat(battleFieldService.field(campaign.getId()).orElseThrow().loot()).hasSize(1);
+        }
+    }
 }
