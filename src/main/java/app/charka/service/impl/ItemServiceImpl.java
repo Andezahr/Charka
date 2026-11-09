@@ -246,6 +246,9 @@ public class ItemServiceImpl implements ItemService {
         app.charka.system.GameSystem system = systemRegistry.forCharacter(owner);
         // A-05: то, что делают и в бою (перезарядка, препарат), — действие раунда; учёт вроде «Списать патрон» — нет
         boolean roundAction = system.getItemActions(item).stream().anyMatch(candidate -> candidate.code().equals(action) && candidate.combat());
+        if (roundAction) {
+            roundActions.require(owner);
+        }
         String result = system.performItemAction(item, action, params);
         if (roundAction) {
             roundActions.count(owner);

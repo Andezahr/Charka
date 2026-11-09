@@ -444,4 +444,46 @@ class KzSystemTest {
             assertThat(battleFieldService.field(campaign.getId()).orElseThrow().loot()).hasSize(1);
         }
     }
+
+    @Nested
+    @DisplayName("Одно действие за ход")
+    class OneAction {
+
+        @Test
+        @DisplayName("В бою вторая атака и перезарядка в том же раунде — отказ; новый раунд — снова можно")
+        void secondAttackRefused() {
+            Item pistol = add(shooter, "kz-pistol");
+            encounterService.start(campaign.getId(), List.of(shooter.getId(), target.getId()));
+            entityManager.flush();
+            rollD100(46);
+            attackService.attack(shooter.getId(), pistol.getId(), fire(target.getId(), 1));
+            entityManager.flush();
+
+            assertThatThrownBy(() -> attackService.attack(shooter.getId(), pistol.getId(), fire(target.getId(), 1)))
+                    .hasMessage(app.charka.encounter.RoundActions.NO_ACTIONS_LEFT);
+            assertThatThrownBy(() -> itemService.performAction(shooter.getId(), pistol.getId(), KzItemActions.RELOAD, Map.of()))
+                    .hasMessage(app.charka.encounter.RoundActions.NO_ACTIONS_LEFT);
+            assertThat(pistol.getProperties()).containsEntry(KzItems.LOADED, "6");
+            assertThat(encounterService.view(campaign.getId()).orElseThrow().rows().stream()
+                    .filter(row -> row.character().getId().equals(shooter.getId())).findFirst().orElseThrow().canAct()).isFalse();
+
+            encounterService.next(campaign.getId());
+            encounterService.next(campaign.getId());
+            entityManager.flush();
+            rollD100(46);
+
+            assertThat(attackService.attack(shooter.getId(), pistol.getId(), fire(target.getId(), 1)).hit()).isTrue();
+        }
+
+        @Test
+        @DisplayName("Вне боя предела нет")
+        void outsideCombat() {
+            Item pistol = add(shooter, "kz-pistol");
+            rollD100(46);
+            attackService.attack(shooter.getId(), pistol.getId(), fire(target.getId(), 1));
+            rollD100(46);
+
+            assertThat(attackService.attack(shooter.getId(), pistol.getId(), fire(target.getId(), 1)).hit()).isTrue();
+        }
+    }
 }

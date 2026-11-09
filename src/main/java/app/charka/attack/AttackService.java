@@ -80,6 +80,8 @@ public class AttackService {
         if (rules == null || rules.form(source, system.getCurrentStats(attacker)) == null) {
             throw new IllegalArgumentException("Этим нельзя атаковать: " + source.name());
         }
+        // предел действий системы (Космозэки — одно за ход) проверяется до броска и траты удачи
+        roundActions.require(attacker);
         List<Character> targets = targets(attacker, request.targetIds());
         Item targetItem = request.targetItemId() == null ? null : targetItem(attacker, rules, request.targetItemId());
         AttackContext context = new AttackContext(attacker, source, targets, request, system::getCurrentStats, this::effectsOf, targetItem);

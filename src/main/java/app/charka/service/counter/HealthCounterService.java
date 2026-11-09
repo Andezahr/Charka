@@ -226,6 +226,7 @@ public class HealthCounterService {
         if (difficulty == null) {
             throw new IllegalArgumentException("Сейчас это не нужно");
         }
+        roundActions.require(healer);
         return journaled(patient, "Медпомощь", () -> care(context, strategy, option, patient, healer, modifier, difficulty, luck));
     }
 

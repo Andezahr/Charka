@@ -38,7 +38,7 @@ public record EncounterView(Encounter encounter, Character current, boolean last
     public record Row(EncounterParticipant participant, Character character, InitiativeDeclaration declaration,
                       List<InitiativeDeclaration> declarations, List<CheckOption> checks, CombatCard card, boolean current,
                       List<Weapon> weapons, List<Character> targets, List<PendingBlast> blasts, List<CombatEffect> effects, List<Ability> abilities,
-                      int actionsDone, String actionOption) {
+                      int actionsDone, String actionOption, boolean canAct) {
 
         /** Итог действия с этим предметом показывается в этой строке */
         public boolean hasItem(Long itemId) {

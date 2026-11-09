@@ -179,6 +179,9 @@
         <label class="check turn-sound" th:if="${myRows != null and !#lists.isEmpty(myRows)}" title="Звук, когда подошла ваша очередь">
           <input type="checkbox" data-turn-sound><span>🔔</span>
         </label>
+        <th:block th:with="bagRows=${isGm ? view.rows.?[current] : myRows}">
+          <th:block th:if="${bagRows != null and !#lists.isEmpty(bagRows)}" th:replace="~{fragments/encounter :: bag(${bagRows})}"></th:block>
+        </th:block>
         <th:block th:replace="~{fragments/reference :: open-button(${campaign.id})}"></th:block>
         <!-- R-18: ✕ — выйти с карты; бой идёт дальше -->
         <a th:href="@{'/campaign/' + ${campaign.id}}" class="btn btn-sm btn-ghost battle-exit" title="Выйти с карты: бой продолжается" aria-label="Выйти с карты">✕</a>
@@ -424,7 +427,7 @@
         <span th:if="${cur == null}">Ходить некому</span>
       </div>
       <div class="battle-bar-actions" th:if="${curMine}"
-           th:with="url=${base + '/participants/' + cur.participant.id}">
+           th:with="url=${base + '/participants/' + cur.participant.id}" th:attr="data-no-actions=${cur.canAct} ? null : 'true'">
         <form th:if="${!cur.participant.waiting and !view.lastInRound}" th:action="@{${url} + '/wait'}" method="post">
           <button type="submit" class="btn btn-sm btn-ghost" title="Вступит позже в этом раунде">Подождать</button>
         </form>
@@ -432,7 +435,7 @@
           <select name="skill" aria-label="Навык" data-remember="battle-bar-skill">
             <option th:each="c : ${cur.checks}" th:value="${c.value}" th:text="${c.label}">Внимательность 8</option>
           </select>
-          <button type="submit" class="btn btn-sm">🎲 Проверка</button>
+          <button type="submit" class="btn btn-sm" th:disabled="${!cur.canAct}">🎲 Проверка</button>
         </form>
         <th:block th:each="weapon : ${cur.weapons}">
           <th:block th:each="action : ${weapon.actions.?[shownInCombat]}">

@@ -1751,3 +1751,14 @@ dialog .action-error { margin-bottom: 12px; }
 .battle-loot-box { fill: var(--surface-3); stroke: var(--warning, #facc15); stroke-width: 1.2; }
 .battle-loot-icon { font-size: 9px; text-anchor: middle; pointer-events: none; }
 .battle-loot:hover .battle-loot-box, .battle-loot:focus .battle-loot-box { stroke-width: 2; }
+
+/* Инвентарь из боя: окно «🎒 Инвентарь» */
+.bag-body { display: grid; gap: 16px; }
+.bag-character-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.bag-item { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 6px 0; border-bottom: 1px solid var(--border, rgba(255,255,255,.08)); }
+.bag-item:last-child { border-bottom: 0; }
+
+/* Действия раунда кончились (Космозэки — одно за ход): атака, проверка и боевые действия предметов неактивны */
+.encounter-actions .btn:disabled, .battle-bar-actions .btn:disabled, .battle-menu .btn:disabled { opacity: .45; cursor: not-allowed; }
+.encounter-actions[data-no-actions] .item-actions form .btn,
+.battle-bar-actions[data-no-actions] form[action*="/action/"] .btn { opacity: .45; pointer-events: none; }

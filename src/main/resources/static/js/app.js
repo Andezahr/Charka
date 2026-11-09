@@ -2629,6 +2629,9 @@ async function attackSection(menu, attacker, token) {
   // M-17: промах одиночным выстрелом или очередью может попасть в первого из них (хоумбрю)
   if (sight.inTheWay && sight.inTheWay.length) line('На линии огня: ' + sight.inTheWay.join(', ') + ' — промах может попасть', 'battle-menu-warn');
   const adjacent = Math.max(Math.abs(attacker.x - token.x), Math.abs(attacker.y - token.y)) <= 1;
+  // предел действий системы (Космозэки — одно за ход): кнопки видны, но заняты до следующего раунда
+  const spent = row && row.querySelector('[data-no-actions]');
+  if (spent) line('Действие в этом раунде сделано — осталось перемещение', 'battle-menu-warn');
   dialogs.forEach(dialog => {
     const button = document.createElement('button');
     button.type = 'button';
@@ -2636,7 +2639,7 @@ async function attackSection(menu, attacker, token) {
     const title = dialog.querySelector('h2');
     const why = attackVerdict(dialog, sight, adjacent);
     button.textContent = (title ? title.textContent.replace(/^[^:]*:\s*/, '') : 'Атака') + (why.note ? ' · ' + why.note : '');
-    button.disabled = !why.ok;
+    button.disabled = !why.ok || !!spent;
     if (why.title) button.title = why.title;
     button.addEventListener('click', () => {
       try { localStorage.setItem('charka.battle.weapon.' + attacker.character, dialog.dataset.attack); } catch (e) { /* только удобство */ }

@@ -2,7 +2,7 @@
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <body>
 <!-- Что может участник: спасброски, оружие, урон, ожидание -->
-<div th:fragment="actions(row, base)" class="encounter-actions"
+<div th:fragment="actions(row, base)" class="encounter-actions" th:attr="data-no-actions=${row.canAct} ? null : 'true'"
      th:with="url=${base + '/participants/' + row.participant.id}, presetOptions=${row.attackOptions()},
               targets=${hiddenCharacterIds == null or #sets.isEmpty(hiddenCharacterIds) ? row.targets : row.targets.?[!#root.hiddenCharacterIds.contains(id)]}">
   <div th:if="${!#lists.isEmpty(row.card.saves) or row.card.stabilizable}" class="encounter-saves">
@@ -17,6 +17,9 @@
     </form>
   </div>
 
+  <!-- Предел действий системы (Космозэки — одно за ход): атака, перезарядка и проверка — в следующем раунде -->
+  <p th:unless="${row.canAct}" class="item-action-note">Действие в этом раунде сделано — осталось перемещение</p>
+
   <div th:each="weapon : ${row.weapons}" class="encounter-weapon">
     <div class="item-head">
       <span class="row-title" th:text="${weapon.item.name}">Minami</span>
@@ -26,7 +29,7 @@
     <p th:if="${weapon.form.unavailable != null}" class="item-action-note" th:text="${weapon.form.unavailable}">Магазин пуст</p>
     <div class="item-actions">
       <button type="button" class="btn btn-sm btn-primary" th:attr="data-dialog-open='attack-' + ${weapon.item.id}"
-              th:disabled="${weapon.form.unavailable != null}" th:text="${weapon.form.actionLabel}">Атаковать</button>
+              th:disabled="${weapon.form.unavailable != null or !row.canAct}" th:text="${weapon.form.actionLabel}">Атаковать</button>
       <dialog th:replace="~{fragments/attack :: dialog(${row.character.id}, ${weapon.item}, ${weapon.form}, ${targets})}"></dialog>
       <th:block th:each="action : ${weapon.actions.?[shownInCombat]}">
         <form th:replace="~{fragments/items :: action-form(${action}, @{${weapon.url} + '/action/' + ${action.code}}, null)}"></form>
@@ -40,7 +43,7 @@
       <span class="item-value" th:text="${ability.form.damage}">1D6/2 + BODY</span>
     </div>
     <div class="item-actions" th:with="attackUrl=${ability.url}">
-      <button type="button" class="btn btn-sm btn-primary" th:attr="data-dialog-open='attack-' + ${ability.id}" th:text="${ability.form.actionLabel}">Атаковать</button>
+      <button type="button" class="btn btn-sm btn-primary" th:attr="data-dialog-open='attack-' + ${ability.id}" th:disabled="${!row.canAct}" th:text="${ability.form.actionLabel}">Атаковать</button>
       <dialog th:replace="~{fragments/attack :: dialog(${row.character.id}, ${ability}, ${ability.form}, ${targets})}"></dialog>
     </div>
   </div>
@@ -57,7 +60,7 @@
       <input th:if="${left != null and left > 0}" type="number" name="luck" class="narrow" min="0" th:max="${left}"
              th:title="'Удача: есть ' + ${left}" th:placeholder="'🍀 ' + ${left}" aria-label="Удача">
     </th:block>
-    <button type="submit" class="btn btn-sm">🎲 Проверка</button>
+    <button type="submit" class="btn btn-sm" th:disabled="${!row.canAct}">🎲 Проверка</button>
   </form>
 
   <form th:each="contest : ${contests}" th:unless="${#lists.isEmpty(targets)}"
@@ -108,6 +111,38 @@
   </details>
 </div>
 <!-- Итоги действий участника: атака, действие с оружием, упавший заряд (в строке или в панели игрока) -->
+<!-- Инвентарь из боя: свои персонажи (мастеру — тот, кто ходит). Носимое сверху, остальное ниже; управлять — «Снаряжение» -->
+<th:block th:fragment="bag(rows)">
+  <button type="button" class="btn btn-ghost" data-dialog-open="battle-bag" title="Что у меня с собой">🎒 Инвентарь</button>
+  <dialog id="battle-bag" class="dialog reference-dialog">
+    <div class="add-dialog-head">
+      <h2 class="card-title">🎒 Инвентарь</h2>
+      <button type="button" class="icon-btn" data-dialog-close aria-label="Закрыть">✕</button>
+    </div>
+    <div class="bag-body" th:with="system=${@gameSystemRegistry.get(campaign.system)}">
+      <section th:each="row : ${rows}" class="bag-character">
+        <div class="bag-character-head">
+          <strong th:if="${#lists.size(rows) > 1 or isGm}" th:text="${row.character.name}">Колясик</strong>
+          <a class="btn btn-sm btn-ghost" th:href="@{'/character/' + ${row.character.id} + '/gear'}">Снаряжение ↗</a>
+        </div>
+        <th:block th:each="pass : ${ {true, false} }"><th:block th:each="inv : ${row.character.inventories}" th:if="${inv.carried == pass}">
+          <h3 class="item-section-title">
+            <span th:text="${inv.name}">На теле</span>
+            <span th:unless="${inv.carried}" class="badge">не носится</span>
+          </h3>
+          <p th:if="${#lists.isEmpty(inv.content)}" class="empty">Пусто</p>
+          <div th:each="item : ${inv.content}" class="bag-item" th:with="summary=${system.getItemSummary(item)}">
+            <span class="row-title" th:text="${item.name}">Пистолет</span>
+            <span th:if="${item.quantity != null and item.quantity > 1}" class="badge" th:text="'×' + ${item.quantity}">×3</span>
+            <span th:if="${summary.main != null}" class="item-main" th:text="${summary.main}">5/7</span>
+            <span th:each="line : ${summary.lines}" class="item-value" th:text="${line}">DMG 20</span>
+          </div>
+        </th:block></th:block>
+      </section>
+    </div>
+  </dialog>
+</th:block>
+
 <th:block th:fragment="results(row)">
   <th:block th:if="${resultCharacterId == row.character.id and combatResult != null}">
     <div th:replace="~{fragments/attack :: result(${combatResult})}"></div>

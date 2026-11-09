@@ -161,6 +161,12 @@ public class KzSystem implements GameSystem {
         return false;
     }
 
+    /** За ход — одно действие (RULES_KOSMOZEKI.md, раздел 2): вторая атака, перезарядка или лечение — уже в следующем раунде */
+    @Override
+    public int actionsPerRound() {
+        return 1;
+    }
+
     /** Новый бой: способности «раз за бой» восстанавливаются */
     @Override
     public void onEncounterStart(Character character) {

@@ -179,7 +179,8 @@ public class EncounterService {
                     weapons(character, system), targets(character, fighters, system), attackService.pendingBlasts(character.getId()),
                     List.copyOf(participant.getEffects()), abilities(character, system),
                     RoundActions.done(participant, system.movementIsAction()),
-                    system.getAttackRules() == null ? null : system.getAttackRules().actionOption(RoundActions.done(participant, system.movementIsAction())));
+                    system.getAttackRules() == null ? null : system.getAttackRules().actionOption(RoundActions.done(participant, system.movementIsAction())),
+                    RoundActions.canAct(participant, system));
         }).toList();
         Set<Long> inFight = fighters.stream().map(Character::getId).collect(Collectors.toSet());
         List<Character> addable = encounter.getCampaign().getCharacters().stream()
@@ -433,6 +434,7 @@ public class EncounterService {
         EncounterParticipant checking = participant(campaignId, participantId);
         Character character = checking.getCharacter();
         // A-05: проверка в бою — действие
+        RoundActions.require(checking, system(checking.getEncounter().getCampaign()));
         checking.setActions(checking.getActions() + 1);
         return skill.startsWith(CUSTOM_SKILL)
                 ? skillService.check(character.getId(), null, Long.valueOf(skill.substring(CUSTOM_SKILL.length())), modifier, difficulty, luck)
@@ -465,6 +467,7 @@ public class EncounterService {
             throw new IllegalArgumentException("Такого противостояния нет: " + code);
         }
         app.charka.check.CheckRequest own = system.getContestRequest(code, initiator.getCharacter());
+        RoundActions.require(initiator, system);
         initiator.setActions(initiator.getActions() + 1);
         if (luck > 0) {
             system.spendLuck(initiator.getCharacter(), luck);

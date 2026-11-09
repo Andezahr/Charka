@@ -425,6 +425,14 @@ public interface GameSystem {
     }
 
     /**
+     * Сколько действий участник может сделать за раунд боя (атака, перезарядка, медпомощь, проверка). 0 — без предела:
+     * CP2020 разрешает несколько, каждое следующее со штрафом ({@code AttackRules.actionOption}); Космозэки — одно.
+     */
+    default int actionsPerRound() {
+        return 0;
+    }
+
+    /**
      * K-11: поля листа персонажа, которые система хранит текстом ({@code Character.profile}): теги, приговор. Пусто — нет.
      */
     default List<ProfileField> getProfileFields() {
