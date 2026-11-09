@@ -1550,7 +1550,13 @@ const gmModeNpc = () => document.cookie.split('; ').includes(GM_MODE_COOKIE + '=
 const battleGm = () => Boolean(battle.stage && battle.stage.dataset.gm === 'true');
 // мастер в «За NPC»: фишки игроков не выбираются и не двигаются
 const npcOnly = () => battleGm() && gmModeNpc();
-const lockedToken = token => Boolean(token && npcOnly() && !token.npc);
+// BF-03: игрок управляет только своими персонажами — чужая фишка (враг, NPC) только цель: не выбирается и не тянется
+const myCharacters = () => {
+  const screen = document.querySelector('.battle-screen');
+  return (screen && screen.dataset.mine || '').split(',').filter(Boolean);
+};
+const lockedToken = token => Boolean(token && ((npcOnly() && !token.npc)
+  || (!battleGm() && !myCharacters().includes(String(token.character)))));
 function applyGmMode() {
   const npc = gmModeNpc();
   document.querySelectorAll('[data-gm-mode]').forEach(button => {
@@ -1803,8 +1809,14 @@ async function loadVision(id) {
 }
 
 function selectToken(id) {
-  battle.selected = id;
   const chosen = tokenById(id);
+  // BF-03: чужую фишку (карусель очереди, «Выбрать») игрок не берёт — только показываем, где она
+  if (chosen && lockedToken(chosen)) {
+    if (chosen.level !== undefined) battle.level = chosen.level || 0;
+    renderBattle();
+    return;
+  }
+  battle.selected = id;
   if (chosen) battle.level = chosen.level || 0;
   battle.reach = null;
   battle.reachFor = null;

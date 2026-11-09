@@ -26,6 +26,8 @@ public class RoundActions {
     public static final String NO_ACTIONS_LEFT = "Действие в этом раунде уже сделано — осталось перемещение";
     /** BF-02: игрок вне своего хода */
     public static final String NOT_YOUR_TURN = "Сейчас ход не ваш — действовать и двигаться можно на своём ходу";
+    /** BF-03: игрок за чужого персонажа (врага, NPC) */
+    public static final String NOT_YOUR_CHARACTER = "Это не ваш персонаж: им ходит мастер";
 
     private final EncounterRepository encounterRepository;
     /** Через провайдер: системы зависят от сервисов, которые зовут этот класс */
@@ -65,6 +67,9 @@ public class RoundActions {
         // без вошедшего пользователя — вызов самого сервера (адреса без входа закрыты): проверять некого
         if (!access.isEnabled() || access.current().isEmpty() || access.isGm(campaign)) {
             return;
+        }
+        if (!access.canControl(participant.getCharacter())) {
+            throw new IllegalArgumentException(NOT_YOUR_CHARACTER);
         }
         Long current = encounterService.getObject().currentCharacterId(campaign.getId());
         if (current == null || !current.equals(participant.getCharacter().getId())) {

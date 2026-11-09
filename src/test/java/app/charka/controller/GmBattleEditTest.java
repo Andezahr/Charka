@@ -68,6 +68,9 @@ class GmBattleEditTest {
     @Autowired private JournalEntryRepository journalRepository;
     @Autowired private EntityManager entityManager;
 
+    @org.springframework.test.context.bean.override.mockito.MockitoBean(answers = org.mockito.Answers.CALLS_REAL_METHODS)
+    private app.charka.model.counters.strategy.health.DiceRoller dice;
+
     private Campaign campaign;
     private Character zek;
     private Character guard;
@@ -261,6 +264,38 @@ class GmBattleEditTest {
             mockMvc.perform(post(attack).param("target", String.valueOf(guard.getId())).param("mode", "FIRE").param("rounds", "1")
                             .param("returnCampaign", String.valueOf(campaign.getId())).with(user("kolya")).with(csrf()))
                     .andExpect(flash().attributeExists("attackResult"));
+        }
+
+        @Test
+        @DisplayName("BF-03: игрок не трогает чужого участника — ждать, рывок, ход фишкой за врага — отказ; свой — можно")
+        void notOthers() throws Exception {
+            mockMvc.perform(post(participant(guard) + "/wait").with(user("kolya")).with(csrf()))
+                    .andExpect(status().isBadRequest());
+            mockMvc.perform(post(base + "/map/participants/" + row(guard).participant().getId() + "/move")
+                            .param("x", "1").param("y", "1").with(user("kolya")).with(csrf()))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
+                            .string(org.hamcrest.Matchers.containsString(app.charka.encounter.RoundActions.NOT_YOUR_CHARACTER)));
+            flush();
+            assertThat(row(guard).participant().isWaiting()).isFalse();
+
+            mockMvc.perform(post(participant(zek) + "/wait").with(user("kolya")).with(csrf()))
+                    .andExpect(status().is3xxRedirection());
+        }
+
+        @Test
+        @DisplayName("BF-03: урон удара в драке из окна доходит до цели (было — всегда 10)")
+        void brawlDamage() throws Exception {
+            org.mockito.Mockito.when(dice.roll(12)).thenReturn(12, 1);
+
+            mockMvc.perform(post("/character/" + guard.getId() + "/attack/ability/BRAWL")
+                            .param("target", String.valueOf(zek.getId())).param("mode", "BRAWL").param("rounds", "35")
+                            .param("location", KzBody.BODY).param("returnCampaign", String.valueOf(campaign.getId()))
+                            .with(user("master")).with(csrf()))
+                    .andExpect(flash().attributeExists("attackResult"));
+            flush();
+
+            assertThat(hp(zek, KzBody.BODY)).isEqualTo(150 - 35);
         }
 
         @Test

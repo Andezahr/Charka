@@ -38,9 +38,13 @@ public class AccessInterceptor implements HandlerInterceptor {
     /** GM-01: лечить и править число действий участника с карты — только мастер */
     private static final Pattern GM_ONLY_PARTICIPANT = Pattern.compile("^/encounter/participants/\\d+/(heal|actions)$");
 
+    /** BF-03: участник боя в адресе — игрок меняет только своих (ходить за врага, ждать, вступать, правка) */
+    private static final Pattern PARTICIPANT = Pattern.compile("^/encounter(?:/map)?/participants/(\\d+)(?:/.*)?$");
+
     private final AccessService accessService;
     private final CampaignRepository campaignRepository;
     private final CharacterRepository characterRepository;
+    private final app.charka.repository.EncounterRepository encounterRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -92,6 +96,17 @@ public class AccessInterceptor implements HandlerInterceptor {
                     && !GM_ONLY_PARTICIPANT.matcher(rest).matches());
         if (!playerPath || !accessService.isPlayer(campaign)) {
             throw NotFoundException.forId("Campaign", id).get();
+        }
+        Matcher participant = PARTICIPANT.matcher(rest);
+        if (participant.matches() && !"GET".equals(method)) {
+            Long participantId = Long.valueOf(participant.group(1));
+            boolean own = encounterRepository.findByCampaignId(id).stream()
+                    .flatMap(encounter -> encounter.getParticipants().stream())
+                    .filter(p -> p.getId().equals(participantId))
+                    .anyMatch(p -> accessService.canControl(p.getCharacter()));
+            if (!own) {
+                throw new IllegalArgumentException(app.charka.encounter.RoundActions.NOT_YOUR_CHARACTER);
+            }
         }
     }
 
