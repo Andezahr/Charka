@@ -1471,6 +1471,10 @@ document.addEventListener('submit', async e => {
   }
   // второе нажатие, пока идёт первое, не должно выстрелить ещё раз
   if (submitting) return;
+  // UX-33: после формы открыть нужную вкладку (бросок из окна кубиков — «Чат», где виден итог)
+  if (form.dataset.tabAfter) {
+    try { localStorage.setItem('charka.tabs.battle-side', form.dataset.tabAfter); } catch (e) { /* только удобство */ }
+  }
   submitting = true;
   document.documentElement.classList.add('is-busy');
   try {
@@ -1527,8 +1531,17 @@ const meKey = url => {
   const match = /\/campaign\/(\d+)/.exec(url || '');
   return 'charka.me.campaign.' + (match ? match[1] : '');
 };
+// UX-33: игрок за кого играет, не выбирает — вошёл и играет своими: тот, кто сейчас ходит, иначе выбранный в чате,
+// иначе первый свой. Мастер — как выбрал («мастер» — пусто)
 const battleMe = () => {
-  try { return localStorage.getItem(meKey(battle.url)) || ''; } catch (e) { return ''; }
+  let stored = '';
+  try { stored = localStorage.getItem(meKey(battle.url)) || ''; } catch (e) { /* только удобство */ }
+  if (battleGm()) return stored;
+  const screen = document.querySelector('.battle-screen');
+  const mine = (screen && screen.dataset.mine || '').split(',').filter(Boolean);
+  const current = battle.data && battle.data.tokens.find(token => token.current);
+  if (current && mine.includes(String(current.character))) return String(current.character);
+  return mine.includes(stored) ? stored : (mine[0] || '');
 };
 
 // A-15: режим мастера на этом устройстве — cookie, её же проверяет сервер (GmMode). «За NPC» — только свои NPC и по бегу
@@ -1594,6 +1607,10 @@ function initBattle() {
       if (wrap.open) renderBattle();
     });
   }
+  // окно кубиков: бросает тот, за кого играем
+  document.querySelectorAll('[data-dice-me]').forEach(select => {
+    if ([...select.options].some(option => option.value === battleMe())) select.value = battleMe();
+  });
   const me = document.querySelector('[data-battle-me]');
   if (me) {
     me.value = battleMe();

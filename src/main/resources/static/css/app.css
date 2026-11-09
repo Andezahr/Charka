@@ -1526,6 +1526,24 @@ html:has(.is-editing) {
 .battle-top { grid-area: top; display: flex; align-items: center; gap: 8px; min-width: 0; position: relative; z-index: 6; }
 .battle-toolbar { grid-area: tools; display: flex; flex-direction: column; gap: 6px; min-height: 0; overflow-y: auto; }
 .battle-toolbar .btn, .battle-toolbar select { width: 100%; justify-content: flex-start; }
+/* UX-33: инструменты карты — колонка значков; у мастера — по три в ряд над его инструментами */
+.battle-screen.has-field { grid-template-columns: auto minmax(0, 1fr) minmax(300px, 360px); }
+.battle-toolbar.is-gm { width: 132px; }
+.battle-tools { display: grid; grid-template-columns: 40px; gap: 4px; }
+.battle-toolbar.is-gm .battle-tools { grid-template-columns: repeat(3, 1fr); }
+.battle-toolbar .battle-tool { width: 40px; height: 40px; padding: 0; justify-content: center; font-size: 18px; line-height: 1; }
+.battle-toolbar.is-gm .battle-tool { width: 100%; }
+.battle-tool.is-active { background: var(--accent-soft); border-color: var(--accent); }
+.battle-dice { width: min(420px, 92vw); }
+.battle-dice .form { gap: 10px; }
+/* окно лежит в левой полосе: её «кнопка во всю ширину» сюда не относится */
+.battle-toolbar .battle-dice .btn, .battle-toolbar .battle-dice select { width: auto; justify-content: center; }
+.battle-dice-quick { display: grid; grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)); gap: 6px; }
+.battle-toolbar .battle-dice .battle-dice-quick .btn { width: 100%; min-height: 44px; font-size: 16px; font-weight: 600; }
+.battle-dice .form-row { flex-wrap: nowrap; }
+.me-panel { display: flex; align-items: center; gap: 6px; }
+.me-panel.is-out .me-portrait { opacity: .5; text-decoration: line-through; }
+button.me-portrait { font: inherit; font-size: 14px; }
 .battle-toolbar .battle-me { flex-direction: column; align-items: stretch; gap: 2px; }
 .battle-toolbar .battle-zoom { margin: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
 .battle-toolbar .battle-zoom .btn { justify-content: center; padding-inline: 0; }
@@ -1607,6 +1625,9 @@ html:has(.is-editing) {
   .battle-toolbar .btn, .battle-toolbar select { width: auto; }
   .battle-toolbar .battle-me { flex-direction: row; align-items: center; }
   .battle-toolbar-sep { display: none; }
+  .battle-toolbar.is-gm { width: auto; }
+  .battle-tools, .battle-toolbar.is-gm .battle-tools { grid-template-columns: none; grid-auto-flow: column; }
+  .battle-toolbar .battle-tool, .battle-toolbar.is-gm .battle-tool { width: 44px; height: 44px; }
   .battle-panel { overflow: visible; }
 }
 .charinfo.is-mine .charinfo-head { border-color: var(--success); box-shadow: 0 0 0 1px var(--success); }

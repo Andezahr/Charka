@@ -128,13 +128,13 @@
             <div class="chips">
               <th:block th:if="${open}"><span th:each="line : ${cur.card.lines}" class="chip" th:text="${line}">SP торса 14</span></th:block>
               <span th:if="${!open}" th:each="w : ${cur.weapons}" class="chip" th:text="${w.item.name}">Minami</span>
-              <span th:if="${cur.actionsDone > 0}" class="chip yellow" th:text="'Действий: ' + ${cur.actionsDone}">Действий: 1</span>
+              <!-- UX-33: число действий — только где за него штраф (CP2020); с пределом (Космозэки) — «Действие: есть/потрачено» в полосе хода -->
+              <span th:if="${cur.actionsDone > 0 and @gameSystemRegistry.get(campaign.system).actionsPerRound() <= 0}" class="chip yellow" th:text="'Действий: ' + ${cur.actionsDone}">Действий: 1</span>
               <!-- K-07: действие + перемещение (Космозэки): действие можно отдать на ещё одно перемещение -->
               <form th:if="${(isGm or curMine) and cur.actionsDone == 0 and !@gameSystemRegistry.get(campaign.system).movementIsAction()}"
                     method="post" class="inline" th:action="@{${base} + '/participants/' + ${cur.participant.id} + '/dash'}">
                 <button type="submit" class="chip chip-button" title="Действие на ещё одно перемещение">🏃 Рывок</button>
               </form>
-              <span th:if="${cur.actionsDone > 0 and !@gameSystemRegistry.get(campaign.system).movementIsAction()}" class="chip" title="Перемещение ещё есть">Действие сделано · можно идти</span>
               <form th:each="effect : ${cur.effects}" class="chip red chip-effect" method="post"
                     th:action="@{${base} + '/participants/' + ${cur.participant.id} + '/effects/' + ${effect.id} + '/remove'}">
                 <span th:text="${effect.summary}">Горит 1D6 · раундов 2</span>
@@ -150,44 +150,21 @@
         </div>
       </details>
 
-      <!-- R-16: свой персонаж не на своём ходу — портрет «Я»: статус, вступить, действия вне очереди (бывшая панель A-04) -->
+      <!-- R-16, UX-33: свой персонаж не на своём ходу — портрет «Я» без раскрытия: нажатие выделяет свою фишку на карте.
+           Ждёт — «Вступить» рядом. Окна атаки лежат скрытыми: меню на карте покажет «не ваш ход» (BF-02) -->
       <th:block th:if="${myRows != null}">
-        <details th:each="row : ${myRows}" th:unless="${row.current}" class="me-panel" data-menu
-                 th:with="ahead=${turnsAhead.get(row.character.id)}">
-          <summary class="me-portrait" th:title="${row.character.name}">
+        <div th:each="row : ${myRows}" th:unless="${row.current}" class="me-panel" th:classappend="${row.card.out} ? 'is-out'">
+          <button type="button" class="me-portrait" th:attr="data-select-token=${row.participant.id}"
+                  th:title="${row.card.out} ? ${row.character.name} + ' выбыл из боя' : 'Моя фишка на карте'">
             <span class="me-label">Я</span> <span th:text="${row.character.name}">Колясик</span>
-          </summary>
-          <div class="me-body" th:id="'combatant-' + ${row.character.id}">
-            <p class="turn-status">
-              <span th:if="${row.card.out}">Выбыл из боя</span>
-              <span th:if="${!row.card.out and row.participant.waiting}">Вы ждёте — вступите, когда захотите</span>
-              <span th:if="${!row.card.out and !row.participant.waiting and row.participant.done}">Вы уже ходили в этом раунде</span>
-              <span th:if="${!row.card.out and !row.participant.waiting and !row.participant.done}"
-                    th:text="${(view.current != null and !curHidden ? 'Ходит ' + view.current.name + ' · ' : '') + (ahead <= 1 ? 'вы следующий' : 'до вас ещё ' + ahead + ' ход.')}">вы следующий</span>
-            </p>
-            <div th:replace="~{fragments/encounter :: segments(${row.card})}"></div>
-            <div class="chips">
-              <span th:if="${row.card.status != null}" class="chip" th:classappend="${row.card.alarming} ? 'red'" th:text="${row.card.status}">Цел</span>
-              <span th:each="line : ${row.card.lines}" class="chip" th:text="${line}">SP торса 14</span>
-              <span th:if="${row.declaration != null}" class="chip pink" th:text="${row.declaration.label} + ' +' + ${row.declaration.bonus}">Выхватывает +3</span>
-              <span th:each="effect : ${row.effects}" class="chip red" th:text="${effect.summary}">Горит</span>
-              <span th:if="${row.actionsDone > 0}" class="chip yellow" th:text="'Действий: ' + ${row.actionsDone}">Действий: 1</span>
-            </div>
-            <form th:if="${row.participant.waiting}" th:action="@{${base} + '/participants/' + ${row.participant.id} + '/join'}" method="post">
-              <button type="submit" class="btn btn-primary">Вступить</button>
-            </form>
-            <th:block th:replace="~{fragments/encounter :: results(${row})}"></th:block>
-            <!-- BF-02: игрок действует только на своём ходу; окна атаки остаются скрытыми — меню на карте покажет «не ваш ход» -->
-            <details th:if="${isGm and !row.card.out}" class="cp-more item-more">
-              <summary>Действия вне очереди</summary>
-              <div th:replace="~{fragments/encounter :: actions(${row}, ${base})}"></div>
-            </details>
-            <th:block th:if="${!isGm and !row.card.out}">
-              <p class="muted">Действовать и двигать фишку — на своём ходу</p>
-              <div hidden data-not-turn><div th:replace="~{fragments/encounter :: actions(${row}, ${base})}"></div></div>
-            </th:block>
+          </button>
+          <form th:if="${row.participant.waiting}" th:action="@{${base} + '/participants/' + ${row.participant.id} + '/join'}" method="post">
+            <button type="submit" class="btn btn-sm btn-primary">Вступить</button>
+          </form>
+          <div hidden th:id="'combatant-' + ${row.character.id}">
+            <div th:unless="${row.card.out}" data-not-turn><div th:replace="~{fragments/encounter :: actions(${row}, ${base})}"></div></div>
           </div>
-        </details>
+        </div>
       </th:block>
 
       <!-- R-17: очередь каруселью. Текущий — первым на постоянном месте, за границей — кто уже ходил (следующий раунд) -->
@@ -214,13 +191,13 @@
     </div>
 
     <!-- Слева: инструменты карты (R-18). Общие сверху, мастерские ниже черты -->
-    <div class="battle-toolbar" th:if="${hasField}">
-      <!-- UX-18: группы «Вид» и «Мастер»; мастерская — только у мастера -->
-      <span class="battle-toolbar-title">Вид</span>
-      <label class="field battle-me">
+    <div class="battle-toolbar" th:if="${hasField}" th:classappend="${isGm} ? 'is-gm'">
+      <!-- UX-18, UX-33: инструменты карты значками — подпись в подсказке; у игрока это вся полоса.
+           «За кого я» у игрока не спрашиваем: вошёл — играет своими (app.js battleMe) -->
+      <label th:if="${isGm}" class="field battle-me">
         <span class="label">Я играю за</span>
         <select data-battle-me aria-label="Кто смотрит на это устройство">
-          <option th:if="${isGm}" value="">мастер</option>
+          <option value="">мастер</option>
           <option th:each="row : ${view.rows}" th:if="${controllable.contains(row.character.id)}" th:value="${row.character.id}" th:text="${row.character.name}">Колясик</option>
         </select>
       </label>
@@ -228,13 +205,40 @@
       <button th:if="${isGm}" type="button" class="btn btn-sm btn-ghost gm-mode" data-gm-mode>👁 Вижу всех</button>
       <!-- M-22: фишка на лестнице — «⇅ На 2 этаж» одним нажатием -->
       <span class="battle-climb" data-battle-climb hidden></span>
-      <button type="button" class="btn btn-sm btn-ghost" data-battle-pointer title="Показать клетку всем (Alt+нажатие, долгое нажатие)">👆 Указать</button>
-      <button type="button" class="btn btn-sm btn-ghost" data-battle-ruler title="Измерить расстояние: тяните от клетки к клетке">📏 Линейка</button>
-      <span class="battle-zoom">
-        <button type="button" class="btn btn-sm btn-ghost" data-battle-zoom="1.25" aria-label="Крупнее" title="Крупнее">＋</button>
-        <button type="button" class="btn btn-sm btn-ghost" data-battle-zoom="0.8" aria-label="Мельче" title="Мельче">−</button>
-        <button type="button" class="btn btn-sm btn-ghost" data-battle-zoom="0" aria-label="Вся карта" title="Вся карта">⤢</button>
-      </span>
+      <div class="battle-tools" role="group" aria-label="Инструменты карты">
+        <button type="button" class="btn btn-ghost battle-tool" data-battle-pointer aria-label="Указать клетку всем" title="Указать клетку всем (Alt+нажатие, долгое нажатие)">👆</button>
+        <button type="button" class="btn btn-ghost battle-tool" data-battle-ruler aria-label="Линейка" title="Линейка: тяните от клетки к клетке">📏</button>
+        <button type="button" class="btn btn-ghost battle-tool" data-dialog-open="battle-dice" aria-label="Кубики" title="Кубики: бросок уходит в чат">🎲</button>
+        <button type="button" class="btn btn-ghost battle-tool" data-battle-zoom="1.25" aria-label="Крупнее" title="Крупнее">＋</button>
+        <button type="button" class="btn btn-ghost battle-tool" data-battle-zoom="0.8" aria-label="Мельче" title="Мельче">−</button>
+        <button type="button" class="btn btn-ghost battle-tool" data-battle-zoom="0" aria-label="Вся карта" title="Вся карта">⤢</button>
+      </div>
+      <!-- UX-33: кубики с карты — те же броски, что в «Чате»: итог приходит в ленту, после броска открыта вкладка «Чат» -->
+      <dialog id="battle-dice" class="dialog battle-dice" th:with="diceSystem=${@gameSystemRegistry.get(campaign.system)}">
+        <div class="add-dialog-head">
+          <h2 class="card-title">🎲 Кубики</h2>
+          <button type="button" class="icon-btn" data-dialog-close aria-label="Закрыть">✕</button>
+        </div>
+        <form th:action="@{'/campaign/' + ${campaign.id} + '/chat'}" method="post" class="form" data-tab-after="chat">
+          <input type="hidden" name="returnTo" th:value="${base}">
+          <select th:if="${isGm or #lists.size(chatCharacters) > 1}" name="character" data-dice-me aria-label="Кто бросает">
+            <option th:if="${isGm}" value="">Мастер</option>
+            <option th:each="c : ${chatCharacters}" th:value="${c.id}" th:text="${c.name}">Колясик</option>
+          </select>
+          <input th:if="${!isGm and #lists.size(chatCharacters) == 1}" type="hidden" name="character" th:value="${chatCharacters[0].id}">
+          <div class="battle-dice-quick">
+            <button th:each="d : ${diceSystem.getQuickDice()}" type="submit" name="quick" th:value="${d}" class="btn" th:text="${d}">d10</button>
+          </div>
+          <div class="form-row">
+            <input type="text" name="text" class="grow" maxlength="500" autocomplete="off" placeholder="2d6+3 Атака"
+                   aria-label="Свой бросок" title="Кубики и подпись: «2d6+3 Атака»">
+            <button type="submit" class="btn btn-primary">Бросить</button>
+          </div>
+          <label th:if="${isGm}" class="check dice-hidden" title="Игроки этот бросок не увидят; в ленте его можно показать всем">
+            <input type="checkbox" name="hidden" value="true" data-remember="dice-hidden"><span>🙈 Скрыто</span>
+          </label>
+        </form>
+      </dialog>
       <th:block th:if="${isGm}">
         <hr class="battle-toolbar-sep">
         <span class="battle-toolbar-title">Мастер</span>
@@ -356,7 +360,7 @@
                   <div class="chips">
                     <span th:if="${row.card.status != null}" class="chip" th:classappend="${row.card.alarming} ? 'red'" th:text="${row.card.status}">Цел</span>
                     <span th:each="line : ${row.card.lines}" class="chip" th:text="${line}">SP торса 14</span>
-                    <span th:if="${row.actionsDone > 0 and !row.card.out}" class="chip yellow" th:text="'Действий: ' + ${row.actionsDone}"
+                    <span th:if="${row.actionsDone > 0 and !row.card.out and @gameSystemRegistry.get(campaign.system).actionsPerRound() <= 0}" class="chip yellow" th:text="'Действий: ' + ${row.actionsDone}"
                           title="Следующее действие в этом раунде — со штрафом; диалог атаки ставит его сам">Действий: 1</span>
                     <span th:if="${row.participant.done and !row.card.out}" class="chip">Походил</span>
                     <span th:if="${row.participant.waiting}" class="chip">Ждёт</span>

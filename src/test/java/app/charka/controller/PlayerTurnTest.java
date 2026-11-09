@@ -101,14 +101,14 @@ class PlayerTurnTest {
     }
 
     @Test
-    @DisplayName("Не свой ход: портрет «Я» — «Ходит Бандит · до вас ещё 2», очередь во вкладке, «Следующий ход» не у игрока")
+    @DisplayName("Не свой ход: портрет «Я» без раскрытия, «Я играю за» нет, очередь во вкладке, «Следующий ход» не у игрока")
     void waiting() throws Exception {
         String html = page("kolya");
 
-        assertThat(html).contains("me-panel", "Ходит Бандит · до вас ещё 2 ход.", "Действовать и двигать фишку — на своём ходу", "data-tab-panel=\"queue\"",
+        assertThat(html).contains("me-panel", "me-portrait", "data-not-turn", "battle-dice", "data-tab-panel=\"queue\"",
                 "data-turn-watch=\"" + base + "/turn\"", "data-mine=\"" + mine.getId() + "\"")
-                .doesNotContain("Следующий ход →", "Закончить ход →");
-        assertThat(page("master")).contains("Следующий ход →").doesNotContain("me-panel");
+                .doesNotContain("Следующий ход →", "Закончить ход →", "me-body", "Я играю за");
+        assertThat(page("master")).contains("Следующий ход →", "Я играю за").doesNotContain("me-panel");
     }
 
     @Test
@@ -118,7 +118,7 @@ class PlayerTurnTest {
                 .andExpect(flash().attribute("encounterError", "Сейчас ход не ваш: передать его может тот, кто ходит, или мастер"));
 
         mockMvc.perform(post(base + "/next").with(user("master")).with(csrf()));
-        assertThat(page("kolya")).contains("Ходит Бустер · вы следующий");
+        assertThat(page("kolya")).contains("<strong>Бустер</strong>").doesNotContain("▶ Ваш ход");
         mockMvc.perform(post(base + "/next").with(user("master")).with(csrf()));
 
         assertThat(page("kolya")).contains("▶ Ваш ход", "Закончить ход →", "is-mine");

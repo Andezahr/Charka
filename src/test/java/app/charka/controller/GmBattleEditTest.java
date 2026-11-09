@@ -277,12 +277,11 @@ class GmBattleEditTest {
         }
 
         @Test
-        @DisplayName("У игрока нет «Действий вне очереди» — подсказка «на своём ходу»")
+        @DisplayName("У игрока нет «Действий вне очереди»: окна атаки скрыты, меню на карте скажет «не ваш ход»")
         void noOutOfTurnPanel() throws Exception {
             String player = mockMvc.perform(get(base).with(user("kolya"))).andReturn().getResponse().getContentAsString();
 
-            assertThat(player).contains("Действовать и двигать фишку — на своём ходу", "data-not-turn")
-                    .doesNotContain("Действия вне очереди");
+            assertThat(player).contains("data-not-turn").doesNotContain("Действия вне очереди");
         }
 
         @Test
