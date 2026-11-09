@@ -155,12 +155,26 @@ public class HealthCounterService {
 
     @Transactional
     public HealthEvent heal(Long characterId, Long counterId, int points) {
+        return heal(characterId, counterId, points, null);
+    }
+
+    /**
+     * GM-01: лечение зоны ({@code location}), если система лечит по зонам; пусто — целиком.
+     */
+    @Transactional
+    public HealthEvent heal(Long characterId, Long counterId, int points, String location) {
         CounterContext context = contextFor(characterId, counterId);
         return journaled(context.getCounter().getCharacter(), "Лечение", () -> {
-            HealthEvent event = strategyFor(context).heal(context, points);
+            HealthEvent event = strategyFor(context).heal(context, points, location == null || location.isBlank() ? null : location);
             counterRepository.save(context.getCounter());
             return event;
         });
+    }
+
+    /** GM-01: лечит ли система этого счётчика по зонам */
+    @Transactional(readOnly = true)
+    public boolean healsByLocation(Long characterId, Long counterId) {
+        return strategyFor(contextFor(characterId, counterId)).healsByLocation();
     }
 
     /**

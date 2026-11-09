@@ -35,6 +35,8 @@ public class AccessInterceptor implements HandlerInterceptor {
             "/encounter/initiative-mode", "/encounter/fog",
             // KF-05: положить предмет на карту и убрать его — мастер; подобрать — любой за своего персонажа
             "/encounter/loot");
+    /** GM-01: лечить и править число действий участника с карты — только мастер */
+    private static final Pattern GM_ONLY_PARTICIPANT = Pattern.compile("^/encounter/participants/\\d+/(heal|actions)$");
 
     private final AccessService accessService;
     private final CampaignRepository campaignRepository;
@@ -86,7 +88,8 @@ public class AccessInterceptor implements HandlerInterceptor {
                 || (rest.equals("/requests") && "GET".equals(method)) || rest.matches("/requests/\\d+/roll")
                 // A-11: справка правил — всем за столом
                 || (rest.equals("/reference") && "GET".equals(method))
-                || ((rest.equals("/encounter") || rest.startsWith("/encounter/")) && !GM_ONLY_IN_FIGHT.contains(rest));
+                || ((rest.equals("/encounter") || rest.startsWith("/encounter/")) && !GM_ONLY_IN_FIGHT.contains(rest)
+                    && !GM_ONLY_PARTICIPANT.matcher(rest).matches());
         if (!playerPath || !accessService.isPlayer(campaign)) {
             throw NotFoundException.forId("Campaign", id).get();
         }

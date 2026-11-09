@@ -34,11 +34,12 @@ public record EncounterView(Encounter encounter, Character current, boolean last
      * @param abilities чем можно бить без предмета
      * @param actionsDone  сколько действий уже сделано в этом раунде, с бегом (A-05)
      * @param actionOption модификатор атаки за следующее действие ({@code AttackRules.actionOption}); null — первое или у системы нет
+     * @param healZones    GM-01: зоны для лечения мастером; пусто — система лечит целиком
      */
     public record Row(EncounterParticipant participant, Character character, InitiativeDeclaration declaration,
                       List<InitiativeDeclaration> declarations, List<CheckOption> checks, CombatCard card, boolean current,
                       List<Weapon> weapons, List<Character> targets, List<PendingBlast> blasts, List<CombatEffect> effects, List<Ability> abilities,
-                      int actionsDone, String actionOption, boolean canAct) {
+                      int actionsDone, String actionOption, boolean canAct, List<CombatCard.Option> healZones) {
 
         /** Итог действия с этим предметом показывается в этой строке */
         public boolean hasItem(Long itemId) {

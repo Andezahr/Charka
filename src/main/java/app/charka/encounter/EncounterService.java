@@ -174,13 +174,14 @@ public class EncounterService {
         List<Character> fighters = ordered(encounter).stream().map(EncounterParticipant::getCharacter).toList();
         List<EncounterView.Row> rows = ordered(encounter).stream().map(participant -> {
             Character character = participant.getCharacter();
+            CombatCard card = system.getCombatCard(character);
             return new EncounterView.Row(participant, character, declaration(participant, system), available(participant, system), checks(character, system),
-                    system.getCombatCard(character), participant == current,
+                    card, participant == current,
                     weapons(character, system), targets(character, fighters, system), attackService.pendingBlasts(character.getId()),
                     List.copyOf(participant.getEffects()), abilities(character, system),
                     RoundActions.done(participant, system.movementIsAction()),
                     system.getAttackRules() == null ? null : system.getAttackRules().actionOption(RoundActions.done(participant, system.movementIsAction())),
-                    RoundActions.canAct(participant, system));
+                    RoundActions.canAct(participant, system), healZones(character, card));
         }).toList();
         Set<Long> inFight = fighters.stream().map(Character::getId).collect(Collectors.toSet());
         List<Character> addable = encounter.getCampaign().getCharacters().stream()
@@ -552,6 +553,67 @@ public class EncounterService {
                 .build();
         return healthCounterService.applyDamage(character.getId(), request)
                 .orElseThrow(() -> new IllegalArgumentException("У персонажа нет счётчика здоровья"));
+    }
+
+    /**
+     * GM-01: мастер лечит участника с карты боя (не медпомощь: без броска и без действия).
+     *
+     * @param location зона, если система лечит по зонам; пусто — целиком
+     * @throws IllegalArgumentException если у персонажа нет здоровья или очков меньше одного
+     */
+    @Transactional
+    public HealthEvent heal(Long campaignId, Long participantId, int points, String location) {
+        if (points < 1) {
+            throw new IllegalArgumentException("Сколько вылечить — от 1");
+        }
+        Character character = participant(campaignId, participantId).getCharacter();
+        return healthCounterService.heal(character.getId(), healthCounter(character), points, location);
+    }
+
+    /** Предел правки действий мастером: столько можно дать сверх или забрать за раунд */
+    static final int ACTIONS_ADJUST_LIMIT = 5;
+
+    /**
+     * GM-01: мастер даёт участнику ещё действие в этом раунде ({@code delta} &lt; 0 — счётчик сделанных меньше)
+     * или забирает ({@code delta} &gt; 0). Новый раунд обнуляет, как обычно. Запись в журнале боя.
+     *
+     * @return сколько действий сделано теперь
+     */
+    @Transactional
+    public int adjustActions(Long campaignId, Long participantId, int delta) {
+        EncounterParticipant participant = participant(campaignId, participantId);
+        Character character = participant.getCharacter();
+        int before = participant.getActions();
+        int after = Math.max(-ACTIONS_ADJUST_LIMIT, Math.min(ACTIONS_ADJUST_LIMIT, before + delta));
+        if (after == before) {
+            throw new IllegalArgumentException(delta < 0 ? "Больше действий в этом раунде дать нельзя" : "Больше действий забрать нельзя");
+        }
+        return journalService.capture(() -> {
+            participant.setActions(after);
+            return after;
+        }, done -> new app.charka.journal.JournalService.Draft(character.getCampaign(), character,
+                app.charka.journal.JournalService.Kind.TURN,
+                (after < before ? "Мастер дал действие: " : "Мастер забрал действие: ") + character.getName(),
+                actionsLeft(participant, system(character.getCampaign())), null, null, null, List.of(), List.of()));
+    }
+
+    /** Сколько действий осталось в раунде — словами для журнала и итога */
+    static String actionsLeft(EncounterParticipant participant, GameSystem system) {
+        int limit = system.actionsPerRound();
+        int done = RoundActions.done(participant, system.movementIsAction());
+        if (limit <= 0) {
+            return "Сделано действий в раунде: " + Math.max(0, done);
+        }
+        int left = Math.max(0, limit - done);
+        return left == 0 ? "Действий в раунде не осталось" : "Осталось действий в раунде: " + left;
+    }
+
+    /** GM-01: зоны для лечения мастером — те же, что для урона, если система лечит по зонам */
+    private List<CombatCard.Option> healZones(Character character, CombatCard card) {
+        if (card.healthCounterId() == null || card.locations().isEmpty()) {
+            return List.of();
+        }
+        return healthCounterService.healsByLocation(character.getId(), card.healthCounterId()) ? card.locations() : List.of();
     }
 
     /**

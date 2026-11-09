@@ -87,7 +87,7 @@
   </div>
   <!-- R-15a: правка мастера отдельно от хода; у мастера она же — в меню фишки на карте -->
   <details class="cp-more item-more encounter-edit">
-    <summary>Правка: урон вручную, инициатива, убрать из боя</summary>
+    <summary th:text="${isGm} ? 'Правка: урон, лечение, действия, инициатива' : 'Правка: урон вручную, инициатива, убрать из боя'">Правка: урон вручную, инициатива, убрать из боя</summary>
     <form th:if="${row.card.healthCounterId != null}" th:action="@{${url} + '/damage'}" method="post" class="form-row encounter-damage">
       <input type="number" name="amount" class="narrow" min="0" placeholder="Урон" required aria-label="Урон">
       <select name="location" aria-label="Зона попадания">
@@ -104,6 +104,27 @@
       </th:block>
       <button type="submit" class="btn btn-sm btn-danger">Нанести</button>
     </form>
+    <!-- GM-01: мастер лечит без броска и без действия участника; зона — если система лечит по зонам (Космозэки) -->
+    <form th:if="${isGm and row.card.healthCounterId != null}" th:action="@{${url} + '/heal'}" method="post" class="form-row encounter-heal">
+      <input type="number" name="points" class="narrow" min="1" placeholder="ХП" required aria-label="Сколько вылечить">
+      <select th:unless="${#lists.isEmpty(row.healZones)}" name="location" aria-label="Какую зону лечить" data-remember="gm-heal-zone">
+        <option value="">Все зоны</option>
+        <option th:each="l : ${row.healZones}" th:value="${l.code}" th:text="${l.label}">Голова</option>
+      </select>
+      <button type="submit" class="btn btn-sm btn-success">Вылечить</button>
+    </form>
+    <!-- GM-01: ещё действие в этом раунде (delta −1: сделанных меньше) или забрать одно -->
+    <div th:if="${isGm}" class="form-row encounter-actions-adjust">
+      <span class="muted" th:text="${row.canAct} ? 'Действия раунда: есть' : 'Действия раунда: потрачены'">Действия раунда: есть</span>
+      <form th:action="@{${url} + '/actions'}" method="post">
+        <input type="hidden" name="delta" value="-1">
+        <button type="submit" class="btn btn-sm" title="Дать ещё одно действие в этом раунде">＋ Действие</button>
+      </form>
+      <form th:action="@{${url} + '/actions'}" method="post">
+        <input type="hidden" name="delta" value="1">
+        <button type="submit" class="btn btn-sm btn-ghost" title="Забрать одно действие этого раунда">− Действие</button>
+      </form>
+    </div>
 
     <div class="encounter-minor">
       <form th:action="@{${url} + '/initiative'}" method="post" class="form-row">

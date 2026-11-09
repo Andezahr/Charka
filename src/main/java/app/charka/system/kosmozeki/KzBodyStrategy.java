@@ -382,6 +382,17 @@ public class KzBodyStrategy extends AbstractCounterStrategy implements HealthCou
         return event.summary(healed == 0 ? "Лечить нечего" : "+" + points + " в каждую зону, всего " + healed);
     }
 
+    /** GM-01: мастер лечит зону с карты боя; без зоны — каждую */
+    @Override
+    public HealthEvent heal(CounterContext context, int points, String location) {
+        return location == null ? heal(context, points) : healZone(context.getCounter(), location, points);
+    }
+
+    @Override
+    public boolean healsByLocation() {
+        return true;
+    }
+
     /** Лечение одной зоны: «Жидкая кожа», правка мастера */
     public static HealthEvent healZone(Counter counter, String zoneCode, int points) {
         KzBody.Zone zone = zone(body(counter), zoneCode);

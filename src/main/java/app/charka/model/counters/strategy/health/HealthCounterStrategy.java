@@ -27,6 +27,20 @@ public interface HealthCounterStrategy extends CounterStrategy {
     /** Вылечить указанное количество урона */
     HealthEvent heal(CounterContext context, int points);
 
+    /**
+     * GM-01: лечение одной зоны (правка мастера с карты боя). Система без зон лечит целиком.
+     *
+     * @param location код зоны; пусто — как {@link #heal(CounterContext, int)}
+     */
+    default HealthEvent heal(CounterContext context, int points, String location) {
+        return heal(context, points);
+    }
+
+    /** GM-01: лечится ли зона отдельно — тогда в форме лечения мастера есть выбор зоны */
+    default boolean healsByLocation() {
+        return false;
+    }
+
     /** Естественное восстановление за прошедшие игровые дни */
     HealthEvent healOverTime(CounterContext context, int days);
 

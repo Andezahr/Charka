@@ -39,7 +39,7 @@ public class UndoLabels {
             Map.entry("items", "новый предмет"), Map.entry("attributes", "правка счётчика"), Map.entry("reset", "сброс счётчика"),
             Map.entry("update", "счётчик"), Map.entry("set", "счётчик"), Map.entry("create", "новый счётчик"),
             Map.entry("wait", "ожидание"), Map.entry("join", "вступление в бой"), Map.entry("remove", "убран из боя"),
-            Map.entry("initiative", "инициатива"), Map.entry("participants", "новый участник боя"), Map.entry("check", "проверка"),
+            Map.entry("initiative", "инициатива"), Map.entry("actions", "действия в раунде"), Map.entry("participants", "новый участник боя"), Map.entry("check", "проверка"),
             Map.entry("inventories", "инвентарь"), Map.entry("installed", "вживлённое"), Map.entry("setup", "счётчики системы"));
 
     private final JdbcTemplate jdbc;

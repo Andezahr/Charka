@@ -905,16 +905,7 @@ function initPage() {
   });
 
   // Запоминаемый выбор: <select data-remember="ключ"> — последняя карта начала боя
-  document.querySelectorAll('select[data-remember]').forEach(select => {
-    const key = 'charka.remember.' + select.dataset.remember;
-    try {
-      const stored = localStorage.getItem(key);
-      if (stored !== null && [...select.options].some(option => option.value === stored)) select.value = stored;
-    } catch (e) { /* только удобство */ }
-    select.addEventListener('change', () => {
-      try { localStorage.setItem(key, select.value); } catch (e) { /* только удобство */ }
-    });
-  });
+  document.querySelectorAll('select[data-remember]').forEach(rememberSelect);
   // A-09: галочка тоже запоминается: <input type="checkbox" data-remember="ключ"> — «🙈 Скрыто» у мастера
   document.querySelectorAll('input[type=checkbox][data-remember]').forEach(box => {
     const key = 'charka.remember.' + box.dataset.remember;
@@ -939,6 +930,18 @@ function safely(name, init) {
     console.error(name, e);
     if (window.reportClientError) window.reportClientError(name + ': ' + e.message, e.stack);
   }
+}
+
+// Запоминаемый выбор одного списка: и на странице, и в копии формы (меню фишки мастера, GM-01)
+function rememberSelect(select) {
+  const key = 'charka.remember.' + select.dataset.remember;
+  try {
+    const stored = localStorage.getItem(key);
+    if (stored !== null && [...select.options].some(option => option.value === stored)) select.value = stored;
+  } catch (e) { /* только удобство */ }
+  select.addEventListener('change', () => {
+    try { localStorage.setItem(key, select.value); } catch (e) { /* только удобство */ }
+  });
 }
 
 // A-04: «мой ход» на телефоне игрока. Опрос /turn раз в 2 с; ход сменился — если подошла очередь игрока,
@@ -2317,10 +2320,10 @@ function wireBattleSvg(svg) {
         if (!press || press.moved) return;
         const held = press;
         press = null;
-        // долгое нажатие на выбранную или свою фишку — не атака по себе
+        // долгое нажатие на выбранную или свою фишку — не атака по себе; GM-01: мастер в «Боге» — меню правки и на ней
         const own = held.token && (held.token.id === battle.selected || String(held.token.character) === battleMe());
         if (held.locked) attackMenu(held.locked, event);
-        else if (held.token && !own) attackMenu(held.token, event);
+        else if (held.token && (!own || (battleGm() && !npcOnly()))) attackMenu(held.token, event);
         else if (!held.token && held.door) edgeMenu(held.door, held.doorKind, event);
         else if (!held.token && explosiveAt(start.x, start.y)) explosiveMenu(start.x, start.y, event);
         else if (inside(start)) sendPointer(start.x, start.y);
@@ -2638,16 +2641,23 @@ async function attackMenu(token, event) {
   const x = event ? event.clientX - holder.left : holder.width / 2;
   const y = event ? event.clientY - holder.top : holder.height / 2;
   menu.style.left = Math.min(Math.max(8, x), holder.width - 260) + 'px';
-  menu.style.top = Math.min(Math.max(8, y), Math.max(8, holder.height - menu.offsetHeight - 8)) + 'px';
+  // GM-01: на телефоне полоса хода прилипает снизу поверх карты — меню не уходит под неё, остальное прокручивается
+  const bar = document.querySelector('.battle-bar');
+  const barTop = bar && getComputedStyle(bar).position === 'sticky' ? bar.getBoundingClientRect().top - holder.top : holder.height;
+  const room = Math.max(120, Math.min(holder.height, barTop) - 16);
+  menu.style.maxHeight = room + 'px';
+  menu.style.top = Math.min(Math.max(8, y), Math.max(8, room + 8 - menu.offsetHeight)) + 'px';
   menu.hidden = false;
-  menu.style.top = Math.min(Math.max(8, y), Math.max(8, holder.height - menu.offsetHeight - 8)) + 'px';
+  menu.style.top = Math.min(Math.max(8, y), Math.max(8, room + 8 - menu.offsetHeight)) + 'px';
 }
 
-// R-15a: правка мастера в меню фишки — те же формы, что в боевом блоке участника: урон вручную, инициатива, убрать из боя
+// R-15a: правка мастера в меню фишки — те же формы, что в боевом блоке участника: урон вручную, инициатива, убрать из боя;
+// GM-01: лечение и ＋/− действие раунда. Только в режиме «Бог» (A-15): «За NPC» мастер играет, а не правит
 function gmSection(menu, token) {
+  if (npcOnly()) return;
   const row = document.getElementById('combatant-' + token.character);
   if (!row) return;
-  const forms = [...row.querySelectorAll('.encounter-damage, .encounter-minor form')]
+  const forms = [...row.querySelectorAll('.encounter-damage, .encounter-heal, .encounter-actions-adjust, .encounter-minor form')]
     .filter(form => !/\/wait$/.test(form.getAttribute('action') || ''));
   if (!forms.length) return;
   const box = document.createElement('div');
@@ -2660,6 +2670,7 @@ function gmSection(menu, token) {
     const copy = form.cloneNode(true);
     copy.removeAttribute('id');
     if (copy.dataset.confirm) copy.addEventListener('submit', e => { if (!confirm(copy.dataset.confirm)) e.preventDefault(); });
+    copy.querySelectorAll('select[data-remember]').forEach(rememberSelect);
     box.appendChild(copy);
   });
   menu.appendChild(box);

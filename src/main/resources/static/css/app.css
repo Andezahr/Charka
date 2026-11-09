@@ -1407,6 +1407,9 @@ html:has(.is-editing) {
 .battle-menu { position: absolute; z-index: 5; display: flex; flex-direction: column; gap: 6px; min-width: 200px; max-width: 260px; padding: 10px;
   border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); box-shadow: var(--shadow); }
 .battle-menu[hidden] { display: none; }
+/* GM-01: с лечением и действиями меню мастера выше карты на телефоне — не выше поля, остальное прокруткой */
+.battle-menu { max-height: calc(100% - 16px); overflow-y: auto; overscroll-behavior: contain; }
+.battle-menu > * { flex-shrink: 0; }
 .battle-menu-head { font-weight: 600; }
 .battle-menu-warn { color: var(--danger); font-size: 13px; }
 .battle-menu-note { color: var(--muted); font-size: 13px; }
@@ -1766,6 +1769,8 @@ dialog .action-error { margin-bottom: 12px; }
 
 /* Действия раунда кончились (Космозэки — одно за ход): атака, проверка и боевые действия предметов неактивны */
 .encounter-actions .btn:disabled, .battle-bar-actions .btn:disabled, .battle-menu .btn:disabled { opacity: .45; cursor: not-allowed; }
+/* BF-01: занятая основная кнопка (действие раунда потрачено) не должна выглядеть нажимаемой — серая, а не бледно-голубая */
+.encounter-actions .btn-primary:disabled, .battle-bar-actions .btn-primary:disabled, .battle-menu .btn-primary:disabled { filter: grayscale(1); }
 .encounter-actions[data-no-actions] .item-actions form .btn,
 .battle-bar-actions[data-no-actions] form[action*="/action/"] .btn { opacity: .45; pointer-events: none; }
 

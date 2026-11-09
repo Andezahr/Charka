@@ -334,6 +334,30 @@ public class EncounterController {
                 () -> encounterService.damage(campaignId, participantId, amount, location, damageType, hits, armorHalf));
     }
 
+    /** GM-01: мастер лечит с карты боя — очки, зона (если система лечит по зонам) */
+    @PostMapping("/participants/{participantId}/heal")
+    public String heal(@PathVariable Long campaignId, @PathVariable Long participantId,
+                       @RequestParam int points,
+                       @RequestParam(required = false) String location,
+                       RedirectAttributes redirectAttributes) {
+        return health(campaignId, participantId, "Лечение", redirectAttributes,
+                () -> encounterService.heal(campaignId, participantId, points, location));
+    }
+
+    /** GM-01: мастер даёт ({@code delta=-1}) или забирает ({@code delta=1}) действие участника в этом раунде */
+    @PostMapping("/participants/{participantId}/actions")
+    public String actions(@PathVariable Long campaignId, @PathVariable Long participantId, @RequestParam int delta,
+                          RedirectAttributes redirectAttributes) {
+        Long character = encounterService.characterOf(campaignId, participantId);
+        redirectAttributes.addFlashAttribute("resultCharacterId", character);
+        try {
+            encounterService.adjustActions(campaignId, participantId, delta);
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("encounterError", e.getMessage());
+        }
+        return redirect(campaignId, character);
+    }
+
     @PostMapping("/participants/{participantId}/save/{code}")
     public String save(@PathVariable Long campaignId, @PathVariable Long participantId, @PathVariable String code,
                        @RequestParam(defaultValue = "0") int luck, RedirectAttributes redirectAttributes) {
