@@ -43,27 +43,24 @@ const UPLOAD_TIMEOUT = 60000;
 
 // KF-06: окно внутри свёрнутого <details> или скрытой вкладки не рисуется, а showModal всё равно делает страницу
 // неотзывчивой — «экран боя завис, помогает только перезагрузка» (диалог атаки лежит в свёрнутом Char Info).
-// Свёрнутых предков раскрываем на время окна; если окно всё равно не видно (скрытая вкладка) — оно на время
-// переезжает в <body> и возвращается на место, когда закрыто
+// BF-01: раскрыть предков мало — панель «Действия вне очереди» — меню (details[data-menu]), и то же нажатие,
+// что открыло окно, сворачивает её обратно («нажатие мимо»). Поэтому окно из свёрнутого или скрытого места
+// на время переезжает в <body> и возвращается на место, когда закрыто
 (() => {
   const show = HTMLDialogElement.prototype.showModal;
   HTMLDialogElement.prototype.showModal = function () {
-    const folded = [];
-    for (let node = this.parentElement; node; node = node.parentElement) {
-      if (node.tagName === 'DETAILS' && !node.open) folded.push(node);
-    }
-    folded.forEach(details => { details.open = true; });
-    let placeholder = null;
     const parent = this.parentElement;
-    if (parent && parent !== document.body && !parent.getClientRects().length && getComputedStyle(parent).display !== 'contents') {
-      placeholder = document.createComment('dialog');
+    let folded = false;
+    for (let node = parent; node; node = node.parentElement) {
+      if (node.tagName === 'DETAILS' && !node.open) folded = true;
+    }
+    const hidden = parent && parent !== document.body && !parent.getClientRects().length && getComputedStyle(parent).display !== 'contents';
+    if (parent && parent !== document.body && (folded || hidden)) {
+      const placeholder = document.createComment('dialog');
       this.replaceWith(placeholder);
       document.body.appendChild(this);
-    }
-    if (folded.length || placeholder) {
       this.addEventListener('close', () => {
-        folded.forEach(details => { details.open = false; });
-        if (placeholder && placeholder.isConnected) placeholder.replaceWith(this);
+        if (placeholder.isConnected) placeholder.replaceWith(this);
       }, { once: true });
     }
     return show.call(this);

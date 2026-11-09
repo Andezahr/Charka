@@ -238,7 +238,36 @@ class GmBattleEditTest {
     class HealThenAttack {
 
         @Test
-        @DisplayName("Лечение «Жидкой кожей» тратит действие; атака из боя — отказ словами и возврат в бой, не 500")
+        @DisplayName("Без сознания весь раунд, вылечен с листа (действие не тратится) — в этом раунде без хода и действия, со следующего — как все")
+        void healedFromSheetSitsOutTheRound() throws Exception {
+            Long inventory = characterRepository.findById(zek.getId()).orElseThrow().getInventories().getFirst().getId();
+            Item club = itemService.addFromCatalog(inventory, "kz-club", 1);
+            damage(zek, KzBody.HEAD, 100);
+            encounterService.next(campaign.getId());
+            flush();
+            assertThat(row(zek).participant().isDone()).isTrue();
+
+            Long body = row(zek).card().healthCounterId();
+            mockMvc.perform(post("/character/" + zek.getId() + "/counters/" + body + "/health/heal").param("points", "1000")
+                    .with(user("kolya")).with(csrf()));
+            flush();
+
+            assertThat(row(zek).card().out()).isFalse();
+            assertThat(row(zek).canAct()).isFalse();
+            assertThat(encounterService.view(campaign.getId()).orElseThrow().current().getId()).isEqualTo(guard.getId());
+            mockMvc.perform(post("/character/" + zek.getId() + "/items/" + club.getId() + "/attack")
+                            .param("target", String.valueOf(guard.getId())).param("mode", "STRIKE")
+                            .param("returnCampaign", String.valueOf(campaign.getId())).with(user("kolya")).with(csrf()))
+                    .andExpect(flash().attribute("actionError", app.charka.encounter.RoundActions.NO_ACTIONS_LEFT));
+
+            encounterService.next(campaign.getId());
+            flush();
+            assertThat(row(zek).canAct()).isTrue();
+            assertThat(row(zek).participant().isDone()).isFalse();
+        }
+
+        @Test
+        @DisplayName("Свою «Жидкую кожу» выбывший в этом раунде не применит — действия нет; вылечил мастер — атака тоже отказ словами, не 500")
         void attackAfterHeal() throws Exception {
             Long inventory = characterRepository.findById(zek.getId()).orElseThrow().getInventories().getFirst().getId();
             Item skin = itemService.addFromCatalog(inventory, "kz-skin", 3);
@@ -249,7 +278,12 @@ class GmBattleEditTest {
 
             mockMvc.perform(post("/character/" + zek.getId() + "/inventories/" + inventory + "/items/" + skin.getId() + "/action/HEAL_ALL")
                             .param("returnCampaign", String.valueOf(campaign.getId())).with(user("kolya")).with(csrf()))
-                    .andExpect(status().is3xxRedirection());
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(flash().attribute("actionError", app.charka.encounter.RoundActions.NO_ACTIONS_LEFT));
+            flush();
+            assertThat(row(zek).card().out()).isTrue();
+
+            mockMvc.perform(post(participant(zek) + "/heal").param("points", "30").with(user("master")).with(csrf()));
             flush();
             assertThat(row(zek).card().out()).isFalse();
             assertThat(row(zek).canAct()).isFalse();

@@ -292,6 +292,7 @@ public class EncounterService {
             current.setDone(true);
             current.setWaiting(false);
         }
+        sitOut(encounter, system);
         EncounterParticipant next = current(encounter, system);
         List<String> report = List.of();
         if (next == null) {
@@ -713,6 +714,26 @@ public class EncounterService {
             }
         });
         sortByInitiative(encounter);
+        sitOut(encounter, system);
+    }
+
+    /**
+     * BF-01: выбывший (без сознания, мёртв) пропускает раунд целиком: ход прошёл мимо — он «походил», а действие
+     * раунда потрачено. Вылечили в том же раунде — ходит и действует только со следующего; лишнее действие может дать
+     * мастер (GM-01). HOMEBREW: решение автора, в правилах систем об этом нет.
+     */
+    private void sitOut(Encounter encounter, GameSystem system) {
+        int limit = system.actionsPerRound();
+        encounter.getParticipants().stream()
+                .filter(participant -> !participant.isDone())
+                .filter(participant -> system.getCombatCard(participant.getCharacter()).out())
+                .forEach(participant -> {
+                    participant.setDone(true);
+                    participant.setWaiting(false);
+                    if (limit > 0) {
+                        participant.setActions(Math.max(participant.getActions(), limit));
+                    }
+                });
     }
 
     private static void withdrawDeclaration(EncounterParticipant participant, GameSystem system) {
