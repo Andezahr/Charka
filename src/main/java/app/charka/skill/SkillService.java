@@ -88,7 +88,16 @@ public class SkillService {
         if (!specials.isEmpty()) {
             groups.add(new SkillSheet.Group(SPECIAL_GROUP, null, true, List.of(), specials));
         }
-        byStat.forEach((statCode, rows) -> {
+        // UX-23: группы — в порядке статов системы (как на листе: INT, REF, TECH…), а не по алфавиту первого навыка
+        List<String> statOrder = new ArrayList<>(stats.keySet());
+        Map<String, List<SkillSheet.Row>> ordered = new LinkedHashMap<>();
+        statOrder.forEach(code -> {
+            if (byStat.containsKey(code)) {
+                ordered.put(code, byStat.get(code));
+            }
+        });
+        byStat.forEach(ordered::putIfAbsent);
+        ordered.forEach((statCode, rows) -> {
             if (!rows.isEmpty()) {
                 StatValue stat = stats.get(statCode);
                 groups.add(new SkillSheet.Group(statName(statCode, stat), stat, false,

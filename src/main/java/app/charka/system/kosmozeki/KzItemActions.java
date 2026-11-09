@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 final class KzItemActions {
 
     static final String RELOAD = "RELOAD";
-    static final String WEAR = "WEAR";
+    static final String WEAR = app.charka.item.ItemAction.WEAR;
     static final String TAKE_OFF = "TAKE_OFF";
     static final String HEAL_ONE = "HEAL_ONE";
     static final String HEAL_ALL = "HEAL_ALL";
@@ -65,7 +65,7 @@ final class KzItemActions {
                         .withLabels("Куда", null));
             }
             if (all > 0) {
-                actions.add(new ItemAction(HEAL_ALL, "+" + all + " во все", noBody, List.of(), null, null, false, false, true, null));
+                actions.add(new ItemAction(HEAL_ALL, "+" + all + " во все зоны", noBody, List.of(), null, null, false, false, true, null));
             }
             return actions;
         }
@@ -196,6 +196,10 @@ final class KzItemActions {
                     .map(Option::label).findFirst().orElse("?");
             return new ItemSummary(KzItems.isWorn(item) ? "надета" : null,
                     List.of(zone, "броня " + KzItems.number(item, KzItems.ARMOR_VALUE, 0)));
+        }
+        if (KzItems.MEDICINE.equals(item.getType())) {
+            // UX-28: «+50 в зону» и «+30 во все» уже написаны на кнопках — второй раз текстом не повторяем
+            return new ItemSummary(null, List.of());
         }
         return null;
     }

@@ -122,7 +122,7 @@ final class Cp2020ItemSheet {
         if (empty > 1 && !sources.isEmpty()) {
             chips.add(ItemChip.action("Снарядить все", "Снарядить все пустые магазины", weapon.getId(), Cp2020WeaponActions.LOAD_ALL, sources));
         }
-        chips.add(ItemChip.action("＋", "Добавить пустой магазин", weapon.getId(), Cp2020WeaponActions.ADD_MAGAZINE, List.of()));
+        chips.add(ItemChip.action("＋ Магазин", "Добавить пустой магазин", weapon.getId(), Cp2020WeaponActions.ADD_MAGAZINE, List.of()));
         return chips;
     }
 
@@ -153,7 +153,7 @@ final class Cp2020ItemSheet {
                 .map(entry -> new Option(entry.key(), packLabel(entry)))
                 .toList();
         if (!entries.isEmpty()) {
-            chips.add(ItemChip.fromCatalog("＋", "Добавить патроны", entries));
+            chips.add(ItemChip.fromCatalog("＋ Патроны", "Добавить патроны", entries));
         }
         return chips;
     }

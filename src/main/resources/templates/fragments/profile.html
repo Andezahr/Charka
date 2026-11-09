@@ -36,16 +36,18 @@
 <section th:fragment="card(rows, characterId)" class="card" id="profile" data-editable>
   <div class="card-head">
     <h2 class="card-title"><span class="dot"></span>Персонаж</h2>
-    <button type="button" class="icon-btn" data-edit-toggle title="Изменить">✎</button>
+    <button type="button" class="btn btn-sm" data-edit-toggle
+            th:text="${#lists.isEmpty(rows.?[value != null])} ? '✎ Заполнить' : '✎ Изменить'">✎ Изменить</button>
   </div>
   <div class="card-body">
+    <!-- UX-29: все поля системы строками; пустое — «не записано», чтобы было видно, что тут можно заполнить -->
     <dl class="profile-list">
-      <th:block th:each="r : ${rows}" th:if="${r.value != null}">
+      <th:block th:each="r : ${rows}">
         <dt th:text="${r.field.label}">Приговор</dt>
-        <dd th:text="${r.value}">За кражу рулета</dd>
+        <dd th:if="${r.value != null}" th:text="${r.value}">За кражу рулета</dd>
+        <dd th:if="${r.value == null}" class="profile-empty">не записано</dd>
       </th:block>
     </dl>
-    <p th:if="${#lists.isEmpty(rows.?[value != null])}" class="hint hint-left">Теги, приговор и качества не заполнены — ✎</p>
     <div class="edit-panel">
       <form th:action="@{'/character/' + ${characterId} + '/profile'}" method="post" class="form">
         <div class="profile-grid"><th:block th:replace="~{:: fields(${rows})}"></th:block></div>

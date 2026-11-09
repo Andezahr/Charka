@@ -140,12 +140,43 @@ function revealRolls() {
 
 function initPage() {
   revealRolls();
+  hideBattleUndo();
 
   // R-14: экран боя — до низа окна под шапкой, какой бы высоты она ни была
   const battleScreen = document.querySelector('.battle-screen');
   if (battleScreen) {
     battleScreen.style.setProperty('--battle-offset', Math.round(battleScreen.getBoundingClientRect().top + scrollY + 12) + 'px');
   }
+
+  // UX-26: Космозэки — нажатие на цифру к100 подсвечивает её зону в фигуре; повторное — снимает
+  document.querySelectorAll('[data-kz-digits]').forEach(strip => {
+    const body = strip.closest('.kz-compact');
+    strip.querySelectorAll('[data-kz-digit]').forEach(button => button.addEventListener('click', () => {
+      const again = button.classList.contains('is-picked');
+      strip.querySelectorAll('.is-picked').forEach(other => other.classList.remove('is-picked'));
+      body.querySelectorAll('.kz-fz.is-hit').forEach(zone => zone.classList.remove('is-hit'));
+      if (again) return;
+      button.classList.add('is-picked');
+      const zone = button.dataset.kzZone && body.querySelector('.kz-fz[data-kz-zone="' + button.dataset.kzZone + '"]');
+      if (zone) zone.classList.add('is-hit');
+    }));
+  });
+
+  // UX-21: поиск по длинному выпадающему списку: input[data-select-filter="имя select"] прячет неподходящие варианты
+  document.querySelectorAll('[data-select-filter]').forEach(input => {
+    const select = input.form && input.form.querySelector('select[name="' + input.dataset.selectFilter + '"]');
+    if (!select) return;
+    input.addEventListener('input', () => {
+      const query = input.value.trim().toLowerCase();
+      let first = null;
+      [...select.options].forEach(option => {
+        const fits = !query || option.text.toLowerCase().includes(query);
+        option.hidden = !fits;
+        if (fits && !first) first = option;
+      });
+      if (first && select.selectedOptions[0] && select.selectedOptions[0].hidden) select.value = first.value;
+    });
+  });
 
   // Вкладки: [data-tabs="ключ"] с кнопками [data-tab] и панелями [data-tab-panel]; выбор запоминается на устройстве.
   // [data-tab-go="вкладка"] где угодно на странице открывает её
@@ -164,6 +195,12 @@ function initPage() {
     let stored = null;
     try { stored = localStorage.getItem(key); } catch (e) { /* только удобство */ }
     show(stored || holder.dataset.tabDefault);
+    // UX-01: якорь ведёт в другую вкладку (итог действия у предмета в «Рюкзаке») — открыть её
+    try {
+      const anchored = location.hash && holder.querySelector('#' + CSS.escape(decodeURIComponent(location.hash.slice(1))));
+      const anchoredPanel = anchored && anchored.closest('[data-tab-panel]');
+      if (anchoredPanel && anchoredPanel.hidden) show(anchoredPanel.dataset.tabPanel);
+    } catch (e) { /* якорь не id */ }
     buttons.forEach(button => button.addEventListener('click', () => show(button.dataset.tab)));
     document.querySelectorAll('[data-tab-go]').forEach(go => go.addEventListener('click', () => {
       show(go.dataset.tabGo);
@@ -1262,6 +1299,17 @@ document.addEventListener('click', e => {
   if (undoClose) undoClose.closest('.undo-toast').remove();
 });
 
+// UX-16: в бою плашка «↶ Отменить» не должна закрывать полосу хода — она сверху и через 8 секунд уходит сама
+// (наведение или фокус её держат)
+const hideBattleUndo = () => {
+  const toast = document.querySelector('.battle-screen') && document.querySelector('.undo-toast');
+  if (!toast || toast.dataset.autoHide) return;
+  toast.dataset.autoHide = '1';
+  const timer = setTimeout(() => { if (!toast.matches(':hover, :focus-within')) toast.remove(); }, 8000);
+  toast.addEventListener('mouseleave', () => setTimeout(() => toast.isConnected && !toast.matches(':hover, :focus-within') && toast.remove(), 2000), { once: true });
+  return timer;
+};
+
 // Обновление страницы на месте: формы и ссылки идут через fetch, новая страница заменяет старую без мигания,
 // прокрутка остаётся. Сервер отвечает обычным HTML, на редирект — адресом с якорем (InPlaceRedirectFilter).
 // Без JS всё работает обычными переходами
@@ -1493,11 +1541,12 @@ const lockedToken = token => Boolean(token && npcOnly() && !token.npc);
 function applyGmMode() {
   const npc = gmModeNpc();
   document.querySelectorAll('[data-gm-mode]').forEach(button => {
-    button.textContent = npc ? '👹 За NPC' : '👁 Бог';
+    // UX-12: режимы словами, понятными без подсказки
+    button.textContent = npc ? '👹 Играю за NPC' : '👁 Вижу всех';
     button.classList.toggle('is-active', npc);
     button.title = npc
-      ? 'За NPC: ходите только своими NPC и по бегу. Нажмите — режим «Бог»'
-      : 'Бог: любые фишки, Shift — без лимита бега, ＋ Фишка, правка карты. Нажмите — режим «За NPC»';
+      ? 'Играю за NPC: ходите только своими NPC и по бегу. Нажмите — «Вижу всех»'
+      : 'Вижу всех: любые фишки, Shift — без лимита бега, ＋ Фишка, правка карты. Нажмите — «Играю за NPC»';
   });
   document.querySelectorAll('[data-god-only]').forEach(el => { el.hidden = npc; });
 }
@@ -1564,7 +1613,7 @@ function initBattle() {
       const chosen = tokenById(battle.selected);
       if (npc && lockedToken(chosen)) battle.selected = undefined;
       applyGmMode();
-      battleHint(npc ? 'За NPC: двигаются только NPC, по бегу' : 'Бог: любые фишки, Shift — без лимита бега');
+      battleHint(npc ? 'Играю за NPC: двигаются только NPC, по бегу' : 'Вижу всех: любые фишки, Shift — без лимита бега');
       renderBattle();
     });
   }
@@ -1860,6 +1909,7 @@ function renderBattle() {
   const doc = levelDoc(data.doc, level);
   const width = doc.w * CELL;
   const height = doc.h * CELL;
+  const freshView = !battle.view;
   if (!battle.view) battle.view = { x: -CELL / 2, y: -CELL / 2, w: width + CELL, h: height + CELL };
   // высота поля — по пропорциям карты: широкая улица на телефоне не оставляет пустоты сверху и снизу
   // R-14: на экране боя поле занимает всю середину, высоту задаёт раскладка
@@ -1869,6 +1919,21 @@ function renderBattle() {
   const materials = new Map(data.materials.map(material => [material.code, material]));
   const objects = new Map(data.objects.map(object => [object.code, object]));
   const me = battleMe();
+  // UX-15, UX-17: на сенсорном экране вся карта — это клетки по 12 px: фишку пальцем не взять. Клетка — не меньше 44 px,
+  // в центре — своя фишка (или чей ход), рамка — по пропорциям поля, без пустых полос; «⤢» по-прежнему показывает всю карту
+  if (freshView && !battle.coarseFitted && stage.clientWidth && matchMedia('(pointer: coarse)').matches) {
+    battle.coarseFitted = true;
+    const minCell = 44;
+    if (stage.clientWidth / (battle.view.w / CELL) < minCell) {
+      const focus = data.tokens.find(token => String(token.character) === me && token.x !== null)
+        || data.tokens.find(token => token.current && token.x !== null);
+      const w = stage.clientWidth / minCell * CELL;
+      const h = w * (stage.clientHeight || stage.clientWidth) / stage.clientWidth;
+      const cx = focus ? (focus.x + 0.5) * CELL : width / 2;
+      const cy = focus ? (focus.y + 0.5) * CELL : height / 2;
+      battle.view = { x: cx - w / 2, y: cy - h / 2, w, h };
+    }
+  }
   // фишка ещё не выбрана: своя по «Я — …», у мастера — чей ход; null — выбор снят нажатием
   if (battle.selected && !tokenById(battle.selected)) battle.selected = undefined;
   if (battle.selected === undefined) {
@@ -2344,7 +2409,7 @@ function wireBattleSvg(svg) {
       return;
     }
     if (current.locked) {
-      battleHint('За NPC: ' + current.locked.name + ' — фишка игрока. Атака по ней — правой кнопкой или долгим нажатием');
+      battleHint('Играю за NPC: ' + current.locked.name + ' — фишка игрока. Атака по ней — правой кнопкой или долгим нажатием');
       return;
     }
     if (current.door && current.doorKind === 'door' && !current.token) {

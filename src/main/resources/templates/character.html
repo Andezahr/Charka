@@ -4,37 +4,30 @@
 <body>
 <header th:replace="~{fragments/layout :: nav(null, ${character}, 'sheet')}"></header>
 
-<main class="page">
+<main class="page sheet-page"
+      th:with="hasState=${!#lists.isEmpty(counters.?[compactTemplate != null])},
+               ownCounters=${counters.?[compactTemplate == null and viewTemplate != 'counters/types/simple']}">
   <!-- A-07: запросы бросков от мастера: карточка с одной кнопкой, приходит опросом -->
   <th:block th:if="${character.campaign != null}"><div th:replace="~{fragments/requests :: slot(${character.campaign.id}, ${character.id})}"></div></th:block>
   <div th:if="${errorMessage != null}" class="alert alert-error" role="alert">
     <span class="alert-text" th:text="${errorMessage}">Ошибка</span>
     <button type="button" class="alert-close" aria-label="Закрыть">×</button>
   </div>
-  <div class="page-head">
-    <div class="with-avatar">
-      <div>
-        <span class="eyebrow" th:text="${character.npc} ? 'Лист NPC' : 'Лист персонажа'">Лист персонажа</span>
-        <h1 class="page-title" th:text="${character.name}">Имя персонажа</h1>
-        <p class="page-sub">
-          <span th:unless="${#lists.isEmpty(roles)}" th:text="${#strings.listJoin(roles.![name], ', ')} + ' · '">Соло · </span>
-          <span th:if="${character.campaign != null}">
-            Кампания: <a th:href="@{'/campaign/' + ${character.campaign.id}}" th:text="${character.campaign.name}">Кампания</a>
-          </span>
-          <span th:if="${character.birthDate != null}">
-            · родился <span th:text="${character.birthDate}">дата</span>
-          </span>
-        </p>
-      </div>
-    </div>
+  <!-- UX-07: шапка в одну строку — имя и роли; кампания уже в крошке, надзаголовка нет -->
+  <div class="page-head page-head-compact">
+    <h1 class="page-title" th:text="${character.name}">Имя персонажа</h1>
+    <p class="page-sub" th:if="${!#lists.isEmpty(roles) or character.birthDate != null or character.npc}">
+      <span th:if="${character.npc}" class="chip">NPC</span>
+      <span th:unless="${#lists.isEmpty(roles)}" th:text="${#strings.listJoin(roles.![name], ', ')}">Соло</span>
+      <span th:if="${character.birthDate != null}" th:text="'родился ' + ${character.birthDate}">родился</span>
+    </p>
     <div class="page-actions">
       <th:block th:if="${character.campaign != null}"><th:block th:replace="~{fragments/reference :: open-button(${character.campaign.id})}"></th:block></th:block>
       <!-- A-12: бумажный лист — в новой вкладке, у него свои стили печати -->
-      <a th:href="@{'/character/' + ${character.id} + '/print'}" target="_blank" class="btn btn-ghost" title="Лист на бумаге или в PDF — на случай, если сеть упадёт">🖨 Печать</a>
+      <a th:href="@{'/character/' + ${character.id} + '/print'}" target="_blank" class="btn btn-sm btn-ghost" title="Лист на бумаге или в PDF — на случай, если сеть упадёт">🖨 Печать</a>
     </div>
   </div>
 
-  <!-- R-05: плитки «Баланс · Здоровье · Инвентарей» ушли: здоровье, броня и статы — в шапке состояния ниже, баланс — в «Деньгах» -->
   <div th:if="${successMessage != null}" class="alert alert-success" role="status">
     <div class="alert-text">
       <div th:text="${successMessage}">Готово</div>
@@ -45,29 +38,40 @@
     <button type="button" class="alert-close" aria-label="Закрыть">×</button>
   </div>
 
-  <div class="grid grid-main">
-    <div class="stack">
-      <!-- R-05: шапка состояния — компактные карточки счётчиков системы (здоровье, броня, статы); полные — по «⋯» -->
-      <section class="card state-card" id="state" th:unless="${#lists.isEmpty(counters.?[compactTemplate != null])}">
-        <div class="card-body state-body">
-          <th:block th:each="counter : ${counters}" th:if="${counter.compactTemplate != null}">
-            <div th:replace="~{__${counter.compactTemplate}__ :: card-compact}"></div>
-          </th:block>
-          <!-- R-09: журнал здоровья раскрывается из блока состояния; id тот же, что у карточки «Раны»: туда ведут записи -->
-          <details class="cp-more item-more state-log" id="wounds">
-            <summary th:text="'Журнал здоровья (' + ${#lists.size(character.wounds)} + ')'">Журнал здоровья (0)</summary>
-            <div th:replace="~{fragments/wounds :: log}"></div>
-          </details>
-        </div>
-      </section>
-      <!-- K-11: поля листа от системы — теги, приговор, качества -->
-      <th:block th:if="${profileRows != null and !#lists.isEmpty(profileRows)}">
-        <section th:replace="~{fragments/profile :: card(${profileRows}, ${character.id})}"></section>
+  <!-- UX-01: полоса состояния во всю ширину — здоровье, статы, броня и простые счётчики; журнал здоровья раскрывается здесь же -->
+  <section class="card state-card" id="state" th:unless="${#lists.isEmpty(counters.?[compactTemplate != null])}">
+    <div class="card-body state-body">
+      <th:block th:each="counter : ${counters}" th:if="${counter.compactTemplate != null}">
+        <div th:replace="~{__${counter.compactTemplate}__ :: card-compact}"></div>
       </th:block>
-      <!-- РАНЫ -->
-      <!-- R-07: ОРУЖИЕ — основное на виду (с навыком атаки и магазинами), запасное и рукопашная свёрнуты; правилами они не различаются -->
-      <section class="card" id="weapons" th:if="${mainWeapon != null or (abilities != null and !#lists.isEmpty(abilities) and !#lists.isEmpty(attackTargets))
-                                                    or (pendingBlasts != null and !#lists.isEmpty(pendingBlasts)) or attackResult != null or blastError != null}">
+      <!-- UX-11: броня лежит в носимом, но не надета: одно нажатие -->
+      <form th:unless="${#lists.isEmpty(unwornArmor)}" th:action="@{'/character/' + ${character.id} + '/wear-all'}" method="post" class="state-warn" role="status">
+        <input th:each="item : ${unwornArmor}" type="hidden" name="item" th:value="${item.id}">
+        <span class="state-warn-title">Броня в носимом не надета</span>
+        <span class="state-warn-text" th:text="${#strings.listJoin(unwornArmor.![name], ', ')}">Кевларовый жилет</span>
+        <button type="submit" class="btn btn-sm btn-primary" th:text="${#lists.size(unwornArmor) > 1} ? 'Надеть всё' : 'Надеть'">Надеть всё</button>
+      </form>
+      <div class="state-counters">
+        <th:block th:each="counter : ${counters}" th:if="${counter.compactTemplate == null and counter.viewTemplate == 'counters/types/simple'}">
+          <div th:replace="~{counters/types/simple :: row}"></div>
+        </th:block>
+        <!-- своя карточка счётчиков не показана — «＋ Счётчик» здесь -->
+        <!-- R-09: журнал здоровья; id тот же, что у карточки «Раны»: туда ведут записи -->
+        <details class="state-tool state-log" id="wounds">
+          <summary class="btn btn-sm btn-ghost" th:text="'Журнал здоровья (' + ${#lists.size(character.wounds)} + ')'">Журнал здоровья (0)</summary>
+          <div class="state-tool-body"><div th:replace="~{fragments/wounds :: log}"></div></div>
+        </details>
+        <th:block th:if="${#lists.isEmpty(ownCounters)}"><details th:replace="~{:: new-counter}"></details></th:block>
+      </div>
+    </div>
+  </section>
+
+  <div class="grid grid-main sheet-grid">
+    <!-- Широкая колонка: то, чем пользуются за столом каждый ход — оружие и носимое -->
+    <div class="stack">
+
+      <!-- R-07, UX-04: оружие в руках целиком; запасное — кнопками «взять в руки», рукопашная — сразу атакой -->
+      <section class="card" id="weapons" th:if="${hasAttacks}">
         <div class="card-head">
           <h2 class="card-title"><span class="dot red"></span>Оружие</h2>
         </div>
@@ -92,27 +96,30 @@
           <div class="list" th:if="${mainWeapon != null}">
             <div th:replace="~{fragments/items :: row(${mainWeapon}, ${mainWeapon.inventory}, null)}"></div>
           </div>
-          <details class="cp-more item-more weapon-spare"
-                   th:if="${!#lists.isEmpty(spareWeapons) or (abilities != null and !#lists.isEmpty(abilities) and !#lists.isEmpty(attackTargets))}"
-                   th:open="${(attackResult != null and !attackResult.detached and actionItemId == null) or encounterError != null}">
-            <summary th:text="'Запасное: ' + ${#strings.listJoin(spareWeapons.![name], ', ')} + (${abilities != null and !#lists.isEmpty(abilities) and !#lists.isEmpty(attackTargets)} ? (${#lists.isEmpty(spareWeapons)} ? '' : ', ') + ${#strings.listJoin(abilities.![name], ', ')} : '')">Запасное: Нож, Рукопашная</summary>
-            <div class="list" th:unless="${#lists.isEmpty(spareWeapons)}">
-              <th:block th:each="item : ${spareWeapons}">
-                <div th:replace="~{fragments/items :: row(${item}, ${item.inventory}, null)}"></div>
+          <!-- UX-14: оружия нет — кнопка ведёт в окно «Добавить» на вкладку оружия -->
+          <div th:if="${mainWeapon == null and !#lists.isEmpty(character.inventories)}" class="empty weapon-empty">
+            Оружия в носимом нет.
+            <button type="button" class="btn btn-sm btn-primary"
+                    th:attr="data-add-item=${character.inventories[0].id},data-add-item-name=${character.inventories[0].name},data-add-tab-open=${weaponItemType}">＋ Оружие</button>
+          </div>
+          <div class="weapon-switch"
+               th:if="${!#lists.isEmpty(spareWeapons) or (abilities != null and !#lists.isEmpty(abilities) and !#lists.isEmpty(attackTargets))}">
+            <span class="weapon-switch-title" th:unless="${#lists.isEmpty(spareWeapons)}">Взять в руки:</span>
+            <form th:each="item : ${spareWeapons}" th:action="@{'/character/' + ${character.id} + '/main-weapon'}" method="post" class="inline">
+              <input type="hidden" name="item" th:value="${item.id}">
+              <button type="submit" class="btn btn-sm" th:text="${item.name} + (${itemSummaries[item.id].main != null} ? ' ' + ${itemSummaries[item.id].main} : '')">Нож</button>
+            </form>
+            <th:block th:if="${abilities != null and !#lists.isEmpty(abilities) and !#lists.isEmpty(attackTargets)}">
+              <th:block th:each="ability : ${abilities}">
+                <button type="button" class="btn btn-sm" th:attr="data-dialog-open='attack-' + ${ability.id}"
+                        th:title="${attackBases.get(ability.id) != null} ? '🎯 ' + ${attackBases.get(ability.id)} : ${ability.form.damage}"
+                        th:text="${ability.name} + ': ' + ${#strings.toLowerCase(ability.form.actionLabel)}">Рукопашная: ударить</button>
+                <th:block th:with="attackUrl=${ability.url}">
+                  <dialog th:replace="~{fragments/attack :: dialog(${character.id}, ${ability}, ${ability.form}, ${attackTargets})}"></dialog>
+                </th:block>
               </th:block>
-            </div>
-            <div th:if="${abilities != null and !#lists.isEmpty(abilities) and !#lists.isEmpty(attackTargets)}" class="abilities">
-            <div th:each="ability : ${abilities}" class="item-head">
-              <span class="row-title" th:text="${ability.name}">Рукопашная</span>
-              <span class="item-value" th:text="${ability.form.damage}">1D6/2 + BODY</span>
-              <span th:if="${attackBases.get(ability.id) != null}" class="item-attack-base" th:text="'🎯 ' + ${attackBases.get(ability.id)}">🎯 Рукопашная 4 + REF 6 = 10</span>
-              <span class="item-actions" th:with="attackUrl=${ability.url}">
-                <button type="button" class="btn btn-sm" th:attr="data-dialog-open='attack-' + ${ability.id}" th:text="${ability.form.actionLabel}">Атаковать</button>
-                <dialog th:replace="~{fragments/attack :: dialog(${character.id}, ${ability}, ${ability.form}, ${attackTargets})}"></dialog>
-              </span>
-            </div>
-            </div>
-          </details>
+            </th:block>
+          </div>
         </div>
       </section>
 
@@ -127,60 +134,80 @@
         </div>
       </section>
 
-
+      <!-- R-08, UX-01: носимое — в широкой колонке, сразу под оружием; инвентари вкладками -->
+      <section class="card" id="inventories" th:attr="data-tabs=${#lists.size(shownInventories) > 1} ? 'inventory-' + ${character.id}">
+        <div class="card-head">
+          <h2 class="card-title"><span class="dot yellow"></span>Носимое</h2>
+          <div th:if="${#lists.size(shownInventories) > 1}" class="seg" role="tablist" aria-label="Инвентарь">
+            <button th:each="inv, st : ${shownInventories}" type="button" class="seg-btn" role="tab" th:attr="data-tab=${inv.id}"
+                    th:text="${inv.name} + ' ' + (${#lists.size(inv.content)} - ${installedCounts.getOrDefault(inv.id, 0L)})">В сумке 3</button>
+          </div>
+          <a class="btn btn-sm btn-ghost" th:href="@{'/character/' + ${character.id} + '/gear'}" title="Все инвентари, вживлённое, деньги">Всё снаряжение</a>
+        </div>
+        <div class="card-body">
+          <th:block th:if="${#lists.size(shownInventories) == 1}">
+            <div th:replace="~{fragments/gear :: inventory(${shownInventories[0]}, false)}"></div>
+          </th:block>
+          <th:block th:if="${#lists.size(shownInventories) > 1}">
+            <div th:each="inv : ${shownInventories}" th:attr="data-tab-panel=${inv.id}">
+              <div th:replace="~{fragments/gear :: inventory(${inv}, false)}"></div>
+            </div>
+          </th:block>
+          <div th:if="${#lists.isEmpty(shownInventories)}" class="empty">Носимого нет — инвентари в «Снаряжении»</div>
+          <dialog th:replace="~{fragments/items :: add-dialog(${character.id})}"></dialog>
+        </div>
+      </section>
     </div>
 
+    <!-- Узкая колонка: редкое и короткое -->
     <div class="stack">
-      <!-- R-06: «Счётчики» — то, что не в шапке состояния: IP, репутация, свои; «＋ Счётчик» раскрывает форму -->
-      <section class="card" id="counters">
-        <div class="card-head">
-          <h2 class="card-title"><span class="dot"></span>Счётчики</h2>
-        </div>
-        <div class="card-body list" th:unless="${#lists.isEmpty(counters.?[compactTemplate == null])}">
-          <th:block th:each="counter : ${counters}" th:if="${counter.compactTemplate == null}">
-            <th:block th:if="${counter.viewTemplate == 'counters/types/simple'}"><div th:replace="~{counters/types/simple :: row}"></div></th:block>
-            <th:block th:unless="${counter.viewTemplate == 'counters/types/simple'}"><div th:replace="~{__${counter.viewTemplate}__ :: card}"></div></th:block>
-          </th:block>
-        </div>
-        <details class="card-body cp-more item-more">
-          <summary>Счётчик: свой, опыт, патроны</summary>
-          <form th:action="@{/character/{characterId}/counters/create(characterId=${characterId})}"
-                method="post" th:object="${createRequest}" class="form">
-            <input type="hidden" th:field="*{characterId}">
-            <div class="form-row">
-              <input type="text" th:field="*{name}" class="grow" placeholder="Название: опыт, патроны" required autocomplete="off" aria-label="Название">
-              <select th:field="*{counterType}" required data-type-select aria-label="Тип">
-                <option th:each="t : ${counterTypes}" th:value="${t.type}" th:text="${t.displayName}"
-                        th:attr="data-initial=${t.usesInitialValue}">Простой числовой</option>
-              </select>
-            </div>
-            <th:block th:each="t : ${counterTypes}" th:if="${t.createFieldsTemplate != null}">
-              <div class="form" th:attr="data-type-fields=${t.type}" hidden>
-                <th:block th:replace="~{__${t.createFieldsTemplate}__ :: create-fields}"></th:block>
-              </div>
-            </th:block>
-            <div class="form-row">
-              <label class="field" data-initial-field>
-                <span class="label">Начальное значение</span>
-                <input type="number" name="initialValue" value="0" required>
-              </label>
-              <button type="submit" class="btn btn-primary">＋ Счётчик</button>
-            </div>
-          </form>
-        </details>
-      </section>
+      <!-- K-11: поля листа от системы — теги, приговор, качества -->
+      <th:block th:if="${profileRows != null and !#lists.isEmpty(profileRows)}">
+        <section th:replace="~{fragments/profile :: card(${profileRows}, ${character.id})}"></section>
+      </th:block>
+      <!-- ДЕНЬГИ -->
+      <!-- R-08: на листе — баланс, «＋ Доход / − Трата» и три последние записи; журнал целиком и регулярные траты — в «Снаряжении» -->
+      <th:block th:unless="${character.npc and #lists.isEmpty(moneyList)}">
+        <section th:replace="~{fragments/gear :: money(true)}"></section>
+      </th:block>
 
-      <!-- КУБИКИ -->
-      <!-- R-04: карточка «Кубики» ушла в «Стол» (кнопка в шапке): броски с листа — «Я — персонаж» -->
-
-      <!-- ЭФФЕКТЫ: препараты и прочее со сроком; раунды идут в бою, часы и дни — с промоткой времени -->
+      <!-- ЭФФЕКТЫ: препараты и прочее со сроком; раунды идут в бою, часы и дни — с промоткой времени.
+           UX-06: пусто — одна строка «нет · ＋ Эффект», выбор — по кнопке -->
       <section class="card" id="effects">
         <div class="card-head">
           <h2 class="card-title"><span class="dot red"></span>Эффекты</h2>
-          <span class="badge" th:text="${#lists.size(character.effects)}">0</span>
+          <span th:if="${#lists.isEmpty(character.effects)}" class="card-head-note">нет</span>
+          <span th:unless="${#lists.isEmpty(character.effects)}" class="badge" th:text="${#lists.size(character.effects)}">0</span>
+          <details class="state-tool card-head-tool">
+            <summary class="btn btn-sm">＋ Эффект</summary>
+            <div class="state-tool-body">
+              <form th:unless="${#lists.isEmpty(effectTemplates)}" th:action="@{'/character/' + ${character.id} + '/effects'}" method="post" class="form-row">
+                <select name="template" class="grow" required aria-label="Готовый эффект">
+                  <option value="" selected disabled>Готовый эффект…</option>
+                  <option th:each="t : ${effectTemplates}" th:value="${t.code}" th:text="${t.name} + ' · ' + ${t.summary}">Boost</option>
+                </select>
+                <button type="submit" class="btn btn-sm btn-primary" title="Срок бросается сам">Добавить</button>
+              </form>
+              <form th:action="@{'/character/' + ${character.id} + '/effects'}" method="post" class="form-row">
+                <input type="text" name="name" class="grow" placeholder="Свой эффект: название" required autocomplete="off" aria-label="Название эффекта">
+                <select th:unless="${#lists.isEmpty(effectStats)}" name="stat" aria-label="Какой стат">
+                  <option value="">Без стата</option>
+                  <option value="*">Все статы</option>
+                  <option th:each="s : ${effectStats}" th:value="${s.code}" th:text="${s.name}">REF</option>
+                </select>
+                <input type="number" name="modifier" class="narrow" value="0" aria-label="Правка стата" title="Правка стата">
+                <input type="text" name="duration" class="narrow" value="1d6+1" required aria-label="Срок: число или кубики" title="Срок: число или кубики">
+                <select name="unit" aria-label="Единица срока">
+                  <option th:each="u : ${T(app.charka.effect.EffectTemplate.DurationUnit).values()}" th:value="${u}" th:text="${u.label}">раунды</option>
+                </select>
+                <input type="text" name="note" class="grow" placeholder="Что ещё делает" autocomplete="off" aria-label="Что ещё делает">
+                <button type="submit" class="btn btn-sm btn-primary">＋ Свой</button>
+              </form>
+            </div>
+          </details>
         </div>
         <div th:if="${effectResult != null}" class="alert alert-success" th:text="${effectResult}">Boost: +1 INT на 4 ч</div>
-        <div class="card-body list">
+        <div class="card-body list" th:unless="${#lists.isEmpty(character.effects)}">
           <div th:each="effect : ${character.effects}" class="row">
             <div class="row-main">
               <div class="row-title" th:text="${effect.name}">Boost</div>
@@ -192,62 +219,52 @@
             </div>
             <div class="row-actions">
               <form th:action="@{'/character/' + ${character.id} + '/effects/' + ${effect.id} + '/delete'}" method="post" class="inline">
-                <button type="submit" class="icon-btn danger" title="Снять раньше срока">✕</button>
+                <button type="submit" class="icon-btn danger" title="Снять раньше срока" th:attr="aria-label='Снять: ' + ${effect.name}">✕</button>
               </form>
             </div>
           </div>
-          <div th:if="${#lists.isEmpty(character.effects)}" class="empty">Ничего не действует</div>
-        </div>
-        <div class="card-body">
-          <form th:unless="${#lists.isEmpty(effectTemplates)}" th:action="@{'/character/' + ${character.id} + '/effects'}" method="post" class="form-row">
-            <select name="template" class="grow" required aria-label="Готовый эффект">
-              <option th:each="t : ${effectTemplates}" th:value="${t.code}" th:text="${t.name} + ' · ' + ${t.summary}">Boost</option>
-            </select>
-            <button type="submit" class="btn btn-sm btn-primary" title="Срок бросается сам">＋ Эффект</button>
-          </form>
-          <details class="add-own">
-            <summary>Свой эффект</summary>
-            <form th:action="@{'/character/' + ${character.id} + '/effects'}" method="post" class="form-row">
-              <input type="text" name="name" class="grow" placeholder="Название" required autocomplete="off">
-              <select th:unless="${#lists.isEmpty(effectStats)}" name="stat" aria-label="Какой стат">
-                <option value="">Без стата</option>
-                <option value="*">Все статы</option>
-                <option th:each="s : ${effectStats}" th:value="${s.code}" th:text="${s.name}">REF</option>
-              </select>
-              <input type="number" name="modifier" class="narrow" value="0" aria-label="Правка стата" title="Правка стата">
-              <input type="text" name="duration" class="narrow" value="1d6+1" required aria-label="Срок: число или кубики" title="Срок: число или кубики">
-              <select name="unit" aria-label="Единица срока">
-                <option th:each="u : ${T(app.charka.effect.EffectTemplate.DurationUnit).values()}" th:value="${u}" th:text="${u.label}">раунды</option>
-              </select>
-              <input type="text" name="note" class="grow" placeholder="Что ещё делает" autocomplete="off">
-              <button type="submit" class="btn btn-sm btn-primary">＋ Эффект</button>
-            </form>
-          </details>
         </div>
       </section>
 
-      <!-- ДЕНЬГИ -->
-      <!-- R-08: на листе — баланс, «＋/− сумма» и три последние записи; журнал целиком и регулярные траты — в «Снаряжении» -->
-      <th:block th:unless="${character.npc and #lists.isEmpty(moneyList)}">
-        <section th:replace="~{fragments/gear :: money(true)}"></section>
-      </th:block>
-
-      <!-- R-08: на листе — только носимые инвентари; первый раскрыт, остальные свёрнуты до числа вещей; все — в «Снаряжении» -->
-      <section class="card" id="inventories">
+      <!-- R-06: счётчики, у которых своя карточка (способности систем); простые — в полосе состояния. «＋ Счётчик» — по кнопке -->
+      <section class="card" id="counters" th:if="${!hasState or !#lists.isEmpty(ownCounters)}">
         <div class="card-head">
-          <h2 class="card-title"><span class="dot yellow"></span>Носимое</h2>
-          <a class="btn btn-sm btn-ghost" th:href="@{'/character/' + ${character.id} + '/gear'}" title="Все инвентари, вживлённое, деньги">Всё снаряжение →</a>
+          <h2 class="card-title"><span class="dot"></span><span th:text="${#lists.isEmpty(ownCounters)} ? 'Счётчики' : 'Способности и счётчики'">Счётчики</span></h2>
+          <details class="state-tool card-head-tool" th:fragment="new-counter">
+            <summary class="btn btn-sm">＋ Счётчик</summary>
+            <div class="state-tool-body">
+              <form th:action="@{/character/{characterId}/counters/create(characterId=${characterId})}"
+                    method="post" th:object="${createRequest}" class="form">
+                <input type="hidden" th:field="*{characterId}">
+                <div class="form-row">
+                  <input type="text" th:field="*{name}" class="grow" placeholder="Название: опыт, патроны" required autocomplete="off" aria-label="Название">
+                  <select th:field="*{counterType}" required data-type-select aria-label="Тип">
+                    <option th:each="t : ${counterTypes}" th:value="${t.type}" th:text="${t.displayName}"
+                            th:attr="data-initial=${t.usesInitialValue}">Простой числовой</option>
+                  </select>
+                </div>
+                <th:block th:each="t : ${counterTypes}" th:if="${t.createFieldsTemplate != null}">
+                  <div class="form" th:attr="data-type-fields=${t.type}" hidden>
+                    <th:block th:replace="~{__${t.createFieldsTemplate}__ :: create-fields}"></th:block>
+                  </div>
+                </th:block>
+                <div class="form-row">
+                  <label class="field" data-initial-field>
+                    <span class="label">Начальное значение</span>
+                    <input type="number" name="initialValue" value="0" required>
+                  </label>
+                  <button type="submit" class="btn btn-primary">＋ Счётчик</button>
+                </div>
+              </form>
+            </div>
+          </details>
         </div>
-        <div class="card-body">
-          <th:block th:each="inv, st : ${shownInventories}">
-            <th:block th:if="${st.first}"><div th:replace="~{fragments/gear :: inventory(${inv}, false)}"></div></th:block>
-            <details th:unless="${st.first}" class="cp-more item-more inventory-folded">
-              <summary th:text="${inv.name} + ' · ' + (${#lists.size(inv.content)} - ${installedCounts.getOrDefault(inv.id, 0L)})">В сумке · 3</summary>
-              <div th:replace="~{fragments/gear :: inventory(${inv}, false)}"></div>
-            </details>
+        <div class="card-body list" th:unless="${hasState and #lists.isEmpty(ownCounters)}">
+          <th:block th:each="counter : ${counters}" th:if="${counter.compactTemplate == null}">
+            <!-- простые — здесь, только если полосы состояния нет (GENERIC) -->
+            <th:block th:if="${counter.viewTemplate == 'counters/types/simple' and !hasState}"><div th:replace="~{counters/types/simple :: row}"></div></th:block>
+            <th:block th:unless="${counter.viewTemplate == 'counters/types/simple'}"><div th:replace="~{__${counter.viewTemplate}__ :: card}"></div></th:block>
           </th:block>
-          <div th:if="${#lists.isEmpty(shownInventories)}" class="empty">Носимого нет — инвентари в «Снаряжении»</div>
-          <dialog th:replace="~{fragments/items :: add-dialog(${character.id})}"></dialog>
         </div>
       </section>
 
@@ -272,7 +289,6 @@
           </form>
         </div>
       </section>
-
     </div>
   </div>
 </main>

@@ -50,11 +50,12 @@ public class EncounterController {
         // куда вернуть атаку и действия с оружием
         model.addAttribute("returnCampaign", campaignId);
         Optional<EncounterView> view = encounterService.view(campaignId);
+        // и в идущем бою (＋ Фишка), и до него (UX-09: «＋ NPC» в «Кто участвует»)
+        model.addAttribute("npcTemplates", systemRegistry.get(campaign.getSystem()).getNpcTemplates());
         if (view.isPresent()) {
             model.addAttribute("view", view.get());
             model.addAttribute("attackObjects", attackService.objectTargets(campaign));
             model.addAttribute("hasField", view.get().encounter().getMapDoc() != null);
-            model.addAttribute("npcTemplates", systemRegistry.get(campaign.getSystem()).getNpcTemplates());
             // KF-05: что мастер может положить на карту — справочник системы по группам
             model.addAttribute("lootCatalog", systemRegistry.get(campaign.getSystem()).getItemCatalog().stream()
                     .collect(java.util.stream.Collectors.groupingBy(app.charka.item.CatalogItem::group,

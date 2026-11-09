@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
  */
 final class Cp2020ArmorActions {
 
-    static final String WEAR = "WEAR";
+    static final String WEAR = app.charka.item.ItemAction.WEAR;
     static final String TAKE_OFF = "TAKE_OFF";
     static final String REPAIR = "REPAIR";
 

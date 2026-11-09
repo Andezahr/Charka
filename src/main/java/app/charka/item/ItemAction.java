@@ -22,6 +22,12 @@ public record ItemAction(String code, String label, String unavailable, List<Ite
                          Integer amount, Integer maxAmount, boolean secondary, boolean hidden, boolean combat, String confirm,
                          String sourceLabel, String amountLabel) {
 
+    /**
+     * UX-11: общий код «надеть» у всех систем с бронёй-предметом (CP2020, Космозэки). По нему лист находит ненадетую броню
+     * в носимом и предлагает «Надеть всё».
+     */
+    public static final String WEAR = "WEAR";
+
     public ItemAction {
         sources = List.copyOf(sources);
     }

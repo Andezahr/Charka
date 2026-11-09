@@ -33,6 +33,12 @@
   </div>
 
   <div class="inventory-body">
+    <!-- UX-04: запасное оружие лежит в инвентаре обычной строкой; то, что в руках, — в карточке «Оружие» -->
+    <p th:if="${inventoryWeapons != null and inventoryWeapons.get(inv.id) != null}" class="inventory-weapons">
+      <th:block th:each="w : ${inventoryWeapons.get(inv.id)}">
+        <span class="badge-hand">в руках</span> <a th:href="'#weapons'" th:text="${w.name}">Avenger</a>
+      </th:block>
+    </p>
     <div th:each="section : ${inventorySections[inv.id]}" class="item-section">
       <h3 class="item-section-title" th:text="${section.title}">Оружие</h3>
       <div class="list">
@@ -41,12 +47,7 @@
         </th:block>
       </div>
     </div>
-    <p th:if="${inventoryWeapons != null and inventoryWeapons.get(inv.id) != null}" class="item-note inventory-weapons">
-      Оружие:
-      <th:block th:each="w, st : ${inventoryWeapons.get(inv.id)}"><a th:href="'#item-' + ${w.id}" th:text="${w.name}">Avenger</a><th:block th:unless="${st.last}">, </th:block></th:block>
-      — в карточке «Оружие»
-    </p>
-    <div th:if="${#lists.isEmpty(inventorySections[inv.id]) and (inventoryWeapons == null or inventoryWeapons.get(inv.id) == null)}" class="empty">Пусто</div>
+    <div th:if="${#lists.isEmpty(inventorySections[inv.id]) and (inventoryWeapons == null or inventoryWeapons.get(inv.id) == null)}" class="empty">Пусто. <button type="button" class="btn btn-sm" th:attr="data-add-item=${inv.id},data-add-item-name=${inv.name}">＋ Предмет</button></div>
   </div>
 </div>
 
@@ -58,10 +59,15 @@
           th:text="${moneySum} + ' ' + ${currency.symbol}" th:title="${currency.name}">0</span>
   </div>
   <div class="card-body">
-    <form th:action="@{'/character/' + ${character.id} + '/money'}" method="post" class="form-row">
-      <input type="text" name="name" class="grow" placeholder="Описание" required autocomplete="off">
-      <input type="number" name="amount" class="narrow" th:placeholder="'±Сумма, ' + ${currency.symbol}" required autocomplete="off">
-      <button type="submit" class="btn btn-primary">＋</button>
+    <!-- UX-06: знак ставит кнопка — «＋ Доход» или «− Трата», минус писать не нужно -->
+    <form th:action="@{'/character/' + ${character.id} + '/money'}" method="post" class="form-row money-form">
+      <input type="text" name="name" class="grow" placeholder="За что" required autocomplete="off" aria-label="За что">
+      <input type="number" name="amount" class="narrow" min="1" th:placeholder="'Сумма, ' + ${currency.symbol}" required autocomplete="off"
+             th:attr="aria-label='Сумма, ' + ${currency.name}">
+      <span class="money-buttons">
+        <button type="submit" name="direction" value="in" class="btn btn-sm money-in">＋ Доход</button>
+        <button type="submit" name="direction" value="out" class="btn btn-sm money-out">− Трата</button>
+      </span>
     </form>
   </div>
   <!-- Регулярные траты: списываются сами, когда кампания проматывает время -->
@@ -122,9 +128,9 @@
         </div>
       </form>
     </div>
-    <div th:if="${#lists.isEmpty(moneyList)}" class="empty">Нет операций</div>
+    <p th:if="${#lists.isEmpty(moneyList)}" class="quiet-empty">Операций пока нет</p>
     <a th:if="${brief}" class="card-more-link" th:href="@{'/character/' + ${character.id} + '/gear#money'}"
-       th:text="${#lists.size(moneyList) > #lists.size(recentMoney)} ? 'Весь журнал (' + ${#lists.size(moneyList)} + ') и регулярные траты →' : 'Регулярные траты →'">Все операции →</a>
+       th:text="${#lists.size(moneyList) > #lists.size(recentMoney)} ? 'Весь журнал (' + ${#lists.size(moneyList)} + ') и регулярные траты' : 'Регулярные траты'">Регулярные траты</a>
   </div>
 </section>
 

@@ -28,8 +28,13 @@
   <div class="card-head"><h2 class="card-title"><span class="dot"></span>Попросить бросок</h2></div>
   <div class="card-body">
     <form th:action="@{'/campaign/' + ${campaign.id} + '/requests'}" method="post" class="form">
+      <!-- UX-21: длинный список навыков — с поиском; один вариант (Космозэки: «Проверка») — без выпадающего списка -->
+      <div th:if="${#lists.size(choices) > 8}" class="form-row">
+        <input type="search" class="grow" placeholder="Найти навык" autocomplete="off" aria-label="Найти навык" data-select-filter="what">
+      </div>
       <div class="form-row">
-        <select name="what" class="grow" required aria-label="Что бросать" data-remember="request-what">
+        <input th:if="${#lists.size(choices) == 1}" type="hidden" name="what" th:value="${choices[0].value}">
+        <select th:if="${#lists.size(choices) > 1}" name="what" class="grow" required aria-label="Что бросать" data-remember="request-what">
           <option th:each="c : ${choices}" th:value="${c.value}" th:text="${c.label}">Внимательность</option>
         </select>
         <!-- KF-10: max — не ступень одной системы: у Космозэков свои числа -->

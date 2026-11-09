@@ -7,14 +7,13 @@
 <main class="page">
   <!-- A-07: запросы бросков от мастера: карточка с одной кнопкой, приходит опросом -->
   <div th:replace="~{fragments/requests :: slot(${campaign.id}, null)}"></div>
-  <div class="page-head">
-    <div>
-      <span class="eyebrow">Кампания · <span th:text="${gameSystem.displayName}">Система</span></span>
-      <h1 class="page-title" th:text="${campaign.name}">Название кампании</h1>
-      <p class="page-sub" th:if="${campaign.startDate != null}">
-        Началась <span th:text="${campaign.startDate}">дата</span>
-      </p>
-    </div>
+  <!-- UX-07: шапка в одну строку — название, система и дата начала словами -->
+  <div class="page-head page-head-compact">
+    <h1 class="page-title" th:text="${campaign.name}">Название кампании</h1>
+    <p class="page-sub">
+      <span th:text="${gameSystem.displayName}">Система</span>
+      <span th:if="${campaign.startDate != null}" th:text="'началась ' + ${campaign.startDate}">началась</span>
+    </p>
     <div class="page-actions">
       <th:block th:replace="~{fragments/reference :: open-button(${campaign.id})}"></th:block>
       <th:block th:if="${isGm}">
@@ -96,6 +95,8 @@
         <div th:if="${#lists.isEmpty(npcs)}" class="empty">NPC пока нет</div>
       </div>
     </section>
+      <!-- UX-22: «Попросить бросок» — к персонажам, у кого просят; колонки по высоте ближе -->
+      <th:block th:if="${isGm}"><section th:replace="~{fragments/requests :: ask-form(${campaign})}"></section></th:block>
     </div>
 
     <div class="stack">
@@ -145,12 +146,18 @@
         </div>
       </section>
 
+      <!-- Кубики мастера и последние броски кампании -->
+      <!-- R-04: карточка «Кубики» ушла в «Стол» (fragments/dice :: card остаётся, маршруты /roll и /check — тоже);
+           журнал бросков с листалкой — мастеру, свёрнут -->
+      <!-- UX-22: чат сразу под «Сессией»; хроника и журнал бросков — ниже, короткими -->
+      <section th:replace="~{fragments/chat :: card(${campaign.id}, '/campaign/' + ${campaign.id}, ${chatCharacters})}"></section>
       <section class="card" id="chronicle">
         <div class="card-head">
           <h2 class="card-title"><span class="dot pink"></span>Хроника</h2>
-          <span class="badge" th:text="${#lists.size(campaign.chronicles)}">0</span>
+          <span th:if="${#lists.isEmpty(chronicles)}" class="card-head-note">пусто — появится, когда пройдёт время</span>
+          <span th:unless="${#lists.isEmpty(chronicles)}" class="badge" th:text="${#lists.size(campaign.chronicles)}">0</span>
         </div>
-        <div class="card-body">
+        <div class="card-body" th:unless="${#lists.isEmpty(chronicles)}">
           <!-- новые сверху; видно 5, старые свёрнуты -->
           <div class="timeline" th:unless="${#lists.isEmpty(chronicles)}">
             <div th:each="chronicle, st : ${chronicles}" th:if="${st.index < 5}" class="timeline-item">
@@ -171,16 +178,10 @@
               </div>
             </div>
           </details>
-          <div th:if="${#lists.isEmpty(chronicles)}" class="empty">Хроника пуста</div>
         </div>
       </section>
 
-      <!-- Кубики мастера и последние броски кампании -->
-      <!-- R-04: карточка «Кубики» ушла в «Стол» (fragments/dice :: card остаётся, маршруты /roll и /check — тоже);
-           журнал бросков с листалкой — мастеру, свёрнут -->
       <th:block th:if="${isGm}"><details th:replace="~{fragments/dice :: roll-log('/campaign/' + ${campaign.id})}"></details></th:block>
-      <th:block th:if="${isGm}"><section th:replace="~{fragments/requests :: ask-form(${campaign})}"></section></th:block>
-      <section th:replace="~{fragments/chat :: card(${campaign.id}, '/campaign/' + ${campaign.id}, ${chatCharacters})}"></section>
     </div>
   </div>
 </main>

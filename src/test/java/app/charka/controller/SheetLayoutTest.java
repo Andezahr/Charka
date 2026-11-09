@@ -65,7 +65,8 @@ class SheetLayoutTest {
     @DisplayName("Здоровье, броня и статы — строками на листе, урон наносится оттуда; плиток и вкладки «Счётчики» нет")
     void stateOnSheet() throws Exception {
         String html = sheet();
-        assertThat(html).contains("id=\"state-health\"", "id=\"state-armor\"", "id=\"state-stats\"", "Нанести", "id=\"counters\"", "＋ Счётчик")
+        // UX-01: простые счётчики (IP, репутация) и «＋ Счётчик» — в полосе состояния, отдельной карточки нет
+        assertThat(html).contains("id=\"state-health\"", "id=\"state-armor\"", "id=\"state-stats\"", "Нанести", "class=\"state-counters\"", "＋ Счётчик")
                 .doesNotContain("stat-label\">Инвентарей", "/counters\" class=\"\">Счётчики</a>");
         assertThat(html).doesNotContainPattern("<a[^>]*/counters\"[^>]*>Счётчики</a>");
         // R-09: журнал здоровья — в блоке состояния, отдельной карточки нет
@@ -85,7 +86,7 @@ class SheetLayoutTest {
     }
 
     @Test
-    @DisplayName("R-07: первое оружие — основное с навыком атаки, остальное — в «Запасном»; «Сделать основным» меняет их местами")
+    @DisplayName("R-07, UX-04: первое оружие — в руках с навыком атаки; запасное — кнопками «Взять в руки» и строкой в носимом")
     void weapons() throws Exception {
         Long inventoryId = characterService.getById(character.getId()).getInventories().get(0).getId();
         for (String key : new String[]{"militech_arms_avenger", "kendachi_monoknife"}) {
@@ -94,10 +95,11 @@ class SheetLayoutTest {
         }
         String html = sheet();
         String weapons = html.substring(html.indexOf("id=\"weapons\""), html.indexOf("id=\"inventories\""));
-        assertThat(weapons).contains("Militech Arms Avenger", "Пистолеты 0 + REF", "Запасное: Kendachi Monoknife", "Сделать основным")
+        assertThat(weapons).contains("Militech Arms Avenger", "Пистолеты 0 + REF", "Взять в руки:", "Kendachi Monoknife")
                 .doesNotContain("Лучший навык 0");
-        assertThat(weapons.indexOf("Militech Arms Avenger")).isLessThan(weapons.indexOf("Запасное"));
-        assertThat(html.substring(html.indexOf("id=\"inventories\""))).contains("— в карточке «Оружие»");
+        assertThat(weapons.indexOf("Militech Arms Avenger")).isLessThan(weapons.indexOf("Взять в руки:"));
+        // в носимом: запасное — своей строкой с «Взять в руки», то, что в руках, — ссылкой на карточку
+        assertThat(html.substring(html.indexOf("id=\"inventories\""))).contains("в руках", "Kendachi Monoknife", "Взять в руки");
 
         Long knife = characterService.getById(character.getId()).getInventories().get(0).getContent().stream()
                 .filter(item -> item.getName().contains("Monoknife")).findFirst().orElseThrow().getId();
@@ -105,8 +107,8 @@ class SheetLayoutTest {
                 .andExpect(redirectedUrl("/character/" + character.getId() + "#weapons"));
         weapons = sheet();
         weapons = weapons.substring(weapons.indexOf("id=\"weapons\""), weapons.indexOf("id=\"inventories\""));
-        assertThat(weapons.indexOf("Kendachi Monoknife")).isLessThan(weapons.indexOf("Запасное"));
-        assertThat(weapons).contains("Запасное: Militech Arms Avenger");
+        assertThat(weapons.indexOf("Kendachi Monoknife")).isLessThan(weapons.indexOf("Взять в руки:"));
+        assertThat(weapons.substring(weapons.indexOf("Взять в руки:"))).contains("Militech Arms Avenger");
     }
 
     @Test

@@ -99,7 +99,7 @@ class TableTest {
         String sheet = mockMvc.perform(get("/character/" + kolya.getId())).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(sheet).doesNotContain("id=\"dice\"").contains("data-table-open", base + "/panel");
         String overview = mockMvc.perform(get("/campaign/" + campaign.getId())).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        assertThat(overview).doesNotContain("id=\"dice\"").contains("Стол: чат и броски", ">d10<", "🎲 Проверка", "data-check-skill=\"" + kolya.getId() + "\"", "Внимательность ");
+        assertThat(overview).doesNotContain("id=\"dice\"").contains("Чат и броски", ">d10<", "🎲 Проверка", "data-check-skill=\"" + kolya.getId() + "\"", "Внимательность ");
 
         String panel = mockMvc.perform(get(base + "/panel").param("returnTo", "/character/" + kolya.getId()))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();

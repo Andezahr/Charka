@@ -47,7 +47,8 @@
 
   <!-- Текущие статы; нажатие — переход к группе навыков -->
   <nav class="skills-stats" th:unless="${sheet.statsMissing and sheet.points == null}" aria-label="Статы и очки">
-    <a th:if="${sheet.points != null}" class="chip" th:href="@{'/character/' + ${character.id} + '/counters'}"
+    <!-- UX-23: очки улучшения — не стат: справа, отдельно -->
+    <a th:if="${sheet.points != null}" class="chip skills-points" th:href="@{'/character/' + ${character.id} + '/counters'}"
        title="Начисляются на вкладке «Счётчики»" th:text="${sheet.pointsName} + ' ' + ${sheet.points}">IP 35</a>
     <th:block th:each="group : ${sheet.groups}">
       <a th:if="${group.stat != null}" class="chip" th:href="'#group-' + ${group.stat.code}" data-skills-jump

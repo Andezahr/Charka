@@ -9,7 +9,7 @@
          th:attr="data-chat=@{'/campaign/' + ${campaignId} + '/chat'},data-me-key=${'campaign.' + campaignId}"
          th:with="tableSystem=${@gameSystemRegistry.get(@campaignService.getById(campaignId).system)},
                   tableGm=${isGm == null or isGm}">
-  <div class="card-head"><h2 class="card-title"><span class="dot"></span>Стол: чат и броски</h2></div>
+  <div class="card-head"><h2 class="card-title"><span class="dot"></span>Чат и броски</h2></div>
   <div class="card-body">
     <form th:action="@{'/campaign/' + ${campaignId} + '/chat'}" method="post" class="form chat-form">
       <input type="hidden" name="returnTo" th:value="${returnTo}">

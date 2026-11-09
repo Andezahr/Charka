@@ -147,6 +147,14 @@ public interface GameSystem {
         return List.of(ItemTypeDefinition.GENERIC);
     }
 
+    /**
+     * UX-14: тип предмета «оружие» — вкладка окна «Добавить», которую открывает «＋ Оружие» на пустой карточке оружия;
+     * null — открыть последнюю вкладку.
+     */
+    default String getWeaponItemType() {
+        return null;
+    }
+
     default Optional<ItemTypeDefinition> findItemType(String code) {
         return getItemTypes().stream().filter(type -> type.code().equals(code)).findFirst();
     }

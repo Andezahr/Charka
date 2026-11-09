@@ -29,11 +29,16 @@ public class NpcController {
                          @RequestParam(required = false) String name,
                          @RequestParam(defaultValue = "1") int count,
                          @RequestParam(defaultValue = "false") boolean advanced,
+                         @RequestParam(required = false) String returnTo,
                          RedirectAttributes redirectAttributes) {
         try {
             redirectAttributes.addFlashAttribute("npcMessage", "Создано: " + names(npcService.create(campaignId, template, name, count, advanced)));
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("npcError", e.getMessage());
+        }
+        // UX-09: «＋ NPC» с экрана начала боя — обратно туда, новые NPC сразу в списке «Кто участвует»
+        if ("encounter".equals(returnTo)) {
+            return "redirect:/campaign/" + campaignId + "/encounter";
         }
         return "redirect:/campaign/" + campaignId + "#npcs";
     }

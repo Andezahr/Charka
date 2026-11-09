@@ -82,7 +82,7 @@
   </div>
 
   <!-- Медпомощь: медик бросает навык против урона (с. 116); без лечения раненый теряет 2 очка в день -->
-  <div th:if="${h.careLabel != null}" class="cp-care">
+  <div th:fragment="care(h, base)" th:if="${h.careLabel != null}" class="cp-care">
     <div class="cp-muted-line" th:text="${h.careLabel}">Без лечения: +2 урона в день</div>
     <form th:unless="${#lists.isEmpty(h.careOptions)}" th:action="${base} + '/health/care'" method="post" class="form-row">
       <select name="option" class="grow" aria-label="Что делает медик">
@@ -130,7 +130,8 @@
   <!-- Редкие действия свёрнуты -->
   <details class="cp-more">
     <summary>Лечение и правка</summary>
-    <div class="cp-more-body">
+    <!-- tools: и в карточке, и на листе (card-compact) — без второго трека и формы урона -->
+    <div class="cp-more-body" th:fragment="tools(h, base)">
       <form th:unless="${h.dead}" th:action="${base} + '/health/heal'" method="post" class="form-row">
         <input type="number" name="points" min="1" placeholder="Очков лечения" required aria-label="Очков лечения">
         <button type="submit" class="btn btn-sm btn-success">Вылечить</button>
@@ -154,7 +155,8 @@
   </details>
 </div>
 
-<!-- R-05: здоровье на листе — состояние, трек и урон в одну строку; медпомощь, лечение и правка — по «⋯» (полная карточка) -->
+<!-- R-05, UX-01: здоровье на листе — состояние, трек с подписями уровней; урон, медпомощь и лечение — кнопками,
+     без второго трека и второй формы урона (UX-25: раньше по «⋯» раскрывалась вся карточка) -->
 <div th:fragment="card-compact" class="cp-compact cp-health" id="state-health"
      th:with="h=${counter.view},
               base=@{/character/{characterId}/counters/{counterId}(characterId=${characterId}, counterId=${counter.id})}"
@@ -162,12 +164,44 @@
   <div class="cp-compact-head">
     <span class="cp-compact-title">Здоровье</span>
     <span class="cp-health-status" th:text="${h.statusLabel}">Без ранений</span>
-    <span class="cp-muted-line" th:text="${h.damage} + '/' + ${h.maxDamage} + ' · BTM −' + ${h.btm} + (${h.dead} ? '' : ' · оглушение ≤ ' + ${h.stunTarget}) + (${h.penalty != null} ? ' · ' + ${h.penalty} : '')">3/40 · BTM −2 · оглушение ≤ 6</span>
+    <span class="state-fact" th:text="'урон ' + ${h.damage} + ' из ' + ${h.maxDamage}">урон 3 из 40</span>
+    <span class="state-fact" th:text="'BTM −' + ${h.btm}">BTM −2</span>
+    <span class="state-fact" th:unless="${h.dead}" th:text="'оглушение: бросок не выше ' + ${h.stunTarget}">оглушение: бросок не выше 6</span>
+    <span class="state-fact is-warn" th:if="${h.penalty != null}" th:text="${h.penalty}">REF −2</span>
+    <div class="state-tools">
+      <details th:unless="${h.dead}" class="state-tool">
+        <summary class="btn btn-sm btn-danger-ghost">Урон…</summary>
+        <form th:action="${base} + '/health/damage'" method="post" class="cp-damage">
+          <input type="hidden" name="autoSave" value="on"><input type="hidden" name="_autoSave" value="on">
+          <div class="form-row">
+            <input type="number" name="amount" min="0" placeholder="Урон" required class="cp-amount" aria-label="Урон">
+            <select name="location" aria-label="Зона попадания">
+              <option value="">Случайная зона</option>
+              <option th:each="l : ${h.locations}" th:value="${l.code}" th:text="${l.label}">Торс</option>
+            </select>
+            <select name="damageType" aria-label="Тип урона">
+              <option th:each="t : ${h.damageTypes}" th:value="${t.code}" th:text="${t.label}">Обычный</option>
+            </select>
+            <button type="submit" class="btn btn-danger">Нанести</button>
+          </div>
+        </form>
+      </details>
+      <details class="state-tool">
+        <summary class="btn btn-sm">Медпомощь и лечение…</summary>
+        <div class="state-tool-body">
+          <th:block th:replace="~{:: care(${h}, ${base})}"></th:block>
+          <div th:replace="~{:: tools(${h}, ${base})}"></div>
+        </div>
+      </details>
+    </div>
   </div>
-  <div class="cp-track cp-track-compact">
+  <div class="cp-track cp-track-compact" role="img" th:attr="aria-label='Трек ран: ' + ${h.statusLabel}">
     <div th:each="lvl : ${h.track}" class="cp-track-level" th:classappend="${lvl.css}" th:title="${lvl.name}">
       <span th:each="i : ${#numbers.sequence(1, 4)}" class="cp-box" th:classappend="${i <= lvl.filled} ? 'is-filled'"></span>
     </div>
+  </div>
+  <div class="cp-track-legend cp-track-legend-compact" aria-hidden="true">
+    <span>Лёгкое</span><span>Серьёзное</span><span>Критическое</span><span>Смертельное 0–6</span>
   </div>
   <div th:if="${h.deathSaveRequired}" class="cp-callout danger">
     <span class="cp-callout-text" th:text="'Смертельная рана: спасбросок от смерти, d10 ≤ ' + ${h.deathTarget}">Спасбросок от смерти</span>
@@ -177,24 +211,6 @@
     <span class="cp-callout-text" th:text="'Оглушён: спасбросок, d10 ≤ ' + ${h.stunTarget}">Оглушён</span>
     <form th:action="${base} + '/health/save/STUN'" method="post"><button type="submit" class="btn btn-sm">🎲 Прийти в себя</button></form>
   </div>
-  <form th:unless="${h.dead}" th:action="${base} + '/health/damage'" method="post" class="cp-damage">
-    <input type="hidden" name="autoSave" value="on"><input type="hidden" name="_autoSave" value="on">
-    <div class="form-row">
-      <input type="number" name="amount" min="0" placeholder="Урон" required class="cp-amount" aria-label="Урон">
-      <select name="location" aria-label="Зона попадания">
-        <option value="">Случайная зона</option>
-        <option th:each="l : ${h.locations}" th:value="${l.code}" th:text="${l.label}">Торс</option>
-      </select>
-      <select name="damageType" aria-label="Тип урона">
-        <option th:each="t : ${h.damageTypes}" th:value="${t.code}" th:text="${t.label}">Обычный</option>
-      </select>
-      <button type="submit" class="btn btn-danger">Нанести</button>
-    </div>
-  </form>
-  <details class="cp-more item-more">
-    <summary>Медпомощь, лечение, правка</summary>
-    <div th:replace="~{:: card}"></div>
-  </details>
 </div>
 </body>
 </html>

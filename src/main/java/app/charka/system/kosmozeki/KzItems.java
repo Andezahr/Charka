@@ -222,28 +222,29 @@ public final class KzItems {
     }
 
     /**
-     * Пистолет и винтовка — примеры из документа системы; остальное оружие — HOMEBREW-заготовки: числа правит мастер.
+     * Пистолет и винтовка — примеры из документа системы; остальное оружие и броня — HOMEBREW-заготовки: числа правит мастер.
+     * UX-27: пометки «HOMEBREW» и «пример из правил» — только здесь, в коде: в описании предмета их видят игроки.
      */
     public static final List<CatalogItem> CATALOG;
 
     static {
         List<CatalogItem> catalog = new ArrayList<>();
-        catalog.add(gun("kz-pistol", "Стандартный пистолет", 20, 2, 30, 7, "Пистолетные", "Пример из правил системы"));
-        catalog.add(gun("kz-rifle", "Автоматическая винтовка", 20, 30, 50, 30, "Винтовочные", "Пример из правил системы: ROF 30, DIF 50"));
-        catalog.add(gun("kz-shotgun", "Дробовик", 40, 1, 30, 6, "Дробь", "HOMEBREW: заготовка"));
-        catalog.add(gun("kz-sniper", "Снайперская винтовка", 60, 1, 40, 5, "Снайперские", "HOMEBREW: заготовка"));
-        catalog.add(entry("kz-knife", "Оружие", "Нож", MELEE, "HOMEBREW: заготовка",
+        catalog.add(gun("kz-pistol", "Стандартный пистолет", 20, 2, 30, 7, "Пистолетные", null));
+        catalog.add(gun("kz-rifle", "Автоматическая винтовка", 20, 30, 50, 30, "Винтовочные", null));
+        catalog.add(gun("kz-shotgun", "Дробовик", 40, 1, 30, 6, "Дробь", null));
+        catalog.add(gun("kz-sniper", "Снайперская винтовка", 60, 1, 40, 5, "Снайперские", null));
+        catalog.add(entry("kz-knife", "Оружие", "Нож", MELEE, null,
                 Map.of(DMG, "15", ATTACKS, "2", DIF, "30", ARMOR_HALF, "1"), 1));
-        catalog.add(entry("kz-club", "Оружие", "Дубинка", MELEE, "HOMEBREW: заготовка",
+        catalog.add(entry("kz-club", "Оружие", "Дубинка", MELEE, null,
                 Map.of(DMG, "20", ATTACKS, "1", DIF, "25", ARMOR_HALF, "1"), 1));
-        catalog.add(entry("kz-grenade", "Оружие", "Граната", EXPLOSIVE, "HOMEBREW: заготовка; зоны выбирает мастер",
+        catalog.add(entry("kz-grenade", "Оружие", "Граната", EXPLOSIVE, "Зоны, в которые пришёлся взрыв, выбирает мастер",
                 Map.of(DMG, "30", DIF, "30"), 1));
         for (String caliber : CALIBERS) {
             catalog.add(entry("kz-ammo-" + caliber, "Патроны", "Патроны: " + caliber.toLowerCase(), AMMO, null,
                     Map.of(CALIBER, caliber), 10));
         }
-        catalog.add(entry("kz-helmet", "Броня", "Шлем", ARMOR, "HOMEBREW: заготовка", Map.of(ZONE, KzBody.HEAD, ARMOR_VALUE, "20"), 1));
-        catalog.add(entry("kz-vest", "Броня", "Бронежилет", ARMOR, "HOMEBREW: заготовка", Map.of(ZONE, KzBody.BODY, ARMOR_VALUE, "20"), 1));
+        catalog.add(entry("kz-helmet", "Броня", "Шлем", ARMOR, null, Map.of(ZONE, KzBody.HEAD, ARMOR_VALUE, "20"), 1));
+        catalog.add(entry("kz-vest", "Броня", "Бронежилет", ARMOR, null, Map.of(ZONE, KzBody.BODY, ARMOR_VALUE, "20"), 1));
         catalog.add(entry("kz-skin", "Ходовые товары", "«Жидкая кожа» PISOS", MEDICINE,
                 "Быстрозастывающий биогерметик: +50 ХП в одну зону или +30 во все", Map.of(HEAL_ONE, "50", HEAL_ALL, "30"), 1));
         catalog.add(goods("kz-link", "Линк", "Рация, система радиосвязи LINK"));

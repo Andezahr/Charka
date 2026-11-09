@@ -61,7 +61,7 @@
     <!-- R-04: «Стол» с любой страницы кампании; где карточка чата есть на странице — прокрутка к ней -->
     <th:block th:if="${c != null}">
       <button type="button" class="btn btn-sm btn-ghost table-open" data-table-open
-              th:attr="data-table-src=@{'/campaign/' + ${c.id} + '/chat/panel'}" title="Чат и кубики">💬 Стол</button>
+              th:attr="data-table-src=@{'/campaign/' + ${c.id} + '/chat/panel'}" title="Чат, кубики и проверки">💬 Чат<span class="hide-sm"> и броски</span></button>
       <dialog class="dialog table-drawer" data-table-drawer>
         <button type="button" class="icon-btn table-close" data-table-close aria-label="Закрыть">✕</button>
         <div data-table-body><p class="empty">Загрузка…</p></div>

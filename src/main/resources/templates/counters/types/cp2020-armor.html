@@ -64,7 +64,7 @@
     </span>
   </div>
   <details class="cp-more item-more">
-    <summary th:text="${#lists.isEmpty(v.wornItems)} ? 'Ремонт, правка' : ${#strings.listJoin(v.wornItems, ', ')}">Ремонт, правка</summary>
+    <summary th:text="${#lists.isEmpty(v.wornItems)} ? '✎ Броня: ремонт и правка' : '✎ Броня: ' + ${#strings.listJoin(v.wornItems, ', ')}">✎ Броня: ремонт и правка</summary>
     <div th:replace="~{:: card}"></div>
   </details>
 </div>

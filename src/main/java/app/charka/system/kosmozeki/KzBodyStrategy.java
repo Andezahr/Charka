@@ -458,7 +458,8 @@ public class KzBodyStrategy extends AbstractCounterStrategy implements HealthCou
             int hp = hp(counter, zone);
             int armor = armor(counter, zone);
             rows.add(new KzBodyView.ZoneRow(zone.code(), zone.name(), zone.digitsLabel(), hp, zone.maxHp(), armor,
-                    armor == 0 ? null : armorSource(counter, zone), zone.multiplier(), zone.maxHp() == 0 ? 0 : hp * 100 / zone.maxHp()));
+                    armor == 0 ? null : armorSource(counter, zone), zone.multiplier(), zone.maxHp() == 0 ? 0 : hp * 100 / zone.maxHp(),
+                    zone.digits().stream().sorted().toList()));
         }
         int max = body.zones().stream().mapToInt(KzBody.Zone::maxHp).sum();
         int lost = body.zones().stream().mapToInt(zone -> lost(counter, zone)).sum();
@@ -525,7 +526,8 @@ public class KzBodyStrategy extends AbstractCounterStrategy implements HealthCou
         if (unconscious(counter)) {
             return "Без сознания";
         }
-        return counter.getValue() == null || counter.getValue() == 0 ? "Цел" : "Ранен";
+        // UX-26: «Цел» — служебное слово; как у CP2020 — «Без ранений»
+        return counter.getValue() == null || counter.getValue() == 0 ? "Без ранений" : "Ранен";
     }
 
     private static String statusCss(Counter counter) {

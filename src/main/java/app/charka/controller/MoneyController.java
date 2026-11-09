@@ -22,10 +22,17 @@ public class MoneyController {
     public String addMoney(
             @PathVariable Long characterId,
             @RequestParam String name,
-            @RequestParam Long amount
+            @RequestParam Long amount,
+            @RequestParam(required = false) String direction
     ) {
         Money money = new Money();
         money.setName(name);
+        // UX-06: кнопки «＋ Доход» и «− Трата» ставят знак сами — минус писать не нужно; без direction сумма как введена
+        if ("in".equals(direction)) {
+            amount = Math.abs(amount);
+        } else if ("out".equals(direction)) {
+            amount = -Math.abs(amount);
+        }
         money.setAmount(amount);
         // дату операции (игровую) ставит сервис
         moneyService.create(characterId, money);

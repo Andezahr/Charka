@@ -144,6 +144,11 @@ public class Cp2020System implements GameSystem {
     }
 
     @Override
+    public String getWeaponItemType() {
+        return Cp2020ItemTypes.WEAPON;
+    }
+
+    @Override
     public List<CatalogItem> getItemCatalog() {
         return ITEM_CATALOG;
     }

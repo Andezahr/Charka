@@ -51,6 +51,7 @@ public class CharacterController {
     private final CounterModel counterModel;
     private final app.charka.skill.SkillService skillService;
     private final app.charka.service.ProfileService profileService;
+    private final app.charka.service.ItemService itemService;
 
     /**
      * A-03: окно «Добавить» по требованию — при первом открытии; app.js хранит его, пока не изменится {@code v}
@@ -87,6 +88,32 @@ public class CharacterController {
     public String mainWeapon(@PathVariable Long id, @org.springframework.web.bind.annotation.RequestParam(required = false) Long item) {
         characterService.setMainWeapon(id, item);
         return "redirect:/character/" + id + "#weapons";
+    }
+
+    /**
+     * UX-11: «Надеть всё» — броня из носимого, которую не надели. Каждую вещь надевает действие системы {@link app.charka.item.ItemAction#WEAR};
+     * отказ по одной вещи (слой не помещается) не мешает остальным, итог — одной строкой вверху листа.
+     */
+    @org.springframework.web.bind.annotation.PostMapping("/wear-all")
+    public String wearAll(@PathVariable Long id,
+                          @org.springframework.web.bind.annotation.RequestParam(name = "item", required = false) List<Long> items,
+                          org.springframework.web.servlet.mvc.support.RedirectAttributes redirectAttributes) {
+        List<String> done = new java.util.ArrayList<>();
+        List<String> failed = new java.util.ArrayList<>();
+        for (Long itemId : items == null ? List.<Long>of() : items) {
+            try {
+                done.add(itemService.performAction(id, itemId, app.charka.item.ItemAction.WEAR, Map.of()));
+            } catch (IllegalArgumentException e) {
+                failed.add(e.getMessage());
+            }
+        }
+        if (!done.isEmpty()) {
+            redirectAttributes.addFlashAttribute("successMessage", String.join(" ", done));
+        }
+        if (!failed.isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", String.join(" ", failed));
+        }
+        return "redirect:/character/" + id + "#state";
     }
 
     /** K-11: поля листа от системы: {@code profile.<ключ>}, {@code pick.<ключ>.<вариант>} */
@@ -154,6 +181,9 @@ public class CharacterController {
         model.addAttribute("expenseTemplates", system.getExpenseTemplates().stream()
                 .collect(Collectors.groupingBy(ExpenseTemplate::group, LinkedHashMap::new, Collectors.toList())));
         model.addAttribute("currency", system.getCurrency());
+        // UX-14: «＋ Оружие» на пустой карточке оружия открывает эту вкладку окна «Добавить»
+        model.addAttribute("weaponItemType", system.getWeaponItemType());
+        model.addAttribute("hasAttacks", system.getAttackRules() != null);
         // A-03: окно «Добавить» грузится по требованию; версия меняется вместе с балансом и подсказками справочника
         model.addAttribute("addDialogVersion", Long.toHexString(java.util.Objects.hash(moneySum,
                 system.getSuggestedCatalog(character).stream().map(CatalogItem::key).toList())));
@@ -173,6 +203,12 @@ public class CharacterController {
         model.addAttribute("itemActions", character.getInventories().stream()
                 .flatMap(inventory -> inventory.getContent().stream())
                 .collect(Collectors.toMap(Item::getId, system::getItemActions)));
+        // UX-11: броня в носимом, которую можно надеть, — плашка «Надеть всё» в шапке состояния
+        model.addAttribute("unwornArmor", gear ? List.of() : shownInventories.stream()
+                .flatMap(inventory -> inventory.getContent().stream())
+                .filter(item -> system.getItemActions(item).stream()
+                        .anyMatch(action -> action.code().equals(app.charka.item.ItemAction.WEAR) && action.unavailable() == null && !action.hidden()))
+                .toList());
         model.addAttribute("itemNotes", character.getInventories().stream()
                 .flatMap(inventory -> inventory.getContent().stream())
                 .collect(Collectors.toMap(Item::getId, system::getItemNotes)));
@@ -222,9 +258,12 @@ public class CharacterController {
                     .orElse(weapons.isEmpty() ? null : weapons.get(0));
             model.addAttribute("mainWeapon", mainWeapon);
             model.addAttribute("spareWeapons", weapons.stream().filter(item -> item != mainWeapon).toList());
-            weapons.forEach(item -> shownElsewhere.add(item.getId()));
-            model.addAttribute("inventoryWeapons", weapons.stream()
-                    .collect(Collectors.groupingBy(item -> item.getInventory().getId())));
+            // UX-04: в «Носимом» лежит и оружие — запасное обычной строкой; только то, что в руках, показано карточкой «Оружие»
+            if (mainWeapon != null) {
+                shownElsewhere.add(mainWeapon.getId());
+            }
+            model.addAttribute("inventoryWeapons", mainWeapon == null ? Map.of()
+                    : Map.of(mainWeapon.getInventory().getId(), List.of(mainWeapon)));
             model.addAttribute("attackTargets", character.getCampaign() == null ? List.of()
                     : character.getCampaign().getCharacters().stream()
                     .filter(other -> !other.getId().equals(id))

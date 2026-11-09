@@ -76,6 +76,17 @@
         <div th:if="${#lists.isEmpty(candidates)}" class="empty">В кампании пока нет персонажей</div>
       </div>
     </form>
+    <!-- UX-09: NPC для этого боя — прямо здесь, без ухода на обзор -->
+    <form th:action="@{'/campaign/' + ${campaign.id} + '/npcs'}" method="post" class="card-body form-row encounter-add-npc">
+      <input type="hidden" name="returnTo" value="encounter">
+      <select th:unless="${#lists.isEmpty(npcTemplates)}" name="template" class="grow" aria-label="Шаблон NPC">
+        <option th:each="t : ${npcTemplates}" th:value="${t.code}" th:text="${t.label}">Бандит</option>
+        <option value="">Пустой NPC</option>
+      </select>
+      <input type="text" name="name" class="grow" placeholder="Имя (необязательно)" autocomplete="off" aria-label="Имя NPC">
+      <input type="number" name="count" class="narrow" value="1" min="1" max="20" aria-label="Сколько" title="Сколько">
+      <button type="submit" class="btn btn-sm">＋ NPC</button>
+    </form>
   </section>
 
   <!-- R-14…R-18: бой — карта во весь экран (эскиз автора, UI_PLAN.md 3.4). Всё, что было в старом трекере, на месте:
@@ -106,6 +117,7 @@
           <!-- R-16: чужой NPC игроку — имя, состояние словами и оружие в руках; свои и мастеру — весь боевой блок -->
           <th:block th:with="open=${isGm or curMine or !cur.character.npc}">
             <p th:if="${cur.participant.initiativeDetails != null}" class="row-meta" th:text="'Инициатива ' + ${cur.participant.initiative} + ': ' + ${cur.participant.initiativeDetails}">REF 8 + d10 7 = 15</p>
+            <th:block th:if="${open}"><div th:replace="~{fragments/encounter :: segments(${cur.card})}"></div></th:block>
             <div class="chips">
               <th:block th:if="${open}"><span th:each="line : ${cur.card.lines}" class="chip" th:text="${line}">SP торса 14</span></th:block>
               <span th:if="${!open}" th:each="w : ${cur.weapons}" class="chip" th:text="${w.item.name}">Minami</span>
@@ -146,6 +158,7 @@
               <span th:if="${!row.card.out and !row.participant.waiting and !row.participant.done}"
                     th:text="${(view.current != null and !curHidden ? 'Ходит ' + view.current.name + ' · ' : '') + (ahead <= 1 ? 'вы следующий' : 'до вас ещё ' + ahead + ' ход.')}">вы следующий</span>
             </p>
+            <div th:replace="~{fragments/encounter :: segments(${row.card})}"></div>
             <div class="chips">
               <span th:if="${row.card.status != null}" class="chip" th:classappend="${row.card.alarming} ? 'red'" th:text="${row.card.status}">Цел</span>
               <span th:each="line : ${row.card.lines}" class="chip" th:text="${line}">SP торса 14</span>
@@ -190,26 +203,29 @@
 
     <!-- Слева: инструменты карты (R-18). Общие сверху, мастерские ниже черты -->
     <div class="battle-toolbar" th:if="${hasField}">
+      <!-- UX-18: группы «Вид» и «Мастер»; мастерская — только у мастера -->
+      <span class="battle-toolbar-title">Вид</span>
       <label class="field battle-me">
-        <span class="label">Я —</span>
+        <span class="label">Я играю за</span>
         <select data-battle-me aria-label="Кто смотрит на это устройство">
           <option th:if="${isGm}" value="">мастер</option>
           <option th:each="row : ${view.rows}" th:if="${controllable.contains(row.character.id)}" th:value="${row.character.id}" th:text="${row.character.name}">Колясик</option>
         </select>
       </label>
       <!-- A-15: режим мастера на этом устройстве — «Бог» или «За NPC»; надпись ставит app.js (applyGmMode) -->
-      <button th:if="${isGm}" type="button" class="btn btn-sm btn-ghost gm-mode" data-gm-mode>👁 Бог</button>
+      <button th:if="${isGm}" type="button" class="btn btn-sm btn-ghost gm-mode" data-gm-mode>👁 Вижу всех</button>
       <!-- M-22: фишка на лестнице — «⇅ На 2 этаж» одним нажатием -->
       <span class="battle-climb" data-battle-climb hidden></span>
       <button type="button" class="btn btn-sm btn-ghost" data-battle-pointer title="Показать клетку всем (Alt+нажатие, долгое нажатие)">👆 Указать</button>
       <button type="button" class="btn btn-sm btn-ghost" data-battle-ruler title="Измерить расстояние: тяните от клетки к клетке">📏 Линейка</button>
       <span class="battle-zoom">
-        <button type="button" class="btn btn-sm btn-ghost" data-battle-zoom="1.25" aria-label="Крупнее">＋</button>
-        <button type="button" class="btn btn-sm btn-ghost" data-battle-zoom="0.8" aria-label="Мельче">−</button>
-        <button type="button" class="btn btn-sm btn-ghost" data-battle-zoom="0" title="Вся карта">⤢</button>
+        <button type="button" class="btn btn-sm btn-ghost" data-battle-zoom="1.25" aria-label="Крупнее" title="Крупнее">＋</button>
+        <button type="button" class="btn btn-sm btn-ghost" data-battle-zoom="0.8" aria-label="Мельче" title="Мельче">−</button>
+        <button type="button" class="btn btn-sm btn-ghost" data-battle-zoom="0" aria-label="Вся карта" title="Вся карта">⤢</button>
       </span>
       <th:block th:if="${isGm}">
         <hr class="battle-toolbar-sep">
+        <span class="battle-toolbar-title">Мастер</span>
         <!-- Мастер: кто-то из кампании или новый NPC встаёт в бой прямо на нажатую клетку -->
         <button type="button" class="btn btn-sm btn-ghost" data-battle-add data-god-only title="Выберите, кого, и нажимайте клетки: каждое нажатие — фишка">＋ Фишка</button>
         <select data-battle-add-who data-god-only data-remember="battle-add" aria-label="Кого поставить">
@@ -292,7 +308,7 @@
     <!-- Справа: «Стол» (чат и броски), «Очередь» (строки старого трекера), «Мастер» (редкие инструменты) -->
     <aside class="battle-side" data-tabs="battle-side">
       <div class="side-tabs" role="tablist">
-        <button type="button" class="side-tab" data-tab="chat" role="tab">Стол</button>
+        <button type="button" class="side-tab" data-tab="chat" role="tab">Чат</button>
         <button type="button" class="side-tab" data-tab="queue" role="tab">Очередь <span class="badge" th:text="${#lists.size(view.rows)}">5</span></button>
         <button th:if="${isGm}" type="button" class="side-tab" data-tab="gm" role="tab">Мастер</button>
       </div>
@@ -324,6 +340,7 @@
                     <span th:if="${row.participant.initiativeDetails != null}" class="encounter-details" th:text="${row.participant.initiativeDetails}">REF 8 + d10 7 = 15</span>
                     <span th:if="${row.current}" class="encounter-details">· ходит, всё — вверху</span>
                   </div>
+                  <div th:replace="~{fragments/encounter :: segments(${row.card})}"></div>
                   <div class="chips">
                     <span th:if="${row.card.status != null}" class="chip" th:classappend="${row.card.alarming} ? 'red'" th:text="${row.card.status}">Цел</span>
                     <span th:each="line : ${row.card.lines}" class="chip" th:text="${line}">SP торса 14</span>
@@ -427,7 +444,32 @@
         <span th:if="${cur == null}">Ходить некому</span>
       </div>
       <div class="battle-bar-actions" th:if="${curMine}"
-           th:with="url=${base + '/participants/' + cur.participant.id}" th:attr="data-no-actions=${cur.canAct} ? null : 'true'">
+           th:with="url=${base + '/participants/' + cur.participant.id},
+                    sys=${@gameSystemRegistry.get(campaign.system)}"
+           th:attr="data-no-actions=${cur.canAct} ? null : 'true'">
+        <!-- UX-31: сколько действий за ход у системы (Космозэки — одно + перемещение) — фишками, чтобы было видно, что осталось -->
+        <span th:if="${sys.actionsPerRound() > 0}" class="turn-chip" th:classappend="${cur.actionsDone >= sys.actionsPerRound()} ? 'is-used'"
+              th:text="${cur.actionsDone >= sys.actionsPerRound()} ? 'Действие: потрачено' : 'Действие: есть'">Действие: есть</span>
+        <span th:if="${!sys.movementIsAction()}" class="turn-chip"
+              th:text="${cur.participant.movedMeters > 0} ? 'Перемещение: ' + ${cur.participant.movedMeters} + ' м' : 'Перемещение: есть'">Перемещение: есть</span>
+        <form th:if="${cur.actionsDone == 0 and !sys.movementIsAction()}" method="post" th:action="@{${url} + '/dash'}">
+          <button type="submit" class="btn btn-sm btn-ghost" title="Действие хода — на ещё одно перемещение">🏃 Рывок</button>
+        </form>
+        <!-- UX-13: атака кнопкой, не только правой кнопкой по врагу; диалоги — в блоке «Ходит» сверху -->
+        <!-- только оружие в руках (R-07): остальное — в блоке «Ходит» сверху и в «Очереди» -->
+        <th:block th:each="weapon, ws : ${cur.weapons}"
+                  th:if="${weapon.form != null and (cur.character.mainWeaponId != null ? weapon.item.id == cur.character.mainWeaponId : ws.first)}">
+          <button type="button" class="btn btn-sm btn-primary" th:attr="data-dialog-open='attack-' + ${weapon.item.id}"
+                  th:disabled="${weapon.form.unavailable != null or !cur.canAct}"
+                  th:title="${weapon.form.unavailable}"
+                  th:text="'🎯 ' + ${weapon.form.actionLabel} + ': ' + ${weapon.item.name}">🎯 Атаковать: Minami</button>
+        </th:block>
+        <th:block th:each="ability : ${cur.abilities}">
+          <button type="button" class="btn btn-sm" th:attr="data-dialog-open='attack-' + ${ability.id}" th:disabled="${!cur.canAct}"
+                  th:text="${ability.name} + ': ' + ${#strings.toLowerCase(ability.form.actionLabel)}">Рукопашная: атаковать</button>
+        </th:block>
+        <a th:if="${#lists.isEmpty(cur.weapons) and cur.character.npc and isGm}" class="btn btn-sm btn-ghost"
+           th:href="@{'/character/' + ${cur.character.id} + '#weapons'}" title="Дать NPC оружие на его листе">＋ Оружие NPC</a>
         <form th:if="${!cur.participant.waiting and !view.lastInRound}" th:action="@{${url} + '/wait'}" method="post">
           <button type="submit" class="btn btn-sm btn-ghost" title="Вступит позже в этом раунде">Подождать</button>
         </form>

@@ -112,6 +112,11 @@ public class KzSystem implements GameSystem {
     }
 
     @Override
+    public String getWeaponItemType() {
+        return KzItems.RANGED;
+    }
+
+    @Override
     public List<CatalogItem> getItemCatalog() {
         return KzItems.CATALOG;
     }
@@ -222,8 +227,22 @@ public class KzSystem implements GameSystem {
             }
         }
         boolean out = KzBodyStrategy.out(body);
+        // UX-30: в очереди боя — полоса цифр 0…9 цветом ХП зоны: мастер видит, у кого что на нуле, не раскрывая строку
+        List<CombatCard.Segment> segments = new ArrayList<>();
+        for (int digit = 0; digit < 10; digit++) {
+            int d = digit;
+            KzBody.Zone zone = zones.zones().stream().filter(candidate -> candidate.digits().contains(d)).findFirst().orElse(null);
+            if (zone == null) {
+                segments.add(new CombatCard.Segment(String.valueOf(digit), "none", digit + ": мимо зон"));
+                continue;
+            }
+            int hp = KzBodyStrategy.hp(body, zone);
+            int percent = zone.maxHp() == 0 ? 0 : hp * 100 / zone.maxHp();
+            String css = hp <= 0 ? "down" : percent < 35 ? "low" : percent < 100 ? "hurt" : "ok";
+            segments.add(new CombatCard.Segment(String.valueOf(digit), css, digit + ": " + zone.name() + " " + hp + " из " + zone.maxHp()));
+        }
         return new CombatCard(body.getId(), KzBodyStrategy.statusLabel(body), out, out, lines, List.of(), false,
-                zones.zones().stream().map(zone -> new CombatCard.Option(zone.code(), zone.name())).toList(), List.of());
+                zones.zones().stream().map(zone -> new CombatCard.Option(zone.code(), zone.name())).toList(), List.of(), segments);
     }
 
     /**

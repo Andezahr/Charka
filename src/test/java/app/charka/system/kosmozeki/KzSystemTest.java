@@ -126,7 +126,7 @@ class KzSystemTest {
             assertThat(fresh.getCounters()).extracting(Counter::getType).contains(KzBodyStrategy.TYPE, "INSPIRATION");
             assertThat(hp(shooter, KzBody.HEAD)).isEqualTo(100);
             assertThat(hp(shooter, KzBody.BODY)).isEqualTo(150);
-            assertThat(registry.get(KzSystem.CODE).getHealthStatus(fresh)).isEqualTo("Цел");
+            assertThat(registry.get(KzSystem.CODE).getHealthStatus(fresh)).isEqualTo("Без ранений");
         }
 
         @Test

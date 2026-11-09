@@ -1762,3 +1762,188 @@ dialog .action-error { margin-bottom: 12px; }
 .encounter-actions .btn:disabled, .battle-bar-actions .btn:disabled, .battle-menu .btn:disabled { opacity: .45; cursor: not-allowed; }
 .encounter-actions[data-no-actions] .item-actions form .btn,
 .battle-bar-actions[data-no-actions] form[action*="/action/"] .btn { opacity: .45; pointer-events: none; }
+
+/* ---------- Этап 17 (UI_REVIEW.md): лист — полоса состояния, носимое в широкой колонке, строка предмета в одну линию ---------- */
+
+/* UX-07: шапка в одну строку */
+.page-head-compact { align-items: center; justify-content: flex-start; gap: 8px 16px; margin-bottom: 16px; }
+.page-head-compact .page-title { font-size: clamp(24px, 3vw, 30px); }
+.page-head-compact .page-sub { margin: 0; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; }
+.page-head-compact .page-actions { margin-left: auto; gap: 8px; }
+.sheet-page > .state-card { margin-bottom: 20px; }
+
+/* UX-01: полоса состояния */
+.cp-compact-title { text-transform: none; letter-spacing: 0; font-size: 13px; color: var(--text-soft); }
+.state-fact { font-size: 13px; color: var(--text-soft); font-variant-numeric: tabular-nums; }
+.state-fact.is-warn { color: var(--warning); }
+.cp-track-compact .cp-box { height: 14px; border-radius: 3px; }
+.cp-track-legend-compact { margin-top: 2px; }
+.cp-track-legend-compact span { color: var(--text-soft); }
+.cp-stat-chip { padding: 4px 9px; font-size: 14px; }
+.state-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; }
+details.state-tool { position: relative; }
+details.state-tool > summary { list-style: none; }
+details.state-tool > summary::-webkit-details-marker { display: none; }
+details.state-tool[open] { flex-basis: 100%; }
+details.state-tool[open] > summary { margin-bottom: 8px; }
+.state-tool-body { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2); }
+.state-tool-body form { margin: 0; }
+.btn-danger-ghost { color: var(--danger); background: transparent; border-color: rgba(248, 113, 113, 0.45); }
+.btn-danger-ghost:hover { color: var(--danger); background: var(--danger-soft); border-color: var(--danger); }
+.state-warn { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 0; padding: 8px 12px; border-radius: var(--radius-sm);
+  background: var(--warning-soft); border: 1px solid rgba(251, 191, 36, 0.35); }
+.state-warn-title { font-weight: 600; color: var(--warning); }
+.state-warn-text { font-size: 14px; color: var(--text); flex: 1 1 160px; }
+.state-counters { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 20px; padding-top: 10px; border-top: 1px solid var(--border); }
+.state-counters:empty { display: none; }
+.state-counters .counter-row { border-bottom: 0; padding: 0; flex: 0 1 auto; }
+.state-counters .counter-row-name { flex: 0 0 auto; min-width: 0; font-size: 14px; color: var(--text-soft); }
+.state-counters .counter-row-value { font-size: 18px; min-width: 24px; }
+.state-counters > details.state-tool { margin-left: auto; }
+.state-counters > details.state-tool[open] { margin-left: 0; }
+
+/* Карточки справа: короткая шапка, когда пусто */
+.card-head { flex-wrap: wrap; }
+.card-head-note { font-size: 14px; color: var(--text-soft); margin-right: auto; }
+.card-head > .card-title + .badge { margin-right: auto; }
+.card-head-tool[open] { flex-basis: 100%; }
+.card-head-tool > summary { margin-left: auto; }
+.quiet-empty { margin: 0; font-size: 14px; color: var(--text-soft); }
+.money-form .money-buttons { display: flex; gap: 6px; }
+.money-in { color: var(--success); }
+.money-out { color: var(--danger); }
+
+/* UX-04: оружие */
+.weapon-switch { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.weapon-switch-title { font-size: 13px; color: var(--text-soft); margin-right: 2px; }
+.weapon-empty { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; }
+.badge-hand { display: inline-flex; align-items: center; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 600;
+  color: var(--accent); background: var(--accent-soft); white-space: nowrap; }
+.inventory-weapons { margin: 0; font-size: 14px; color: var(--text-soft); }
+
+/* UX-01: вкладки инвентарей в шапке «Носимого» */
+.seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 10px; background: var(--bg); margin-right: auto; }
+.seg-btn { font: inherit; font-size: 13px; font-weight: 500; padding: 6px 12px; border: 0; border-radius: 8px; cursor: pointer;
+  color: var(--text-soft); background: transparent; }
+.seg-btn:hover { color: var(--text); }
+.seg-btn.is-active { color: var(--text); background: var(--surface-3); font-weight: 600; }
+#inventories .inventory { border: 0; background: transparent; }
+#inventories .inventory-head { padding: 0 0 10px; background: transparent; border: 0; }
+#inventories [data-tab-panel] .inventory-name { display: none; }
+#inventories [data-tab-panel] .inventory-head > .row-actions { margin-left: auto; }
+#inventories .inventory-body { padding: 0; }
+
+/* UX-02: строка предмета в одну линию */
+.item-section-title { text-transform: none; letter-spacing: 0; font-size: 13px; font-weight: 500; color: var(--text-soft); }
+.item-row { padding: 6px 10px 6px 12px; gap: 4px 10px; min-height: 44px; }
+.item-row > .row-main { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; min-width: 160px; }
+.item-row > .row-main > .item-head { flex: 1 1 auto; min-width: 0; align-items: center; }
+.item-row > .row-main > p, .item-row > .row-main > .alert, .item-row > .row-main > .item-chips { flex-basis: 100%; }
+.item-row > .row-main > .item-actions { margin-top: 0; }
+.row-title-btn { font: inherit; font-weight: 600; color: var(--text); background: none; border: 0; padding: 0; text-align: left; cursor: pointer; }
+.row-title-btn:hover { color: var(--accent); }
+.item-note.is-line { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.item-row .item-chips { margin-top: 0; }
+.item-row .edit-panel > .row-desc, .item-row .edit-panel > .item-note, .item-row .edit-panel > .item-attack-base { margin: 0 0 8px; }
+.item-row .edit-panel > .row-desc { font-size: 14px; max-width: 72ch; }
+
+/* полоса состояния: здоровье во всю ширину, статы и броня рядом */
+.state-card .state-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px 24px; }
+.state-card .state-body > * { grid-column: 1 / -1; }
+.state-card .state-body > #state-stats, .state-card .state-body > #state-armor { grid-column: auto; border-top: 1px solid var(--border); padding-top: 12px; }
+.state-card .cp-compact + .cp-compact { border-top: 0; padding-top: 0; }
+.state-card .state-body > #state-stats, .state-card .state-body > #state-armor { border-top: 1px solid var(--border); padding-top: 12px; }
+.state-card .cp-compact > details.cp-more { border-top: 0; padding-top: 0; }
+.state-card .state-log { border-top: 0; padding-top: 0; }
+@media (max-width: 900px) {
+  .state-card .state-body { grid-template-columns: minmax(0, 1fr); }
+  .state-card .state-body > #state-stats, .state-card .state-body > #state-armor { grid-column: 1 / -1; }
+}
+
+/* ---------- UX-26: тело Космозэков на листе — цифры к100 и фигура из зон ---------- */
+.kz-digits { display: flex; flex-direction: column; gap: 6px; }
+.kz-digits-title { font-size: 13px; color: var(--text-soft); }
+.kz-digit-row { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 4px; }
+.kz-digit { display: flex; flex-direction: column; align-items: center; gap: 5px; min-height: 44px; padding: 6px 2px 5px; cursor: pointer;
+  font: inherit; color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.kz-digit b { font-family: var(--font-display); font-weight: 400; font-size: 18px; line-height: 1; }
+.kz-digit-bar { display: block; width: 70%; height: 4px; border-radius: 2px; background: var(--success); }
+.kz-digit.is-hurt .kz-digit-bar { background: var(--warning); }
+.kz-digit.is-low .kz-digit-bar, .kz-digit.is-down .kz-digit-bar { background: var(--danger); }
+.kz-digit.is-none .kz-digit-bar { background: var(--border-strong); }
+.kz-digit.is-picked, .kz-digit:hover { border-color: var(--accent); background: var(--accent-soft); }
+
+.kz-figure { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.kz-figure.is-human { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-areas: ". head head ." "rarm body body larm" ". rleg lleg ."; }
+.kz-figure.is-human .kz-at-head { grid-area: head; }
+.kz-figure.is-human .kz-at-body { grid-area: body; }
+.kz-figure.is-human .kz-at-rarm { grid-area: rarm; }
+.kz-figure.is-human .kz-at-larm { grid-area: larm; }
+.kz-figure.is-human .kz-at-rleg { grid-area: rleg; }
+.kz-figure.is-human .kz-at-lleg { grid-area: lleg; }
+.kz-fz { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2); min-width: 0; }
+.kz-fz.is-hit { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; background: var(--accent-soft); }
+.kz-fz.is-down { border-color: var(--danger); }
+.kz-fz-name { font-weight: 600; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+.kz-fz-name small { font-weight: 400; font-size: 12px; color: var(--text-soft); }
+.kz-fz-mult { color: var(--danger) !important; }
+.kz-fz-hp { display: flex; align-items: baseline; gap: 4px; font-variant-numeric: tabular-nums; }
+.kz-fz-hp b { font-family: var(--font-display); font-weight: 400; font-size: 22px; line-height: 1; }
+.kz-fz.is-down .kz-fz-hp b { color: var(--danger); }
+.kz-fz-hp small { font-size: 13px; color: var(--text-soft); }
+.kz-fz-armor { margin-left: auto; }
+.kz-fz-armor.has-armor { color: var(--accent) !important; }
+.kz-fz .kz-bar { height: 6px; }
+.kz-fz.is-hurt .kz-bar > span { background: var(--warning); }
+.kz-fz.is-low .kz-bar > span, .kz-fz.is-down .kz-bar > span { background: var(--danger); }
+@media (max-width: 600px) {
+  .kz-figure.is-human { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "head head" "rarm larm" "body body" "rleg lleg"; }
+  .kz-digit b { font-size: 16px; }
+}
+
+.profile-list dt { color: var(--text-soft); }
+.profile-list dd.profile-empty { color: var(--muted); }
+
+/* инструменты здоровья — справа в строке состояния; открытый — на всю ширину */
+.cp-compact-head > .state-tools { margin-left: auto; }
+.cp-compact-head > .state-tools:has(details[open]) { flex-basis: 100%; margin-left: 0; }
+.state-counters > .state-log { margin-left: auto; }
+.state-counters > .state-log + .state-tool { margin-left: 0; }
+.state-counters > details.state-tool[open] { flex-basis: 100%; margin-left: 0; }
+.state-card .state-body { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+.sheet-page { padding-top: 20px; }
+@media (max-width: 900px) { .state-card .state-body { grid-template-columns: minmax(0, 1fr); } }
+.kz-fz { padding: 8px 12px; gap: 3px; }
+.kz-fz-hp b { font-size: 20px; }
+
+/* UX-30: полоса здоровья по частям в очереди боя */
+.hp-segments { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 3px; margin: 6px 0; max-width: 320px; }
+.hp-seg { height: 20px; border-radius: 4px; font-size: 11px; font-weight: 700; line-height: 20px; text-align: center; color: #0b0e14; background: #2f9e5b; }
+.hp-seg.is-hurt { background: var(--warning); }
+.hp-seg.is-low, .hp-seg.is-down { background: var(--danger); }
+.hp-seg.is-none { background: var(--border-strong); color: var(--text-soft); }
+
+/* UX-31: что осталось на ход */
+.turn-chip { display: inline-flex; align-items: center; height: 30px; padding: 0 12px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--success); background: var(--success-soft); white-space: nowrap; }
+.turn-chip.is-used { color: var(--muted); background: var(--surface-3); text-decoration: line-through; }
+/* UX-18: группы инструментов боя */
+.battle-toolbar-title { font-size: 12px; color: var(--text-soft); margin-top: 2px; }
+@media (max-width: 600px) { .hide-sm { display: none; } }
+
+/* UX-16: в бою плашка отмены — сверху, полосу хода не закрывает */
+body:has(.battle-screen) .undo-toast { bottom: auto; top: calc(var(--topbar-height) + 8px); }
+/* UX-15, UX-24: нажимаемое под палец на сенсорных экранах; на мыши плотность прежняя */
+@media (pointer: coarse) {
+  .btn, .btn-sm, .icon-btn, .seg-btn, .side-tab, .kz-digit { min-height: 44px; }
+  .icon-btn { min-width: 44px; }
+  .battle-zoom .btn { min-width: 44px; }
+  .item-chip { min-height: 36px; }
+}
+
+/* UX-20: чат — поле и ➤ в одну строку на любой ширине; «Только сообщения» внутри карточки */
+.chat-form > .form-row:first-of-type { flex-wrap: nowrap; }
+.chat-form > .form-row:first-of-type > input.grow { min-width: 0; flex: 1 1 auto; }
+.chat-form > .form-row:first-of-type > .chat-me { flex: 0 1 auto; max-width: 120px; }
+.chat-form > .form-row:first-of-type > .btn { flex: none; }
+.chat-only-messages { display: inline-flex; width: auto; padding: 4px 10px; margin: 0 16px 8px; align-self: flex-start; }
+.chat { display: flex; flex-direction: column; }

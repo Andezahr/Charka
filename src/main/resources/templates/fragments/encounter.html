@@ -1,6 +1,12 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <body>
+<!-- UX-30: здоровье по частям одной полосой (Космозэки: цифры 0…9 цветом ХП зоны). Пусто у системы — ничего -->
+<div th:fragment="segments(card)" th:unless="${card == null or #lists.isEmpty(card.segments)}" class="hp-segments" role="img"
+     th:attr="aria-label=${#strings.listJoin(card.segments.![title], '; ')}">
+  <span th:each="s : ${card.segments}" class="hp-seg" th:classappend="'is-' + ${s.css}" th:title="${s.title}" th:text="${s.label}">0</span>
+</div>
+
 <!-- Что может участник: спасброски, оружие, урон, ожидание -->
 <div th:fragment="actions(row, base)" class="encounter-actions" th:attr="data-no-actions=${row.canAct} ? null : 'true'"
      th:with="url=${base + '/participants/' + row.participant.id}, presetOptions=${row.attackOptions()},
