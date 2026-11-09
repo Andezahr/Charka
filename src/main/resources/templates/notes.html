@@ -66,7 +66,8 @@
              th:classappend="${categoryId == null} ? 'is-active'">Все</a>
           <a th:each="cat : ${categories}" th:href="@{|/character/${character.id}/notes?categoryId=${cat.id}|}"
              class="chip chip-link" th:classappend="${cat.id == categoryId} ? 'is-active'" th:text="${cat.name}">Категория</a>
-          <button type="button" class="icon-btn" data-edit-toggle title="Категории: добавить, переименовать, удалить">⚙</button>
+          <!-- UX-23: словами — значок «⚙» на телефоне выглядел кружком и не читался -->
+          <button type="button" class="btn btn-sm btn-ghost" data-edit-toggle title="Категории: добавить, переименовать, удалить">✎ Категории</button>
         </div>
         <div class="edit-panel">
           <div class="cat-list">

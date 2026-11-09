@@ -142,6 +142,13 @@
             <span th:if="${item.quantity != null and item.quantity > 1}" class="badge" th:text="'×' + ${item.quantity}">×3</span>
             <span th:if="${summary.main != null}" class="item-main" th:text="${summary.main}">5/7</span>
             <span th:each="line : ${summary.lines}" class="item-value" th:text="${line}">DMG 20</span>
+            <!-- UX-19a: простые действия предмета — здесь же; с выбором (откуда, сколько) — на листе -->
+            <span class="bag-actions" th:with="returnCampaign=${campaign.id},
+                       itemUrl=${'/character/' + row.character.id + '/inventories/' + inv.id + '/items/' + item.id}">
+              <th:block th:each="action : ${system.getItemActions(item).?[!hidden and !secondary and sources.isEmpty() and amount == null]}">
+                <form th:replace="~{fragments/items :: action-form(${action}, @{${itemUrl} + '/action/' + ${action.code}}, null)}"></form>
+              </th:block>
+            </span>
           </div>
         </th:block></th:block>
       </section>

@@ -48,11 +48,18 @@
         <h2 class="card-title"><span class="dot red"></span>Кто участвует</h2>
         <button type="submit" class="btn btn-primary">⚔ Начать бой</button>
       </div>
+      <!-- UX-32: карт нет — пустое поле или готовые карты одним нажатием -->
+      <div class="card-body encounter-group" th:if="${#lists.isEmpty(maps)}">
+        <p class="quiet-empty">Карт у кампании нет: бой начнётся на пустом поле.
+          <button type="submit" class="btn btn-sm" th:formaction="@{'/campaign/' + ${campaign.id} + '/maps/starter'}" formnovalidate>＋ Готовые карты (4)</button>
+        </p>
+      </div>
       <div class="card-body encounter-group" th:unless="${#lists.isEmpty(maps)}">
         <label class="field">
           <span class="label">Карта</span>
-          <select name="map" th:attr="data-remember=${'map.' + campaign.id}">
-            <option th:each="m : ${maps}" th:value="${m.id}" th:text="${m.name}">Бар</option>
+          <!-- UX-23: «⚔ Бой» из списка карт приходит с ?map= — эта карта выбрана, запомненная не подставляется -->
+          <select name="map" th:attr="data-remember=${chosenMap == null} ? 'map.' + ${campaign.id}">
+            <option th:each="m : ${maps}" th:value="${m.id}" th:text="${m.name}" th:selected="${chosenMap != null and chosenMap == m.id}">Бар</option>
             <option value="">Без карты</option>
           </select>
         </label>
@@ -288,7 +295,7 @@
         </div>
         <div class="battle-tray" data-battle-tray hidden></div>
         <p class="battle-hint" data-battle-hint
-           data-default="Нажатие — выбрать фишку, тяните — ход · правая кнопка или долгое нажатие по врагу — атака · дверь — нажатием · колесо — масштаб, пустое место — сдвиг">Нажатие — выбрать фишку, тяните — ход · правая кнопка или долгое нажатие по врагу — атака · дверь — нажатием · колесо — масштаб, пустое место — сдвиг</p>
+           data-default="👆 фишка — выбрать   ✋ тянуть — ход   🎯 долгое нажатие по врагу — атака   🚪 нажать — дверь   🔍 колесо — масштаб">👆 фишка — выбрать   ✋ тянуть — ход   🎯 долгое нажатие по врагу — атака   🚪 нажать — дверь   🔍 колесо — масштаб</p>
       </th:block>
       <!-- Бой, начатый до R-14 без карты: мастер кладёт карту или пустую -->
       <div th:unless="${hasField}" class="card battle-nomap">

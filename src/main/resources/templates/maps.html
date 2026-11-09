@@ -25,15 +25,19 @@
               <span th:text="'· стен ' + ${d.walls.size()} + ', предметов ' + ${d.stamps.size()}">· стен 12</span>
             </div>
           </div>
+          <!-- UX-23: в строке — главное (править, бой на этой карте); копия, имя и удаление — по «⋯» -->
           <a class="btn btn-sm" th:href="@{${base} + '/' + ${m.id} + '/edit'}">✎ Редактор</a>
-          <form th:action="@{${base} + '/' + ${m.id} + '/copy'}" method="post">
-            <button type="submit" class="btn btn-sm btn-ghost">Копия</button>
-          </form>
-          <button type="button" class="btn btn-sm btn-ghost" data-edit-toggle aria-label="Переименовать">Имя</button>
-          <form th:action="@{${base} + '/' + ${m.id} + '/delete'}" method="post" th:attr="data-confirm='Удалить карту «' + ${m.name} + '»? Идущий бой на ней останется.'">
-            <button type="submit" class="btn btn-sm btn-ghost" aria-label="Удалить карту">✕</button>
-          </form>
+          <a class="btn btn-sm btn-primary" th:href="@{'/campaign/' + ${campaign.id} + '/encounter'(map=${m.id})}" title="Начать бой на этой карте">⚔ Бой</a>
+          <button type="button" class="icon-btn" data-edit-toggle title="Копия, имя, удалить" th:attr="aria-label='Ещё: ' + ${m.name}">⋯</button>
           <div class="edit-panel">
+            <div class="form-row">
+              <form th:action="@{${base} + '/' + ${m.id} + '/copy'}" method="post">
+                <button type="submit" class="btn btn-sm">Копия</button>
+              </form>
+              <form th:action="@{${base} + '/' + ${m.id} + '/delete'}" method="post" th:attr="data-confirm='Удалить карту «' + ${m.name} + '»? Идущий бой на ней останется.'">
+                <button type="submit" class="btn btn-sm btn-danger">Удалить карту</button>
+              </form>
+            </div>
             <form th:action="@{${base} + '/' + ${m.id} + '/rename'}" method="post" class="form-row">
               <input type="text" name="name" class="grow" maxlength="100" required th:value="${m.name}" aria-label="Название">
               <button type="submit" class="btn btn-sm btn-primary">Сохранить</button>

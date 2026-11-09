@@ -95,7 +95,7 @@
         <div th:if="${#lists.isEmpty(npcs)}" class="empty">NPC пока нет</div>
       </div>
     </section>
-      <!-- UX-22: «Попросить бросок» — к персонажам, у кого просят; колонки по высоте ближе -->
+      <!-- UX-22: форма запроса бросков мастера — к персонажам, у кого просят; колонки по высоте ближе -->
       <th:block th:if="${isGm}"><section th:replace="~{fragments/requests :: ask-form(${campaign})}"></section></th:block>
     </div>
 

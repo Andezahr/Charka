@@ -54,7 +54,8 @@ public class RollRequestService {
     private final app.charka.check.CheckService checkService;
 
     /**
-     * Спасброски системы, потом навыки каталога по алфавиту; свои навыки (языки) не предлагаются.
+     * Спасброски системы, потом навыки, которые в кампании уже просили (частые первыми), потом остальные по алфавиту;
+     * свои навыки (языки) не предлагаются.
      * KF-10: в системе без навыков (Космозэки, «Без системы») первой идёт простая проверка — иначе просить было нечего.
      */
     @Transactional(readOnly = true)
@@ -65,8 +66,14 @@ public class RollRequestService {
             choices.add(new Choice(CHECK_PREFIX, CHECK_LABEL));
         }
         system.getRequestableSaves().forEach(save -> choices.add(new Choice(SAVE_PREFIX + save.value(), save.label())));
+        // UX-21a: то, что в этой кампании уже просили (до пяти навыков), — сразу после спасбросков, остальное по алфавиту
+        List<String> frequent = requestRepository.frequentSkillCodes(campaignId).stream().limit(5).toList();
+        java.util.Map<String, SkillDefinition> byCode = new java.util.HashMap<>();
+        system.getSkillCatalog().stream().filter(skill -> !skill.custom()).forEach(skill -> byCode.put(skill.code(), skill));
+        frequent.stream().map(byCode::get).filter(java.util.Objects::nonNull)
+                .forEach(skill -> choices.add(new Choice(SKILL_PREFIX + skill.code(), skill.name())));
         system.getSkillCatalog().stream()
-                .filter(skill -> !skill.custom())
+                .filter(skill -> !skill.custom() && !frequent.contains(skill.code()))
                 .sorted(Comparator.comparing(SkillDefinition::name))
                 .forEach(skill -> choices.add(new Choice(SKILL_PREFIX + skill.code(), skill.name())));
         return choices;

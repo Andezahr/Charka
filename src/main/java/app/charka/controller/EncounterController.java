@@ -44,7 +44,11 @@ public class EncounterController {
     private final app.charka.encounter.SceneService sceneService;
 
     @GetMapping
-    public String page(@PathVariable Long campaignId, Model model) {
+    public String page(@PathVariable Long campaignId,
+                       @org.springframework.web.bind.annotation.RequestParam(name = "map", required = false) Long chosenMap,
+                       Model model) {
+        // UX-23: «⚔ Бой» из списка карт — эта карта выбрана на старте боя
+        model.addAttribute("chosenMap", chosenMap);
         Campaign campaign = campaignService.getById(campaignId);
         model.addAttribute("campaign", campaign);
         // куда вернуть атаку и действия с оружием

@@ -7,8 +7,8 @@
   <details class="add-own" th:open="${#lists.isEmpty(woundLog) and healthStatus == null}">
     <summary>Запись вручную</summary>
     <form th:action="@{'/character/' + ${character.id} + '/wounds'}" method="post" class="form-row">
-      <input type="text" name="name" class="grow" th:placeholder="${healthStatus != null} ? 'Запись: сломано ребро' : 'Описание раны'" required autocomplete="off">
-      <input type="number" name="severity" class="narrow" placeholder="Тяжесть" min="1" step="1">
+      <input type="text" name="name" class="grow" th:placeholder="${healthStatus != null} ? 'Запись: сломано ребро' : 'Описание раны'" required autocomplete="off" aria-label="Что случилось">
+      <input type="number" name="severity" class="narrow" placeholder="Тяжесть" min="1" step="1" aria-label="Тяжесть">
       <button type="submit" class="btn btn-sm btn-primary">＋ Запись</button>
     </form>
   </details>
@@ -33,8 +33,8 @@
       <form th:action="@{'/character/' + ${character.id} + '/wounds/' + ${wound.id} + '/edit'}"
             method="post" class="edit-panel">
         <div class="form-row">
-          <input type="text" name="name" class="grow" th:value="${wound.name}" required placeholder="Описание">
-          <input type="number" name="severity" class="narrow" th:value="${wound.severity}" min="1" placeholder="Тяжесть">
+          <input type="text" name="name" class="grow" th:value="${wound.name}" required placeholder="Описание" aria-label="Описание">
+          <input type="number" name="severity" class="narrow" th:value="${wound.severity}" min="1" placeholder="Тяжесть" aria-label="Тяжесть">
           <button type="submit" class="btn btn-sm btn-primary">Сохранить</button>
         </div>
       </form>

@@ -91,6 +91,20 @@ public class MapController {
     }
 
     /**
+     * UX-32: у новой кампании карт нет — «Готовые карты» одним нажатием кладёт те же четыре, что у демо-кампании
+     * (улица, бар, склад, парковка) по правилам карты этой системы, и возвращает к началу боя.
+     */
+    @PostMapping("/starter")
+    public String starter(@PathVariable Long campaignId) {
+        java.util.List.of("street", "bar", "warehouse", "parking").forEach(code -> {
+            app.charka.map.MapGenerator.Template chosen = mapGenerator.templateOf(code);
+            battleMapService.save(campaignId, chosen.label(),
+                    mapGenerator.generate(code, chosen.width(), chosen.height(), 2037, battleMapService.rules(campaignId)));
+        });
+        return "redirect:/campaign/" + campaignId + "/encounter";
+    }
+
+    /**
      * M-20: карта из текста {@link app.charka.map.MapText} (файл или вставка) или из JSON документа карты.
      * Название — из поля, иначе из заголовка, иначе имя файла.
      */
