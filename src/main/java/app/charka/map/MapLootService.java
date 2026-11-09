@@ -38,6 +38,7 @@ public class MapLootService {
     private final GameSystemRegistry systemRegistry;
     private final ItemService itemService;
     private final CharacterService characterService;
+    private final app.charka.encounter.RoundActions roundActions;
 
     /**
      * Положить на клетку.
@@ -85,6 +86,7 @@ public class MapLootService {
         if (participant.getPosX() == null) {
             throw new IllegalArgumentException(participant.getCharacter().getName() + " не на карте");
         }
+        roundActions.requireTurn(participant);
         int cells = Math.max(Math.abs(participant.getPosX() - loot.getPosX()), Math.abs(participant.getPosY() - loot.getPosY()));
         if (participant.getPosLevel() != loot.getPosLevel() || cells > REACH_CELLS) {
             throw new IllegalArgumentException("Далеко: подойдите к «" + loot.getName() + "» вплотную");

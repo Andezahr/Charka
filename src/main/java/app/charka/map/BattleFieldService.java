@@ -35,6 +35,7 @@ public class BattleFieldService {
     private final PointerBoard pointerBoard;
     private final app.charka.npc.NpcService npcService;
     private final app.charka.repository.MapLootRepository mapLootRepository;
+    private final app.charka.encounter.RoundActions roundActions;
 
     /**
      * Фишка участника.
@@ -213,8 +214,36 @@ public class BattleFieldService {
                 .map(item -> new Loot(item.getId(), item.getPosX(), item.getPosY(), item.getPosLevel(), item.getName(), item.getQuantity()))
                 .toList();
         return Optional.of(new Field(encounter.getBattleMapId(), turn, doc, rules.metric(), rules.materials(), rules.objects(), tokens,
-                pointerBoard.live(campaignId), EditableMap.backgroundUrl(campaignId, encounter.getBattleMapId(), doc), fog.ground(), fog.cells(),
+                pointerBoard.live(campaignId), backgroundUrl(campaignId, encounter.getBattleMapId(), doc), fog.ground(), fog.cells(),
                 loot));
+    }
+
+    /**
+     * Подложка поля боя — адресом боя, а не карты: раздел «Карты» — заготовки мастера, игроку закрыт, и картинка
+     * у него не грузилась (пустая карта). Версия в адресе — для долгого кэша; null — подложки нет.
+     */
+    static String backgroundUrl(Long campaignId, Long mapId, MapDoc doc) {
+        return doc.bg() == null || mapId == null ? null
+                : "/campaign/" + campaignId + "/encounter/map/background?v=" + doc.bg().ver();
+    }
+
+    /**
+     * Картинка подложки идущего боя — всем за столом.
+     *
+     * @return пусто — боя, карты-источника или картинки нет
+     */
+    @Transactional(readOnly = true)
+    public Optional<app.charka.model.BattleMap> background(Long campaignId) {
+        return encounterRepository.findByCampaignId(campaignId)
+                .map(Encounter::getBattleMapId)
+                .flatMap(mapId -> {
+                    try {
+                        return Optional.of(battleMapService.get(campaignId, mapId));
+                    } catch (java.util.NoSuchElementException e) {
+                        return Optional.empty();
+                    }
+                })
+                .filter(map -> map.getBackground() != null);
     }
 
     /** M-16: видна ли клетка игроку по строкам тумана */
@@ -254,6 +283,10 @@ public class BattleFieldService {
     public void move(Long campaignId, Long participantId, int x, int y, boolean free, Integer level) {
         Encounter encounter = withMap(campaignId);
         EncounterParticipant participant = participant(encounter, participantId);
+        // BF-02: фишку на карте игрок двигает на своём ходу; из лотка ставит когда угодно
+        if (participant.getPosX() != null) {
+            roundActions.requireTurn(participant);
+        }
         LevelMap levels = levels(encounter);
         int target = level == null ? participant.getPosLevel() : level;
         if (!levels.doc().hasLevel(target)) {
@@ -655,6 +688,7 @@ public class BattleFieldService {
         if (participant.getPosX() == null) {
             throw new IllegalArgumentException("Фишка не на карте");
         }
+        roundActions.requireTurn(participant);
         LevelMap levels = levels(encounter);
         List<Integer> to = levels.stairsFrom(participant.getPosLevel(), participant.getPosX(), participant.getPosY());
         if (to.isEmpty()) {

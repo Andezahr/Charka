@@ -105,7 +105,7 @@ class PlayerTurnTest {
     void waiting() throws Exception {
         String html = page("kolya");
 
-        assertThat(html).contains("me-panel", "Ходит Бандит · до вас ещё 2 ход.", "Действия вне очереди", "data-tab-panel=\"queue\"",
+        assertThat(html).contains("me-panel", "Ходит Бандит · до вас ещё 2 ход.", "Действовать и двигать фишку — на своём ходу", "data-tab-panel=\"queue\"",
                 "data-turn-watch=\"" + base + "/turn\"", "data-mine=\"" + mine.getId() + "\"")
                 .doesNotContain("Следующий ход →", "Закончить ход →");
         assertThat(page("master")).contains("Следующий ход →").doesNotContain("me-panel");

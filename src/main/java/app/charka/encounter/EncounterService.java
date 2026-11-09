@@ -64,6 +64,7 @@ public class EncounterService {
     private final AttackService attackService;
     private final SkillService skillService;
     private final CheckService checkService;
+    private final RoundActions roundActions;
 
     /**
      * Раунд идущего боя кампании; null — боя нет.
@@ -322,6 +323,7 @@ public class EncounterService {
     @Transactional
     public void dash(Long campaignId, Long participantId) {
         EncounterParticipant participant = participant(campaignId, participantId);
+        roundActions.requireTurn(participant);
         if (participant.getActions() > 0) {
             throw new IllegalArgumentException("Действие в этом раунде уже сделано");
         }
@@ -435,7 +437,8 @@ public class EncounterService {
     public SkillCheck check(Long campaignId, Long participantId, String skill, Integer difficulty, int modifier, int luck) {
         EncounterParticipant checking = participant(campaignId, participantId);
         Character character = checking.getCharacter();
-        // A-05: проверка в бою — действие
+        // A-05: проверка в бою — действие; BF-02: игрок — на своём ходу
+        roundActions.requireTurn(checking);
         RoundActions.require(checking, system(checking.getEncounter().getCampaign()));
         checking.setActions(checking.getActions() + 1);
         return skill.startsWith(CUSTOM_SKILL)
@@ -469,6 +472,7 @@ public class EncounterService {
             throw new IllegalArgumentException("Такого противостояния нет: " + code);
         }
         app.charka.check.CheckRequest own = system.getContestRequest(code, initiator.getCharacter());
+        roundActions.requireTurn(initiator);
         RoundActions.require(initiator, system);
         initiator.setActions(initiator.getActions() + 1);
         if (luck > 0) {
@@ -512,6 +516,15 @@ public class EncounterService {
         participant.setInitiative(initiative);
         participant.setInitiativeDetails("Введено вручную");
         sortByInitiative(participant.getEncounter());
+    }
+
+    /** BF-02: кто ходит сейчас; null — боя нет или ходить некому */
+    @Transactional(readOnly = true)
+    public Long currentCharacterId(Long campaignId) {
+        return encounterRepository.findByCampaignId(campaignId)
+                .map(encounter -> current(encounter, system(encounter.getCampaign())))
+                .map(participant -> participant.getCharacter().getId())
+                .orElse(null);
     }
 
     /**

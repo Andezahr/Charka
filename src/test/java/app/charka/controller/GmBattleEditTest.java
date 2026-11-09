@@ -234,6 +234,79 @@ class GmBattleEditTest {
     }
 
     @Nested
+    @DisplayName("BF-02: игрок вне своего хода, подложка у игрока")
+    class PlayerTurn {
+
+        @Autowired private app.charka.map.BattleMapService battleMapService;
+
+        @Test
+        @DisplayName("Ходит Охранник: игрок за Зэка не атакует и не делает рывок; на своём ходу — атакует")
+        void onlyOnOwnTurn() throws Exception {
+            Long inventory = characterRepository.findById(zek.getId()).orElseThrow().getInventories().getFirst().getId();
+            Item pistol = itemService.addFromCatalog(inventory, "kz-pistol", 1);
+            flush();
+            String attack = "/character/" + zek.getId() + "/items/" + pistol.getId() + "/attack";
+
+            mockMvc.perform(post(attack).param("target", String.valueOf(guard.getId())).param("mode", "FIRE").param("rounds", "1")
+                            .param("returnCampaign", String.valueOf(campaign.getId())).with(user("kolya")).with(csrf()))
+                    .andExpect(flash().attribute("actionError", app.charka.encounter.RoundActions.NOT_YOUR_TURN));
+            mockMvc.perform(post(participant(zek) + "/dash").with(user("kolya")).with(csrf()))
+                    .andExpect(flash().attribute("encounterError", app.charka.encounter.RoundActions.NOT_YOUR_TURN));
+            flush();
+            assertThat(row(zek).actionsDone()).isZero();
+
+            encounterService.next(campaign.getId());
+            flush();
+            assertThat(encounterService.view(campaign.getId()).orElseThrow().current().getId()).isEqualTo(zek.getId());
+            mockMvc.perform(post(attack).param("target", String.valueOf(guard.getId())).param("mode", "FIRE").param("rounds", "1")
+                            .param("returnCampaign", String.valueOf(campaign.getId())).with(user("kolya")).with(csrf()))
+                    .andExpect(flash().attributeExists("attackResult"));
+        }
+
+        @Test
+        @DisplayName("Мастер за персонажа игрока действует и вне его хода")
+        void gmAnytime() throws Exception {
+            Long inventory = characterRepository.findById(zek.getId()).orElseThrow().getInventories().getFirst().getId();
+            Item pistol = itemService.addFromCatalog(inventory, "kz-pistol", 1);
+            flush();
+
+            mockMvc.perform(post("/character/" + zek.getId() + "/items/" + pistol.getId() + "/attack")
+                            .param("target", String.valueOf(guard.getId())).param("mode", "FIRE").param("rounds", "1")
+                            .param("returnCampaign", String.valueOf(campaign.getId())).with(user("master")).with(csrf()))
+                    .andExpect(flash().attributeExists("attackResult"));
+        }
+
+        @Test
+        @DisplayName("У игрока нет «Действий вне очереди» — подсказка «на своём ходу»")
+        void noOutOfTurnPanel() throws Exception {
+            String player = mockMvc.perform(get(base).with(user("kolya"))).andReturn().getResponse().getContentAsString();
+
+            assertThat(player).contains("Действовать и двигать фишку — на своём ходу", "data-not-turn")
+                    .doesNotContain("Действия вне очереди");
+        }
+
+        @Test
+        @DisplayName("Подложка карты боя — адресом боя, игроку отдаётся; раздел «Карты» ему по-прежнему закрыт")
+        void background() throws Exception {
+            encounterService.end(campaign.getId());
+            app.charka.model.BattleMap map = battleMapService.create(campaign.getId(), "Бар", 10, 8);
+            java.io.ByteArrayOutputStream png = new java.io.ByteArrayOutputStream();
+            javax.imageio.ImageIO.write(new java.awt.image.BufferedImage(20, 16, java.awt.image.BufferedImage.TYPE_INT_RGB), "png", png);
+            battleMapService.setBackground(campaign.getId(), map.getId(), png.toByteArray(), "image/png");
+            encounterService.start(campaign.getId(), List.of(zek.getId(), guard.getId()), false, false, map.getId());
+            flush();
+
+            String field = mockMvc.perform(get(base + "/map").with(user("kolya"))).andReturn().getResponse().getContentAsString();
+            assertThat(field).contains("\"backgroundUrl\":\"/campaign/" + campaign.getId() + "/encounter/map/background?v=");
+            mockMvc.perform(get(base + "/map/background").with(user("kolya")))
+                    .andExpect(status().isOk())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().contentType("image/png"));
+            mockMvc.perform(get("/campaign/" + campaign.getId() + "/maps/" + map.getId() + "/background").with(user("kolya")))
+                    .andExpect(status().isNotFound());
+        }
+    }
+
+    @Nested
     @DisplayName("BF-01: в нулях — лечение — атака в том же раунде")
     class HealThenAttack {
 
@@ -258,6 +331,11 @@ class GmBattleEditTest {
             mockMvc.perform(post("/character/" + zek.getId() + "/items/" + club.getId() + "/attack")
                             .param("target", String.valueOf(guard.getId())).param("mode", "STRIKE")
                             .param("returnCampaign", String.valueOf(campaign.getId())).with(user("kolya")).with(csrf()))
+                    .andExpect(flash().attribute("actionError", app.charka.encounter.RoundActions.NOT_YOUR_TURN));
+            // и мастер за него в этом раунде не ударит: действие раунда потрачено
+            mockMvc.perform(post("/character/" + zek.getId() + "/items/" + club.getId() + "/attack")
+                            .param("target", String.valueOf(guard.getId())).param("mode", "STRIKE")
+                            .param("returnCampaign", String.valueOf(campaign.getId())).with(user("master")).with(csrf()))
                     .andExpect(flash().attribute("actionError", app.charka.encounter.RoundActions.NO_ACTIONS_LEFT));
 
             encounterService.next(campaign.getId());
@@ -277,7 +355,7 @@ class GmBattleEditTest {
             flush();
 
             mockMvc.perform(post("/character/" + zek.getId() + "/inventories/" + inventory + "/items/" + skin.getId() + "/action/HEAL_ALL")
-                            .param("returnCampaign", String.valueOf(campaign.getId())).with(user("kolya")).with(csrf()))
+                            .param("returnCampaign", String.valueOf(campaign.getId())).with(user("master")).with(csrf()))
                     .andExpect(status().is3xxRedirection())
                     .andExpect(flash().attribute("actionError", app.charka.encounter.RoundActions.NO_ACTIONS_LEFT));
             flush();
@@ -290,12 +368,12 @@ class GmBattleEditTest {
 
             mockMvc.perform(post("/character/" + zek.getId() + "/items/" + pistol.getId() + "/attack")
                             .param("target", String.valueOf(guard.getId())).param("mode", "FIRE").param("rounds", "1")
-                            .param("returnCampaign", String.valueOf(campaign.getId())).with(user("kolya")).with(csrf()))
+                            .param("returnCampaign", String.valueOf(campaign.getId())).with(user("master")).with(csrf()))
                     .andExpect(status().is3xxRedirection())
                     .andExpect(flash().attribute("actionError", app.charka.encounter.RoundActions.NO_ACTIONS_LEFT));
             flush();
 
-            String page = mockMvc.perform(get(base).with(user("kolya"))).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            String page = mockMvc.perform(get(base).with(user("master"))).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
             assertThat(page).contains("Действие в этом раунде сделано");
         }
     }

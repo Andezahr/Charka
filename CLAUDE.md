@@ -40,7 +40,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 1116 тестов, на 2026-11-10 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 1120 тестов, на 2026-11-10 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
 
@@ -164,6 +164,7 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 | POST | `/campaign/{id}/encounter/participants/{pid}/contest/{code}` | `target` (персонаж) → противостояние системы (CP2020: `FACEDOWN`), итог в строке, проигравшему эффект |
 | POST | `/campaign/{id}/encounter/participants/{pid}/wait\|join\|remove\|initiative\|damage\|stabilize`, `.../save/{code}`, `.../effects/{eid}/remove`, `.../declare/{code}`, `.../check` | ожидание, вступление, убрать, инициатива вручную, урон (`amount`, `location?`, `damageType?`), спасбросок, снять эффект, объявить (CP2020: `FAST_DRAW`), проверка навыка (`skill`, `difficulty?`); итог во flash в строке участника |
 | POST | `/campaign/{id}/encounter/participants/{pid}/heal` (`points`, `location?`), `.../actions` (`delta`: −1 дать, 1 забрать) | GM-01: мастер лечит и правит действия раунда из меню фишки (только мастер, «Бог»); журнал и отмена |
+| GET | `/campaign/{id}/encounter/map/background` | BF-02: подложка карты идущего боя — всем за столом (раздел «Карты» игроку закрыт) |
 | POST | `/character/{id}/npc/copy`, `.../npc/delete` | `count` → копии NPC без ран; удаление только NPC |
 | GET | `/api/campaigns/{id}/download` | экспорт кампании в JSON-файл |
 | POST | `/campaigns/import` | `file` — JSON экспорта → новая кампания (id новые, ссылки предметов переводятся) |

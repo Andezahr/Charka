@@ -177,10 +177,15 @@
               <button type="submit" class="btn btn-primary">Вступить</button>
             </form>
             <th:block th:replace="~{fragments/encounter :: results(${row})}"></th:block>
-            <details th:unless="${row.card.out}" class="cp-more item-more">
+            <!-- BF-02: игрок действует только на своём ходу; окна атаки остаются скрытыми — меню на карте покажет «не ваш ход» -->
+            <details th:if="${isGm and !row.card.out}" class="cp-more item-more">
               <summary>Действия вне очереди</summary>
               <div th:replace="~{fragments/encounter :: actions(${row}, ${base})}"></div>
             </details>
+            <th:block th:if="${!isGm and !row.card.out}">
+              <p class="muted">Действовать и двигать фишку — на своём ходу</p>
+              <div hidden data-not-turn><div th:replace="~{fragments/encounter :: actions(${row}, ${base})}"></div></div>
+            </th:block>
           </div>
         </details>
       </th:block>

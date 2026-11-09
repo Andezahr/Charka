@@ -33,6 +33,17 @@ public class BattleFieldController {
         return battleFieldService.field(campaignId, viewer(campaignId)).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
     }
 
+    /** Подложка карты идущего боя — и игрокам (раздел «Карты» им закрыт); адрес с версией, кэш надолго */
+    @GetMapping("/background")
+    public ResponseEntity<byte[]> background(@PathVariable Long campaignId) {
+        return battleFieldService.background(campaignId)
+                .map(map -> ResponseEntity.ok()
+                        .contentType(org.springframework.http.MediaType.parseMediaType(map.getBackgroundType()))
+                        .cacheControl(org.springframework.http.CacheControl.maxAge(java.time.Duration.ofDays(30)))
+                        .body(map.getBackground()))
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     /** Мастер видит всё; игрок — глазами своих персонажей */
     private BattleFieldService.Viewer viewer(Long campaignId) {
         app.charka.model.Campaign campaign = campaignService.getById(campaignId);

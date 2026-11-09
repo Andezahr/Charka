@@ -2703,8 +2703,11 @@ async function attackSection(menu, attacker, token) {
   if (sight.inTheWay && sight.inTheWay.length) line('На линии огня: ' + sight.inTheWay.join(', ') + ' — промах может попасть', 'battle-menu-warn');
   const adjacent = Math.max(Math.abs(attacker.x - token.x), Math.abs(attacker.y - token.y)) <= 1;
   // предел действий системы (Космозэки — одно за ход): кнопки видны, но заняты до следующего раунда
-  const spent = row && row.querySelector('[data-no-actions]');
-  if (spent) line('Действие в этом раунде сделано — осталось перемещение', 'battle-menu-warn');
+  // BF-02: игрок действует только на своём ходу (мастер — когда угодно)
+  const notTurn = row && row.querySelector('[data-not-turn]');
+  const spent = notTurn || (row && row.querySelector('[data-no-actions]'));
+  if (notTurn) line('Сейчас не ваш ход — действовать можно на своём ходу', 'battle-menu-warn');
+  else if (spent) line('Действие в этом раунде сделано — осталось перемещение', 'battle-menu-warn');
   dialogs.forEach(dialog => {
     const button = document.createElement('button');
     button.type = 'button';
