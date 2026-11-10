@@ -160,6 +160,16 @@ public class CounterService {
     }
 
     /**
+     * K-02: правка текстового состояния счётчика (набор зон тела Космозэков).
+     */
+    @Transactional
+    public CounterResponseDto updateTexts(Long characterId, Long counterId, Map<String, String> texts) {
+        Counter counter = validateAndGetCounter(characterId, counterId);
+        strategyFactory.getStrategy(counter.getType()).updateTexts(counter, texts);
+        return convertToResponseDto(counterRepository.save(counter));
+    }
+
+    /**
      * Особое действие типа счётчика (например, ремонт брони).
      *
      * @return сообщение для пользователя
@@ -289,6 +299,7 @@ public class CounterService {
 
         strategyFactory.findStrategy(counter.getType()).ifPresent(strategy -> {
             dto.setViewTemplate(strategy.getViewTemplate());
+            dto.setCompactTemplate(strategy.getCompactTemplate());
             dto.setTypeName(strategy.getDisplayName());
             dto.setView(strategy.describe(new CounterContext(counter, siblings)));
         });

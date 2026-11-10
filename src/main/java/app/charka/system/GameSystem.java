@@ -73,6 +73,30 @@ public interface GameSystem {
     /**
      * Каталог навыков; пусто — у системы нет навыков и вкладка «Навыки» не показывается.
      */
+    /**
+     * Спасброски, которые мастер может попросить у игрока (A-07): код для {@code HealthCounterService.save} и подпись.
+     */
+    default List<app.charka.item.ItemField.Option> getRequestableSaves() {
+        return List.of();
+    }
+
+    /** A-12: что печатать на бумажном листе сверх общего; пусто — только общее */
+    default PrintSheet getPrintSheet(Character character) {
+        return PrintSheet.EMPTY;
+    }
+
+    /** A-11: справка правил для панели «📖 Правила»; пусто — у системы справки нет */
+    default List<Reference> getReference() {
+        return List.of();
+    }
+
+    /**
+     * A-10: заработок персонажа, если он работал {@code days} дней; null — у системы нет работы или у персонажа нет роли.
+     */
+    default Earning earnings(Character character, int days) {
+        return null;
+    }
+
     default List<SkillDefinition> getSkillCatalog() {
         return List.of();
     }
@@ -121,6 +145,14 @@ public interface GameSystem {
      */
     default List<ItemTypeDefinition> getItemTypes() {
         return List.of(ItemTypeDefinition.GENERIC);
+    }
+
+    /**
+     * UX-14: тип предмета «оружие» — вкладка окна «Добавить», которую открывает «＋ Оружие» на пустой карточке оружия;
+     * null — открыть последнюю вкладку.
+     */
+    default String getWeaponItemType() {
+        return null;
     }
 
     default Optional<ItemTypeDefinition> findItemType(String code) {
@@ -256,7 +288,8 @@ public interface GameSystem {
     }
 
     /**
-     * Очередь бросается заново каждый раунд; иначе один раз за бой.
+     * Очередь бросается заново каждый раунд; иначе один раз за бой. Это значение по умолчанию для новой кампании:
+     * дальше решает {@code Campaign.initiativeEachRound} (A-13).
      */
     default boolean rollsInitiativeEachRound() {
         return false;
@@ -387,9 +420,53 @@ public interface GameSystem {
     }
 
     /**
+     * K-07: новый бой — способности «раз за бой» восстанавливаются. Вызывать в транзакции.
+     */
+    default void onEncounterStart(Character character) {
+    }
+
+    /**
+     * K-07: тратит ли бег по карте действие раунда (CP2020 — да, бег — действие; Космозэки — нет: действие и перемещение).
+     */
+    default boolean movementIsAction() {
+        return true;
+    }
+
+    /**
+     * Сколько действий участник может сделать за раунд боя (атака, перезарядка, медпомощь, проверка). 0 — без предела:
+     * CP2020 разрешает несколько, каждое следующее со штрафом ({@code AttackRules.actionOption}); Космозэки — одно.
+     */
+    default int actionsPerRound() {
+        return 0;
+    }
+
+    /**
+     * K-11: поля листа персонажа, которые система хранит текстом ({@code Character.profile}): теги, приговор. Пусто — нет.
+     */
+    default List<ProfileField> getProfileFields() {
+        return List.of();
+    }
+
+    /**
      * Состояние здоровья одной строкой для шапки листа: «Серьёзное · урон 6». null — счётчика здоровья нет, на листе — число ран.
      */
     default String getHealthStatus(Character character) {
         return null;
+    }
+
+    /**
+     * KF-07: как в этой системе называются люди, которых знает персонаж (карточка на странице заметок). Ядро — «Знакомые»;
+     * у CP2020 — «Контакты», как в книге.
+     */
+    default String getContactsTitle() {
+        return "Знакомые";
+    }
+
+    /**
+     * KF-09: проверка вне боя — из чата, «Кубиков» и запроса мастера. Обычно та же, что у навыков и атак; у Космозэков —
+     * 1к12 против сложности, а попадание — к100.
+     */
+    default CheckResolver getTableCheckResolver() {
+        return getCheckResolver();
     }
 }

@@ -32,12 +32,14 @@ public record EncounterView(Encounter encounter, Character current, boolean last
      * @param targets цели атаки: живые участники, сначала другая сторона
      * @param effects что длится на участнике
      * @param abilities чем можно бить без предмета
-     * @param movedOption модификатор атаки после бега по карте ({@code MapRules.movedAttackOption}); null — нет
+     * @param actionsDone  сколько действий уже сделано в этом раунде, с бегом (A-05)
+     * @param actionOption модификатор атаки за следующее действие ({@code AttackRules.actionOption}); null — первое или у системы нет
+     * @param healZones    GM-01: зоны для лечения мастером; пусто — система лечит целиком
      */
     public record Row(EncounterParticipant participant, Character character, InitiativeDeclaration declaration,
                       List<InitiativeDeclaration> declarations, List<CheckOption> checks, CombatCard card, boolean current,
                       List<Weapon> weapons, List<Character> targets, List<PendingBlast> blasts, List<CombatEffect> effects, List<Ability> abilities,
-                      String movedOption) {
+                      int actionsDone, String actionOption, boolean canAct, List<CombatCard.Option> healZones) {
 
         /** Итог действия с этим предметом показывается в этой строке */
         public boolean hasItem(Long itemId) {
@@ -48,7 +50,7 @@ public record EncounterView(Encounter encounter, Character current, boolean last
         public List<String> attackOptions() {
             return Stream.concat(Stream.concat(effects.stream().map(CombatEffect::getAttackOption),
                                     Stream.of(declaration).filter(Objects::nonNull).map(InitiativeDeclaration::attackOption)),
-                            Stream.of(movedOption).filter(option -> option != null && participant.getMovedMeters() > 0))
+                            Stream.of(actionOption))
                     .filter(Objects::nonNull).toList();
         }
     }

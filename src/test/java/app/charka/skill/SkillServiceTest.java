@@ -53,7 +53,7 @@ class SkillServiceTest {
     @BeforeEach
     void setUp() {
         GameSystemRegistry registry = new GameSystemRegistry(List.of(new GenericSystem(), new Cp2020System(null, null)));
-        skillService = new SkillService(characterRepository, registry, checkService);
+        skillService = new SkillService(characterRepository, registry, checkService, mock(app.charka.repository.RollLogRepository.class));
         character = characterIn(Cp2020System.CODE);
         when(characterRepository.findById(1L)).thenReturn(Optional.of(character));
     }

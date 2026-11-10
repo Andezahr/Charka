@@ -57,12 +57,48 @@ public interface MapRules {
     }
 
     /**
-     * Модификатор атаки, который ставится сам, если участник уже бегал в этом раунде: бег — действие, атака после него — следующее.
+     * Сколько метров за ход пробегает средний персонаж — мерка для проверки карты {@link MapAudit}, в игре не участвует.
      *
-     * @return код варианта модификатора атаки; null — у системы такого нет
+     * @return null — система не знает
      */
-    default String movedAttackOption() {
+    default Integer typicalMoveMeters() {
         return null;
+    }
+
+    /**
+     * Модификатор атаки «стрельба вслепую»: цель не видна, но её закрывает одна преграда с прочностью — стреляют сквозь неё.
+     *
+     * @return код варианта модификатора; null — система так не стреляет, невидимая цель недоступна
+     */
+    default String blindFireOption() {
+        return null;
+    }
+
+    /**
+     * M-23: во сколько раз дороже шаг на клетку трудной местности ({@link Material#difficult}).
+     */
+    default int difficultFactor() {
+        return 2;
+    }
+
+    /**
+     * M-23: что рвётся, если по нему попасть или его накроет взрыв: бочка с горючим, баллон.
+     *
+     * @param material код материала клетки
+     * @return пусто — не взрывается
+     */
+    default Optional<Explosive> explosive(String material) {
+        return Optional.empty();
+    }
+
+    /**
+     * Взрыв предмета карты.
+     *
+     * @param label  что взорвалось
+     * @param damage бросок урона, {@code 4d10}
+     * @param radius радиус, м
+     */
+    record Explosive(String label, String damage, int radius) {
     }
 
     /** Без системы: прямая в метрах, материалы без прочности */
@@ -75,12 +111,23 @@ public interface MapRules {
                 new Material("window", "Окно", 0, Material.Layer.WINDOW, true, false),
                 new Material("crate", "Ящик", 0, Material.Layer.OBJECT, true, false),
                 new Material("car", "Машина", 0, Material.Layer.OBJECT, true, false),
-                new Material("debris", "Обломки", 0, Material.Layer.TERRAIN, false, false),
-                new Material("water", "Вода", 0, Material.Layer.TERRAIN, false, false));
+                new Material("desk", "Стол", 0, Material.Layer.OBJECT, true, false),
+                new Material("shelf", "Стеллаж", 0, Material.Layer.OBJECT, true, true),
+                new Material("container", "Контейнер", 0, Material.Layer.OBJECT, true, true),
+                Material.difficult("debris", "Обломки"),
+                Material.difficult("water", "Вода"),
+                Material.smoke("smoke", "Дым"),
+                Material.voidCell(),
+                Material.stairs(),
+                new Material("asphalt", "Асфальт", 0, Material.Layer.TERRAIN, false, false),
+                new Material("grass", "Газон", 0, Material.Layer.TERRAIN, false, false));
 
         private final List<MapObject> objects = List.of(
                 MapObject.solid("car", "Машина", 2, 4, "car"),
-                MapObject.solid("crate", "Ящик", 1, 1, "crate"));
+                MapObject.solid("crate", "Ящик", 1, 1, "crate"),
+                MapObject.solid("desk", "Стол", 2, 1, "desk"),
+                MapObject.solid("shelf", "Стеллаж", 3, 1, "shelf"),
+                MapObject.solid("container", "Контейнер", 3, 1, "container"));
 
         @Override
         public int cellMeters() {

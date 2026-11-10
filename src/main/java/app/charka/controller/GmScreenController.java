@@ -1,16 +1,10 @@
 package app.charka.controller;
 
 import app.charka.encounter.CombatCard;
-import app.charka.model.Campaign;
 import app.charka.model.Character;
 import app.charka.model.Money;
-import app.charka.service.campaign.CampaignService;
 import app.charka.system.GameSystem;
-import app.charka.system.GameSystemRegistry;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
@@ -20,14 +14,11 @@ import java.util.Objects;
 
 /**
  * Экран мастера (U-01): все персонажи кампании одной таблицей — состояние, броня, статы, деньги, эффекты.
+ * R-10: таблица — список персонажей на обзоре кампании, {@code /gm} перенаправляет туда.
  * Что показать о здоровье и броне, решает система ({@link GameSystem#getCombatCard}), как в трекере боя.
  */
 @Controller
-@RequiredArgsConstructor
 public class GmScreenController {
-
-    private final CampaignService campaignService;
-    private final GameSystemRegistry systemRegistry;
 
     /**
      * Строка экрана.
@@ -40,12 +31,15 @@ public class GmScreenController {
     public record Row(Character character, CombatCard card, List<String> stats, long money, List<String> effects, Integer luck) {
     }
 
+    /** R-10: экран мастера — теперь список обзора кампании; адрес остаётся для старых ссылок */
     @GetMapping("/campaign/{campaignId}/gm")
-    @Transactional(readOnly = true)
-    public String screen(@PathVariable Long campaignId, Model model) {
-        Campaign campaign = campaignService.getById(campaignId);
-        GameSystem system = systemRegistry.get(campaign.getSystem());
-        List<Row> rows = campaign.getCharacters().stream()
+    public String screen(@PathVariable Long campaignId) {
+        return "redirect:/campaign/" + campaignId;
+    }
+
+    /** Строки персонажей по порядку: игроки, затем NPC, по имени */
+    static List<Row> rows(List<Character> characters, GameSystem system) {
+        return characters.stream()
                 .sorted(Comparator.comparing(Character::isNpc).thenComparing(Character::getName, Comparator.nullsLast(String::compareTo)))
                 .map(character -> new Row(character, system.getCombatCard(character),
                         system.getCurrentStats(character).values().stream()
@@ -55,10 +49,5 @@ public class GmScreenController {
                         character.getEffects().stream().map(effect -> effect.getName() + " " + effect.getRemainingLabel()).toList(),
                         system.hasLuck() ? system.getLuck(character) : null))
                 .toList();
-        model.addAttribute("campaign", campaign);
-        model.addAttribute("gameSystem", system);
-        model.addAttribute("rows", rows);
-        model.addAttribute("currency", system.getCurrency());
-        return "gm";
     }
 }

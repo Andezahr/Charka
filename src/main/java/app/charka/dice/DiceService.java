@@ -125,7 +125,18 @@ public class DiceService {
         entry.setLabel(label == null || label.isBlank() ? null : truncate(label.strip(), 255));
         entry.setGameDate(campaign == null ? null : campaign.getCurrentDate());
         entry.setCreatedAt(LocalDateTime.now());
+        entry.setHidden(HiddenRolls.active());
         rollLogRepository.save(entry);
+        app.charka.journal.JournalService.roll(entry);
+    }
+
+    /** A-09: скрытый бросок мастера — показать всем */
+    @Transactional
+    public void reveal(Long campaignId, Long rollId) {
+        rollLogRepository.findById(rollId)
+                .filter(roll -> roll.getCampaign() != null && roll.getCampaign().getId().equals(campaignId))
+                .orElseThrow(app.charka.exception.NotFoundException.forId("RollLog", rollId))
+                .setHidden(false);
     }
 
     private static String truncate(String text, int max) {

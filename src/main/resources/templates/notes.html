@@ -2,86 +2,162 @@
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head('Заметки: ' + ${character.name})}"></head>
 <body>
-<header th:replace="~{fragments/layout :: topbar(${character.id}, 'notes')}"></header>
+<header th:replace="~{fragments/layout :: nav(null, ${character}, 'notes')}"></header>
 
 <main class="page">
   <div th:if="${errorMessage != null}" class="alert alert-error" role="alert">
     <span class="alert-text" th:text="${errorMessage}">Ошибка</span>
     <button type="button" class="alert-close" aria-label="Закрыть">×</button>
   </div>
-  <div class="page-head">
-    <div>
-      <span class="eyebrow">Заметки</span>
-      <h1 class="page-title" th:text="${character.name}">Персонаж</h1>
-    </div>
-    <div class="page-actions">
-      <a th:href="@{|/character/${character.id}|}" class="btn btn-ghost">← К персонажу</a>
-    </div>
-  </div>
-
-  <div class="grid grid-sidebar">
-    <div class="stack">
-    <!-- Категории -->
-    <aside class="card">
+  <!-- R-20: заметки первым столбцом, «＋ Заметка» раскрывает форму над списком, категории — фишками-фильтром;
+       контакты — своим столбцом -->
+  <div class="grid grid-main notes-grid">
+    <section class="card" id="notes" data-editable>
       <div class="card-head">
-        <h2 class="card-title"><span class="dot pink"></span>Категории</h2>
+        <h2 class="card-title"><span class="dot"></span>Заметки</h2>
+        <span class="badge" th:text="${#lists.size(notes)}">0</span>
+        <a th:if="${noteForm.id != null}" th:href="@{|/character/${character.id}/notes|}" class="btn btn-sm btn-ghost add-btn">Отмена правки</a>
+        <button th:unless="${noteForm.id != null}" type="button" class="btn btn-sm btn-primary add-btn" data-edit-toggle>＋ Заметка</button>
       </div>
-      <div class="card-body">
-        <div class="cat-list">
-          <div class="cat">
-            <a th:href="@{|/character/${character.id}/notes|}" class="cat-link"
-               th:classappend="${categoryId == null} ? 'is-active'">Все заметки</a>
+      <div class="edit-panel open-form"
+           th:classappend="${noteForm.id != null or !#strings.isEmpty(noteForm.name) or !#strings.isEmpty(noteForm.text)} ? 'is-open'">
+        <form th:action="@{${noteForm.id} != null ?
+                       |/character/${character.id}/notes/${noteForm.id}/edit|
+                       : |/character/${character.id}/notes|}"
+              th:object="${noteForm}"
+              method="post" class="form">
+          <input type="hidden" th:field="*{id}" th:if="${noteForm.id != null}"/>
+
+          <div class="field">
+            <label for="note-name">Заголовок</label>
+            <input th:field="*{name}" id="note-name" type="text"
+                   placeholder="Введите заголовок" maxlength="255" data-count-to="note-name-counter"/>
+            <small id="note-name-counter" class="hint">0/255 символов</small>
           </div>
-          <div th:each="cat : ${categories}" class="cat" data-editable>
-            <a th:href="@{|/character/${character.id}/notes?categoryId=${cat.id}|}" class="cat-link"
-               th:classappend="${cat.id == categoryId} ? 'is-active'"
-               th:text="${cat.name}">Категория</a>
+
+          <div class="field">
+            <label for="note-text">Текст</label>
+            <textarea id="note-text" th:field="*{text}"
+                      placeholder="Введите текст заметки" maxlength="1000" data-count-to="note-text-counter"></textarea>
+            <small id="note-text-counter" class="hint">0/1000 символов</small>
+          </div>
+
+          <div class="field" th:unless="${#lists.isEmpty(categories)}">
+            <span class="label">Категории</span>
+            <div class="checks">
+              <label th:each="cat : ${categories}" class="check">
+                <input type="checkbox" name="categoryIds"
+                       th:value="${cat.id}"
+                       th:checked="${noteForm.categories != null and noteForm.categories.contains(cat)}"/>
+                <span th:text="${cat.name}">Категория</span>
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <button type="submit" class="btn btn-primary"
+                    th:text="${noteForm.id != null} ? 'Обновить' : 'Сохранить'">Сохранить</button>
+          </div>
+        </form>
+      </div>
+      <div class="card-body note-filter" data-editable>
+        <div class="chips">
+          <a th:href="@{|/character/${character.id}/notes|}" class="chip chip-link"
+             th:classappend="${categoryId == null} ? 'is-active'">Все</a>
+          <a th:each="cat : ${categories}" th:href="@{|/character/${character.id}/notes?categoryId=${cat.id}|}"
+             class="chip chip-link" th:classappend="${cat.id == categoryId} ? 'is-active'" th:text="${cat.name}">Категория</a>
+          <!-- UX-23: словами — значок «⚙» на телефоне выглядел кружком и не читался -->
+          <button type="button" class="btn btn-sm btn-ghost" data-edit-toggle title="Категории: добавить, переименовать, удалить">✎ Категории</button>
+        </div>
+        <div class="edit-panel">
+          <div class="cat-list">
+            <div th:each="cat : ${categories}" class="cat" data-editable>
+              <a th:href="@{|/character/${character.id}/notes?categoryId=${cat.id}|}" class="cat-link"
+                 th:classappend="${cat.id == categoryId} ? 'is-active'"
+                 th:text="${cat.name}">Категория</a>
+              <div class="row-actions">
+                <button type="button" class="icon-btn" data-edit-toggle title="Переименовать">✎</button>
+                <form th:action="@{|/character/${character.id}/categories/${cat.id}/delete|}"
+                      method="post" class="inline" data-confirm="Удалить категорию?">
+                  <button type="submit" class="icon-btn danger" title="Удалить">✕</button>
+                </form>
+              </div>
+              <form th:action="@{|/character/${character.id}/categories/${cat.id}/edit|}"
+                    method="post" class="edit-panel">
+                <div class="form-row">
+                  <input type="text" name="name" th:value="${cat.name}" required placeholder="Название">
+                  <button type="submit" class="btn btn-sm btn-primary">OK</button>
+                </div>
+              </form>
+            </div>
+          </div>
+          <form th:action="@{|/character/${character.id}/categories|}"
+                th:object="${categoryForm}"
+                method="post" class="form-row">
+            <input type="text" th:field="*{name}" placeholder="Новая категория" required autocomplete="off"/>
+            <button type="submit" class="btn btn-sm btn-primary">＋</button>
+          </form>
+        </div>
+      </div>
+      <div class="card-body list">
+        <article th:each="note : ${notes}" class="note"
+                 th:classappend="${noteForm.id != null and noteForm.id == note.id} ? 'is-editing'">
+          <div class="note-head">
+            <h3 class="note-title" th:text="${note.name}">Заголовок</h3>
             <div class="row-actions">
-              <button type="button" class="icon-btn" data-edit-toggle title="Переименовать">✎</button>
-              <form th:action="@{|/character/${character.id}/categories/${cat.id}/delete|}"
-                    method="post" class="inline" data-confirm="Удалить категорию?">
+              <a th:href="@{|/character/${character.id}/notes/${note.id}/edit|}" class="icon-btn" title="Редактировать">✎</a>
+              <form th:action="@{|/character/${character.id}/notes/${note.id}/delete|}"
+                    method="post" class="inline" data-confirm="Удалить заметку?">
                 <button type="submit" class="icon-btn danger" title="Удалить">✕</button>
               </form>
             </div>
-            <form th:action="@{|/character/${character.id}/categories/${cat.id}/edit|}"
-                  method="post" class="edit-panel">
-              <div class="form-row">
-                <input type="text" name="name" th:value="${cat.name}" required placeholder="Название">
-                <button type="submit" class="btn btn-sm btn-primary">OK</button>
-              </div>
-            </form>
           </div>
-        </div>
+          <div class="note-text" th:text="${note.text}">Текст</div>
+          <div class="chips" th:unless="${#sets.isEmpty(note.categories)}">
+            <span th:each="c : ${note.categories}" class="chip pink" th:text="${c.name}">Категория</span>
+          </div>
+        </article>
+        <div th:if="${#lists.isEmpty(notes)}" class="empty">Заметок не найдено</div>
       </div>
-      <div class="card-body">
-        <form th:action="@{|/character/${character.id}/categories|}"
-              th:object="${categoryForm}"
-              method="post" class="form-row">
-          <input type="text" th:field="*{name}" placeholder="Новая категория" required autocomplete="off"/>
+    </section>
+
+    <!-- Контакты: кто это, как относится, кто кому должен.
+         KF-07: карточку называет система (CP2020 — «Контакты», остальные — «Знакомые»); добавить — имя, кто это и отношение
+         одной строкой; отношений три, старые («Семья», «Роман») показываются как есть; долг — в заметке, отдельное поле
+         видно только у тех, у кого он уже записан -->
+    <section class="card" id="contacts" data-editable
+             th:with="contactsTitle=${@gameSystemRegistry.get(character.campaign.system).contactsTitle},
+                      relations=${ {T(app.charka.model.Contact.Relation).FRIEND, T(app.charka.model.Contact.Relation).NEUTRAL, T(app.charka.model.Contact.Relation).ENEMY} }">
+      <div class="card-head">
+        <h2 class="card-title"><span class="dot"></span><th:block th:text="${contactsTitle}">Знакомые</th:block></h2>
+        <span class="badge" th:text="${#lists.size(character.contacts)}">0</span>
+        <button type="button" class="btn btn-sm btn-primary add-btn" data-edit-toggle>＋ Человек</button>
+      </div>
+      <div class="edit-panel open-form">
+        <form th:action="@{|/character/${character.id}/contacts|}" method="post" class="form-row">
+          <input type="text" name="name" class="grow" placeholder="Имя или кличка" required autocomplete="off">
+          <input type="text" name="role" class="grow" placeholder="Кто это" autocomplete="off">
+          <select name="relation" aria-label="Отношение">
+            <option th:each="r : ${relations}" th:value="${r}" th:text="${r.label}"
+                    th:selected="${r.name() == 'NEUTRAL'}">Нейтрально</option>
+          </select>
           <button type="submit" class="btn btn-sm btn-primary">＋</button>
         </form>
-      </div>
-    </aside>
-
-    <!-- Контакты: кто это, как относится, кто кому должен -->
-    <section class="card" id="contacts">
-      <div class="card-head">
-        <h2 class="card-title"><span class="dot"></span>Контакты</h2>
-        <span class="badge" th:text="${#lists.size(character.contacts)}">0</span>
       </div>
       <div class="card-body list">
         <div th:each="contact : ${character.contacts}" class="row" data-editable>
           <div class="row-main">
             <div class="row-title">
               <span th:text="${contact.name}">Рог</span>
-              <span class="chip" th:classappend="${contact.relation.name() == 'ENEMY' or contact.relation.name() == 'RIVAL'} ? 'red' : (${contact.relation.name() == 'NEUTRAL'} ? '' : 'green')"
+              <span th:unless="${contact.relation.name() == 'NEUTRAL'}" class="chip"
+                    th:classappend="${contact.relation.name() == 'ENEMY' or contact.relation.name() == 'RIVAL'} ? 'red' : 'green'"
                     th:text="${contact.relation.label}">Друг</span>
+              <span th:if="${contact.role != null}" class="row-meta" th:text="${contact.role}">фиксер</span>
             </div>
-            <div class="row-meta">
-              <span th:if="${contact.role != null}" th:text="${contact.role}">фиксер</span>
+            <div th:if="${contact.owes != null or contact.note != null}" class="row-desc">
               <span th:if="${contact.owes != null}" class="chip" th:text="${contact.owes}">должен 500</span>
+              <th:block th:text="${contact.note}">заметка</th:block>
             </div>
-            <div th:if="${contact.note != null}" class="row-desc" th:text="${contact.note}">заметка</div>
           </div>
           <div class="row-actions">
             <button type="button" class="icon-btn" data-edit-toggle title="Править">✎</button>
@@ -91,115 +167,23 @@
               <input type="text" name="name" class="grow" th:value="${contact.name}" required placeholder="Имя">
               <input type="text" name="role" class="grow" th:value="${contact.role}" placeholder="Кто это">
               <select name="relation" aria-label="Отношение">
-                <option th:each="r : ${T(app.charka.model.Contact.Relation).values()}" th:value="${r}" th:text="${r.label}"
-                        th:selected="${r == contact.relation}">Друг</option>
+                <option th:each="r : ${relations}" th:value="${r}" th:text="${r.label}" th:selected="${r == contact.relation}">Друг</option>
+                <option th:unless="${#lists.contains(relations, contact.relation)}" th:value="${contact.relation}"
+                        th:text="${contact.relation.label}" selected>Семья</option>
               </select>
-              <input type="text" name="owes" class="grow" th:value="${contact.owes}" placeholder="Кто кому должен">
-              <input type="text" name="note" class="grow" th:value="${contact.note}" placeholder="Заметка" maxlength="1000">
+              <input th:if="${contact.owes != null}" type="text" name="owes" class="grow" th:value="${contact.owes}" placeholder="Кто кому должен">
+              <input type="text" name="note" class="grow" th:value="${contact.note}" placeholder="Заметка: что о нём помнить, кто кому должен" maxlength="1000">
               <button type="submit" class="btn btn-sm btn-primary">OK</button>
             </form>
             <form th:action="@{|/character/${character.id}/contacts/${contact.id}/delete|}" method="post" class="inline"
-                  th:attr="data-confirm='Удалить контакт «' + ${contact.name} + '»?'">
+                  th:attr="data-confirm='Удалить «' + ${contact.name} + '»?'">
               <button type="submit" class="btn btn-sm danger">Удалить</button>
             </form>
           </div>
         </div>
         <div th:if="${#lists.isEmpty(character.contacts)}" class="empty">Никого</div>
       </div>
-      <div class="card-body">
-        <form th:action="@{|/character/${character.id}/contacts|}" method="post" class="form-row">
-          <input type="text" name="name" class="grow" placeholder="Имя" required autocomplete="off">
-          <input type="text" name="role" class="grow" placeholder="Кто это: фиксер, коп" autocomplete="off">
-          <select name="relation" aria-label="Отношение">
-            <option th:each="r : ${T(app.charka.model.Contact.Relation).values()}" th:value="${r}" th:text="${r.label}"
-                    th:selected="${r.name() == 'NEUTRAL'}">Нейтрально</option>
-          </select>
-          <button type="submit" class="btn btn-sm btn-primary">＋</button>
-        </form>
-      </div>
     </section>
-    </div>
-
-    <div class="stack">
-      <!-- Форма заметки (создание / редактирование) -->
-      <section class="card">
-        <div class="card-head">
-          <h2 class="card-title">
-            <span class="dot"></span>
-            <span th:text="${noteForm.id != null} ? 'Редактирование заметки' : 'Новая заметка'">Новая заметка</span>
-          </h2>
-          <a th:if="${noteForm.id != null}" th:href="@{|/character/${character.id}/notes|}" class="btn btn-sm btn-ghost">Отмена</a>
-        </div>
-        <div class="card-body">
-          <form th:action="@{${noteForm.id} != null ?
-                         |/character/${character.id}/notes/${noteForm.id}/edit|
-                         : |/character/${character.id}/notes|}"
-                th:object="${noteForm}"
-                method="post" class="form">
-            <input type="hidden" th:field="*{id}" th:if="${noteForm.id != null}"/>
-
-            <div class="field">
-              <label for="note-name">Заголовок</label>
-              <input th:field="*{name}" id="note-name" type="text"
-                     placeholder="Введите заголовок" maxlength="255" data-count-to="note-name-counter"/>
-              <small id="note-name-counter" class="hint">0/255 символов</small>
-            </div>
-
-            <div class="field">
-              <label for="note-text">Текст</label>
-              <textarea id="note-text" th:field="*{text}"
-                        placeholder="Введите текст заметки" maxlength="1000" data-count-to="note-text-counter"></textarea>
-              <small id="note-text-counter" class="hint">0/1000 символов</small>
-            </div>
-
-            <div class="field" th:unless="${#lists.isEmpty(categories)}">
-              <span class="label">Категории</span>
-              <div class="checks">
-                <label th:each="cat : ${categories}" class="check">
-                  <input type="checkbox" name="categoryIds"
-                         th:value="${cat.id}"
-                         th:checked="${noteForm.categories != null and noteForm.categories.contains(cat)}"/>
-                  <span th:text="${cat.name}">Категория</span>
-                </label>
-              </div>
-            </div>
-
-            <div>
-              <button type="submit" class="btn btn-primary"
-                      th:text="${noteForm.id != null} ? 'Обновить' : 'Сохранить'">Сохранить</button>
-            </div>
-          </form>
-        </div>
-      </section>
-
-      <!-- Список заметок -->
-      <section class="card">
-        <div class="card-head">
-          <h2 class="card-title"><span class="dot pink"></span>Заметки</h2>
-          <span class="badge" th:text="${#lists.size(notes)}">0</span>
-        </div>
-        <div class="card-body list">
-          <article th:each="note : ${notes}" class="note"
-                   th:classappend="${noteForm.id != null and noteForm.id == note.id} ? 'is-editing'">
-            <div class="note-head">
-              <h3 class="note-title" th:text="${note.name}">Заголовок</h3>
-              <div class="row-actions">
-                <a th:href="@{|/character/${character.id}/notes/${note.id}/edit|}" class="icon-btn" title="Редактировать">✎</a>
-                <form th:action="@{|/character/${character.id}/notes/${note.id}/delete|}"
-                      method="post" class="inline" data-confirm="Удалить заметку?">
-                  <button type="submit" class="icon-btn danger" title="Удалить">✕</button>
-                </form>
-              </div>
-            </div>
-            <div class="note-text" th:text="${note.text}">Текст</div>
-            <div class="chips" th:unless="${#sets.isEmpty(note.categories)}">
-              <span th:each="c : ${note.categories}" class="chip pink" th:text="${c.name}">Категория</span>
-            </div>
-          </article>
-          <div th:if="${#lists.isEmpty(notes)}" class="empty">Заметок не найдено</div>
-        </div>
-      </section>
-    </div>
   </div>
 </main>
 </body>

@@ -2,7 +2,7 @@
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head('Новый персонаж · ' + ${campaign.name})}"></head>
 <body>
-<header th:replace="~{fragments/layout :: topbar(null, 'campaign')}"></header>
+<header th:replace="~{fragments/layout :: nav(${campaign}, null, 'overview')}"></header>
 
 <!-- Мастер создания персонажа CP2020: одна страница, итоги считаются сразу (app.js, [data-creation]).
      Правила и таблицы — Cp2020Creation; сервер проверяет всё ещё раз -->
@@ -19,7 +19,6 @@
       <p class="page-sub">Очки, статы, роль и навыки по книге (с. 20, 44–45); деньги — по таблице занятий (с. 58)</p>
     </div>
     <div class="page-actions">
-      <a th:href="@{'/campaign/' + ${campaign.id}}" class="btn btn-ghost">← К кампании</a>
     </div>
   </div>
 
@@ -64,7 +63,7 @@
 
     <section class="card">
       <div class="card-head">
-        <h2 class="card-title"><span class="dot pink"></span>Роль и карьерные навыки</h2>
+        <h2 class="card-title"><span class="dot"></span>Роль и карьерные навыки</h2>
         <span class="badge" data-creation-career-left>40</span>
       </div>
       <div class="card-body">
@@ -89,7 +88,7 @@
 
     <section class="card">
       <div class="card-head">
-        <h2 class="card-title"><span class="dot green"></span>Навыки хобби</h2>
+        <h2 class="card-title"><span class="dot"></span>Навыки хобби</h2>
         <span class="badge" data-creation-pickup-left>0</span>
       </div>
       <div class="card-body" data-creation-pickups>
@@ -108,7 +107,7 @@
     </section>
 
     <section class="card">
-      <div class="card-head"><h2 class="card-title"><span class="dot pink"></span>Лайфпас</h2></div>
+      <div class="card-head"><h2 class="card-title"><span class="dot"></span>Лайфпас</h2></div>
       <div class="card-body">
         <div class="form-row">
           <input type="number" class="narrow" min="16" max="99" placeholder="Возраст" aria-label="Возраст: пусто — 2D6+16" title="Пусто — 2D6 + 16" data-creation-age>

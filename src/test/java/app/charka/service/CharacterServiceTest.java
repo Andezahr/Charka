@@ -79,7 +79,7 @@ class CharacterServiceTest {
 
             verify(campaignService).getById(campaignId);
             verify(characterRepository).save(testCharacter);
-            verify(inventoryService).create(eq(testCharacter.getId()), any(Inventory.class));
+            verify(inventoryService, times(2)).create(eq(testCharacter.getId()), any(Inventory.class));
         }
 
         @Test
@@ -109,8 +109,8 @@ class CharacterServiceTest {
 
             characterService.createInCampaign(campaignId, testCharacter);
 
-            verify(inventoryService).create(eq(testCharacter.getId()), captor.capture());
-            assertThat(captor.getValue().getName()).isEqualTo("Backpack");
+            verify(inventoryService, times(2)).create(eq(testCharacter.getId()), captor.capture());
+            assertThat(captor.getAllValues()).extracting(Inventory::getName).containsExactly("На теле", "В сумке");
         }
 
         @Test
@@ -437,7 +437,7 @@ class CharacterServiceTest {
             InOrder order = inOrder(campaignService, characterRepository, inventoryService);
             order.verify(campaignService).getById(id);
             order.verify(characterRepository).save(charToSave);
-            order.verify(inventoryService).create(eq(charToSave.getId()), any());
+            order.verify(inventoryService, times(2)).create(eq(charToSave.getId()), any());
         }
 
         @Test

@@ -92,7 +92,8 @@ public class HealthCounterController {
         return redirectToCounters(characterId);
     }
 
+    /** R-06: здоровье — в шапке состояния листа */
     private String redirectToCounters(Long characterId) {
-        return "redirect:/character/" + characterId + "/counters";
+        return "redirect:/character/" + characterId + "#state-health";
     }
 }

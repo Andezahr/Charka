@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- A-11: «📖 Правила» — кнопка и окно; содержимое (GET /campaign/{id}/reference) приходит при первом открытии -->
+<th:block th:fragment="open-button(campaignId)">
+  <button type="button" class="btn btn-ghost" data-reference-open th:attr="data-reference-src=@{'/campaign/' + ${campaignId} + '/reference'}"
+          title="Сложности, дальность, модификаторы, действия, урон, лечение, фамблы">📖 Правила</button>
+  <dialog class="dialog reference-dialog" data-reference>
+    <div class="add-dialog-head">
+      <h2 class="card-title">📖 Правила</h2>
+      <button type="button" class="icon-btn" data-dialog-close aria-label="Закрыть">✕</button>
+    </div>
+    <div data-reference-body class="reference-body"><p class="empty">Загрузка…</p></div>
+  </dialog>
+</th:block>
+
+<th:block th:fragment="reference-sections">
+  <details th:each="section, i : ${sections}" class="reference-section" th:open="${i.first}">
+    <summary>
+      <span th:text="${section.title}">Модификаторы атаки</span>
+      <span th:if="${section.page != null}" class="reference-page" th:text="${section.page}">с. 99</span>
+    </summary>
+    <dl class="reference-lines">
+      <th:block th:each="line : ${section.lines}">
+        <dt th:text="${line.label}" th:classappend="${line.value == null} ? 'is-note'">Цель неподвижна</dt>
+        <dd th:if="${line.value != null}" th:text="${line.value}">+4</dd>
+      </th:block>
+    </dl>
+  </details>
+  <p th:if="${#lists.isEmpty(sections)}" class="empty">У этой системы справки нет</p>
+</th:block>
+</body>
+</html>

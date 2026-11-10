@@ -116,7 +116,8 @@ final class Cp2020WeaponActions {
         ItemAction reload = usesMagazines(weapon) ? magazineReloadAction(weapon) : directReloadAction(weapon);
         actions.add(caliber(weapon) != null ? reload.asHidden().forCombat() : reload);
         if (usesMagazines(weapon) && hasMagazine(weapon)) {
-            actions.add(ItemAction.simple(EJECT, "Извлечь магазин", null).asSecondary());
+            // UX-09: частое действие боя — кнопкой в строке, не в «⋯»
+            actions.add(ItemAction.simple(EJECT, "Извлечь магазин", null));
         }
         if (usesMagazines(weapon)) {
             actions.add(ItemAction.simple(ADD_MAGAZINE, "＋ Магазин", null).asHidden());

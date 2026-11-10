@@ -27,6 +27,20 @@ public interface HealthCounterStrategy extends CounterStrategy {
     /** Вылечить указанное количество урона */
     HealthEvent heal(CounterContext context, int points);
 
+    /**
+     * GM-01: лечение одной зоны (правка мастера с карты боя). Система без зон лечит целиком.
+     *
+     * @param location код зоны; пусто — как {@link #heal(CounterContext, int)}
+     */
+    default HealthEvent heal(CounterContext context, int points, String location) {
+        return heal(context, points);
+    }
+
+    /** GM-01: лечится ли зона отдельно — тогда в форме лечения мастера есть выбор зоны */
+    default boolean healsByLocation() {
+        return false;
+    }
+
     /** Естественное восстановление за прошедшие игровые дни */
     HealthEvent healOverTime(CounterContext context, int days);
 
@@ -66,6 +80,21 @@ public interface HealthCounterStrategy extends CounterStrategy {
     /** Итог проверки медика: что меняется у пациента */
     default HealthEvent applyCare(CounterContext context, CareOption option, boolean success) {
         throw new UnsupportedOperationException("Медпомощи в этой системе нет");
+    }
+
+    /** K-08: как персонаж отдыхает при промотке времени (Космозэки: сон, сон и еда); пусто — выбора нет */
+    default java.util.List<app.charka.item.ItemField.Option> getRestOptions() {
+        return java.util.List.of();
+    }
+
+    /** Текущий выбор отдыха — значение из {@link #getRestOptions()} */
+    default String getRest(Counter counter) {
+        return null;
+    }
+
+    /** Запомнить выбор отдыха; незнакомое значение — ошибка */
+    default void setRest(Counter counter, String rest) {
+        throw new UnsupportedOperationException("Выбора отдыха нет");
     }
 
     @Override

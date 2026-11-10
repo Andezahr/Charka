@@ -85,6 +85,15 @@ class InventoryPageTest {
                 .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
     }
 
+    /** A-03: содержимое окна «Добавить» приходит отдельно, при первом открытии */
+    private String addDialog() throws Exception {
+        entityManager.flush();
+        entityManager.clear();
+        return mockMvc.perform(get("/character/" + character.getId() + "/add-dialog"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+    }
+
     private String deleteForm(String html, Item item) {
         String action = "/items/" + item.getId() + "/delete";
         int start = html.lastIndexOf("<form", html.indexOf(action));
@@ -116,13 +125,13 @@ class InventoryPageTest {
     @Test
     @DisplayName("в окне «Добавить» у патрона список типичных значений и «Другой…»")
     void caliberList() throws Exception {
-        String html = sheet();
+        String html = addDialog();
 
         assertThat(html).contains("data-name-prefix=\"Патроны \"", "<option value=\"9mm\">9mm</option>", "Другой…");
     }
 
     @Test
-    @DisplayName("секции в порядке типов: оружие, броня, вещи; пустых нет")
+    @DisplayName("секции в порядке типов: броня, вещи; пустых нет; оружие — в карточке «Оружие» (R-07), в инвентаре — ссылкой")
     void sections() throws Exception {
         plain("Фонарик", 10, null);
         itemService.addFromCatalog(inventoryId, "armor_light_jacket", 1);
@@ -130,7 +139,8 @@ class InventoryPageTest {
 
         String html = sheet();
 
-        assertThat(html.indexOf(">Оружие</h3>")).isPositive().isLessThan(html.indexOf(">Броня</h3>"));
+        assertThat(html).doesNotContain(">Оружие</h3>").contains("— в карточке «Оружие»");
+        assertThat(html.indexOf(">Броня</h3>")).isPositive();
         assertThat(html.indexOf(">Броня</h3>")).isLessThan(html.indexOf(">Вещи</h3>"));
         assertThat(html).doesNotContain(">Боеприпасы</h3>");
     }
@@ -312,7 +322,26 @@ class InventoryPageTest {
     void buyCheckbox() throws Exception {
         income(1200);
 
-        assertThat(sheet()).contains("data-add-buy").contains("data-balance=\"1200\"");
+        assertThat(addDialog()).contains("data-add-buy").contains("data-balance=\"1200\"");
+    }
+
+    @Test
+    @DisplayName("A-03: справочник и формы правки не в листе — оболочка окна с версией и заглушки по ✎")
+    void lazyParts() throws Exception {
+        Item weapon = itemService.addFromCatalog(inventoryId, "arasaka_minami_10", 1);
+        String before = sheet();
+        income(700);
+        String after = sheet();
+
+        assertThat(before).doesNotContain("data-add-search", "class=\"form-row item-edit\"")
+                .contains("data-add-src=\"/character/" + character.getId() + "/add-dialog?v=")
+                .contains("data-lazy=\"/character/" + character.getId() + "/items/" + weapon.getId() + "/edit-form\"");
+        String version = before.replaceAll("(?s).*add-dialog[?]v=([0-9a-f-]+).*", "$1");
+        assertThat(after).doesNotContain("add-dialog?v=" + version + "\"");
+
+        String form = mockMvc.perform(get("/character/" + character.getId() + "/items/" + weapon.getId() + "/edit-form"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        assertThat(form).contains("Arasaka Minami 10", "Сохранить", "data-item-fields=\"CP2020_WEAPON\"");
     }
 
     private void income(long amount) {

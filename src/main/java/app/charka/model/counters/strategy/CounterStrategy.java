@@ -49,6 +49,14 @@ public interface CounterStrategy {
     }
 
     /**
+     * R-05: шаблон с фрагментом {@code card-compact} — строка состояния на листе персонажа (полная карточка — по «⋯»).
+     * null — у типа её нет: счётчик показывается целиком в «Своих счётчиках».
+     */
+    default String getCompactTemplate() {
+        return null;
+    }
+
+    /**
      * Шаблон с фрагментом {@code create-fields} — дополнительные поля формы создания
      * (попадают в {@code attributes[...]}). null — дополнительных полей нет.
      */
@@ -126,6 +134,13 @@ public interface CounterStrategy {
      */
     default void updateAttributes(Counter counter, Map<String, Integer> attributes) {
         throw new UnsupportedOperationException("Счётчик типа " + getCounterType() + " не редактирует характеристики");
+    }
+
+    /**
+     * K-02: изменение текстового состояния ({@code Counter.texts}) из формы; незнакомые ключи — ошибка.
+     */
+    default void updateTexts(Counter counter, Map<String, String> texts) {
+        throw new UnsupportedOperationException("Счётчик типа " + getCounterType() + " не редактирует тексты");
     }
 
     /**

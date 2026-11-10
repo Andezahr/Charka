@@ -3,7 +3,7 @@
 <body>
 <!-- Диалог атаки оружием; что спрашивать, задаёт AttackForm системы. Модификаторы открыты сразу: в атаке они главное содержимое. -->
 <dialog th:fragment="dialog(characterId, item, form, targets)" class="dialog attack-dialog" th:id="'attack-' + ${item.id}"
-        th:attr="data-attack=${item.id},data-radius=${form.radius}">
+        th:attr="data-attack=${item.id},data-radius=${form.radius},data-attack-melee=${form.melee}">
   <form th:action="${attackUrl != null} ? @{${attackUrl}} : @{'/character/' + ${characterId} + '/items/' + ${item.id} + '/attack'}" method="post" class="form">
     <input th:if="${returnCampaign != null}" type="hidden" name="returnCampaign" th:value="${returnCampaign}">
     <div>
@@ -117,7 +117,8 @@
       <span class="label" th:text="${choice.label}">Цель движется</span>
       <select th:name="'option.' + ${choice.key}">
         <option value="">—</option>
-        <option th:each="o : ${choice.options}" th:value="${o.value}" th:text="${o.label}">REF больше 10 −3</option>
+        <option th:each="o : ${choice.options}" th:value="${o.value}" th:text="${o.label}"
+                th:selected="${presetOptions != null and presetOptions.contains(o.value)}">REF больше 10 −3</option>
       </select>
     </label>
   </th:block>
@@ -165,11 +166,18 @@
 </th:block>
 
 <!-- Итог атаки -->
-<div th:fragment="result(result)" class="alert item-result" role="status"
+<!-- J-02: итог появляется после действия — бросок катится и встаёт (data-roll-now), итог проявляется после -->
+<div th:fragment="result(result)" class="alert item-result" role="status" data-roll-now
      th:classappend="${result.hit} ? 'alert-success' : 'alert-error'">
   <div class="alert-text">
-    <strong th:text="${result.title} + ': ' + ${result.outcome}">Minami → Олежа: попадание</strong>
-    <ol class="attack-steps"><li th:each="step : ${result.steps}" th:text="${step}">Бросок d10: 7</li></ol>
+    <div class="journal-head">
+      <strong th:text="${result.title}">Minami → Олежа</strong>
+      <span th:if="${result.total != null}" class="journal-roll" data-roll-anim th:attr="data-final=${result.total}">
+        <span class="journal-die" aria-hidden="true"></span><b data-roll-value th:text="${result.total}">16</b><small th:if="${result.difficulty != null}" data-after-roll th:text="' / ' + ${result.difficulty}"> / 15</small>
+      </span>
+    </div>
+    <strong data-after-roll th:text="${result.outcome}">попадание</strong>
+    <ol class="attack-steps" data-after-roll><li th:each="step : ${result.steps}" th:text="${step}">Бросок d10: 7</li></ol>
   </div>
   <button type="button" class="alert-close" aria-label="Закрыть">×</button>
 </div>

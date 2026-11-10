@@ -3,9 +3,13 @@
 <body>
 <!-- U-06: чат кампании. Лента — сообщения и броски по времени; app.js опрашивает её ([data-chat]) и подменяет только список.
      Кто пишет — «Я — …», запоминается на устройстве вместе с выбором на карте -->
+<!-- R-04: «Стол» — чат и кубики одним блоком: поле принимает и сообщение, и бросок («2d6+3 Атака»), быстрые кубики системы,
+     у мастера «🙈» — бросок, которого игроки не видят, и общая проверка ±Мод/DC (до R-04a) -->
 <section th:fragment="card(campaignId, returnTo, characters)" class="card chat" id="chat"
-         th:attr="data-chat=@{'/campaign/' + ${campaignId} + '/chat'},data-me-key=${'campaign.' + campaignId}">
-  <div class="card-head"><h2 class="card-title"><span class="dot pink"></span>Чат и броски</h2></div>
+         th:attr="data-chat=@{'/campaign/' + ${campaignId} + '/chat'},data-me-key=${'campaign.' + campaignId}"
+         th:with="tableSystem=${@gameSystemRegistry.get(@campaignService.getById(campaignId).system)},
+                  tableGm=${isGm == null or isGm}">
+  <div class="card-head"><h2 class="card-title"><span class="dot"></span>Чат и броски</h2></div>
   <div class="card-body">
     <form th:action="@{'/campaign/' + ${campaignId} + '/chat'}" method="post" class="form chat-form">
       <input type="hidden" name="returnTo" th:value="${returnTo}">
@@ -14,29 +18,131 @@
           <option th:if="${isGm == null or isGm}" value="">Мастер</option>
           <option th:each="c : ${characters}" th:value="${c.id}" th:text="${c.name}">Колясик</option>
         </select>
-        <input type="text" name="text" class="grow" maxlength="500" required autocomplete="off" placeholder="Сообщение"
-               th:value="${chatDraft}" aria-label="Сообщение">
+        <input type="text" name="text" class="grow" maxlength="500" autocomplete="off" placeholder="Сообщение или 2d6+3"
+               th:value="${chatDraft}" aria-label="Сообщение или бросок" title="Начните с кубиков — «2d6+3 Атака» — и это бросок с подписью">
         <button type="submit" class="btn btn-sm btn-primary">➤</button>
+      </div>
+      <div class="form-row chat-dice">
+        <button th:each="d : ${tableSystem.getQuickDice()}" type="submit" name="quick" th:value="${d}" class="btn btn-sm" th:text="${d}">d10</button>
+        <label th:if="${tableGm}" class="check dice-hidden" title="Игроки этот бросок не увидят; в ленте его можно показать всем">
+          <input type="checkbox" name="hidden" value="true" data-remember="dice-hidden"><span>🙈</span>
+        </label>
       </div>
       <p th:if="${chatError != null}" class="field-error" th:text="${chatError}">Пустое сообщение</p>
     </form>
+    <!-- R-04a: одна форма проверки. Персонаж с навыками — навык с итогом (как в бою), мастер или система без навыков — ±Мод -->
+    <details class="cp-more item-more" data-check-form>
+      <summary>🎲 Проверка</summary>
+      <form th:action="@{'/campaign/' + ${campaignId} + '/chat/check'}" method="post" class="form">
+        <input type="hidden" name="returnTo" th:value="${returnTo}">
+        <div class="form-row">
+          <select name="character" data-check-who aria-label="Кто проверяет">
+            <option th:if="${tableGm}" value="">Мастер</option>
+            <option th:each="c : ${characters}" th:value="${c.id}" th:text="${c.name}">Колясик</option>
+          </select>
+          <th:block th:each="c : ${characters}" th:with="options=${@skillService.checkOptions(c.id)}">
+            <select th:unless="${#lists.isEmpty(options)}" name="skill" class="grow" th:attr="data-check-skill=${c.id}" aria-label="Навык" hidden disabled>
+              <option th:each="o : ${options}" th:value="${o.value}" th:text="${o.label}">Внимательность 11</option>
+            </select>
+          </th:block>
+          <input type="number" name="modifier" class="narrow" placeholder="±Мод." aria-label="Модификатор" data-check-mod>
+        </div>
+        <div class="form-row">
+          <!-- KF-09: ступени сложности — если они есть у системы; нет (Космозэки: 1к12) — сложность вписывается числом -->
+          <select th:if="${!#maps.isEmpty(tableSystem.getTableCheckResolver().getDifficultyPresets())}" name="difficulty" aria-label="Сложность">
+            <option value="">Без сложности</option>
+            <option th:each="p : ${tableSystem.getTableCheckResolver().getDifficultyPresets()}" th:value="${p.value}" th:text="${p.key} + ' ' + ${p.value}">Средне 15</option>
+          </select>
+          <input th:if="${#maps.isEmpty(tableSystem.getTableCheckResolver().getDifficultyPresets())}" type="number" name="difficulty"
+                 class="narrow" min="0" placeholder="Сложн." aria-label="Сложность" title="Сложность, которую назвал мастер; пусто — без сложности">
+          <input th:if="${tableSystem.hasLuck()}" type="number" name="luck" class="narrow" min="0" placeholder="🍀" aria-label="Удача" title="Удача к броску">
+          <input type="text" name="label" class="grow" placeholder="Что проверяем" autocomplete="off" aria-label="Что проверяем" data-check-mod>
+          <label th:if="${tableGm}" class="check dice-hidden"><input type="checkbox" name="hidden" value="true" data-remember="dice-hidden"><span>🙈</span></label>
+          <button type="submit" class="btn btn-sm">🎲 Проверка</button>
+        </div>
+      </form>
+    </details>
   </div>
+  <!-- KF-09: броски и журнал можно убрать из ленты у себя — остаются сообщения; выбор запоминается на устройстве -->
+  <label class="check chat-only-messages" title="Скрыть броски, проверки и журнал боя — только сообщения">
+    <input type="checkbox" data-chat-only-messages><span>💬 Только сообщения</span>
+  </label>
   <div class="card-body list chat-feed" data-chat-feed>
     <th:block th:replace="~{fragments/chat :: feed}"></th:block>
   </div>
 </section>
 
+<!-- Стол в выезжающей панели (кнопка «💬 Стол» в шапке): GET /campaign/{id}/chat/panel -->
+<th:block th:fragment="panel">
+  <section th:replace="~{fragments/chat :: card(${campaignId}, ${returnTo}, ${chatCharacters})}"></section>
+</th:block>
+
 <th:block th:fragment="feed">
-  <div th:each="e : ${feed}" class="chat-row" th:classappend="${e.roll != null} ? 'is-roll'"
+  <!-- A-01: у последнего действия кампании — «↶», если его можно отменить тому, кто смотрит -->
+  <th:block th:with="undo=${@undoService.offer(campaignId)}">
+  <div th:each="e : ${feed}" class="chat-row" th:attr="data-feed-key=${e.key()}"
+       th:classappend="${(e.event != null ? 'is-event' : (e.roll != null ? 'is-roll' : (e.action ? 'is-action' : (e.text != null and (#strings.startsWith(e.text, '🎲') or #strings.startsWith(e.text, 'Проверка ')) ? 'is-roll' : '')))) + (e.roll != null and e.roll.hidden ? ' is-hidden' : '') + (e.event != null and e.event.hidden ? ' is-hidden' : '') + (e.event != null and (e.event.kind == 'ROUND' or e.event.kind == 'TURN') ? ' is-round' : '')}"
        th:title="${e.roll != null} ? ${e.roll.expression} + ': ' + ${e.roll.details} : ${#temporals.format(e.at, 'dd.MM HH:mm')}">
+    <!-- J-01: запись журнала боя — что произошло: заголовок, бросок против сложности, фишки итога, расчёт под «Как посчитано» -->
+    <th:block th:if="${e.event != null}" th:with="ev=${e.event}">
+      <div th:if="${ev.kind == 'TURN'}" class="journal-turn">
+        <span th:text="'▶ ' + ${ev.title}">▶ Ходит Олежа</span>
+        <form th:if="${e.undoId != null and undo != null and undo.id() == e.undoId}" method="post" class="chat-undo"
+              th:action="@{'/campaign/' + ${campaignId} + '/undo/' + ${e.undoId}}">
+          <button type="submit" class="btn btn-sm" title="Отменить">↶</button>
+        </form>
+      </div>
+      <div th:if="${ev.kind == 'ROUND'}" class="journal-round">
+        <span th:text="${ev.title}">Раунд 2</span>
+        <span th:if="${ev.outcome != 'Начался'}" class="journal-round-note" th:text="${ev.outcome}">Горит: Олежа получает 4 урона</span>
+        <span class="journal-chips" th:unless="${#lists.isEmpty(ev.chipList())}">
+          <span th:each="c : ${ev.chipList()}" class="jchip" th:classappend="'jchip-' + ${c[0]}" th:text="${c[1]}">Олежа: 4 урона</span>
+        </span>
+      </div>
+      <th:block th:unless="${ev.kind == 'ROUND' or ev.kind == 'TURN'}">
+      <span class="chat-who" th:text="${e.who}">Колясик</span>
+      <div class="journal" th:classappend="${'kind-' + #strings.toLowerCase(ev.kind)} + ${ev.success == null ? '' : (ev.success ? ' is-ok' : ' is-fail')}">
+        <div class="journal-head">
+          <span class="journal-title"><th:block th:text="${ev.hidden} ? '🙈 ' : ''"></th:block><th:block th:text="${ev.title}">Avenger → Бустер 1</th:block></span>
+          <span th:if="${ev.total != null}" class="journal-roll" data-roll-anim th:attr="data-final=${ev.total}"
+                th:title="${ev.difficulty != null} ? (${ev.kind == 'CONTEST'} ? 'Бросок против броска противника' : 'Итог броска против сложности') : 'Итог броска'">
+            <span class="journal-die" aria-hidden="true"></span><b data-roll-value th:text="${ev.total}">16</b><small th:if="${ev.difficulty != null}" data-after-roll th:text="(${ev.kind == 'CONTEST'} ? ' : ' : ' / ') + ${ev.difficulty}"> / 15</small>
+          </span>
+        </div>
+        <div class="journal-chips" data-after-roll th:unless="${#lists.isEmpty(ev.chipList())}">
+          <span th:each="c : ${ev.chipList()}" class="jchip" th:classappend="'jchip-' + ${c[0]}" th:text="${c[1]}">Попал</span>
+        </div>
+        <p th:if="${ev.outcome != null}" class="journal-outcome" data-after-roll th:text="${ev.outcome}">Бустер 1 получает 4 урона (Торс)</p>
+        <details class="journal-steps" th:unless="${#lists.isEmpty(ev.stepList())}">
+          <summary>Как посчитано</summary>
+          <ol><li th:each="step : ${ev.stepList()}" th:text="${step}">Бросок d10: 7</li></ol>
+        </details>
+      </div>
+      <form th:if="${e.undoId != null and undo != null and undo.id() == e.undoId}" method="post" class="chat-undo"
+            th:action="@{'/campaign/' + ${campaignId} + '/undo/' + ${e.undoId}}">
+        <button type="submit" class="btn btn-sm" title="Отменить">↶</button>
+      </form>
+      </th:block>
+    </th:block>
+    <th:block th:if="${e.event == null}">
     <span class="chat-who" th:text="${e.who}">Колясик</span>
     <th:block th:if="${e.roll != null}">
-      <span class="chat-text">🎲 <th:block th:text="${e.roll.label != null ? e.roll.label + ': ' : ''} + ${e.roll.expression}">Атака: d10</th:block></span>
-      <span class="roll-total" th:text="${e.roll.total}">8</span>
+      <span class="chat-text"><th:block th:text="${e.roll.hidden} ? '🙈 ' : '🎲 '">🎲 </th:block><th:block th:text="${e.roll.label != null ? e.roll.label + ': ' : ''} + ${e.roll.expression}">Атака: d10</th:block></span>
+      <span class="roll-total" data-roll-anim th:attr="data-final=${e.roll.total}"><b data-roll-value th:text="${e.roll.total}">8</b></span>
+      <!-- A-09: скрытый бросок видит только мастер — и может показать всем -->
+      <form th:if="${e.roll.hidden}" th:action="@{'/campaign/' + ${campaignId} + '/rolls/' + ${e.roll.id} + '/reveal'}" method="post" class="chat-undo">
+        <button type="submit" class="btn btn-sm" title="Показать всем">👁</button>
+      </form>
     </th:block>
-    <span th:unless="${e.roll != null}" class="chat-text" th:text="${e.text}">Бегу к машине</span>
+    <span th:unless="${e.roll != null}" class="chat-text" th:text="${e.action} ? '✓ ' + ${e.text} : ${e.text}">Бегу к машине</span>
+    <form th:if="${e.action and undo != null and undo.id() == e.id}" method="post" class="chat-undo"
+          th:action="@{'/campaign/' + ${campaignId} + '/undo/' + ${e.id}}">
+      <button type="submit" class="btn btn-sm" title="Отменить">↶</button>
+    </form>
+    </th:block>
   </div>
   <div th:if="${#lists.isEmpty(feed)}" class="empty">Пока тихо</div>
+  </th:block>
 </th:block>
 </body>
 </html>

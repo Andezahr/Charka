@@ -50,6 +50,23 @@ public interface AttackRules {
     /**
      * Чем персонаж может атаковать без предмета: кулаки, заклинания.
      */
+    /**
+     * A-05: модификатор атаки за то, что в раунде уже сделано {@code done} действий; ставится в диалоге сам.
+     *
+     * @return код варианта модификатора; null — штрафа нет
+     */
+    default String actionOption(int done) {
+        return null;
+    }
+
+    /**
+     * R-07: из чего складывается бросок атаки до модификаторов — строка у оружия на листе («Пистолеты 5 + REF 6 + WA 1 = 12»),
+     * чтобы не считать в уме. null — система такой строки не даёт.
+     */
+    default String attackBase(Character attacker, AttackSource source, AttackForm form, Map<String, StatValue> stats) {
+        return null;
+    }
+
     default List<AttackSource> abilities(Character attacker) {
         return List.of();
     }
@@ -68,6 +85,18 @@ public interface AttackRules {
      */
     default String damageObject(Item target, AttackHit hit) {
         throw new IllegalArgumentException("Эта система не атакует предметы");
+    }
+
+    /**
+     * M-17: атака по цели не попала, а между стрелком и целью кто-то стоит. Попадёт ли промах в него.
+     *
+     * @param missed    итог проверки, которая не попала
+     * @param bystander первый стоящий на линии огня от стрелка
+     * @param meters    расстояние от стрелка до него
+     * @return попадание по стоящему с шагами расчёта; пусто — пуля ушла мимо всех или правило к этой атаке не относится
+     */
+    default java.util.Optional<AttackOutcome> strayHit(AttackContext context, CheckResult missed, Character bystander, int meters, DiceRoller dice) {
+        return java.util.Optional.empty();
     }
 
     /**

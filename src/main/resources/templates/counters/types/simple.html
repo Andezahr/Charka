@@ -45,5 +45,29 @@
     <button type="submit" class="btn btn-sm">Установить</button>
   </form>
 </div>
+<!-- R-06: тот же счётчик строкой на листе (IP, репутация, свои): −1 / ＋1 и «± на» сразу, установить, сброс и удаление — по «⋯» -->
+<div th:fragment="row" class="counter-row" th:id="'counter-' + ${counter.id}"
+     th:with="base=@{/character/{characterId}/counters/{counterId}(characterId=${characterId}, counterId=${counter.id})}">
+  <span class="counter-row-name" th:text="${counter.name}">Очки улучшения</span>
+  <span class="counter-row-value" th:text="${counter.value}">0</span>
+  <form th:action="${base} + '/update'" method="post"><input type="hidden" name="value" value="-1">
+    <button type="submit" class="btn btn-sm btn-ghost" aria-label="Уменьшить на 1">−1</button></form>
+  <form th:action="${base} + '/update'" method="post"><input type="hidden" name="value" value="1">
+    <button type="submit" class="btn btn-sm btn-ghost" aria-label="Увеличить на 1">＋1</button></form>
+  <form th:action="${base} + '/update'" method="post" class="counter-row-delta">
+    <input type="number" name="value" placeholder="±" required aria-label="Изменить на" class="narrow">
+  </form>
+  <details class="counter-row-more">
+    <summary aria-label="Ещё">⋯</summary>
+    <form th:action="${base} + '/set'" method="post" class="form-row">
+      <input type="number" name="setValue" placeholder="= установить" required aria-label="Новое значение">
+      <button type="submit" class="btn btn-sm">Установить</button>
+    </form>
+    <div class="form-row">
+      <form th:action="${base} + '/reset'" method="post" data-confirm="Сбросить счётчик?"><button type="submit" class="btn btn-sm btn-ghost">↺ Сброс</button></form>
+      <form th:action="${base}" th:method="delete" data-confirm="Удалить счётчик?"><button type="submit" class="btn btn-sm btn-ghost">Удалить</button></form>
+    </div>
+  </details>
+</div>
 </body>
 </html>

@@ -55,6 +55,7 @@ public class EncounterService {
     private static final String INITIATIVE_BONUS = "initiativeBonus";
 
     private final EncounterRepository encounterRepository;
+    private final app.charka.journal.JournalService journalService;
     private final CampaignRepository campaignRepository;
     private final CharacterRepository characterRepository;
     private final GameSystemRegistry systemRegistry;
@@ -63,6 +64,7 @@ public class EncounterService {
     private final AttackService attackService;
     private final SkillService skillService;
     private final CheckService checkService;
+    private final RoundActions roundActions;
 
     /**
      * Раунд идущего боя кампании; null — боя нет.
@@ -117,7 +119,7 @@ public class EncounterService {
     }
 
     /**
-     * @param mapId карта боя кампании: бой играет на её копии, фишки расставляются сами; null — без карты
+     * @param mapId карта боя кампании: бой играет на её копии, фишки расставляются сами; null — пустая карта (R-14)
      */
     @Transactional
     public Encounter start(Long campaignId, List<Long> characterIds, boolean groupPlayers, boolean groupNpcs, Long mapId) {
@@ -138,6 +140,8 @@ public class EncounterService {
             EncounterParticipant participant = new EncounterParticipant();
             participant.setEncounter(encounter);
             participant.setCharacter(member(campaign, characterId));
+            // K-07: способности «раз за бой» — до инициативы
+            system.onEncounterStart(participant.getCharacter());
             roll(participant, system, dice);
             encounter.getParticipants().add(participant);
         }
@@ -148,6 +152,11 @@ public class EncounterService {
             encounter.setMapDoc(map.getDoc());
             encounter.setBattleMapId(map.getId());
             TokenPlacer.place(encounter.getParticipants(), new MapGrid(MapDoc.parse(map.getDoc()), system.getMapRules()));
+        } else {
+            // R-14: боёв без карты нет — пустая карта, фишки встают сами
+            MapDoc empty = MapDoc.empty(EMPTY_MAP_WIDTH, Math.max(EMPTY_MAP_HEIGHT, encounter.getParticipants().size()), system.getMapRules().cellMeters());
+            encounter.setMapDoc(empty.toJson());
+            TokenPlacer.place(encounter.getParticipants(), new MapGrid(empty, system.getMapRules()));
         }
         return encounterRepository.save(encounter);
     }
@@ -166,11 +175,14 @@ public class EncounterService {
         List<Character> fighters = ordered(encounter).stream().map(EncounterParticipant::getCharacter).toList();
         List<EncounterView.Row> rows = ordered(encounter).stream().map(participant -> {
             Character character = participant.getCharacter();
+            CombatCard card = system.getCombatCard(character);
             return new EncounterView.Row(participant, character, declaration(participant, system), available(participant, system), checks(character, system),
-                    system.getCombatCard(character), participant == current,
+                    card, participant == current,
                     weapons(character, system), targets(character, fighters, system), attackService.pendingBlasts(character.getId()),
                     List.copyOf(participant.getEffects()), abilities(character, system),
-                    system.getMapRules().movedAttackOption());
+                    RoundActions.done(participant, system.movementIsAction()),
+                    system.getAttackRules() == null ? null : system.getAttackRules().actionOption(RoundActions.done(participant, system.movementIsAction())),
+                    RoundActions.canAct(participant, system), healZones(character, card));
         }).toList();
         Set<Long> inFight = fighters.stream().map(Character::getId).collect(Collectors.toSet());
         List<Character> addable = encounter.getCampaign().getCharacters().stream()
@@ -219,17 +231,7 @@ public class EncounterService {
 
     /** Сначала то, что система считает нужным в бою; остальное — только изученное */
     private List<EncounterView.CheckOption> checks(Character character, GameSystem system) {
-        if (!skillService.hasCatalog(character.getId())) {
-            return List.of();
-        }
-        List<String> always = system.getCombatCheckSkills();
-        return skillService.getSheet(character.getId()).groups().stream()
-                .flatMap(group -> group.rows().stream())
-                .filter(row -> row.level() > 0 || row.override() != null || always.contains(row.code()))
-                .sorted(Comparator.comparing((SkillSheet.Row row) -> !always.contains(row.code())).thenComparing(SkillSheet.Row::name))
-                .map(row -> new EncounterView.CheckOption(row.customId() != null ? "custom:" + row.customId() : row.code(),
-                        row.name() + " " + row.total()))
-                .toList();
+        return skillService.checkOptions(character.getId());
     }
 
     private List<EncounterView.Ability> abilities(Character character, GameSystem system) {
@@ -268,12 +270,30 @@ public class EncounterService {
     @Transactional
     public Turn next(Long campaignId) {
         Encounter encounter = encounter(campaignId);
+        int round = encounter.getRound();
+        // J-01: новый раунд — запись журнала; урон горения и газа в его начале — её фишки
+        return journalService.capture(() -> nextTurn(encounter), turn -> {
+            if (encounter.getRound() != round) {
+                return new app.charka.journal.JournalService.Draft(encounter.getCampaign(), null, app.charka.journal.JournalService.Kind.ROUND,
+                        "Раунд " + encounter.getRound(), turn.report().isEmpty() ? "Начался" : String.join("; ", turn.report()),
+                        null, null, null, turn.report(), List.of());
+            }
+            // кто ходит теперь — строкой ленты, а не «✓ Следующий ход»
+            Character next = turn.character() == null ? null : encounter.getParticipants().stream()
+                    .map(EncounterParticipant::getCharacter).filter(c -> c.getId().equals(turn.character())).findFirst().orElse(null);
+            return next == null ? null : new app.charka.journal.JournalService.Draft(encounter.getCampaign(), next,
+                    app.charka.journal.JournalService.Kind.TURN, "Ходит " + next.getName(), null, null, null, null, List.of(), List.of());
+        });
+    }
+
+    private Turn nextTurn(Encounter encounter) {
         GameSystem system = system(encounter.getCampaign());
         EncounterParticipant current = current(encounter, system);
         if (current != null) {
             current.setDone(true);
             current.setWaiting(false);
         }
+        sitOut(encounter, system);
         EncounterParticipant next = current(encounter, system);
         List<String> report = List.of();
         if (next == null) {
@@ -293,6 +313,21 @@ public class EncounterService {
         if (!participant.isDone()) {
             participant.setWaiting(true);
         }
+    }
+
+    /**
+     * K-07: рывок — действие раунда отдано на ещё одно перемещение (Космозэки: действие можно обменять, перемещение — нет).
+     *
+     * @throws IllegalArgumentException действие в этом раунде уже сделано
+     */
+    @Transactional
+    public void dash(Long campaignId, Long participantId) {
+        EncounterParticipant participant = participant(campaignId, participantId);
+        roundActions.requireTurn(participant);
+        if (participant.getActions() > 0) {
+            throw new IllegalArgumentException("Действие в этом раунде уже сделано");
+        }
+        participant.setActions(participant.getActions() + 1);
     }
 
     /**
@@ -400,7 +435,12 @@ public class EncounterService {
 
     @Transactional
     public SkillCheck check(Long campaignId, Long participantId, String skill, Integer difficulty, int modifier, int luck) {
-        Character character = participant(campaignId, participantId).getCharacter();
+        EncounterParticipant checking = participant(campaignId, participantId);
+        Character character = checking.getCharacter();
+        // A-05: проверка в бою — действие; BF-02: игрок — на своём ходу
+        roundActions.requireTurn(checking);
+        RoundActions.require(checking, system(checking.getEncounter().getCampaign()));
+        checking.setActions(checking.getActions() + 1);
         return skill.startsWith(CUSTOM_SKILL)
                 ? skillService.check(character.getId(), null, Long.valueOf(skill.substring(CUSTOM_SKILL.length())), modifier, difficulty, luck)
                 : skillService.check(character.getId(), skill, null, modifier, difficulty, luck);
@@ -432,6 +472,9 @@ public class EncounterService {
             throw new IllegalArgumentException("Такого противостояния нет: " + code);
         }
         app.charka.check.CheckRequest own = system.getContestRequest(code, initiator.getCharacter());
+        roundActions.requireTurn(initiator);
+        RoundActions.require(initiator, system);
+        initiator.setActions(initiator.getActions() + 1);
         if (luck > 0) {
             system.spendLuck(initiator.getCharacter(), luck);
             own = own.withPart(GameSystem.luckPart(luck));
@@ -475,6 +518,15 @@ public class EncounterService {
         sortByInitiative(participant.getEncounter());
     }
 
+    /** BF-02: кто ходит сейчас; null — боя нет или ходить некому */
+    @Transactional(readOnly = true)
+    public Long currentCharacterId(Long campaignId) {
+        return encounterRepository.findByCampaignId(campaignId)
+                .map(encounter -> current(encounter, system(encounter.getCampaign())))
+                .map(participant -> participant.getCharacter().getId())
+                .orElse(null);
+    }
+
     /**
      * Персонаж участника: в его строке показывается итог действия.
      */
@@ -491,14 +543,91 @@ public class EncounterService {
      */
     @Transactional
     public HealthEvent damage(Long campaignId, Long participantId, int amount, String location, String damageType) {
+        return damage(campaignId, participantId, amount, location, damageType, 1, false);
+    }
+
+    /**
+     * K-03: то же несколькими попаданиями ({@code hits}: броня вычитается из каждого) и оружием «броня ½».
+     */
+    @Transactional
+    public HealthEvent damage(Long campaignId, Long participantId, int amount, String location, String damageType, int hits, boolean armorHalf) {
         Character character = participant(campaignId, participantId).getCharacter();
+        Map<String, Integer> extras = new java.util.HashMap<>();
+        if (hits > 1) {
+            extras.put("hits", hits);
+        }
+        if (armorHalf) {
+            extras.put("armorHalf", 1);
+        }
         DamageRequest request = DamageRequest.builder()
                 .amount(amount)
                 .location(location == null || location.isBlank() ? null : location)
                 .damageType(damageType == null || damageType.isBlank() ? null : damageType)
+                .extras(extras)
                 .build();
         return healthCounterService.applyDamage(character.getId(), request)
                 .orElseThrow(() -> new IllegalArgumentException("У персонажа нет счётчика здоровья"));
+    }
+
+    /**
+     * GM-01: мастер лечит участника с карты боя (не медпомощь: без броска и без действия).
+     *
+     * @param location зона, если система лечит по зонам; пусто — целиком
+     * @throws IllegalArgumentException если у персонажа нет здоровья или очков меньше одного
+     */
+    @Transactional
+    public HealthEvent heal(Long campaignId, Long participantId, int points, String location) {
+        if (points < 1) {
+            throw new IllegalArgumentException("Сколько вылечить — от 1");
+        }
+        Character character = participant(campaignId, participantId).getCharacter();
+        return healthCounterService.heal(character.getId(), healthCounter(character), points, location);
+    }
+
+    /** Предел правки действий мастером: столько можно дать сверх или забрать за раунд */
+    static final int ACTIONS_ADJUST_LIMIT = 5;
+
+    /**
+     * GM-01: мастер даёт участнику ещё действие в этом раунде ({@code delta} &lt; 0 — счётчик сделанных меньше)
+     * или забирает ({@code delta} &gt; 0). Новый раунд обнуляет, как обычно. Запись в журнале боя.
+     *
+     * @return сколько действий сделано теперь
+     */
+    @Transactional
+    public int adjustActions(Long campaignId, Long participantId, int delta) {
+        EncounterParticipant participant = participant(campaignId, participantId);
+        Character character = participant.getCharacter();
+        int before = participant.getActions();
+        int after = Math.max(-ACTIONS_ADJUST_LIMIT, Math.min(ACTIONS_ADJUST_LIMIT, before + delta));
+        if (after == before) {
+            throw new IllegalArgumentException(delta < 0 ? "Больше действий в этом раунде дать нельзя" : "Больше действий забрать нельзя");
+        }
+        return journalService.capture(() -> {
+            participant.setActions(after);
+            return after;
+        }, done -> new app.charka.journal.JournalService.Draft(character.getCampaign(), character,
+                app.charka.journal.JournalService.Kind.TURN,
+                (after < before ? "Мастер дал действие: " : "Мастер забрал действие: ") + character.getName(),
+                actionsLeft(participant, system(character.getCampaign())), null, null, null, List.of(), List.of()));
+    }
+
+    /** Сколько действий осталось в раунде — словами для журнала и итога */
+    static String actionsLeft(EncounterParticipant participant, GameSystem system) {
+        int limit = system.actionsPerRound();
+        int done = RoundActions.done(participant, system.movementIsAction());
+        if (limit <= 0) {
+            return "Сделано действий в раунде: " + Math.max(0, done);
+        }
+        int left = Math.max(0, limit - done);
+        return left == 0 ? "Действий в раунде не осталось" : "Осталось действий в раунде: " + left;
+    }
+
+    /** GM-01: зоны для лечения мастером — те же, что для урона, если система лечит по зонам */
+    private List<CombatCard.Option> healZones(Character character, CombatCard card) {
+        if (card.healthCounterId() == null || card.locations().isEmpty()) {
+            return List.of();
+        }
+        return healthCounterService.healsByLocation(character.getId(), card.healthCounterId()) ? card.locations() : List.of();
     }
 
     /**
@@ -573,23 +702,103 @@ public class EncounterService {
         return report;
     }
 
-    /** Новый раунд: все снова ходят; очередь бросается заново, если так велит система */
+    /**
+     * Новый раунд: все снова ходят; очередь бросается заново, если так решила кампания (A-13). Без нового броска
+     * прибавка объявления прошлого раунда (быстрое выхватывание +3) снимается: она была на один раунд.
+     */
     private void startRound(Encounter encounter, GameSystem system) {
         encounter.setRound(encounter.getRound() + 1);
         RoundDice dice = new RoundDice(encounter);
+        boolean reroll = encounter.getCampaign().isInitiativeEachRound();
         encounter.getParticipants().forEach(participant -> {
+            if (!reroll) {
+                if (participant.getDeclaration() != null) {
+                    withdrawDeclaration(participant, system);
+                }
+                applyEffectBonus(participant);
+            }
             participant.setDone(false);
             participant.setWaiting(false);
             participant.setDeclaration(null);
             participant.setMovedMeters(0);
-            if (system.rollsInitiativeEachRound()) {
+            participant.setActions(0);
+            if (reroll) {
                 roll(participant, system, dice);
             }
         });
-        if (system.rollsInitiativeEachRound()) {
-            sortByInitiative(encounter);
-        }
+        sortByInitiative(encounter);
+        sitOut(encounter, system);
     }
+
+    /**
+     * BF-01: выбывший (без сознания, мёртв) пропускает раунд целиком: ход прошёл мимо — он «походил», а действие
+     * раунда потрачено. Вылечили в том же раунде — ходит и действует только со следующего; лишнее действие может дать
+     * мастер (GM-01). HOMEBREW: решение автора, в правилах систем об этом нет.
+     */
+    private void sitOut(Encounter encounter, GameSystem system) {
+        int limit = system.actionsPerRound();
+        encounter.getParticipants().stream()
+                .filter(participant -> !participant.isDone())
+                .filter(participant -> system.getCombatCard(participant.getCharacter()).out())
+                .forEach(participant -> {
+                    participant.setDone(true);
+                    participant.setWaiting(false);
+                    if (limit > 0) {
+                        participant.setActions(Math.max(participant.getActions(), limit));
+                    }
+                });
+    }
+
+    private static void withdrawDeclaration(EncounterParticipant participant, GameSystem system) {
+        system.getInitiativeDeclarations(participant.getCharacter()).stream()
+                .filter(declaration -> declaration.code().equals(participant.getDeclaration()))
+                .findFirst()
+                .ifPresent(declaration -> {
+                    participant.setInitiative(participant.getInitiative() - declaration.bonus());
+                    String tail = " + " + declaration.label() + " " + declaration.bonus();
+                    String details = participant.getInitiativeDetails();
+                    if (details != null && details.endsWith(tail)) {
+                        participant.setInitiativeDetails(details.substring(0, details.length() - tail.length()));
+                    }
+                });
+    }
+
+    private static final java.util.regex.Pattern EFFECT_BONUS = java.util.regex.Pattern.compile(" [+] эффекты (-?[0-9]+)$");
+
+    /**
+     * Без нового броска прибавки эффектов к инициативе (Speedware +3 на 5 раундов) меняют её сами: то, что прибавлено
+     * при прошлом броске или раунде, записано в конце расшифровки «+ эффекты N».
+     */
+    private static void applyEffectBonus(EncounterParticipant participant) {
+        int bonus = participant.getEffects().stream()
+                .mapToInt(effect -> Integer.parseInt(effect.getData().getOrDefault(INITIATIVE_BONUS, "0")))
+                .sum();
+        String details = participant.getInitiativeDetails() == null ? "" : participant.getInitiativeDetails();
+        java.util.regex.Matcher applied = EFFECT_BONUS.matcher(details);
+        int old = applied.find() ? Integer.parseInt(applied.group(1)) : 0;
+        if (bonus == old) {
+            return;
+        }
+        String base = applied.find(0) ? details.substring(0, applied.start()) : details;
+        participant.setInitiative(participant.getInitiative() - old + bonus);
+        participant.setInitiativeDetails(base + (bonus != 0 ? " + эффекты " + bonus : ""));
+    }
+
+    /** A-13: мастер переключает, бросать ли инициативу каждый раунд; действует с нового раунда */
+    @Transactional
+    public void setInitiativeEachRound(Long campaignId, boolean eachRound) {
+        campaign(campaignId).setInitiativeEachRound(eachRound);
+    }
+
+    /** M-16: туман для игроков — выбор кампании */
+    @Transactional
+    public void setFogOfWar(Long campaignId, boolean on) {
+        campaign(campaignId).setFogOfWar(on);
+    }
+
+    /** R-14: пустая карта, если мастер не выбрал: клеток с запасом на участников */
+    public static final int EMPTY_MAP_WIDTH = 24;
+    public static final int EMPTY_MAP_HEIGHT = 16;
 
     /** Первый, кто ещё не ходил; ждавшие получают ход, когда больше ходить некому */
     private EncounterParticipant current(Encounter encounter, GameSystem system) {
@@ -613,6 +822,7 @@ public class EncounterService {
         EncounterParticipant participant = new EncounterParticipant();
         participant.setEncounter(encounter);
         participant.setCharacter(character);
+        system.onEncounterStart(character);
         roll(participant, system, new RoundDice(encounter));
         return participant;
     }

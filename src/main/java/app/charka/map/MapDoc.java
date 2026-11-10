@@ -28,10 +28,12 @@ import java.util.Map;
  * @param zones  зоны старта
  * @param labels подписи
  * @param bg     где лежит подложка, в клетках; null — подложки нет или она не размещена
+ * @param ground M-22: название нижнего уровня (сами стены, клетки, предметы и подписи выше — его); null — «1 этаж»
+ * @param levels M-22: уровни выше нижнего по порядку — второй этаж, крыша; того же размера. Пусто — карта плоская
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record MapDoc(int v, int w, int h, int cell, Map<String, String> walls, Map<String, String> cells,
-                     List<Stamp> stamps, List<Zone> zones, List<Label> labels, Background bg) {
+                     List<Stamp> stamps, List<Zone> zones, List<Label> labels, Background bg, String ground, List<Floor> levels) {
 
     public static final int VERSION = 1;
     public static final int MAX_SIZE = 200;
@@ -48,11 +50,89 @@ public record MapDoc(int v, int w, int h, int cell, Map<String, String> walls, M
         stamps = stamps == null ? new ArrayList<>() : new ArrayList<>(stamps);
         zones = zones == null ? new ArrayList<>() : new ArrayList<>(zones);
         labels = labels == null ? new ArrayList<>() : new ArrayList<>(labels);
+        levels = levels == null ? new ArrayList<>() : new ArrayList<>(levels);
     }
 
     public MapDoc(int v, int w, int h, int cell, Map<String, String> walls, Map<String, String> cells,
                   List<Stamp> stamps, List<Zone> zones, List<Label> labels) {
-        this(v, w, h, cell, walls, cells, stamps, zones, labels, null);
+        this(v, w, h, cell, walls, cells, stamps, zones, labels, null, null, null);
+    }
+
+    /** HOMEBREW: высота этажа по умолчанию, м — в книге нет */
+    public static final int FLOOR_HEIGHT = 3;
+
+    /**
+     * M-22: уровень выше нижнего — свои стены, клетки, предметы и подписи; зоны старта только внизу.
+     *
+     * @param name название: «2 этаж», «Крыша»
+     * @param z    высота пола над нижним уровнем, м
+     */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record Floor(String name, int z, Map<String, String> walls, Map<String, String> cells, List<Stamp> stamps, List<Label> labels) {
+
+        public Floor {
+            walls = walls == null ? new LinkedHashMap<>() : new LinkedHashMap<>(walls);
+            cells = cells == null ? new LinkedHashMap<>() : new LinkedHashMap<>(cells);
+            stamps = stamps == null ? new ArrayList<>() : new ArrayList<>(stamps);
+            labels = labels == null ? new ArrayList<>() : new ArrayList<>(labels);
+        }
+
+        public static Floor empty(String name, int z) {
+            return new Floor(name, z, null, null, null, null);
+        }
+    }
+
+    /** Сколько уровней: нижний и те, что выше */
+    public int levelCount() {
+        return 1 + levels.size();
+    }
+
+    /** Название уровня */
+    public String levelName(int level) {
+        if (level == 0) {
+            return ground == null || ground.isBlank() ? "1 этаж" : ground;
+        }
+        return levels.get(level - 1).name();
+    }
+
+    /** Высота пола уровня, м */
+    public int levelZ(int level) {
+        return level == 0 ? 0 : levels.get(level - 1).z();
+    }
+
+    public boolean hasLevel(int level) {
+        return level >= 0 && level < levelCount();
+    }
+
+    /**
+     * Уровень как отдельная плоская карта: геометрия считается по ней ({@link MapGrid}). Правка вида не меняет документ —
+     * верните её {@link #withLevel}.
+     *
+     * @throws IllegalArgumentException если уровня нет
+     */
+    public MapDoc level(int level) {
+        if (!hasLevel(level)) {
+            throw new IllegalArgumentException("Нет такого уровня: " + level);
+        }
+        if (level == 0) {
+            return levels.isEmpty() ? this : new MapDoc(v, w, h, cell, walls, cells, stamps, zones, labels, bg, ground, null);
+        }
+        Floor floor = levels.get(level - 1);
+        return new MapDoc(v, w, h, cell, floor.walls(), floor.cells(), floor.stamps(), null, floor.labels(), null, floor.name(), null);
+    }
+
+    /** Документ, в котором уровень заменён правленым видом {@link #level} */
+    public MapDoc withLevel(int level, MapDoc view) {
+        if (!hasLevel(level)) {
+            throw new IllegalArgumentException("Нет такого уровня: " + level);
+        }
+        if (level == 0) {
+            return new MapDoc(v, w, h, cell, view.walls(), view.cells(), view.stamps(), zones, view.labels(), bg, ground, levels);
+        }
+        List<Floor> floors = new ArrayList<>(levels);
+        Floor old = floors.get(level - 1);
+        floors.set(level - 1, new Floor(old.name(), old.z(), view.walls(), view.cells(), view.stamps(), view.labels()));
+        return new MapDoc(v, w, h, cell, walls, cells, stamps, zones, labels, bg, ground, floors);
     }
 
     /**
@@ -66,7 +146,7 @@ public record MapDoc(int v, int w, int h, int cell, Map<String, String> walls, M
     }
 
     public MapDoc withBackground(Background background) {
-        return new MapDoc(v, w, h, cell, walls, cells, stamps, zones, labels, background);
+        return new MapDoc(v, w, h, cell, walls, cells, stamps, zones, labels, background, ground, levels);
     }
 
     /**
@@ -182,12 +262,18 @@ public record MapDoc(int v, int w, int h, int cell, Map<String, String> walls, M
             throw new IllegalArgumentException("В клетке хотя бы метр");
         }
         walls.keySet().forEach(this::requireEdge);
-        cells.keySet().forEach(key -> {
-            int[] xy = cellOf(key);
-            if (!inside(xy[0], xy[1])) {
-                throw new IllegalArgumentException("Клетка за краем карты: " + key);
-            }
-        });
+        cells.keySet().forEach(this::requireCell);
+        for (Floor floor : levels) {
+            floor.walls().keySet().forEach(this::requireEdge);
+            floor.cells().keySet().forEach(this::requireCell);
+        }
+    }
+
+    private void requireCell(String key) {
+        int[] xy = cellOf(key);
+        if (!inside(xy[0], xy[1])) {
+            throw new IllegalArgumentException("Клетка за краем карты: " + key);
+        }
     }
 
     public boolean inside(int x, int y) {

@@ -52,15 +52,35 @@ public class HealthCounterService {
     /** Тоже через провайдер: реестр собирает системы, а система CP2020 зависит от этого сервиса */
     private final ObjectProvider<GameSystemRegistry> systemRegistry;
     private final WoundRepository woundRepository;
+    private final app.charka.encounter.RoundActions roundActions;
+    private final app.charka.journal.JournalService journalService;
+
+    /**
+     * J-01: действие со здоровьем — запись журнала «Урон: Олежа», «Спасбросок: Олежа»; внутри атаки — фишки её записи.
+     */
+    private HealthEvent journaled(Character who, String title, java.util.function.Supplier<HealthEvent> action) {
+        return journalService.capture(() -> {
+            HealthEvent event = action.get();
+            app.charka.journal.JournalService.health(who.getName(), event);
+            return event;
+        }, event -> event == null ? null : new app.charka.journal.JournalService.Draft(who.getCampaign(), who,
+                app.charka.journal.JournalService.Kind.HEALTH, title + ": " + who.getName(), event.getSummary(), null, null, null,
+                event.getSteps(), List.of()));
+    }
 
     @Transactional
     public HealthEvent applyDamage(Long characterId, Long counterId, HealthDamageRequestDto requestDto) {
         CounterContext context = contextFor(characterId, counterId);
+        return journaled(context.getCounter().getCharacter(), "Урон", () -> applyDamage(context, requestDto));
+    }
+
+    private HealthEvent applyDamage(CounterContext context, HealthDamageRequestDto requestDto) {
         DamageRequest request = DamageRequest.builder()
                 .amount(requestDto.getAmount())
                 .location(requestDto.getLocation())
                 .damageType(requestDto.getDamageType())
                 .autoSave(requestDto.isAutoSave())
+                .extras(requestDto.extras())
                 .build();
         int before = context.getCounter().getValue();
         HealthEvent event = strategyFor(context).applyDamage(context, request);
@@ -85,9 +105,12 @@ public class HealthCounterService {
                     return Optional.of(new HealthEvent().step("Цель уже мертва").summary("Цель уже мертва"));
                 }
                 int before = counter.getValue();
-                HealthEvent event = health.applyDamage(context, request);
-                counterRepository.saveAll(siblings);
-                logDamage(context, before, event);
+                HealthEvent event = journaled(counter.getCharacter(), "Урон", () -> {
+                    HealthEvent applied = health.applyDamage(context, request);
+                    counterRepository.saveAll(siblings);
+                    logDamage(context, before, applied);
+                    return applied;
+                });
                 return Optional.of(event);
             }
         }
@@ -109,8 +132,11 @@ public class HealthCounterService {
                 if (health.isDead(context)) {
                     return Optional.of(new HealthEvent().step("Цель уже мертва").summary("Цель уже мертва"));
                 }
-                HealthEvent event = health.save(context, saveType, null, modifier);
-                counterRepository.saveAll(siblings);
+                HealthEvent event = journaled(counter.getCharacter(), "Спасбросок", () -> {
+                    HealthEvent saved = health.save(context, saveType, null, modifier);
+                    counterRepository.saveAll(siblings);
+                    return saved;
+                });
                 return Optional.of(event);
             }
         }
@@ -129,10 +155,26 @@ public class HealthCounterService {
 
     @Transactional
     public HealthEvent heal(Long characterId, Long counterId, int points) {
+        return heal(characterId, counterId, points, null);
+    }
+
+    /**
+     * GM-01: лечение зоны ({@code location}), если система лечит по зонам; пусто — целиком.
+     */
+    @Transactional
+    public HealthEvent heal(Long characterId, Long counterId, int points, String location) {
         CounterContext context = contextFor(characterId, counterId);
-        HealthEvent event = strategyFor(context).heal(context, points);
-        counterRepository.save(context.getCounter());
-        return event;
+        return journaled(context.getCounter().getCharacter(), "Лечение", () -> {
+            HealthEvent event = strategyFor(context).heal(context, points, location == null || location.isBlank() ? null : location);
+            counterRepository.save(context.getCounter());
+            return event;
+        });
+    }
+
+    /** GM-01: лечит ли система этого счётчика по зонам */
+    @Transactional(readOnly = true)
+    public boolean healsByLocation(Long characterId, Long counterId) {
+        return strategyFor(contextFor(characterId, counterId)).healsByLocation();
     }
 
     /**
@@ -147,17 +189,21 @@ public class HealthCounterService {
     @Transactional
     public HealthEvent save(Long characterId, Long counterId, String saveType, Integer roll, int luck) {
         CounterContext context = contextFor(characterId, counterId);
-        HealthEvent event = strategyFor(context).save(context, saveType, roll, 0, luck);
-        counterRepository.save(context.getCounter());
-        return event;
+        return journaled(context.getCounter().getCharacter(), "Спасбросок", () -> {
+            HealthEvent event = strategyFor(context).save(context, saveType, roll, 0, luck);
+            counterRepository.save(context.getCounter());
+            return event;
+        });
     }
 
     @Transactional
     public HealthEvent stabilize(Long characterId, Long counterId) {
         CounterContext context = contextFor(characterId, counterId);
-        HealthEvent event = strategyFor(context).stabilize(context);
-        counterRepository.save(context.getCounter());
-        return event;
+        return journaled(context.getCounter().getCharacter(), "Стабилизация", () -> {
+            HealthEvent event = strategyFor(context).stabilize(context);
+            counterRepository.save(context.getCounter());
+            return event;
+        });
     }
 
     /**
@@ -194,17 +240,66 @@ public class HealthCounterService {
         if (difficulty == null) {
             throw new IllegalArgumentException("Сейчас это не нужно");
         }
-        SkillCheck check = skillService.getObject().check(healerId, option.skillCode(), null, modifier, difficulty, Math.max(0, luck));
+        roundActions.require(healer);
+        return journaled(patient, "Медпомощь", () -> care(context, strategy, option, patient, healer, modifier, difficulty, luck));
+    }
+
+    private HealthEvent care(CounterContext context, HealthCounterStrategy strategy, CareOption option, Character patient, Character healer,
+                             int modifier, int difficulty, int luck) {
+        SkillCheck check = skillService.getObject().check(healer.getId(), option.skillCode(), null, modifier, difficulty, Math.max(0, luck));
         HealthEvent event = new HealthEvent();
+        event.chip(Boolean.TRUE.equals(check.result().success()) ? "ok" : "bad", healer.getName() + ": " + (Boolean.TRUE.equals(check.result().success()) ? "помог" : "не помог"));
         event.step(healer.getName() + ", " + check.label() + ": " + check.result().outcome());
         check.result().steps().forEach(step -> event.step("  " + step));
         HealthEvent result = strategy.applyCare(context, option, Boolean.TRUE.equals(check.result().success()));
         result.getSteps().forEach(event::step);
+        result.getChips().forEach(chip -> event.chip(chip.kind(), chip.text()));
         counterRepository.save(context.getCounter());
         if (Boolean.TRUE.equals(check.result().success())) {
             log(patient, healer.getName() + ": " + result.getSummary(), null);
         }
+        // A-05: медпомощь в бою — действие медика
+        roundActions.count(healer);
         return event.summary(result.getSummary());
+    }
+
+    /** A-10: какая медпомощь бывает у системы здоровья этого счётчика */
+    @Transactional(readOnly = true)
+    public List<CareOption> careOptions(Long characterId, Long counterId) {
+        return strategyFor(contextFor(characterId, counterId)).getCareOptions();
+    }
+
+    /** K-08: выбор отдыха у системы здоровья персонажа; пусто — его нет */
+    @Transactional(readOnly = true)
+    public List<app.charka.item.ItemField.Option> restOptions(Counter health) {
+        return strategyFactory.findStrategy(health.getType()).orElse(null) instanceof HealthCounterStrategy strategy
+                ? strategy.getRestOptions() : List.of();
+    }
+
+    @Transactional(readOnly = true)
+    public String rest(Counter health) {
+        return strategyFactory.findStrategy(health.getType()).orElse(null) instanceof HealthCounterStrategy strategy
+                ? strategy.getRest(health) : null;
+    }
+
+    /** K-08: запомнить, как персонаж отдыхает (при промотке времени) */
+    @Transactional
+    public void setRest(Long characterId, String rest) {
+        healthCounter(characterId).ifPresent(health -> {
+            if (strategyFactory.findStrategy(health.getType()).orElse(null) instanceof HealthCounterStrategy strategy
+                    && !strategy.getRestOptions().isEmpty()) {
+                strategy.setRest(health, rest);
+                counterRepository.save(health);
+            }
+        });
+    }
+
+    /** A-10: счётчик здоровья персонажа; пусто — у системы его нет */
+    @Transactional(readOnly = true)
+    public Optional<Counter> healthCounter(Long characterId) {
+        return counterRepository.findByCharacterId(characterId).stream()
+                .filter(counter -> strategyFactory.findStrategy(counter.getType()).orElse(null) instanceof HealthCounterStrategy)
+                .findFirst();
     }
 
     /**

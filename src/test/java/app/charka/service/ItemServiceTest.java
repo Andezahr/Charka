@@ -39,6 +39,7 @@ class ItemServiceTest {
     @Mock private InventoryRepository inventoryRepository;
     @Mock private GameSystemRegistry systemRegistry;
     @Mock private GameSystem gameSystem;
+    @Mock private app.charka.encounter.RoundActions roundActions;
     @InjectMocks private ItemServiceImpl itemService;
 
     private static final String NOT_FOUND_MSG = "Item not found for id=%d";

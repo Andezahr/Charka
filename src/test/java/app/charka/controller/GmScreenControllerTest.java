@@ -40,7 +40,7 @@ class GmScreenControllerTest {
     @Autowired private EntityManager entityManager;
 
     @Test
-    @DisplayName("Все персонажи CP2020: состояние, SP, статы, деньги, эффекты, удача; ссылка со страницы кампании")
+    @DisplayName("Все персонажи CP2020 на обзоре: состояние, SP, статы, деньги, эффекты, удача; /gm ведёт туда")
     void screen() throws Exception {
         Campaign created = new Campaign();
         created.setName("Ночной город");
@@ -59,12 +59,13 @@ class GmScreenControllerTest {
         entityManager.flush();
         entityManager.clear();
 
-        String page = mockMvc.perform(get("/campaign/" + campaign.getId() + "/gm"))
+        // R-10: экран мастера — список обзора кампании, старый адрес ведёт туда
+        mockMvc.perform(get("/campaign/" + campaign.getId() + "/gm"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl("/campaign/" + campaign.getId()));
+        String page = mockMvc.perform(get("/campaign/" + campaign.getId()))
                 .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
 
         assertThat(page).contains("Колясик").contains("SP голова 0").contains("750").contains("Boost 3 ч")
-                .contains("Удача 6").contains("INT 7*");
-        assertThat(mockMvc.perform(get("/campaign/" + campaign.getId())).andReturn().getResponse()
-                .getContentAsString(StandardCharsets.UTF_8)).contains("/gm");
+                .contains("🍀 6").contains("INT 7*").contains("Открыть лист").doesNotContain(">Мастер</a>");
     }
 }

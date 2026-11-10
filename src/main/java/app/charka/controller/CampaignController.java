@@ -52,7 +52,8 @@ public class CampaignController {
     }
 
     @GetMapping
-    public String campaignPage(@PathVariable Long campaignId, @RequestParam(defaultValue = "0") int rolls, Model model) {
+    public String campaignPage(@PathVariable Long campaignId, @RequestParam(defaultValue = "0") int rolls, Model model,
+                               jakarta.servlet.http.HttpServletRequest request) {
         Campaign campaign = campaignService.getById(campaignId);
 
         LocalDate currentDate = campaign.getCurrentDate();
@@ -66,19 +67,34 @@ public class CampaignController {
         model.addAttribute("securityOn", accessService.isEnabled());
         model.addAttribute("chatCharacters", visible);
         model.addAttribute("currentDate", currentDate);
+        // R-11: хроника — новые сверху
+        model.addAttribute("chronicles", campaign.getChronicles().stream()
+                .sorted(java.util.Comparator.comparing(app.charka.model.Chronicle::getEndDate, java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder()))
+                        .thenComparing(app.charka.model.Chronicle::getId, java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())))
+                .toList());
         GameSystem gameSystem = systemRegistry.find(campaign.getSystem()).orElseGet(systemRegistry::getGeneric);
         model.addAttribute("gameSystem", gameSystem);
         model.addAttribute("npcTemplates", gameSystem.getNpcTemplates());
+        // R-10: строки экрана мастера — список персонажей обзора
+        List<GmScreenController.Row> rows = GmScreenController.rows(visible, gameSystem);
+        model.addAttribute("playerRows", rows.stream().filter(row -> !row.character().isNpc()).toList());
+        model.addAttribute("npcRows", rows.stream().filter(row -> row.character().isNpc()).toList());
+        model.addAttribute("currency", gameSystem.getCurrency());
+        // роли строкой; состояние и SP строка берёт у системы (как в бою), а не из краткой сводки
+        model.addAttribute("rosterRoles", visible.stream()
+                .collect(Collectors.toMap(Character::getId, character -> gameSystem.rolesOf(character).stream()
+                        .map(app.charka.skill.CharacterRole::name).toList())));
         model.addAttribute("briefs", campaign.getCharacters().stream()
                 .collect(Collectors.toMap(Character::getId, gameSystem::getCharacterBrief)));
         model.addAttribute("quickDice", gameSystem.getQuickDice());
-        model.addAttribute("difficultyPresets", gameSystem.getCheckResolver().getDifficultyPresets());
+        model.addAttribute("difficultyPresets", gameSystem.getTableCheckResolver().getDifficultyPresets());
         org.springframework.data.domain.Page<app.charka.model.RollLog> rollPage = diceService.pageForCampaign(campaignId, rolls, ROLLS_PER_PAGE);
         model.addAttribute("recentRolls", rollPage.getContent());
         model.addAttribute("rollPage", rollPage);
-        model.addAttribute("feed", chatService.feed(campaignId, ChatController.FEED_SIZE));
+        model.addAttribute("feed", chatService.feedFor(campaign, ChatController.FEED_SIZE));
         model.addAttribute("awardCounters", awardService.awardableCounters(campaignId));
         model.addAttribute("hasCreation", creations.stream().anyMatch(creation -> creation.getSystemCode().equals(campaign.getSystem())));
+        // A-02: приглашение — во вкладке «Настройки» (R-13)
 
         return "campaign";
     }
@@ -89,7 +105,7 @@ public class CampaignController {
     @PostMapping("/characters/{characterId}/player")
     @org.springframework.transaction.annotation.Transactional
     public String assignPlayer(@PathVariable Long campaignId, @PathVariable Long characterId, @RequestParam(defaultValue = "") String username,
-                               RedirectAttributes redirectAttributes) {
+                               RedirectAttributes redirectAttributes, jakarta.servlet.http.HttpServletRequest request) {
         Character character = campaignService.getById(campaignId).getCharacters().stream()
                 .filter(candidate -> candidate.getId().equals(characterId)).findFirst()
                 .orElseThrow(app.charka.exception.NotFoundException.forId("Character", characterId));
@@ -100,7 +116,7 @@ public class CampaignController {
             userRepository.findByUsername(login).ifPresentOrElse(character::setPlayer,
                     () -> redirectAttributes.addFlashAttribute("playerError", "Нет пользователя «" + login + "»: пусть сначала зарегистрируется"));
         }
-        return "redirect:/campaign/" + campaignId;
+        return "redirect:" + Referers.back(request, "/campaign/" + campaignId);
     }
 
     /**

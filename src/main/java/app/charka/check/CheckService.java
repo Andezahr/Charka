@@ -13,6 +13,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 /**
  * Проверки «бросок + модификатор против сложности» по правилам системы кампании; каждая пишется в лог бросков.
  */
@@ -25,6 +27,7 @@ public class CheckService {
     private final GameSystemRegistry systemRegistry;
     private final DiceRoller diceRoller;
     private final DiceService diceService;
+    private final app.charka.journal.JournalService journalService;
     private final CharacterRepository characterRepository;
     private final CampaignRepository campaignRepository;
 
@@ -33,11 +36,44 @@ public class CheckService {
      */
     @Transactional
     public CheckResult checkForCharacter(Long characterId, CheckRequest request) {
+        return checkForCharacter(characterId, request, false);
+    }
+
+    /**
+     * KF-09: проверка «за столом» — из чата, кубиков, запроса мастера — бросается кубиком проверки вне боя
+     * ({@code GameSystem.getTableCheckResolver()}); атаки и навыки идут через {@link #checkForCharacter(Long, CheckRequest)}.
+     */
+    @Transactional
+    public CheckResult tableCheckForCharacter(Long characterId, CheckRequest request) {
+        return checkForCharacter(characterId, request, true);
+    }
+
+    private CheckResult checkForCharacter(Long characterId, CheckRequest request, boolean table) {
         Character character = characterRepository.findById(characterId)
                 .orElseThrow(CharacterNotFoundException.forId(characterId));
-        CheckResult result = systemRegistry.forCharacter(character).getCheckResolver().resolve(request, diceRoller);
-        log(character.getCampaign(), character, request, result);
-        return result;
+        return journalService.capture(() -> {
+            app.charka.system.GameSystem system = systemRegistry.forCharacter(character);
+            CheckResult result = (table ? system.getTableCheckResolver() : system.getCheckResolver()).resolve(request, diceRoller);
+            log(character.getCampaign(), character, request, result);
+            app.charka.journal.JournalService.check(result);
+            return result;
+        }, result -> draft(character.getCampaign(), character, request, result));
+    }
+
+    /** J-01: проверка в журнале — «Внимательность: 17 vs 15», фишка «Успех» или «Провал» */
+    private static app.charka.journal.JournalService.Draft draft(Campaign campaign, Character character, CheckRequest request, CheckResult result) {
+        List<app.charka.journal.JournalService.Chip> chips = new java.util.ArrayList<>();
+        if (result.fumble()) {
+            chips.add(new app.charka.journal.JournalService.Chip("bad", "Критический провал"));
+        } else if (result.success() != null) {
+            chips.add(new app.charka.journal.JournalService.Chip(result.success() ? "ok" : "bad", result.success() ? "Успех" : "Провал"));
+        }
+        if (result.critical() && !result.fumble()) {
+            chips.add(new app.charka.journal.JournalService.Chip("crit", "Крит"));
+        }
+        String label = request.label() == null || request.label().isBlank() ? DEFAULT_LABEL : request.label();
+        return new app.charka.journal.JournalService.Draft(campaign, character, app.charka.journal.JournalService.Kind.CHECK, label,
+                result.outcome(), result.success(), result.total(), result.difficulty(), result.steps(), chips);
     }
 
     /**
@@ -45,12 +81,25 @@ public class CheckService {
      */
     @Transactional
     public CheckResult checkForCampaign(Long campaignId, CheckRequest request) {
+        return checkForCampaign(campaignId, request, false);
+    }
+
+    /** KF-09: проверка мастера за столом — кубиком проверки вне боя */
+    @Transactional
+    public CheckResult tableCheckForCampaign(Long campaignId, CheckRequest request) {
+        return checkForCampaign(campaignId, request, true);
+    }
+
+    private CheckResult checkForCampaign(Long campaignId, CheckRequest request, boolean table) {
         Campaign campaign = campaignRepository.findById(campaignId)
                 .orElseThrow(NotFoundException.forId("Campaign", campaignId));
-        CheckResult result = systemRegistry.find(campaign.getSystem()).orElseGet(systemRegistry::getGeneric)
-                .getCheckResolver().resolve(request, diceRoller);
-        log(campaign, null, request, result);
-        return result;
+        return journalService.capture(() -> {
+            app.charka.system.GameSystem system = systemRegistry.find(campaign.getSystem()).orElseGet(systemRegistry::getGeneric);
+            CheckResult result = (table ? system.getTableCheckResolver() : system.getCheckResolver()).resolve(request, diceRoller);
+            log(campaign, null, request, result);
+            app.charka.journal.JournalService.check(result);
+            return result;
+        }, result -> draft(campaign, null, request, result));
     }
 
     /**
@@ -66,6 +115,24 @@ public class CheckService {
         if (opponent != null) {
             requireSameCampaign(initiator, opponent);
         }
+        return journalService.capture(() -> opposed(initiator, request, opponent, opponentName, opponentRequest), result -> {
+            boolean won = result.winner() == OpposedCheckResult.Winner.INITIATOR;
+            List<String> steps = new java.util.ArrayList<>();
+            steps.add(result.initiator().name() + ": " + result.initiator().result().outcome());
+            result.initiator().result().steps().forEach(step -> steps.add("  " + step));
+            steps.add(result.opponent().name() + ": " + result.opponent().result().outcome());
+            result.opponent().result().steps().forEach(step -> steps.add("  " + step));
+            String skill = result.initiator().skill() != null ? result.initiator().skill() + ": " : "";
+            return new app.charka.journal.JournalService.Draft(initiator.getCampaign(), initiator, app.charka.journal.JournalService.Kind.CONTEST,
+                    skill + result.initiator().name() + " против " + result.opponent().name(), result.verdict(),
+                    result.winner() == OpposedCheckResult.Winner.NONE ? null : won,
+                    result.initiator().result().total(), result.opponent().result().total(), steps,
+                    List.of(new app.charka.journal.JournalService.Chip(won ? "ok" : "bad", won ? "Победа" : "Поражение")));
+        });
+    }
+
+    private OpposedCheckResult opposed(Character initiator, CheckRequest request,
+                                       Character opponent, String opponentName, CheckRequest opponentRequest) {
         CheckResolver resolver = systemRegistry.forCharacter(initiator).getCheckResolver();
         CheckResult own = resolver.resolve(withoutDifficulty(request), diceRoller);
         CheckResult other = resolver.resolve(withoutDifficulty(opponentRequest), diceRoller);

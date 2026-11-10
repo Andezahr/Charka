@@ -39,6 +39,15 @@ public class Counter {
     @Column(name = "attr_value")
     private Map<String, Integer> attributes = new HashMap<>();
 
+    /**
+     * K-02: текстовое состояние стратегии сверх чисел (Космозэки: набор зон тела). Ключи выбирает стратегия.
+     */
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "counter_text", joinColumns = @JoinColumn(name = "counter_id"))
+    @MapKeyColumn(name = "text_key")
+    @Column(name = "text_value", length = 4000)
+    private Map<String, String> texts = new HashMap<>();
+
     public int getAttribute(String key, int defaultValue) {
         return attributes.getOrDefault(key, defaultValue);
     }

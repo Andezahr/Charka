@@ -31,6 +31,22 @@ public class Campaign {
     @JoinColumn(name = "gm_user_id")
     private AppUser gm;
 
+    /** Приглашение игроков (A-02): {@code /join/{token}}; null — ещё не выдано. В экспорт не идёт */
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    @Column(name = "invite_token", length = 64)
+    private String inviteToken;
+
+    /**
+     * A-13: инициатива бросается заново каждый раунд; иначе раз за бой. Новой кампании ставится по системе
+     * ({@code GameSystem.rollsInitiativeEachRound}), дальше мастер переключает в бою.
+     */
+    @Column(name = "initiative_each_round")
+    private boolean initiativeEachRound = true;
+
+    /** M-16: туман для игроков на карте боя — игрок видит только фишки, которые видят его персонажи */
+    @Column(name = "fog_of_war")
+    private boolean fogOfWar = true;
+
     private LocalDate startDate;
     @Column(name = "current_date_value")
     private LocalDate currentDate;

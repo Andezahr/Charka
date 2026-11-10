@@ -18,4 +18,22 @@ public class HealthDamageRequestDto {
 
     /** Чекбокс; в форме рядом лежит скрытое поле _autoSave, чтобы снятая галочка давала false */
     private boolean autoSave = true;
+
+    /** K-03: сколько попаданий этим уроном (Космозэки: броня вычитается из каждого); пусто — одно */
+    private Integer hits;
+
+    /** K-03: броня вдвое меньше — оружие ближнего боя (Космозэки) */
+    private boolean armorHalf;
+
+    /** Особенности системы для {@code DamageRequest.extras} */
+    public java.util.Map<String, Integer> extras() {
+        java.util.Map<String, Integer> extras = new java.util.HashMap<>();
+        if (hits != null && hits > 1) {
+            extras.put("hits", hits);
+        }
+        if (armorHalf) {
+            extras.put("armorHalf", 1);
+        }
+        return extras;
+    }
 }

@@ -119,7 +119,7 @@ class Cp2020MedicineTest {
     @Test
     @DisplayName("Карточка: строка «без лечения» и форма медика, медик с навыком — первым")
     void card() throws Exception {
-        String page = mockMvc.perform(get("/character/" + patient.getId() + "/counters"))
+        String page = mockMvc.perform(get("/character/" + patient.getId()))
                 .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
         assertThat(page).contains("без лечения: +2 урона в день").contains("/health/care").contains("Лечить: Медицинская техника");
         assertThat(page.indexOf(">Медик</option>")).isLessThan(page.indexOf(">Раненый</option>"));

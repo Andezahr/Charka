@@ -50,12 +50,19 @@ public class EncounterParticipant {
     @Column(name = "moved_meters")
     private int movedMeters;
 
+    /** A-05: сколько действий сделано в этом раунде, кроме бега (он — {@link #movedMeters}); новый раунд обнуляет */
+    private int actions;
+
     /** Клетка фишки на карте боя; null — ещё не на поле */
     @Column(name = "pos_x")
     private Integer posX;
 
     @Column(name = "pos_y")
     private Integer posY;
+
+    /** M-22: уровень карты, на котором стоит фишка; 0 — нижний */
+    @Column(name = "pos_level", nullable = false)
+    private int posLevel;
 
     @OneToMany(mappedBy = "participant", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id ASC")

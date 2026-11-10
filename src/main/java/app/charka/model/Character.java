@@ -40,9 +40,27 @@ public class Character {
     @Column(name = "role_code")
     private Set<String> roles = new HashSet<>();
 
+    /** K-11: поля листа, которые объявляет система ({@code GameSystem.getProfileFields()}): теги, приговор */
+    @ElementCollection
+    @CollectionTable(name = "character_profile", joinColumns = @JoinColumn(name = "character_id"))
+    @MapKeyColumn(name = "profile_key")
+    @Column(name = "profile_value", length = 4000)
+    private java.util.Map<String, String> profile = new java.util.HashMap<>();
+
     @ManyToOne
     @JsonBackReference
     private Campaign campaign;
+
+    /** R-07: основное оружие на листе (id предмета); null или не оружие — первое оружие инвентаря. В экспорт не идёт: id предметов там новые */
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private Long mainWeaponId;
+
+    /** R-09a: «Частые навыки» на листе — код навыка или {@code custom:<id>}; не экспортируется: id своих навыков там новые */
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    @ElementCollection
+    @CollectionTable(name = "character_pinned_skill", joinColumns = @JoinColumn(name = "character_id"))
+    @Column(name = "skill_key")
+    private Set<String> pinnedSkills = new HashSet<>();
 
     /** Игрок (U-03): видит этого персонажа; null — персонаж мастера или ещё не отдан */
     @com.fasterxml.jackson.annotation.JsonIgnore

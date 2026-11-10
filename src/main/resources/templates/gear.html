@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Снаряжение · ' + ${character.name})}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(null, ${character}, 'gear')}"></header>
+
+<!-- R-08: «Снаряжение» — все инвентари (носимые и нет), вживлённое целиком, журнал денег и регулярные траты -->
+<main class="page">
+  <div th:if="${errorMessage != null}" class="alert alert-error" role="alert">
+    <span class="alert-text" th:text="${errorMessage}">Ошибка</span>
+    <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+  </div>
+  <div th:if="${successMessage != null}" class="alert alert-success" role="status">
+    <span class="alert-text" th:text="${successMessage}">Готово</span>
+    <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+  </div>
+  <div class="page-head">
+    <div>
+      <span class="eyebrow">Снаряжение</span>
+      <h1 class="page-title" th:text="${character.name}">Имя персонажа</h1>
+    </div>
+  </div>
+
+  <div class="grid grid-main">
+    <div class="stack">
+      <section class="card" id="inventories">
+        <div class="card-head">
+          <h2 class="card-title"><span class="dot yellow"></span>Инвентари</h2>
+          <span class="badge" th:text="${#lists.size(shownInventories)}">0</span>
+        </div>
+        <div class="card-body">
+          <th:block th:each="inv : ${shownInventories}">
+            <div th:replace="~{fragments/gear :: inventory(${inv}, true)}"></div>
+          </th:block>
+          <div th:if="${#lists.isEmpty(shownInventories)}" class="empty">Нет инвентарей</div>
+          <details class="cp-more item-more">
+            <summary>Инвентарь: в машине, в нычке</summary>
+            <form th:action="@{'/character/' + ${character.id} + '/inventories'}" method="post" class="form-row">
+              <input type="text" name="name" class="grow" placeholder="Название: В машине" required autocomplete="off" aria-label="Название">
+              <select name="carried" aria-label="Носится ли">
+                <option value="false" selected>не носится — только здесь</option>
+                <option value="true">носится — на листе</option>
+              </select>
+              <button type="submit" class="btn btn-primary">＋ Инвентарь</button>
+            </form>
+          </details>
+          <dialog th:replace="~{fragments/items :: add-dialog(${character.id})}"></dialog>
+        </div>
+      </section>
+    </div>
+
+    <div class="stack">
+      <section th:replace="~{fragments/gear :: money(false)}"></section>
+      <th:block th:if="${installed != null}">
+        <section th:replace="~{fragments/items :: installed(${installed}, ${character})}"></section>
+      </th:block>
+    </div>
+  </div>
+</main>
+</body>
+</html>

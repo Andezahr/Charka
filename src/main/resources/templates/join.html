@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Приглашение')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(null, null, 'home')}"></header>
+<!-- A-02: игрок пришёл по ссылке или QR-коду — забирает свободного персонажа одним нажатием или создаёт по правилам -->
+<main class="page page-narrow">
+  <div th:if="${errorMessage != null}" class="alert alert-error" role="alert">
+    <span class="alert-text" th:text="${errorMessage}">Ошибка</span>
+    <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+  </div>
+  <section class="card">
+    <div class="card-head">
+      <h1 class="card-title"><span class="dot pink"></span><th:block th:text="${campaign.name}">Последний шанс</th:block></h1>
+    </div>
+    <div class="card-body" th:if="${isGm}">
+      <p class="page-sub">Это ваша кампания: ссылку открывают игроки.</p>
+      <a class="btn" th:href="@{'/campaign/' + ${campaign.id}}">К кампании →</a>
+    </div>
+    <div class="card-body" th:if="${!securityOn}">
+      <p class="page-sub">Пользователи выключены — персонажа забирать не нужно.</p>
+      <a class="btn" th:href="@{'/campaign/' + ${campaign.id}}">К кампании →</a>
+    </div>
+    <th:block th:if="${securityOn and !isGm}">
+      <div class="card-body list" th:unless="${#lists.isEmpty(mine)}">
+        <span class="label">Ваши персонажи</span>
+        <a th:each="character : ${mine}" th:href="@{'/character/' + ${character.id}}" class="row">
+          <div class="row-title" th:text="${character.name}">Колясик</div>
+          <span class="arrow">→</span>
+        </a>
+      </div>
+      <div class="card-body">
+        <span class="label">Кто вы?</span>
+        <div class="list">
+          <form th:each="character : ${free}" th:action="@{'/join/' + ${token} + '/claim/' + ${character.id}}" method="post" class="row">
+            <div class="row-title" th:text="${character.name}">Олежа</div>
+            <button type="submit" class="btn btn-primary btn-sm">Это я</button>
+          </form>
+        </div>
+        <p th:if="${#lists.isEmpty(free)}" class="empty">Свободных персонажей нет</p>
+      </div>
+      <div class="card-body" th:if="${hasCreation}">
+        <a class="btn" th:href="@{'/campaign/' + ${campaign.id} + '/characters/new'}">＋ Создать по правилам</a>
+      </div>
+    </th:block>
+  </section>
+</main>
+</body>
+</html>

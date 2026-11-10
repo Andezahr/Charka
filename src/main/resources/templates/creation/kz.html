@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Новый персонаж · ' + ${campaign.name})}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(${campaign}, null, 'overview')}"></header>
+
+<!-- K-11: мастер создания Космозэков — одна страница. Чисел нет: тело «Человек» и вдохновение создаются сами (KzCreation) -->
+<main class="page">
+  <div th:if="${errorMessage != null}" class="alert alert-error" role="alert">
+    <span class="alert-text" th:text="${errorMessage}">Ошибка</span>
+    <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+  </div>
+  <div class="page-head">
+    <div>
+      <span class="eyebrow">Новый персонаж · Космозэки</span>
+      <h1 class="page-title" th:text="${campaign.name}">Кампания</h1>
+      <p class="page-sub">Три тега опишут персонажа: существительное, прилагательное, глагол. Главное — получать удовольствие и не мешать другим.</p>
+    </div>
+  </div>
+
+  <form th:action="@{'/campaign/' + ${campaign.id} + '/characters/new'}" method="post" class="stack">
+    <section class="card">
+      <div class="card-head"><h2 class="card-title"><span class="dot"></span>Кто это</h2></div>
+      <div class="card-body">
+        <label class="field">
+          <span class="label">Имя</span>
+          <input type="text" name="name" class="grow" required autocomplete="off" maxlength="255" placeholder="Как его зовут на зоне">
+        </label>
+        <div class="profile-grid">
+          <th:block th:replace="~{fragments/profile :: fields(${creation.profile})}"></th:block>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2 class="card-title"><span class="dot"></span>Чем полезен команде</h2></div>
+      <div class="card-body">
+        <p class="hint hint-left">По желанию; можно гибрид или своё.</p>
+        <div class="profile-picks">
+          <label th:each="r : ${creation.roles}" class="check profile-pick">
+            <input type="checkbox" th:name="'role.' + ${r.code}" value="1">
+            <span th:text="${r.name}">Стрелок / Воитель</span>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <div class="form-row">
+      <button type="submit" class="btn btn-primary">Создать персонажа</button>
+      <a th:href="@{'/campaign/' + ${campaign.id}}" class="btn btn-ghost">Отмена</a>
+    </div>
+  </form>
+</main>
+</body>
+</html>

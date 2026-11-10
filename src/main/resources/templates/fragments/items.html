@@ -51,7 +51,9 @@
   </label>
 </th:block>
 
-<!-- Строка предмета. owner — предмет, под которым эта строка свёрнута: итог действий показывается у него, своего якоря у строки нет -->
+<!-- Строка предмета. owner — предмет, под которым эта строка свёрнута: итог действий показывается у него, своего якоря у строки нет.
+     UX-02: всё в одну линию — название (нажатие открывает подробности), главное число, бейдж, кнопки словами;
+     описание, примечания справочника и редкие действия — в раскрытой строке -->
 <div th:fragment="row(item, inv, owner)" th:id="${owner == null} ? 'item-' + ${item.id}" class="row item-row" data-editable
      th:with="itemType=${itemTypeByCode[item.type]},
               disposable=${itemTypeByCode[item.type] != null and itemTypeByCode[item.type].isDisposable(item)},
@@ -59,19 +61,22 @@
               summary=${itemSummaries[item.id]},
               attachments=${itemAttachments[item.id]},
               actions=${itemActions[item.id]},
+              notes=${itemNotes[item.id]},
               attack=${attackForms != null ? attackForms[item.id] : null},
+              inHand=${mainWeapon != null and mainWeapon.id == item.id},
+              spare=${owner == null and spareWeapons != null and spareWeapons.contains(item)},
               back=${owner != null ? owner.id : null},
               itemUrl=${'/character/' + character.id + '/inventories/' + inv.id + '/items/' + item.id}">
   <div class="row-main">
     <div class="item-head">
-      <span class="row-title" th:text="${item.name}">Предмет</span>
+      <button type="button" class="row-title row-title-btn" data-edit-toggle th:attr="aria-label='Подробности: ' + ${item.name}" th:text="${item.name}">Предмет</button>
       <span th:if="${summary.main != null}" class="item-main" th:classappend="${item.properties['jammed'] != null} ? 'is-bad'" th:text="${summary.main}">40/40</span>
       <span th:each="line : ${summary.lines}" class="item-value" th:text="${line}">2D6+3</span>
       <span th:if="${!counted and item.quantity != null and item.quantity > 1}" class="item-value" th:text="'× ' + ${item.quantity}">× 2</span>
+      <span th:if="${inHand and owner == null}" class="badge-hand">в руках</span>
     </div>
-    <!-- под оружием строка показывает только заряд: примечание из справочника есть в панели -->
-    <div class="row-desc" th:if="${owner == null and !#strings.isEmpty(item.description)}" th:text="${item.description}">Описание</div>
-    <p th:each="note : ${itemNotes[item.id]}" class="item-note" th:text="${note}">Большой магазин: надёжность VR → ST</p>
+    <!-- одна строка замечания (нет патронов, нужен другой имплант); целиком — в подробностях -->
+    <p th:if="${owner == null and notes != null and !#lists.isEmpty(notes)}" class="item-note is-line" th:title="${notes[0]}" th:text="'⚠ ' + ${notes[0]}">Большой магазин: надёжность VR → ST</p>
     <th:block th:if="${owner == null}">
       <div th:if="${actionItemId == item.id and actionResult != null}" class="alert alert-success item-result" role="status">
         <span class="alert-text" th:text="${actionResult}">Выпущено 3</span>
@@ -85,29 +90,46 @@
         <button type="button" class="alert-close" aria-label="Закрыть">×</button>
       </div>
     </th:block>
-    <p th:if="${attack != null and attack.unavailable != null}" class="item-action-note" th:text="${attack.unavailable}">Магазин пуст</p>
-    <p th:if="${attachments.warning != null}" class="item-note" th:text="${attachments.warning}">Нечем перезарядить</p>
+    <!-- R-07: из чего бросок атаки — у оружия в руках; у остального — в подробностях -->
+    <p th:if="${inHand and owner == null and attackBases != null and attackBases.get('item-' + item.id) != null}" class="item-attack-base"
+       th:text="'🎯 ' + ${attackBases.get('item-' + item.id)}">🎯 Пистолеты 5 + REF 6 = 11</p>
+    <p th:if="${attack != null and attack.unavailable != null and !spare}" class="item-action-note" th:text="${attack.unavailable}">Магазин пуст</p>
+    <p th:if="${attachments.warning != null and !spare}" class="item-note is-line" th:title="${attachments.warning}" th:text="'⚠ ' + ${attachments.warning}">Нечем перезарядить</p>
 
-    <div th:each="group : ${attachments.groups}" class="item-chips">
-      <span class="item-chips-title" th:text="${group.title}">магазины</span>
-      <th:block th:each="chip : ${group.chips}">
-        <th:block th:replace="~{fragments/items :: chip(${chip}, ${item}, ${inv})}"></th:block>
+    <!-- UX-05: магазины и патроны одной строкой фишек; подпись группы — только когда в ней есть что-то кроме «＋ …» -->
+    <!-- запасное оружие (UX-04): в строке только «Взять в руки»; магазины и действия — в подробностях -->
+    <div th:unless="${#lists.isEmpty(attachments.groups) or spare}" class="item-chips">
+      <th:block th:each="group : ${attachments.groups}">
+        <span class="item-chips-title" th:unless="${#lists.size(group.chips) == 1 and #strings.startsWith(group.chips[0].label, '＋')}" th:text="${group.title}">магазины</span>
+        <th:block th:each="chip : ${group.chips}">
+          <th:block th:replace="~{fragments/items :: chip(${chip}, ${item}, ${inv})}"></th:block>
+        </th:block>
       </th:block>
     </div>
 
-    <div class="item-actions" th:unless="${#lists.isEmpty(actions.?[!secondary and !hidden and !plain])}">
+    <!-- действия с выбором (откуда, сколько) у предметов не в руках — кнопкой «…», форма в подробностях -->
+    <div class="item-actions" th:unless="${spare or #lists.isEmpty(actions.?[!secondary and !hidden and !plain])}">
       <th:block th:each="action : ${actions.?[!secondary and !hidden and !plain]}">
-        <form th:replace="~{fragments/items :: action-form(${action}, @{${itemUrl} + '/action/' + ${action.code}}, ${back})}"></form>
+        <th:block th:if="${inHand or (action.sources.isEmpty() and action.amount == null)}">
+          <form th:replace="~{fragments/items :: action-form(${action}, @{${itemUrl} + '/action/' + ${action.code}}, ${back})}"></form>
+        </th:block>
+        <button th:unless="${inHand or (action.sources.isEmpty() and action.amount == null)}" type="button" class="btn btn-sm" data-edit-toggle
+                th:disabled="${action.unavailable != null}" th:text="${action.label} + '…'">Установить…</button>
       </th:block>
     </div>
-    <p th:each="action : ${actions.?[!secondary and !hidden and unavailable != null]}" class="item-action-note" th:text="${action.unavailable}">Магазин пуст</p>
+    <p th:each="action : ${actions.?[!secondary and !hidden and unavailable != null]}" th:unless="${spare}" class="item-action-note" th:text="${action.unavailable}">Магазин пуст</p>
   </div>
 
   <div class="row-actions">
-    <th:block th:each="action : ${actions.?[!secondary and !hidden and plain]}">
+    <th:block th:each="action : ${actions.?[!secondary and !hidden and plain]}" th:unless="${spare}">
       <form th:replace="~{fragments/items :: action-form(${action}, @{${itemUrl} + '/action/' + ${action.code}}, ${back})}"></form>
     </th:block>
-    <th:block th:if="${attack != null}">
+    <!-- UX-04, UX-09: запасное оружие — «Взять в руки» одним нажатием, не через «⋯» -->
+    <form th:if="${spare}" th:action="@{'/character/' + ${character.id} + '/main-weapon'}" method="post" class="inline">
+      <input type="hidden" name="item" th:value="${item.id}">
+      <button type="submit" class="btn btn-sm">Взять в руки</button>
+    </form>
+    <th:block th:if="${attack != null and !spare}">
       <button type="button" class="btn btn-sm btn-primary" th:attr="data-dialog-open='attack-' + ${item.id}"
               th:disabled="${attack.unavailable != null}" th:text="${attack.actionLabel}">Атаковать</button>
       <dialog th:replace="~{fragments/attack :: dialog(${character.id}, ${item}, ${attack}, ${attackTargets})}"></dialog>
@@ -117,18 +139,18 @@
             th:attr="data-confirm=${item.quantity != null and item.quantity <= 1} ? 'Это последний: убрать «' + ${item.name} + '» из инвентаря?'">
         <input type="hidden" name="delta" value="-1">
         <input th:if="${back != null}" type="hidden" name="returnTo" th:value="${back}">
-        <button type="submit" class="icon-btn" title="Стало на один меньше" aria-label="Меньше">−</button>
+        <button type="submit" class="icon-btn" title="Стало на один меньше" th:attr="aria-label=${item.name} + ': на один меньше'">−</button>
       </form>
       <span class="item-count" th:text="${item.quantity}">1</span>
       <form th:action="@{${itemUrl} + '/quantity'}" method="post" class="inline">
         <input type="hidden" name="delta" value="1">
         <input th:if="${back != null}" type="hidden" name="returnTo" th:value="${back}">
-        <button type="submit" class="icon-btn" title="Стало на один больше" aria-label="Больше">＋</button>
+        <button type="submit" class="icon-btn" title="Стало на один больше" th:attr="aria-label=${item.name} + ': на один больше'">＋</button>
       </form>
     </div>
-    <button type="button" class="icon-btn" data-edit-toggle title="Подробности, правка, перемещение" aria-label="Подробнее">⋯</button>
+    <button type="button" class="icon-btn" data-edit-toggle title="Ещё: подробности, правка, перемещение" th:attr="aria-label='Ещё: ' + ${item.name}">⋯</button>
     <form th:if="${disposable}" th:action="@{${itemUrl} + '/delete'}" method="post" class="inline">
-      <button type="submit" class="icon-btn danger" title="Удалить">✕</button>
+      <button type="submit" class="icon-btn danger" title="Удалить" th:attr="aria-label='Удалить: ' + ${item.name}">✕</button>
     </form>
   </div>
 
@@ -142,6 +164,10 @@
   </details>
 
   <div class="edit-panel">
+    <div class="row-desc" th:unless="${#strings.isEmpty(item.description)}" th:text="${item.description}">Описание</div>
+    <p th:each="note : ${notes}" class="item-note" th:text="${note}">Большой магазин: надёжность VR → ST</p>
+    <p th:if="${!inHand and attackBases != null and attackBases.get('item-' + item.id) != null}" class="item-attack-base"
+       th:text="'🎯 ' + ${attackBases.get('item-' + item.id)}">🎯 Пистолеты 5 + REF 6 = 11</p>
     <div class="row-meta item-line">
       <span class="item-type-name" th:if="${itemType != null}" th:text="${itemType.displayName}">Оружие</span>
       <th:block th:if="${itemType != null}">
@@ -149,19 +175,33 @@
       </th:block>
       <span th:text="${item.cost != null ? item.cost : 0} + ' ' + ${currency.symbol}" th:title="${currency.name}">0 eb</span>
     </div>
+    <!-- запасное оружие: магазины, патроны и его действия — здесь -->
+    <div th:if="${spare and !#lists.isEmpty(attachments.groups)}" class="item-chips">
+      <th:block th:each="group : ${attachments.groups}">
+        <span class="item-chips-title" th:text="${group.title}">магазины</span>
+        <th:block th:each="chip : ${group.chips}">
+          <th:block th:replace="~{fragments/items :: chip(${chip}, ${item}, ${inv})}"></th:block>
+        </th:block>
+      </th:block>
+    </div>
+    <div class="item-actions" th:if="${spare and !#lists.isEmpty(actions.?[!secondary and !hidden and (plain or (sources.isEmpty() and amount == null))])}">
+      <th:block th:each="action : ${actions.?[!secondary and !hidden and (plain or (sources.isEmpty() and amount == null))]}">
+        <form th:replace="~{fragments/items :: action-form(${action}, @{${itemUrl} + '/action/' + ${action.code}}, ${back})}"></form>
+      </th:block>
+    </div>
+    <!-- действия с выбором у предметов не в руках: здесь целиком -->
+    <div class="item-actions" th:unless="${inHand or #lists.isEmpty(actions.?[!secondary and !hidden and !plain and (!sources.isEmpty() or amount != null)])}">
+      <th:block th:each="action : ${actions.?[!secondary and !hidden and !plain and (!sources.isEmpty() or amount != null)]}">
+        <form th:replace="~{fragments/items :: action-form(${action}, @{${itemUrl} + '/action/' + ${action.code}}, ${back})}"></form>
+      </th:block>
+    </div>
     <div class="item-actions" th:unless="${#lists.isEmpty(actions.?[secondary and !hidden])}">
       <th:block th:each="action : ${actions.?[secondary and !hidden]}">
         <form th:replace="~{fragments/items :: action-form(${action}, @{${itemUrl} + '/action/' + ${action.code}}, ${back})}"></form>
       </th:block>
     </div>
-    <form th:action="@{${itemUrl} + '/edit'}" method="post" class="form-row item-edit" data-item-form>
-      <input type="text" name="itemName" class="grow" th:value="${item.name}" required placeholder="Название">
-      <input type="number" name="quantity" class="narrow" th:value="${item.quantity}" min="1" placeholder="Кол-во">
-      <input type="number" name="cost" class="narrow" th:value="${item.cost}" min="0" placeholder="Цена">
-      <input type="text" name="description" class="grow" th:value="${item.description}" placeholder="Описание">
-      <th:block th:replace="~{fragments/items :: type-fields(${itemTypes}, ${item})}"></th:block>
-      <button type="submit" class="btn btn-sm btn-primary">Сохранить</button>
-    </form>
+    <!-- A-03: форма правки грузится по ✎ (edit-form): поля всех типов предмета — 30 КБ на строку -->
+    <div class="item-edit-slot" th:attr="data-lazy=@{'/character/' + ${character.id} + '/items/' + ${item.id} + '/edit-form'}"></div>
     <form th:if="${#lists.size(character.inventories) > 1}" th:action="@{${itemUrl} + '/move'}" method="post" class="form-row">
       <select name="targetInventoryId" required aria-label="Куда переместить">
         <option th:each="target : ${character.inventories}" th:if="${target.id != inv.id}"
@@ -175,6 +215,17 @@
     </form>
   </div>
 </div>
+
+<!-- Форма правки предмета (A-03): GET /character/{id}/items/{itemId}/edit-form, вставляется в строку по ✎ -->
+<form th:fragment="edit-form" th:with="itemUrl=${'/character/' + character.id + '/inventories/' + inv.id + '/items/' + item.id}"
+      th:action="@{${itemUrl} + '/edit'}" method="post" class="form-row item-edit" data-item-form>
+  <input type="text" name="itemName" class="grow" th:value="${item.name}" required placeholder="Название">
+  <input type="number" name="quantity" class="narrow" th:value="${item.quantity}" min="1" placeholder="Кол-во">
+  <input type="number" name="cost" class="narrow" th:value="${item.cost}" min="0" placeholder="Цена">
+  <input type="text" name="description" class="grow" th:value="${item.description}" placeholder="Описание">
+  <th:block th:replace="~{fragments/items :: type-fields(${itemTypes}, ${item})}"></th:block>
+  <button type="submit" class="btn btn-sm btn-primary">Сохранить</button>
+</form>
 
 <!-- Фишка под строкой предмета: значение, одно нажатие или короткий выбор, если вариантов несколько -->
 <th:block th:fragment="chip(chip, item, inv)"
@@ -269,9 +320,14 @@
 </section>
 
 <!-- Окно «Добавить» одно на страницу: инвентарь подставляет кнопка, которая его открыла ([data-add-item] в app.js).
-     У каждого типа предмета своя вкладка; если тип один, вкладок нет. -->
+     A-03: на странице только оболочка, содержимое (весь справочник, ~250 КБ) app.js берёт при первом открытии
+     и хранит, пока не изменится версия (баланс, подсказки) -->
 <dialog th:fragment="add-dialog(characterId)" class="dialog add-dialog" data-add-dialog
-        th:attr="data-base=@{'/character/' + ${characterId} + '/inventories/'}">
+        th:attr="data-base=@{'/character/' + ${characterId} + '/inventories/'},data-add-src=@{'/character/' + ${characterId} + '/add-dialog'(v=${addDialogVersion})}">
+</dialog>
+
+<!-- Содержимое окна «Добавить»: GET /character/{id}/add-dialog. У каждого типа предмета своя вкладка; если тип один, вкладок нет -->
+<th:block th:fragment="add-dialog-body">
   <div class="add-dialog-head">
     <h2 class="card-title" data-add-target>Добавить</h2>
     <button type="button" class="icon-btn" data-dialog-close aria-label="Закрыть">✕</button>
@@ -331,7 +387,7 @@
       </form>
     </details>
   </div>
-</dialog>
+</th:block>
 
 <!-- «Купить»: цена списывается записью в деньгах. Выбор общий для всех вкладок и запоминается (app.js) -->
 <label th:fragment="buy-check" class="check add-buy" th:title="'Списать цену с денег персонажа, на счету ' + ${moneySum} + ' ' + ${currency.symbol}">

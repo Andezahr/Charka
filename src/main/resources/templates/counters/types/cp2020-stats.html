@@ -70,5 +70,20 @@
   </div>
 </div>
 
+<!-- R-05: статы на листе — текущие значения (* — изменён ранами, бронёй или эффектом) и производные одной строкой -->
+<div th:fragment="card-compact" class="cp-compact" id="state-stats" th:with="v=${counter.view}">
+  <div class="cp-compact-head">
+    <span class="cp-compact-title">Статы</span>
+    <span class="cp-stat-line">
+      <span th:each="s : ${v.stats}" class="cp-stat-chip" th:classappend="${s.reduced} ? 'is-reduced'"
+            th:title="${s.reduced} ? 'Без штрафов: ' + ${s.base}" th:text="${s.name} + ' ' + ${s.effective} + (${s.reduced} ? '*' : '')">REF 8</span>
+    </span>
+  </div>
+  <div class="cp-muted-line" th:text="'бег ' + ${v.run} + ' м · прыжок ' + ${v.leap} + ' м · BTM −' + ${v.btm} + ' · спасбросок ≤ ' + ${v.save} + ' · человечность ' + ${v.humanity} + '/' + ${v.maxHumanity}">бег 18 м · BTM −2</div>
+  <details class="cp-more item-more">
+    <summary>✎ Статы: правка, переноска и подъём</summary>
+    <div th:replace="~{:: card}"></div>
+  </details>
+</div>
 </body>
 </html>

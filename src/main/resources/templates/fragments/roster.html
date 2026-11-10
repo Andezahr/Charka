@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- R-10: строка персонажа на обзоре кампании (бывший экран мастера): состояние и строки системы, статы, эффекты, деньги, удача.
+     У мастера ⋯: открыть, отдать игроку, копия и удаление NPC -->
+<div th:fragment="row(row)" class="row gm-row" th:classappend="${row.card.out} ? 'is-out'" th:id="'character-' + ${row.character.id}">
+  <div class="row-main">
+    <div class="row-title">
+      <a th:href="@{'/character/' + ${row.character.id}}" class="with-avatar">
+        <span class="avatar" th:text="${#strings.substring(row.character.name, 0, 1)}">К</span>
+        <span th:text="${row.character.name}">Колясик</span>
+      </a>
+      <span th:if="${row.card.status != null}" class="chip" th:classappend="${row.card.alarming} ? 'red'" th:text="${row.card.status}">Цел</span>
+      <span th:each="save : ${row.card.saves}" class="chip red" th:text="${save.label}">Спасбросок</span>
+      <span th:if="${isGm and !row.character.npc and securityOn}" class="chip muted"
+            th:text="${row.character.player != null} ? '👤 ' + ${row.character.player.username} : 'у мастера'">👤 kolya</span>
+    </div>
+    <div class="row-meta">
+      <span th:each="role : ${rosterRoles.get(row.character.id)}" class="roster-role" th:text="${role}">Соло</span>
+      <span th:each="line : ${row.card.lines}" th:text="${line}">SP торса 14</span>
+    </div>
+    <div th:unless="${#lists.isEmpty(row.stats)}" class="row-meta gm-stats" title="* — с правкой: раны, броня, эффекты">
+      <span th:each="stat : ${row.stats}" th:text="${stat}">REF 7</span>
+    </div>
+    <div th:unless="${#lists.isEmpty(row.effects)}" class="row-meta">
+      <span th:each="effect : ${row.effects}" class="chip" th:text="${effect}">Boost 4 ч</span>
+    </div>
+  </div>
+  <div class="gm-side">
+    <span th:unless="${row.character.npc and row.money == 0}" class="amount" th:classappend="${row.money < 0} ? 'neg' : 'pos'"
+          th:text="${row.money} + ' ' + ${currency.symbol}">0 eb</span>
+    <span th:if="${row.luck != null and !row.character.npc}" class="chip muted" th:text="'🍀 ' + ${row.luck}">🍀 6</span>
+    <details th:if="${isGm}" class="item-chip-menu roster-menu" data-menu>
+      <summary class="icon-btn" title="Действия" aria-label="Действия">⋯</summary>
+      <div class="item-chip-options">
+        <a class="btn btn-sm btn-ghost" th:href="@{'/character/' + ${row.character.id}}">Открыть лист</a>
+        <!-- U-03: мастер отдаёт персонажа игроку по логину; пусто — персонаж мастера -->
+        <form th:if="${securityOn and !row.character.npc}" th:action="@{'/campaign/' + ${campaign.id} + '/characters/' + ${row.character.id} + '/player'}"
+              method="post" class="form-row">
+          <input type="text" name="username" class="grow" maxlength="32" autocapitalize="none" placeholder="логин игрока"
+                 th:value="${row.character.player != null ? row.character.player.username : ''}" aria-label="Логин игрока">
+          <button type="submit" class="btn btn-sm">Отдать</button>
+        </form>
+        <form th:if="${row.character.npc}" th:action="@{'/character/' + ${row.character.id} + '/npc/copy'}" method="post">
+          <button type="submit" class="btn btn-sm btn-ghost" title="Ещё один такой же">＋ Копия</button>
+        </form>
+        <form th:if="${row.character.npc}" th:action="@{'/character/' + ${row.character.id} + '/npc/delete'}" method="post"
+              th:attr="data-confirm='Удалить ' + ${row.character.name} + '?'">
+          <button type="submit" class="btn btn-sm btn-danger">✕ Удалить NPC</button>
+        </form>
+      </div>
+    </details>
+  </div>
+</div>
+</body>
+</html>

@@ -95,7 +95,7 @@ class DiceControllerTest {
     @DisplayName("проверка — запрос из формы, результат во flash")
     void check() throws Exception {
         CheckResult result = new CheckResult("d10!+5", List.of("Бросок d10: 7"), 12, 15, false, false, false);
-        when(checkService.checkForCharacter(1L, new CheckRequest("Взлом", 5, 15))).thenReturn(result);
+        when(checkService.tableCheckForCharacter(1L, new CheckRequest("Взлом", 5, 15))).thenReturn(result);
 
         mockMvc.perform(post("/character/1/check")
                         .param("modifier", "5").param("difficulty", "15").param("label", "Взлом"))
@@ -109,7 +109,7 @@ class DiceControllerTest {
     @DisplayName("пустые модификатор и сложность — 0 и без сложности")
     void checkDefaults() throws Exception {
         CheckResult result = new CheckResult("d20", List.of("Бросок d20: 4"), 4, null, null, false, false);
-        when(checkService.checkForCampaign(5L, new CheckRequest(null, 0, null))).thenReturn(result);
+        when(checkService.tableCheckForCampaign(5L, new CheckRequest(null, 0, null))).thenReturn(result);
 
         mockMvc.perform(post("/campaign/5/check").param("modifier", "").param("difficulty", ""))
                 .andExpect(status().is3xxRedirection())

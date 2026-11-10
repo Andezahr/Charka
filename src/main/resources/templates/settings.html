@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Настройки: ' + ${campaign.name})}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(${campaign}, null, 'settings')}"></header>
+
+<!-- R-13: «Настройки» кампании — редкое: название, игроки и их персонажи, приглашение, экспорт -->
+<main class="page">
+  <div th:if="${playerError != null}" class="alert alert-error" role="alert">
+    <span class="alert-text" th:text="${playerError}">Нет такого логина</span>
+    <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+  </div>
+  <div class="page-head">
+    <div>
+      <span class="eyebrow">Настройки кампании</span>
+      <h1 class="page-title" th:text="${campaign.name}">Кампания</h1>
+    </div>
+  </div>
+
+  <div class="grid grid-main">
+    <div class="stack">
+      <section class="card" id="campaign-settings">
+        <div class="card-head">
+          <h2 class="card-title"><span class="dot"></span>Кампания</h2>
+        </div>
+        <div class="card-body">
+          <form th:action="@{'/campaign/' + ${campaign.id} + '/rename'}" method="post" class="form-row">
+            <input type="text" name="name" class="grow" th:value="${campaign.name}" required maxlength="255" aria-label="Название кампании">
+            <button type="submit" class="btn btn-sm btn-primary">Переименовать</button>
+          </form>
+          <p class="page-sub">
+            Система: <b th:text="${gameSystem.displayName}">Cyberpunk 2020</b> — менять нельзя: от неё зависят листы и предметы.
+            Началась <span th:text="${campaign.startDate}">2037-01-01</span>, сейчас <span th:text="${campaign.currentDate}">2037-01-01</span>.
+          </p>
+        </div>
+      </section>
+
+      <section class="card" id="players" th:if="${securityOn}">
+        <div class="card-head">
+          <h2 class="card-title"><span class="dot"></span>Игроки</h2>
+          <span class="badge" th:text="${#lists.size(players)}">0</span>
+        </div>
+        <div class="card-body list">
+          <!-- U-03: мастер отдаёт персонажа игроку по логину; пусто — персонаж мастера -->
+          <form th:each="character : ${players}" th:action="@{'/campaign/' + ${campaign.id} + '/characters/' + ${character.id} + '/player'}"
+                method="post" class="form-row row">
+            <a class="grow" th:href="@{'/character/' + ${character.id}}" th:text="${character.name}">Колясик</a>
+            <input type="text" name="username" maxlength="32" autocapitalize="none" placeholder="логин игрока"
+                   th:value="${character.player != null ? character.player.username : ''}" aria-label="Логин игрока">
+            <button type="submit" class="btn btn-sm">Отдать</button>
+          </form>
+          <div th:if="${#lists.isEmpty(players)}" class="empty">Персонажей игроков пока нет</div>
+        </div>
+      </section>
+
+      <section class="card" id="export">
+        <div class="card-head">
+          <h2 class="card-title"><span class="dot"></span>Экспорт</h2>
+        </div>
+        <div class="card-body form-row">
+          <a th:href="@{'/api/campaigns/' + ${campaign.id} + '/download'}" class="btn" download>⬇ Скачать JSON</a>
+          <a th:href="@{'/campaign/' + ${campaign.id} + '/print'}" target="_blank" class="btn btn-ghost">🖨 Распечатать всех</a>
+          <span class="page-sub">Загрузить кампанию из JSON — на главной.</span>
+        </div>
+      </section>
+    </div>
+
+    <div class="stack">
+      <!-- A-02: приглашение игроков — QR-код с телефона, ссылка; адресов несколько — выбор -->
+      <section class="card" id="invite" th:if="${invites != null}" data-invite>
+        <div class="card-head">
+          <h2 class="card-title"><span class="dot"></span>Пригласить игроков</h2>
+        </div>
+        <div class="card-body">
+          <p class="page-sub">Наведите камеру телефона: вход или регистрация — и игрок забирает свободного персонажа сам.</p>
+          <select th:if="${#lists.size(invites) > 1}" data-invite-select aria-label="Адрес ноутбука в сети">
+            <option th:each="invite, i : ${invites}" th:value="${i.index}"
+                    th:text="${(invite.get('recommended') ? '✓ ' : '') + invite.get('url').replaceAll('/join/.*', '') + ' — ' + invite.get('label')}">✓ http://192.168.1.5:8080 — Wi-Fi или кабель</option>
+          </select>
+          <div th:each="invite, i : ${invites}" class="invite" data-invite-qr th:hidden="${i.index > 0}">
+            <div class="invite-qr" th:utext="${invite.get('svg')}"></div>
+            <a class="invite-link" th:href="${invite.get('url')}" th:text="${invite.get('url')}">http://192.168.1.5:8080/join/…</a>
+            <span class="invite-net" th:classappend="${invite.get('recommended')} ? 'is-good'" th:text="${invite.get('label')}">Wi-Fi или кабель</span>
+          </div>
+          <!-- Телефон в той же сети, а страница не открывается — почти всегда брандмауэр Windows: он закрывает порт в «общественной» сети -->
+          <details class="cp-more item-more">
+            <summary>Телефон не открывает ссылку?</summary>
+            <ol class="invite-help">
+              <li>Телефон — в той же Wi-Fi-сети, что ноутбук (не мобильный интернет), адрес — с ✓.</li>
+              <li>Брандмауэр Windows пропускает порт: PowerShell от имени администратора —
+                <code th:text="'New-NetFirewallRule -DisplayName &quot;Charka&quot; -Direction Inbound -Protocol TCP -LocalPort ' + ${invitePort} + ' -Action Allow -Profile Private,Public'">New-NetFirewallRule …</code></li>
+              <li>Или в параметрах Windows сделайте эту сеть «Частной» и разрешите Java при первом запросе брандмауэра.</li>
+            </ol>
+          </details>
+          <form th:action="@{'/campaign/' + ${campaign.id} + '/invite/reset'}" method="post" class="form-row"
+                data-confirm="Старая ссылка перестанет работать. Сбросить?">
+            <button type="submit" class="btn btn-sm btn-ghost">Новая ссылка</button>
+          </form>
+        </div>
+      </section>
+    </div>
+  </div>
+</main>
+</body>
+</html>

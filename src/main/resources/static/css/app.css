@@ -12,6 +12,8 @@
   --surface-3: #232a37;
   --border: #2a3240;
   --border-strong: #3a4456;
+  /* UX-24: рамка полей ввода — контраст с фоном не ниже 3:1 (WCAG 1.4.11) */
+  --border-input: #5b6678;
 
   --text: #e7ebf2;
   --text-soft: #b6bfcd;
@@ -36,6 +38,10 @@
   --font: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
   --font-display: 'Russo One', 'Inter', 'Segoe UI', sans-serif;
   --topbar-height: 58px;
+  /* UX-24: повторявшиеся цвета — токенами, значения прежние */
+  --highlight: #facc15;
+  --slate: #94a3b8;
+  --sky: #7dd3fc;
 }
 
 * { box-sizing: border-box; }
@@ -47,7 +53,7 @@ html, body { margin: 0; padding: 0; }
 body {
   min-height: 100vh;
   font-family: var(--font);
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.55;
   color: var(--text);
   background:
@@ -105,7 +111,7 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
 }
 
 /* На узком экране вкладки персонажа не помещаются рядом с логотипом — уходят на вторую строку */
-@media (max-width: 560px) {
+@media (max-width: 600px) {
   :root { --topbar-height: 90px; }
   .topbar-inner { height: auto; flex-wrap: wrap; gap: 6px 16px; padding: 10px 16px; }
   .topnav a { padding: 6px 10px; }
@@ -127,6 +133,105 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
   background: var(--accent-soft);
   color: var(--accent);
   box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.35);
+}
+
+/* ---------- R-05: шапка состояния на листе ---------- */
+.state-body { display: flex; flex-direction: column; gap: 12px; }
+.cp-compact + .cp-compact { border-top: 1px solid var(--border); padding-top: 12px; }
+.cp-compact { display: flex; flex-direction: column; gap: 6px; scroll-margin-top: calc(var(--topbar-height) + 12px); }
+.cp-compact-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
+.cp-compact-title { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); min-width: 64px; }
+.cp-track-compact { margin: 0; }
+.cp-armor-line, .cp-stat-line { display: flex; flex-wrap: wrap; gap: 6px; }
+.cp-armor-chip, .cp-stat-chip { padding: 2px 8px; border-radius: 6px; background: var(--surface-3); font-size: 13px; font-variant-numeric: tabular-nums; }
+.cp-armor-chip.is-worn { color: var(--accent); }
+.cp-stat-chip.is-reduced { color: var(--warning); }
+.cp-compact .cp-damage { margin: 0; }
+.cp-compact > .cp-more > .counter { margin-top: 8px; }
+.counter-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 6px 0; border-bottom: 1px solid var(--border); position: relative; }
+.counter-row:last-child { border-bottom: none; }
+.counter-row form { margin: 0; }
+.counter-row-name { flex: 1; min-width: 100px; }
+.counter-row-value { font-family: var(--font-display); font-size: 20px; color: var(--accent); min-width: 32px; text-align: right; }
+.counter-row-delta input[type="number"] { width: 64px; }
+.counter-row-more > summary { list-style: none; cursor: pointer; padding: 4px 8px; color: var(--muted); }
+.counter-row-more > summary::-webkit-details-marker { display: none; }
+.counter-row-more[open] { flex-basis: 100%; }
+
+/* ---------- R-07: оружие ---------- */
+.item-attack-base { margin: 2px 0 0; font-size: 13px; color: var(--accent); font-variant-numeric: tabular-nums; }
+.item-head .item-attack-base { margin: 0; }
+.weapon-spare { margin-top: 10px; }
+.weapon-spare > .list, .weapon-spare > .abilities { margin-top: 8px; }
+.inventory-weapons { color: var(--muted); }
+.inventory-weapons a { color: var(--accent); }
+
+/* ---------- R-08: носимое и «Снаряжение» ---------- */
+.inventory-folded { margin-top: 10px; }
+.inventory-folded > .inventory { margin-top: 8px; }
+.inventory-carried { background: var(--surface-3); color: var(--muted); }
+.inventory-carried.is-carried { color: var(--accent); }
+.card-more-link { display: block; margin-top: 8px; font-size: 13px; color: var(--accent); }
+
+/* ---------- R-09: журнал здоровья ---------- */
+.wound-log { display: flex; flex-direction: column; gap: 8px; }
+.state-log > .wound-log { margin-top: 8px; }
+
+/* ---------- R-09a: частые навыки ---------- */
+.frequent-checks { display: flex; flex-wrap: wrap; gap: 8px; }
+.skill-pin .icon-btn { color: var(--muted); }
+.skill-pin .icon-btn.is-pinned { color: var(--warning); }
+
+/* ---------- R-11: «Сессия» ---------- */
+.session-date { font-family: 'Russo One', sans-serif; font-size: 18px; color: var(--text); font-variant-numeric: tabular-nums; }
+.session-body { display: flex; flex-direction: column; gap: 10px; }
+.session-award { border-top: 1px solid var(--border); padding-top: 10px; }
+
+/* ---------- R-04: «Стол» ---------- */
+.chat-dice { flex-wrap: wrap; gap: 6px; }
+.roll-log-card > summary { list-style: none; cursor: pointer; }
+.roll-log-card > summary::-webkit-details-marker { display: none; }
+.table-drawer { position: fixed; inset: 0 0 0 auto; margin: 0; width: min(420px, 100vw); height: 100vh; max-height: 100vh;
+  border-radius: 0; padding: 12px; border-left: 1px solid var(--border-strong); }
+.table-drawer .card { box-shadow: none; }
+.table-close { position: absolute; top: 18px; right: 18px; z-index: 1; }
+@media (max-width: 600px) { .table-open { padding: 4px 8px; } }
+
+/* ---------- R-01…R-03: крошка и вкладки ---------- */
+body:has(.subnav) { --topbar-height: 102px; }
+.topbar-spacer { flex: 1; }
+.crumbs { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.crumb-sep { color: var(--muted); }
+.crumb-menu { position: relative; }
+.crumb-menu > summary { list-style: none; cursor: pointer; }
+.crumb-menu > summary::-webkit-details-marker { display: none; }
+.crumb { display: inline-block; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding: 6px 10px; border-radius: 8px; color: var(--text-soft); font-weight: 500; font-size: 14px; }
+.crumb:hover { background: var(--surface-2); color: var(--text); }
+.crumb.is-current { color: var(--text); font-weight: 600; }
+.crumb-list { position: absolute; top: calc(100% + 4px); left: 0; z-index: 20; min-width: 200px; max-height: 60vh; overflow-y: auto;
+  display: flex; flex-direction: column; padding: 6px; background: var(--surface-2); border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm); box-shadow: var(--shadow); }
+.crumb-list a { padding: 7px 10px; border-radius: 6px; color: var(--text-soft); white-space: nowrap; }
+.crumb-list a:hover { background: var(--surface-3); color: var(--text); }
+.crumb-list a.is-active { color: var(--accent); }
+.crumb-list .crumb-open { color: var(--accent); border-bottom: 1px solid var(--border); border-radius: 6px 6px 0 0; margin-bottom: 4px; }
+.crumb-group { padding: 6px 10px 2px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.subnav { border-top: 1px solid var(--border); }
+.tabs { max-width: 1200px; margin: 0 auto; padding: 4px 24px; display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tabs a { flex: none; padding: 7px 14px; border-radius: 999px; color: var(--text-soft); font-weight: 500; font-size: 14px; white-space: nowrap; }
+.tabs a:hover { background: var(--surface-2); color: var(--text); }
+.tabs a.is-active { background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.35); }
+.tabs a.tab-fight { color: var(--danger); }
+@media (max-width: 600px) {
+  body:has(.subnav) { --topbar-height: 98px; }
+  .topbar-inner { flex-wrap: nowrap; height: 52px; padding: 0 12px; gap: 8px; }
+  .brand-name { display: none; }
+  .crumbs .crumb-menu:first-child:not(:last-child) .crumb { max-width: 90px; }
+  .crumb { max-width: 140px; padding: 6px 6px; }
+  .topbar-user > span { display: none; }
+  .tabs { padding: 4px 12px; }
 }
 
 /* ---------- Страница ---------- */
@@ -179,7 +284,11 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
 .stack { display: flex; flex-direction: column; gap: 20px; }
 
 @media (max-width: 900px) {
-  .grid-main, .grid-2, .grid-sidebar { grid-template-columns: 1fr; }
+  /* minmax(0, …): длинная кнопка не растягивает колонку шире экрана телефона */
+  .grid-main, .grid-2, .grid-sidebar { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+  .btn { white-space: normal; max-width: 100%; }
 }
 
 /* ---------- Статистика ---------- */
@@ -280,6 +389,7 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
 .chip.pink { color: var(--accent-2); background: var(--accent-2-soft); border-color: rgba(244, 114, 182, 0.3); }
 .chip.red { color: var(--danger); background: var(--danger-soft); border-color: rgba(248, 113, 113, 0.3); }
 .chip.muted { color: var(--text-soft); background: var(--surface-3); border-color: var(--border); }
+.chip.yellow { color: var(--warning); background: var(--warning-soft); border-color: rgba(251, 191, 36, 0.3); }
 
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 
@@ -320,7 +430,7 @@ a.row:hover .row-title { color: var(--accent); }
 .row .arrow { color: var(--muted); transition: transform .15s, color .15s; }
 a.row:hover .arrow { color: var(--accent); transform: translateX(3px); }
 
-.amount { font-family: var(--font-display); font-size: 15px; }
+.amount { font-family: var(--font-display); font-size: 14px; }
 .amount.pos { color: var(--success); }
 .amount.neg { color: var(--danger); }
 
@@ -350,7 +460,7 @@ a.row:hover .arrow { color: var(--accent); transform: translateX(3px); }
   color: var(--muted);
 }
 
-input[type="text"], input[type="number"], input[type="date"], input[type="search"], select, textarea {
+input[type="text"], input[type="password"], input[type="number"], input[type="date"], input[type="search"], select, textarea {
   width: 100%;
   min-width: 0;
   padding: 9px 12px;
@@ -358,12 +468,12 @@ input[type="text"], input[type="number"], input[type="date"], input[type="search
   font-size: 14px;
   color: var(--text);
   background: var(--bg);
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border-input);
   border-radius: var(--radius-sm);
   outline: none;
   transition: border-color .15s, box-shadow .15s;
 }
-input::placeholder, textarea::placeholder { color: #5b6677; }
+input::placeholder, textarea::placeholder { color: var(--muted); }
 input:focus, select:focus, textarea:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
@@ -436,7 +546,7 @@ select { cursor: pointer; }
 }
 .btn-primary:hover {
   color: #041016;
-  background: linear-gradient(135deg, #67e8f9 0%, #7dd3fc 100%);
+  background: linear-gradient(135deg, #67e8f9 0%, var(--sky) 100%);
   border-color: transparent;
   box-shadow: 0 0 18px rgba(34, 211, 238, 0.35);
 }
@@ -466,7 +576,7 @@ select { cursor: pointer; }
   width: 32px;
   height: 32px;
   padding: 0;
-  font-size: 15px;
+  font-size: 14px;
   color: var(--muted);
   background: transparent;
   border: 1px solid transparent;
@@ -493,12 +603,46 @@ form.inline { display: inline-flex; margin: 0; }
 }
 .alert-success { color: var(--success); background: var(--success-soft); border-color: rgba(74, 222, 128, 0.35); }
 .alert-error { color: var(--danger); background: var(--danger-soft); border-color: rgba(248, 113, 113, 0.35); }
-.alert .alert-text { flex: 1; }
+.alert-warning { color: var(--warning); background: var(--warning-soft); border-color: rgba(251, 191, 36, 0.35); }
+.alert .alert-text { flex: 1; white-space: pre-line; }
+/* M-21: проверка карты */
+.map-audit { list-style: none; margin: 8px 0; padding: 0; font-size: 13px; color: var(--text-soft); display: grid; gap: 4px; }
+.map-audit .is-warn { color: var(--warning); }
+/* M-20: текст карты — моноширинный, столбцы рисунка не съезжают */
+.map-text { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 12px; line-height: 1.25; white-space: pre; min-height: 160px; }
+.map-legend { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 12px; color: var(--text-soft); white-space: pre; overflow-x: auto; margin: 8px 0 0; }
 .alert .alert-close {
   background: none; border: none; color: inherit; font-size: 20px; line-height: 1;
   cursor: pointer; opacity: .7;
 }
 .alert .alert-close:hover { opacity: 1; }
+/* A-01: «↶ Отменить» после действия — внизу экрана, поверх всего, чтобы не искать */
+.undo-toast {
+  position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 50;
+  display: flex; align-items: center; gap: 10px;
+  max-width: calc(100vw - 32px); padding: 8px 8px 8px 14px;
+  background: var(--surface-3); border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+  box-shadow: var(--shadow); font-size: 14px; color: var(--text);
+}
+.undo-form { display: flex; align-items: center; gap: 10px; margin: 0; min-width: 0; }
+.undo-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.undo-label.is-done { color: var(--success); }
+.undo-label.is-error { color: var(--danger); white-space: normal; }
+.undo-close { background: none; border: none; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; padding: 0 4px; }
+.undo-close:hover { color: var(--text); }
+.chat-undo { margin: 0; }
+/* A-02: приглашение — QR-код на белом, чтобы камера читала его и на тёмной теме */
+.invite { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 12px 0; }
+.invite[hidden] { display: none; }
+.invite-qr { width: min(240px, 70vw); border-radius: var(--radius-sm); overflow: hidden; }
+.invite-qr svg { display: block; width: 100%; height: auto; }
+.invite-link { font-size: 13px; overflow-wrap: anywhere; text-align: center; }
+.invite-net { font-size: 12px; color: var(--warning); text-align: center; }
+.invite-net.is-good { color: var(--success); }
+.invite-help { margin: 6px 0 0; padding-left: 18px; font-size: 13px; color: var(--text-soft); display: flex; flex-direction: column; gap: 4px; }
+.invite-help code { display: block; margin-top: 4px; padding: 6px 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; font-size: 12px; overflow-wrap: anywhere; user-select: all; }
+.chat-undo .btn { padding: 2px 8px; }
+
 /* Итог действия вверху страницы: прокрутка после действия остаётся на месте, сообщение не должно оказаться за краем */
 main.page > .alert {
   position: sticky;
@@ -641,6 +785,14 @@ details.item-more > .field-grid, details.item-more > .item-actions { margin-top:
 .cat .row-actions { opacity: 0; transition: opacity .15s; }
 .cat:hover .row-actions, .cat:focus-within .row-actions { opacity: 1; }
 .cat > .edit-panel { flex-basis: 100%; margin-top: 0; }
+/* R-20: фильтр заметок фишками, формы добавления раскрываются над списком */
+.chip-link { color: var(--text-soft); background: var(--surface-3); border-color: var(--border); text-decoration: none; padding: 4px 12px; font-size: 13px; }
+.chip-link:hover { color: var(--text); }
+.chip-link.is-active { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+.note-filter .chips { align-items: center; }
+.note-filter > .edit-panel { margin-top: 10px; }
+.note-filter > .edit-panel .cat-list { margin-bottom: 8px; }
+.card > .open-form { margin: 0 20px 14px; }
 
 .note {
   padding: 16px 18px;
@@ -804,7 +956,7 @@ details.cp-more > summary:hover { color: var(--text-soft); }
   min-width: 0;
 }
 .cp-stat-label { font-size: 11px; letter-spacing: .06em; color: var(--muted); }
-.cp-stat-value, .cp-armor-value { font-size: 22px; font-weight: 600; line-height: 1.2; color: var(--text); }
+.cp-stat-value, .cp-armor-value { font-size: 20px; font-weight: 600; line-height: 1.2; color: var(--text); }
 .cp-stat-base { font-size: 11px; color: var(--muted); min-height: 1em; }
 
 .cp-derived { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 16px; margin: 0; font-size: 13px; }
@@ -874,7 +1026,7 @@ details.cp-more > summary:hover { color: var(--text-soft); }
 .item-action-note { flex: 1 1 100%; margin: 0; font-size: 13px; color: var(--text-soft); }
 .item-note { margin: 6px 0 0; font-size: 13px; color: var(--warning); }
 .item-result { margin: 6px 0 0; }
-.inventory .row[id] { scroll-margin-top: calc(var(--topbar-height) + 12px); }
+.inventory .row[id], .card[id], .card .row[id], .inventory[id] { scroll-margin-top: calc(var(--topbar-height) + 12px); }
 
 /* Строка предмета: всё важное в одну линию, остальное в панели */
 .item-section-title { margin: 0 0 6px; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
@@ -1094,6 +1246,13 @@ html:has(.is-editing) {
 .dialog .btn.is-active { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
 .dialog-more summary { cursor: pointer; }
 .dialog-more input { margin-top: 8px; }
+/* R-19: выбор файла в стиле кнопки — сам input прозрачный поверх, рядом имя выбранного файла */
+.file-pick { position: relative; overflow: hidden; justify-content: flex-start; min-width: 0; }
+.file-pick input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+.file-pick [data-file-name] { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-pick.is-picked { color: var(--accent); border-color: var(--accent); }
+.dialog-import { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+.dialog-import > span { color: var(--muted); font-size: 13px; }
 
 /* Диалог атаки */
 .attack-dialog { width: min(560px, calc(100vw - 32px)); }
@@ -1179,10 +1338,20 @@ html:has(.is-editing) {
 .gm-row.is-out { opacity: 0.55; }
 .gm-stats span { font-variant-numeric: tabular-nums; }
 .gm-side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+/* R-10: меню строки на обзоре — справа, внутрь страницы */
+.roster-menu .item-chip-options { left: auto; right: 0; min-width: 230px; }
+.roster-menu > summary { list-style: none; }
+.roster-role { color: var(--text-soft); }
+/* R-12: «＋ Персонаж ▾» в заголовке карточки */
+.add-menu, .card-head > .add-btn { margin-left: auto; }
+.add-menu > summary { list-style: none; }
+.add-menu .item-chip-options { min-width: 280px; }
+#npc-dialog .form { margin-top: 12px; }
+.roster-menu > summary::-webkit-details-marker { display: none; }
 
 /* Листалка лога бросков */
 .pager { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 6px; padding-bottom: 6px; }
-.pager-info { color: var(--text-soft); font-size: 0.85rem; margin: 0 auto; }
+.pager-info { color: var(--text-soft); font-size: 13px; margin: 0 auto; }
 
 /* ===== Поле боя (M-02) ===== */
 .battle > summary { cursor: pointer; list-style: none; }
@@ -1203,11 +1372,17 @@ html:has(.is-editing) {
 .battle-zone.players { fill: rgba(34, 211, 238, 0.07); stroke: rgba(34, 211, 238, 0.5); }
 .battle-zone.npcs { fill: rgba(248, 113, 113, 0.07); stroke: rgba(248, 113, 113, 0.5); }
 .battle-terrain { opacity: 0.8; }
-.battle-stamp-outline { fill: none; stroke: #94a3b8; stroke-width: 1.5; }
+.battle-stamp-outline { fill: none; stroke: var(--slate); stroke-width: 1.5; }
 .battle-reach rect { fill: rgba(74, 222, 128, 0.12); }
+.battle-fog > rect { fill: url(#battle-fog-hatch); pointer-events: none; }
+.battle-fog-shade { fill: rgba(0, 0, 0, 0.55); }
+.battle-fog-line { stroke: rgba(148, 163, 184, 0.28); stroke-width: 3; }
+.battle-token.is-unseen { opacity: 0.4; }
+.battle-token.is-unseen .battle-token-body { stroke-dasharray: 3 3; stroke: var(--slate); }
+.battle-token-cover { fill: var(--highlight); stroke: #0b0e14; stroke-width: 1.5; pointer-events: none; }
 .battle-edge { stroke-linecap: round; stroke-width: 5; }
 .battle-edge.wall { stroke: #c7cfdb; }
-.battle-edge.window { stroke: #7dd3fc; stroke-width: 3; }
+.battle-edge.window { stroke: var(--sky); stroke-width: 3; }
 .battle-edge.door { stroke: #c8894d; stroke-width: 6; cursor: pointer; }
 .battle-edge.door.open { stroke-dasharray: 4 6; stroke-width: 3; }
 .battle-label { fill: var(--text-soft); font-size: 12px; text-anchor: middle; pointer-events: none; }
@@ -1232,9 +1407,19 @@ html:has(.is-editing) {
 .battle-menu { position: absolute; z-index: 5; display: flex; flex-direction: column; gap: 6px; min-width: 200px; max-width: 260px; padding: 10px;
   border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); box-shadow: var(--shadow); }
 .battle-menu[hidden] { display: none; }
+/* GM-01: с лечением и действиями меню мастера выше карты на телефоне — не выше поля, остальное прокруткой */
+.battle-menu { max-height: calc(100% - 16px); overflow-y: auto; overscroll-behavior: contain; }
+.battle-menu > * { flex-shrink: 0; }
 .battle-menu-head { font-weight: 600; }
 .battle-menu-warn { color: var(--danger); font-size: 13px; }
 .battle-menu-note { color: var(--muted); font-size: 13px; }
+.battle-menu-gm { display: flex; flex-direction: column; gap: 6px; padding-top: 8px; border-top: 1px solid var(--border); }
+.battle-menu-gm form { margin: 0; flex-wrap: wrap; }
+.battle-menu-gm select, .battle-menu-gm input { min-width: 0; }
+.battle-ruler { pointer-events: none; }
+.battle-ruler-line { stroke: var(--highlight); stroke-width: 3; stroke-dasharray: 8 5; }
+.battle-ruler-end { fill: var(--highlight); }
+.battle-ruler-label { fill: var(--highlight); font-size: 14px; font-weight: 700; text-anchor: middle; paint-order: stroke; stroke: #0b0e14; stroke-width: 4; }
 .battle-tray { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 16px 0; }
 .battle-tray[hidden] { display: none; }
 .battle-hint { margin: 0; padding: 8px 16px 12px; color: var(--muted); font-size: 13px; }
@@ -1245,7 +1430,7 @@ html:has(.is-editing) {
 /* ===== Редактор карты (M-06) ===== */
 .page-wide { max-width: 1500px; }
 .editor-tools { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 16px 8px; }
-.editor-tools kbd { font-size: 10px; color: var(--muted); margin-left: 2px; }
+.editor-tools kbd { font-size: 11px; color: var(--muted); margin-left: 2px; }
 .editor-undo { display: inline-flex; gap: 4px; margin-left: auto; }
 .editor-options { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; padding: 0 16px 10px; min-height: 40px; }
 .editor-field { min-width: 160px; }
@@ -1271,6 +1456,10 @@ html:has(.is-editing) {
 .chat-row.is-roll { color: var(--text-soft); font-size: 13px; }
 .chat-row.is-roll .chat-who { color: var(--muted); font-weight: 500; }
 .chat-text { overflow-wrap: anywhere; }
+.chat-row.is-action { color: var(--muted); font-size: 13px; }
+.chat-row.is-hidden { opacity: .55; font-style: italic; grid-template-columns: auto 1fr auto auto; }
+.dice-hidden { font-size: 13px; color: var(--muted); }
+.chat-row.is-action .chat-who { color: var(--muted); font-weight: 500; }
 .field-error { color: var(--danger); font-size: 13px; margin: 4px 0 0; }
 .page-narrow { max-width: 440px; }
 .topbar-user { display: flex; align-items: center; gap: 8px; margin-left: 12px; color: var(--muted); font-size: 13px; }
@@ -1278,3 +1467,530 @@ html:has(.is-editing) {
 .char-player .label { margin: 0; }
 .battle-add { display: inline-flex; gap: 4px; align-items: center; }
 .battle-add select { max-width: 160px; }
+
+/* ---------- A-04: «мой ход» у игрока ---------- */
+.turn-panels { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+.turn-panel.is-mine { border-color: var(--success); box-shadow: 0 0 0 1px var(--success), var(--shadow); }
+.turn-status { margin: 0 0 8px; font-size: 14px; }
+.turn-panel.is-mine .turn-status strong { color: var(--success); font-size: 18px; }
+.turn-sound { font-size: 13px; color: var(--muted); }
+.turn-end { margin-top: 12px; }
+.turn-end .btn { width: 100%; }
+.turn-panels .battle-turn { margin: 0; }
+.turn-queue > summary { cursor: pointer; list-style: none; }
+.turn-queue > summary::-webkit-details-marker { display: none; }
+
+/* ---------- A-07: запросы бросков ---------- */
+.requests-slot:empty { display: none; }
+.requests-slot { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.request-card { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-sm);
+  background: var(--accent-2-soft); border: 1px solid rgba(244, 114, 182, 0.4); }
+.request-card.is-gm { background: var(--surface-2); border-color: var(--border); }
+.request-text { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 6px; font-size: 14px; }
+.request-who { font-weight: 600; }
+.request-card form { margin: 0; }
+.undo-toast { flex-wrap: wrap; }
+
+/* ---------- A-11: справка правил ---------- */
+.reference-dialog { width: min(640px, calc(100vw - 32px)); }
+.reference-body { max-height: 70vh; overflow-y: auto; padding-right: 12px; }
+.reference-section { border-top: 1px solid var(--border); padding: 8px 0; }
+.reference-section > summary { display: flex; justify-content: space-between; gap: 8px; cursor: pointer; font-weight: 600; }
+.reference-page { color: var(--muted); font-weight: 400; font-size: 13px; }
+.reference-lines { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 8px 0 0; font-size: 14px; }
+.reference-lines dt { color: var(--text-soft); }
+.reference-lines dt.is-note { grid-column: 1 / -1; color: var(--muted); font-size: 13px; }
+.reference-lines dd { margin: 0; text-align: right; font-weight: 600; white-space: nowrap; }
+
+/* ---------- A-10: даунтайм ---------- */
+.downtime-lines { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+.downtime-days { flex-wrap: wrap; }
+.downtime-row { flex-wrap: wrap; gap: 10px; }
+.downtime-healer { flex-direction: row; align-items: center; gap: 6px; }
+.downtime-link { margin-bottom: 12px; width: 100%; justify-content: center; }
+
+/* ---------- A-06: сцены ---------- */
+.scenes-list { margin-top: 16px; }
+.scene-edit .check { white-space: nowrap; }
+
+/* R-14…R-18: бой — карта во весь экран. Сверху Char Info и очередь, слева инструменты, справа «Стол / Очередь / Мастер», снизу ход */
+.page-battle { max-width: none; padding: 8px 12px 12px; }
+.battle-screen {
+  display: grid; gap: 8px;
+  grid-template-columns: 132px minmax(0, 1fr) minmax(300px, 360px);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas: "top top top" "tools map side" "bar bar side";
+  height: calc(100dvh - var(--battle-offset, 120px)); min-height: 520px;
+}
+.battle-screen:not(.has-field) { grid-template-areas: "top top top" "map map side" "bar bar side"; }
+.battle-top { grid-area: top; display: flex; align-items: center; gap: 8px; min-width: 0; position: relative; z-index: 6; }
+.battle-toolbar { grid-area: tools; display: flex; flex-direction: column; gap: 6px; min-height: 0; overflow-y: auto; }
+.battle-toolbar .btn, .battle-toolbar select { width: 100%; justify-content: flex-start; }
+/* UX-33: инструменты карты — колонка значков; у мастера — по три в ряд над его инструментами */
+.battle-screen.has-field { grid-template-columns: auto minmax(0, 1fr) minmax(300px, 360px); }
+.battle-toolbar.is-gm { width: 132px; }
+.battle-tools { display: grid; grid-template-columns: 40px; gap: 4px; }
+.battle-toolbar.is-gm .battle-tools { grid-template-columns: repeat(3, 1fr); }
+.battle-toolbar .battle-tool { width: 40px; height: 40px; padding: 0; justify-content: center; font-size: 18px; line-height: 1; }
+.battle-toolbar.is-gm .battle-tool { width: 100%; }
+.battle-tool.is-active { background: var(--accent-soft); border-color: var(--accent); }
+.battle-dice { width: min(420px, 92vw); }
+.battle-dice .form { gap: 10px; }
+/* окно лежит в левой полосе: её «кнопка во всю ширину» сюда не относится */
+.battle-toolbar .battle-dice .btn, .battle-toolbar .battle-dice select { width: auto; justify-content: center; }
+.battle-dice-quick { display: grid; grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)); gap: 6px; }
+.battle-toolbar .battle-dice .battle-dice-quick .btn { width: 100%; min-height: 44px; font-size: 16px; font-weight: 600; }
+.battle-dice .form-row { flex-wrap: nowrap; }
+.me-panel { display: flex; align-items: center; gap: 6px; }
+.me-panel.is-out .me-portrait { opacity: .5; text-decoration: line-through; }
+button.me-portrait { font: inherit; font-size: 14px; }
+.battle-toolbar .battle-me { flex-direction: column; align-items: stretch; gap: 2px; }
+.battle-toolbar .battle-zoom { margin: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.battle-toolbar .battle-zoom .btn { justify-content: center; padding-inline: 0; }
+.battle-toolbar-sep { width: 100%; border: 0; border-top: 1px solid var(--border); margin: 4px 0; }
+.battle-center { grid-area: map; position: relative; display: flex; flex-direction: column; min-height: 0;
+  border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); overflow: hidden; }
+.battle-center .battle-holder { flex: 1; min-height: 0; }
+.battle-center .battle-stage { height: 100%; border: 0; }
+.battle-center .battle-hint { padding: 6px 12px; border-top: 1px solid var(--border); }
+.battle-center .battle-tray { padding: 6px 12px; border-top: 1px solid var(--border); }
+.battle-alerts { position: absolute; top: 8px; left: 8px; right: 8px; z-index: 4; display: flex; flex-direction: column; gap: 6px;
+  max-height: 60%; overflow-y: auto; pointer-events: none; }
+.battle-alerts > * { pointer-events: auto; max-width: 600px; }
+.battle-alerts .battle-turn { margin: 0; }
+.battle-alerts:empty, .battle-alerts .requests-slot:empty { display: none; }
+.battle-nomap { margin: auto; max-width: 420px; }
+.battle-side { grid-area: side; display: flex; flex-direction: column; min-height: 0; gap: 8px; }
+.side-tabs { display: flex; gap: 4px; }
+.side-tab { flex: 1; padding: 7px 10px; border: 1px solid var(--border); border-radius: 999px; background: none; color: var(--text-soft);
+  font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }
+.side-tab.is-active { background: var(--accent-soft); color: var(--accent); border-color: rgba(34, 211, 238, 0.35); }
+.battle-panel { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+.battle-panel[hidden] { display: none; }
+.battle-panel .list .row { padding: 10px 12px; }
+.battle-bar { grid-area: bar; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 8px 12px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
+.battle-bar .encounter-now { display: flex; gap: 10px; align-items: baseline; }
+.battle-bar-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.battle-bar-actions form { margin: 0; }
+.battle-bar-actions select { max-width: 200px; }
+.battle-bar-next { margin-left: auto; }
+
+/* Char Info: кто ходит; раскрывается поверх карты */
+.charinfo { position: relative; z-index: 8; flex: none; max-width: 340px; }
+.charinfo-head { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+  background: var(--surface); cursor: pointer; list-style: none; white-space: nowrap; overflow: hidden; }
+.charinfo-head::-webkit-details-marker { display: none; }
+.charinfo[open] .charinfo-head { border-color: var(--accent); }
+.charinfo-label { color: var(--muted); font-size: 13px; }
+.charinfo-caret { color: var(--muted); margin-left: auto; }
+.charinfo-body, .me-body { position: absolute; top: calc(100% + 6px); left: 0; width: min(460px, 92vw); max-height: 70vh; overflow-y: auto;
+  padding: 12px; display: flex; flex-direction: column; gap: 8px;
+  border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); box-shadow: var(--shadow); }
+.me-panel { position: relative; z-index: 8; flex: none; }
+.me-portrait { padding: 6px 10px; border: 1px solid var(--success); border-radius: 999px; background: var(--success-soft); color: var(--success);
+  cursor: pointer; list-style: none; white-space: nowrap; font-size: 14px; }
+.me-portrait::-webkit-details-marker { display: none; }
+.me-label { font-weight: 700; }
+
+/* R-17: очередь каруселью */
+.carousel { flex: 1; min-width: 0; display: flex; gap: 6px; margin: 0; padding: 2px; list-style: none; overflow-x: auto; scrollbar-width: thin; }
+.carousel-item { flex: none; }
+.carousel-btn { display: flex; align-items: center; gap: 6px; padding: 5px 10px; border: 1px solid var(--border); border-radius: 999px;
+  background: var(--surface); color: var(--text); font: inherit; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.carousel-item.npc .carousel-btn { border-color: rgba(248, 113, 113, 0.45); }
+.carousel-item.player .carousel-btn { border-color: rgba(34, 211, 238, 0.45); }
+.carousel-item.is-current .carousel-btn { border-color: var(--warning); box-shadow: 0 0 0 1px var(--warning); font-weight: 700; }
+.carousel-item.is-done .carousel-btn, .carousel-item.is-out .carousel-btn, .carousel-item.is-hidden .carousel-btn { opacity: 0.5; }
+.carousel-item.is-out .carousel-name { text-decoration: line-through; }
+.carousel-init { color: var(--muted); font-variant-numeric: tabular-nums; }
+.carousel-mark { padding: 0 6px; border-radius: 999px; background: var(--surface-3); color: var(--text-soft); font-size: 11px; }
+.carousel-mark.pink { color: #f472b6; }
+.carousel-round { flex: none; align-self: center; padding: 4px 8px; color: var(--warning); font-size: 12px; white-space: nowrap;
+  border-left: 2px solid var(--warning); }
+.battle-top-end { display: flex; gap: 6px; align-items: center; flex: none; }
+.battle-top-end .turn-sound { margin: 0; }
+.encounter-row.is-hidden { opacity: 0.55; }
+
+@media (max-width: 900px) {
+  .page-battle { padding: 6px; }
+  .battle-screen { height: auto; min-height: 0; grid-template-columns: minmax(0, 1fr); grid-template-rows: none;
+    grid-template-areas: "top" "map" "bar" "tools" "side"; }
+  .battle-screen:not(.has-field) { grid-template-areas: "top" "map" "bar" "side"; }
+  .battle-top { flex-wrap: wrap; }
+  .carousel { order: 3; flex-basis: 100%; }
+  .battle-center { height: 72dvh; }
+  .battle-bar { position: sticky; bottom: 0; z-index: 5; }
+  .battle-toolbar { flex-direction: row; flex-wrap: wrap; overflow: visible; }
+  .battle-toolbar .btn, .battle-toolbar select { width: auto; }
+  .battle-toolbar .battle-me { flex-direction: row; align-items: center; }
+  .battle-toolbar-sep { display: none; }
+  .battle-toolbar.is-gm { width: auto; }
+  .battle-tools, .battle-toolbar.is-gm .battle-tools { grid-template-columns: none; grid-auto-flow: column; }
+  .battle-toolbar .battle-tool, .battle-toolbar.is-gm .battle-tool { width: 44px; height: 44px; }
+  .battle-panel { overflow: visible; }
+}
+.charinfo.is-mine .charinfo-head { border-color: var(--success); box-shadow: 0 0 0 1px var(--success); }
+.charinfo.is-mine .charinfo-label { color: var(--success); font-weight: 700; }
+
+/* J-01: журнал боя в ленте «Стола» */
+.chat-row.is-event { align-items: flex-start; }
+.journal { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; padding: 6px 8px; border-left: 3px solid var(--border-strong);
+  border-radius: 6px; background: var(--surface-2); }
+.journal.is-ok { border-left-color: var(--success); }
+.journal.is-fail { border-left-color: var(--danger); }
+.journal-head { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.journal-title { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.journal-roll { flex: none; display: inline-flex; align-items: baseline; gap: 4px; padding: 1px 8px; border-radius: 999px;
+  background: var(--surface-3); font-variant-numeric: tabular-nums; }
+.journal-roll b { font-family: 'Russo One', sans-serif; font-size: 18px; color: var(--text); }
+.journal-roll small { color: var(--muted); }
+.journal.is-ok .journal-roll b { color: var(--success); }
+.journal.is-fail .journal-roll b { color: var(--danger); }
+.journal-die { width: 14px; height: 14px; align-self: center; border-radius: 3px; border: 2px solid var(--accent);
+  background: radial-gradient(circle, var(--accent) 22%, transparent 26%) center / 6px 6px; }
+.journal-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.jchip { padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--surface-3); color: var(--text-soft); }
+.jchip-hit, .jchip-ok { background: var(--success-soft); color: var(--success); }
+.jchip-miss { background: var(--surface-3); color: var(--muted); }
+.jchip-bad { background: var(--danger-soft); color: var(--danger); }
+.jchip-dmg { background: rgba(248, 113, 113, 0.22); color: #fca5a5; }
+.jchip-armor { background: rgba(148, 163, 184, 0.18); color: #cbd5e1; }
+.jchip-pierce { background: var(--warning-soft); color: var(--warning); }
+.jchip-dead { background: #7f1d1d; color: #fecaca; }
+.jchip-crit { background: rgba(250, 204, 21, 0.2); color: var(--highlight); }
+.journal-outcome { margin: 0; font-size: 13px; color: var(--text-soft); }
+.journal-steps summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+.journal-steps ol { margin: 4px 0 0; padding-left: 18px; font-size: 12px; color: var(--text-soft); }
+.chat-row.is-round { justify-content: center; }
+.chat-row.is-round > * { grid-column: 1 / -1; }
+.journal-turn { display: flex; align-items: center; justify-content: space-between; gap: 6px; color: var(--muted); font-size: 12px; }
+.journal-round { flex: 1; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; padding: 4px 0;
+  color: var(--warning); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+  border-top: 1px dashed rgba(250, 204, 21, 0.35); }
+.journal-round-note { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--text-soft); }
+
+/* J-02: бросок катится — число мелькает, кубик кувыркается, затем толчок; итог проявляется после */
+.is-rolling [data-after-roll] { opacity: 0; }
+[data-after-roll] { transition: opacity 0.25s ease; }
+.is-rolling .journal-die, .is-rolling.roll-total::before { animation: die-tumble 0.35s linear infinite; }
+.is-rolling .journal-roll b, .is-rolling .journal.is-ok .journal-roll b, .is-rolling .journal.is-fail .journal-roll b, .is-rolling .roll-total b { color: var(--accent); filter: blur(0.4px); }
+.is-rolling .journal.is-ok, .is-rolling .journal.is-fail { border-left-color: var(--border-strong); }
+.is-landed .journal-roll, .is-landed .roll-total { animation: roll-pop 0.35s cubic-bezier(0.2, 1.6, 0.4, 1); }
+.is-landed .journal.is-ok, .is-landed.alert-success { animation: roll-glow-ok 0.9s ease-out; }
+.is-landed .journal.is-fail, .is-landed.alert-error { animation: roll-shake 0.4s ease-out; }
+.is-landed:has(.jchip-crit) .journal-roll { animation: roll-pop 0.35s cubic-bezier(0.2, 1.6, 0.4, 1), roll-crit 1.2s ease-out; }
+.roll-total b { font-weight: 700; }
+@keyframes die-tumble { 0% { transform: rotate(0) scale(1); } 50% { transform: rotate(180deg) scale(1.25); } 100% { transform: rotate(360deg) scale(1); } }
+@keyframes roll-pop { 0% { transform: scale(1.45); } 100% { transform: scale(1); } }
+@keyframes roll-glow-ok { 0% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.55); } 100% { box-shadow: 0 0 0 12px rgba(74, 222, 128, 0); } }
+@keyframes roll-crit { 0% { box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.8); } 100% { box-shadow: 0 0 0 16px rgba(250, 204, 21, 0); } }
+@keyframes roll-shake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-4px); } 40% { transform: translateX(4px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(2px); } }
+@media (prefers-reduced-motion: reduce) { .is-rolling [data-after-roll] { opacity: 1; } }
+
+/* A-15: переключатель режима мастера на карте; «За NPC» подсвечен, чтобы мастер видел, что ходит за NPC */
+.gm-mode.is-active { color: var(--danger); border-color: var(--danger); background: var(--danger-soft); }
+[data-god-only][hidden] { display: none !important; }
+
+/* M-23: дым поверх пола полупрозрачный, трудная местность — штриховка, взрывоопасное — значок */
+.battle-terrain.battle-smoke { fill-opacity: 0.55; }
+.battle-terrain.battle-difficult { stroke: rgba(255, 255, 255, 0.12); stroke-dasharray: 3 4; }
+.battle-explosive { font-size: 16px; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+
+/* M-22: вкладки уровней над картой, фишки снизу (видны сквозь пустоту) притушены */
+.battle-levels { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.battle-climb { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.battle-token.is-below { opacity: 0.45; }
+.editor-levels { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.battle-stairs { font-size: 16px; text-anchor: middle; dominant-baseline: central; fill: #f5e6c8; pointer-events: none; }
+
+/* ---------- Космозэки (K-02): зоны тела плитками ---------- */
+.kz-zones { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 6px; }
+.kz-zone { position: relative; display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; border: 1px solid var(--border);
+  border-radius: 8px; background: var(--surface-3); cursor: pointer; font-size: 13px; }
+.kz-zone:has(.kz-zone-pick:checked) { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.kz-zone-pick { position: absolute; opacity: 0; pointer-events: none; }
+.kz-zone-name small { color: var(--muted); }
+.kz-zone-hp { font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 4px; flex-wrap: wrap; }
+.kz-zone-hp b { font-size: 16px; }
+.kz-zone-hp small { color: var(--muted); }
+.kz-zone-armor, .kz-zone-mult { color: var(--text) !important; }
+.kz-bar { height: 4px; border-radius: 2px; background: var(--border); overflow: hidden; }
+.kz-bar > span { display: block; height: 100%; background: var(--success); }
+.kz-zone.is-hurt .kz-bar > span { background: var(--warning); }
+.kz-zone.is-low .kz-bar > span, .kz-zone.is-down .kz-bar > span { background: var(--danger); }
+.kz-zone.is-down { border-color: var(--danger); }
+.kz-zone.is-down .kz-zone-hp b { color: var(--danger); }
+.kz-damage { display: flex; flex-direction: column; gap: 6px; margin: 0; }
+.kz-hits { display: inline-flex; align-items: center; gap: 2px; }
+.kz-portent { gap: 8px; }
+.kz-die { min-width: 44px; font-family: var(--font-display); font-size: 18px; }
+/* K-11: профиль персонажа */
+.profile-list { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin: 0; }
+.profile-list dt { color: var(--muted); font-size: 13px; }
+.profile-list dd { margin: 0; }
+.profile-multi { border: none; padding: 0; margin: 0; grid-column: 1 / -1; }
+.profile-picks { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.profile-pick { font-size: 14px; }
+/* K-07: кнопка-фишка (рывок) */
+.chip-button { cursor: pointer; border: 1px solid var(--border-strong); font: inherit; }
+.chip-button:hover { border-color: var(--accent); }
+.profile-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px 12px; margin-top: 10px; }
+.profile-grid .profile-multi, .profile-grid .profile-long { grid-column: 1 / -1; }
+.profile-grid input, .profile-grid textarea { width: 100%; }
+
+/* ---------- KF-06: действие не прошло — причина там, где нажимали ---------- */
+.action-error.is-floating {
+  position: fixed; left: 50%; bottom: 72px; transform: translateX(-50%); z-index: 60;
+  width: max-content; max-width: calc(100vw - 32px); box-shadow: var(--shadow);
+}
+dialog .action-error { margin-bottom: 12px; }
+
+/* ---------- KF-04, KF-08: кнопка кампании, меню аккаунта, настройки у имени ---------- */
+.campaign-home { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; max-width: 320px; padding: 6px 16px 6px 12px;
+  border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 600; font-size: 14px;
+  box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.35); white-space: nowrap; }
+.campaign-home:hover { background: var(--accent); color: var(--bg, #0b0f14); }
+.campaign-home.is-current { box-shadow: inset 0 0 0 2px var(--accent); }
+.campaign-home-icon { font-size: 18px; line-height: 1; }
+.campaign-home-name { overflow: hidden; text-overflow: ellipsis; }
+.topbar-logout { margin: 0; }
+.topbar-settings.is-active { color: var(--accent); }
+.user-menu-list { left: auto; right: 0; }
+.user-icon, .user-menu-logout { display: none; }
+.user-menu-logout { margin: 4px 0 0; padding-top: 4px; border-top: 1px solid var(--border); }
+.user-menu-logout .btn { width: 100%; justify-content: flex-start; }
+@media (max-width: 600px) {
+  .crumbs { flex: 1 1 auto; }
+  .campaign-home { min-width: 0; max-width: 100%; min-height: 36px; padding: 4px 12px 4px 10px; font-size: 14px; }
+  .topbar-spacer { flex: 0 0 0; }
+  .topbar-label, .user-name, .topbar-logout { display: none; }
+  .user-icon { display: inline; }
+  .user-menu-logout { display: block; }
+  .topbar-user { margin-left: 0; gap: 2px; }
+}
+
+/* ---------- KF-09: лента без бросков ---------- */
+.chat-only-messages { padding: 0 16px 6px; font-size: 13px; color: var(--muted); }
+.chat.only-messages .chat-row.is-roll,
+.chat.only-messages .chat-row.is-event,
+.chat.only-messages .chat-row.is-action { display: none; }
+
+/* ---------- KF-05: предмет на карте ---------- */
+.battle-loot { cursor: pointer; }
+.battle-loot-box { fill: var(--surface-3); stroke: var(--warning, var(--highlight)); stroke-width: 1.2; }
+.battle-loot-icon { font-size: 11px; text-anchor: middle; pointer-events: none; }
+.battle-loot:hover .battle-loot-box, .battle-loot:focus .battle-loot-box { stroke-width: 2; }
+
+/* Инвентарь из боя: окно «🎒 Инвентарь» */
+.bag-body { display: grid; gap: 16px; }
+.bag-character-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.bag-item { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 6px 0; border-bottom: 1px solid var(--border, rgba(255,255,255,.08)); }
+.bag-item:last-child { border-bottom: 0; }
+
+/* Действия раунда кончились (Космозэки — одно за ход): атака, проверка и боевые действия предметов неактивны */
+.encounter-actions .btn:disabled, .battle-bar-actions .btn:disabled, .battle-menu .btn:disabled { opacity: .45; cursor: not-allowed; }
+/* BF-01: занятая основная кнопка (действие раунда потрачено) не должна выглядеть нажимаемой — серая, а не бледно-голубая */
+.encounter-actions .btn-primary:disabled, .battle-bar-actions .btn-primary:disabled, .battle-menu .btn-primary:disabled { filter: grayscale(1); }
+.encounter-actions[data-no-actions] .item-actions form .btn,
+.battle-bar-actions[data-no-actions] form[action*="/action/"] .btn { opacity: .45; pointer-events: none; }
+
+/* ---------- Этап 17 (UI_REVIEW.md): лист — полоса состояния, носимое в широкой колонке, строка предмета в одну линию ---------- */
+
+/* UX-07: шапка в одну строку */
+.page-head-compact { align-items: center; justify-content: flex-start; gap: 8px 16px; margin-bottom: 16px; }
+.page-head-compact .page-title { font-size: clamp(24px, 3vw, 30px); }
+.page-head-compact .page-sub { margin: 0; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; }
+.page-head-compact .page-actions { margin-left: auto; gap: 8px; }
+.sheet-page > .state-card { margin-bottom: 20px; }
+
+/* UX-01: полоса состояния */
+.cp-compact-title { text-transform: none; letter-spacing: 0; font-size: 13px; color: var(--text-soft); }
+.state-fact { font-size: 13px; color: var(--text-soft); font-variant-numeric: tabular-nums; }
+.state-fact.is-warn { color: var(--warning); }
+.cp-track-compact .cp-box { height: 14px; border-radius: 3px; }
+.cp-track-legend-compact { margin-top: 2px; }
+.cp-track-legend-compact span { color: var(--text-soft); }
+.cp-stat-chip { padding: 4px 9px; font-size: 14px; }
+.state-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; }
+details.state-tool { position: relative; }
+details.state-tool > summary { list-style: none; }
+details.state-tool > summary::-webkit-details-marker { display: none; }
+details.state-tool[open] { flex-basis: 100%; }
+details.state-tool[open] > summary { margin-bottom: 8px; }
+.state-tool-body { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2); }
+.state-tool-body form { margin: 0; }
+.btn-danger-ghost { color: var(--danger); background: transparent; border-color: rgba(248, 113, 113, 0.45); }
+.btn-danger-ghost:hover { color: var(--danger); background: var(--danger-soft); border-color: var(--danger); }
+.state-warn { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 0; padding: 8px 12px; border-radius: var(--radius-sm);
+  background: var(--warning-soft); border: 1px solid rgba(251, 191, 36, 0.35); }
+.state-warn-title { font-weight: 600; color: var(--warning); }
+.state-warn-text { font-size: 14px; color: var(--text); flex: 1 1 160px; }
+.state-counters { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 20px; padding-top: 10px; border-top: 1px solid var(--border); }
+.state-counters:empty { display: none; }
+.state-counters .counter-row { border-bottom: 0; padding: 0; flex: 0 1 auto; }
+.state-counters .counter-row-name { flex: 0 0 auto; min-width: 0; font-size: 14px; color: var(--text-soft); }
+.state-counters .counter-row-value { font-size: 18px; min-width: 24px; }
+.state-counters > details.state-tool { margin-left: auto; }
+.state-counters > details.state-tool[open] { margin-left: 0; }
+
+/* Карточки справа: короткая шапка, когда пусто */
+.card-head { flex-wrap: wrap; }
+.card-head-note { font-size: 14px; color: var(--text-soft); margin-right: auto; }
+.card-head > .card-title + .badge { margin-right: auto; }
+.card-head-tool[open] { flex-basis: 100%; }
+.card-head-tool > summary { margin-left: auto; }
+.quiet-empty { margin: 0; font-size: 14px; color: var(--text-soft); }
+.money-form .money-buttons { display: flex; gap: 6px; }
+.money-in { color: var(--success); }
+.money-out { color: var(--danger); }
+
+/* UX-04: оружие */
+.weapon-switch { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.weapon-switch-title { font-size: 13px; color: var(--text-soft); margin-right: 2px; }
+.weapon-empty { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; }
+.badge-hand { display: inline-flex; align-items: center; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 600;
+  color: var(--accent); background: var(--accent-soft); white-space: nowrap; }
+.inventory-weapons { margin: 0; font-size: 14px; color: var(--text-soft); }
+
+/* UX-01: вкладки инвентарей в шапке «Носимого» */
+.seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 10px; background: var(--bg); margin-right: auto; }
+.seg-btn { font: inherit; font-size: 13px; font-weight: 500; padding: 6px 12px; border: 0; border-radius: 8px; cursor: pointer;
+  color: var(--text-soft); background: transparent; }
+.seg-btn:hover { color: var(--text); }
+.seg-btn.is-active { color: var(--text); background: var(--surface-3); font-weight: 600; }
+#inventories .inventory { border: 0; background: transparent; }
+#inventories .inventory-head { padding: 0 0 10px; background: transparent; border: 0; }
+#inventories [data-tab-panel] .inventory-name { display: none; }
+#inventories [data-tab-panel] .inventory-head > .row-actions { margin-left: auto; }
+#inventories .inventory-body { padding: 0; }
+
+/* UX-02: строка предмета в одну линию */
+.item-section-title { text-transform: none; letter-spacing: 0; font-size: 13px; font-weight: 500; color: var(--text-soft); }
+.item-row { padding: 6px 10px 6px 12px; gap: 4px 10px; min-height: 44px; }
+.item-row > .row-main { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; min-width: 160px; }
+.item-row > .row-main > .item-head { flex: 1 1 auto; min-width: 0; align-items: center; }
+.item-row > .row-main > p, .item-row > .row-main > .alert, .item-row > .row-main > .item-chips { flex-basis: 100%; }
+.item-row > .row-main > .item-actions { margin-top: 0; }
+.row-title-btn { font: inherit; font-weight: 600; color: var(--text); background: none; border: 0; padding: 0; text-align: left; cursor: pointer; }
+.row-title-btn:hover { color: var(--accent); }
+.item-note.is-line { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.item-row .item-chips { margin-top: 0; }
+.item-row .edit-panel > .row-desc, .item-row .edit-panel > .item-note, .item-row .edit-panel > .item-attack-base { margin: 0 0 8px; }
+.item-row .edit-panel > .row-desc { font-size: 14px; max-width: 72ch; }
+
+/* полоса состояния: здоровье во всю ширину, статы и броня рядом */
+.state-card .state-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px 24px; }
+.state-card .state-body > * { grid-column: 1 / -1; }
+.state-card .state-body > #state-stats, .state-card .state-body > #state-armor { grid-column: auto; border-top: 1px solid var(--border); padding-top: 12px; }
+.state-card .cp-compact + .cp-compact { border-top: 0; padding-top: 0; }
+.state-card .state-body > #state-stats, .state-card .state-body > #state-armor { border-top: 1px solid var(--border); padding-top: 12px; }
+.state-card .cp-compact > details.cp-more { border-top: 0; padding-top: 0; }
+.state-card .state-log { border-top: 0; padding-top: 0; }
+@media (max-width: 900px) {
+  .state-card .state-body { grid-template-columns: minmax(0, 1fr); }
+  .state-card .state-body > #state-stats, .state-card .state-body > #state-armor { grid-column: 1 / -1; }
+}
+
+/* ---------- UX-26: тело Космозэков на листе — цифры к100 и фигура из зон ---------- */
+.kz-digits { display: flex; flex-direction: column; gap: 6px; }
+.kz-digits-title { font-size: 13px; color: var(--text-soft); }
+.kz-digit-row { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 4px; }
+.kz-digit { display: flex; flex-direction: column; align-items: center; gap: 5px; min-height: 44px; padding: 6px 2px 5px; cursor: pointer;
+  font: inherit; color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.kz-digit b { font-family: var(--font-display); font-weight: 400; font-size: 18px; line-height: 1; }
+.kz-digit-bar { display: block; width: 70%; height: 4px; border-radius: 2px; background: var(--success); }
+.kz-digit.is-hurt .kz-digit-bar { background: var(--warning); }
+.kz-digit.is-low .kz-digit-bar, .kz-digit.is-down .kz-digit-bar { background: var(--danger); }
+.kz-digit.is-none .kz-digit-bar { background: var(--border-strong); }
+.kz-digit.is-picked, .kz-digit:hover { border-color: var(--accent); background: var(--accent-soft); }
+
+.kz-figure { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.kz-figure.is-human { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-areas: ". head head ." "rarm body body larm" ". rleg lleg ."; }
+.kz-figure.is-human .kz-at-head { grid-area: head; }
+.kz-figure.is-human .kz-at-body { grid-area: body; }
+.kz-figure.is-human .kz-at-rarm { grid-area: rarm; }
+.kz-figure.is-human .kz-at-larm { grid-area: larm; }
+.kz-figure.is-human .kz-at-rleg { grid-area: rleg; }
+.kz-figure.is-human .kz-at-lleg { grid-area: lleg; }
+.kz-fz { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2); min-width: 0; }
+.kz-fz.is-hit { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; background: var(--accent-soft); }
+.kz-fz.is-down { border-color: var(--danger); }
+.kz-fz-name { font-weight: 600; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+.kz-fz-name small { font-weight: 400; font-size: 12px; color: var(--text-soft); }
+.kz-fz-mult { color: var(--danger) !important; }
+.kz-fz-hp { display: flex; align-items: baseline; gap: 4px; font-variant-numeric: tabular-nums; }
+.kz-fz-hp b { font-family: var(--font-display); font-weight: 400; font-size: 20px; line-height: 1; }
+.kz-fz.is-down .kz-fz-hp b { color: var(--danger); }
+.kz-fz-hp small { font-size: 13px; color: var(--text-soft); }
+.kz-fz-armor { margin-left: auto; }
+.kz-fz-armor.has-armor { color: var(--accent) !important; }
+.kz-fz .kz-bar { height: 6px; }
+.kz-fz.is-hurt .kz-bar > span { background: var(--warning); }
+.kz-fz.is-low .kz-bar > span, .kz-fz.is-down .kz-bar > span { background: var(--danger); }
+@media (max-width: 600px) {
+  .kz-figure.is-human { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "head head" "rarm larm" "body body" "rleg lleg"; }
+  .kz-digit b { font-size: 16px; }
+}
+
+.profile-list dt { color: var(--text-soft); }
+.profile-list dd.profile-empty { color: var(--muted); }
+
+/* инструменты здоровья — справа в строке состояния; открытый — на всю ширину */
+.cp-compact-head > .state-tools { margin-left: auto; }
+.cp-compact-head > .state-tools:has(details[open]) { flex-basis: 100%; margin-left: 0; }
+.state-counters > .state-log { margin-left: auto; }
+.state-counters > .state-log + .state-tool { margin-left: 0; }
+.state-counters > details.state-tool[open] { flex-basis: 100%; margin-left: 0; }
+.state-card .state-body { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+.sheet-page { padding-top: 20px; }
+@media (max-width: 900px) { .state-card .state-body { grid-template-columns: minmax(0, 1fr); } }
+.kz-fz { padding: 8px 12px; gap: 3px; }
+.kz-fz-hp b { font-size: 20px; }
+
+/* UX-30: полоса здоровья по частям в очереди боя */
+.hp-segments { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 3px; margin: 6px 0; max-width: 320px; }
+.hp-seg { height: 20px; border-radius: 4px; font-size: 11px; font-weight: 700; line-height: 20px; text-align: center; color: #0b0e14; background: #2f9e5b; }
+.hp-seg.is-hurt { background: var(--warning); }
+.hp-seg.is-low, .hp-seg.is-down { background: var(--danger); }
+.hp-seg.is-none { background: var(--border-strong); color: var(--text-soft); }
+
+/* UX-31: что осталось на ход */
+.turn-chip { display: inline-flex; align-items: center; height: 30px; padding: 0 12px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--success); background: var(--success-soft); white-space: nowrap; }
+.turn-chip.is-used { color: var(--muted); background: var(--surface-3); text-decoration: line-through; }
+/* UX-18: группы инструментов боя */
+.battle-toolbar-title { font-size: 12px; color: var(--text-soft); margin-top: 2px; }
+@media (max-width: 600px) { .hide-sm { display: none; } }
+
+/* UX-16: в бою плашка отмены — сверху, полосу хода не закрывает */
+body:has(.battle-screen) .undo-toast { bottom: auto; top: calc(var(--topbar-height) + 8px); }
+/* UX-15, UX-24: нажимаемое под палец на сенсорных экранах; на мыши плотность прежняя */
+@media (pointer: coarse) {
+  .btn, .btn-sm, .icon-btn, .seg-btn, .side-tab, .kz-digit { min-height: 44px; }
+  .icon-btn { min-width: 44px; }
+  .battle-zoom .btn { min-width: 44px; }
+  .item-chip { min-height: 36px; }
+}
+
+/* UX-20: чат — поле и ➤ в одну строку на любой ширине; «Только сообщения» внутри карточки */
+.chat-form > .form-row:first-of-type { flex-wrap: nowrap; }
+.chat-form > .form-row:first-of-type > input.grow { min-width: 0; flex: 1 1 auto; }
+.chat-form > .form-row:first-of-type > .chat-me { flex: 0 1 auto; max-width: 120px; }
+.chat-form > .form-row:first-of-type > .btn { flex: none; }
+.chat-only-messages { display: inline-flex; width: auto; padding: 4px 10px; margin: 0 16px 8px; align-self: flex-start; }
+.chat { display: flex; flex-direction: column; }
+
+/* UX-24: видимый фокус с клавиатуры у всего нажимаемого (у полей — своя подсветка выше) */
+a:focus-visible, button:focus-visible, summary:focus-visible, .btn:focus-visible, .chip-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* UX-22: на телефоне вкладки персонажа и кампании помещаются плотнее */
+@media (max-width: 600px) { .tabs { padding: 4px 8px; gap: 2px; } .tabs a, .tabs .tab { padding: 6px 9px; font-size: 13px; } .crumb { max-width: 150px; } }
+
+/* UX-07: шапка всех страниц ниже — подпись над заголовком без заглавных, заголовок мельче, отступы меньше */
+.page { padding-top: 20px; }
+.page-head { margin-bottom: 16px; gap: 8px 16px; }
+.page-title { font-size: clamp(24px, 3vw, 30px); }
+.eyebrow { text-transform: none; letter-spacing: 0; font-size: 13px; font-weight: 500; color: var(--text-soft); margin-bottom: 2px; }
+@media (max-width: 600px) { .page { padding: 12px 12px 48px; } .page-head .page-actions .btn { padding: 6px 10px; } }
+.kz-fz-hp { flex-wrap: wrap; }
+.kz-fz-hp small { white-space: nowrap; }
+@media (max-width: 600px) { .kz-fz-armor { margin-left: 0; flex-basis: 100%; } }

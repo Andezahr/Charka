@@ -2,7 +2,7 @@
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head(${inFight} ? 'Карта боя: ' + ${campaign.name} : 'Карта: ' + ${map.name})}"></head>
 <body>
-<header th:replace="~{fragments/layout :: topbar(null, 'campaign')}"></header>
+<header th:replace="~{fragments/layout :: nav(${campaign}, null, 'maps')}"></header>
 
 <!-- M-06, M-07: редактор карты. Рисует app.js ([data-map-editor]), документ сохраняется сам через 2 с после правки -->
 <main class="page page-wide">
@@ -13,13 +13,21 @@
       <p class="page-sub" th:if="${inFight}">Правится копия боя: игроки увидят изменения на следующем опросе, заготовка не меняется.</p>
     </div>
     <div class="page-actions">
+      <!-- M-22: уровни карты: вкладки, «＋ Этаж» -->
+      <span class="editor-levels" data-editor-levels></span>
       <span class="editor-status" data-editor-status>Сохранено</span>
+      <a th:unless="${inFight}" th:href="@{'/campaign/' + ${campaign.id} + '/maps/' + ${map.id} + '/text'}" class="btn btn-ghost"
+         download title="Карта текстом: поправить в редакторе текста и загрузить обратно на странице «Карты»">⬇ Текстом</a>
       <a th:href="@{${backUrl}}" class="btn btn-ghost" th:text="${inFight} ? '← К бою' : '← К картам'">← К картам</a>
     </div>
   </div>
 
   <div th:if="${mapError != null}" class="alert alert-error" role="alert">
     <span class="alert-text" th:text="${mapError}">Картинка больше 5 МБ</span>
+    <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+  </div>
+  <div th:if="${mapNotice != null}" class="alert alert-warning" role="status">
+    <span class="alert-text" th:text="${mapNotice}">Карта загружена, но…</span>
     <button type="button" class="alert-close" aria-label="Закрыть">×</button>
   </div>
 
@@ -51,11 +59,19 @@
       <button type="submit" class="btn btn-sm btn-ghost">🎲 Ещё вариант</button>
     </form>
     <!-- M-11: подложка — план или скан; калибровка «протянуть по одной клетке картинки» -->
+    <!-- M-21: проверка карты (MapAudit, docs/map-design.md) -->
+    <details th:if="${audit != null}" class="cp-more item-more editor-background">
+      <summary th:text="'🧭 Проверка карты' + (${audit.warnings()} > 0 ? ' · замечаний ' + ${audit.warnings()} : ' · можно играть')">🧭 Проверка карты</summary>
+      <ul class="map-audit">
+        <li th:each="c : ${audit.checks()}" th:text="${c.line()}" th:classappend="${c.mark().name() == 'WARN'} ? 'is-warn'">✓ Пути</li>
+      </ul>
+      <p class="hint">По сохранённой карте: после правок обновите страницу. Пороги — ориентиры, открытая улица может быть задумана.</p>
+    </details>
     <details th:unless="${inFight}" class="cp-more item-more editor-background">
       <summary>🖼 Подложка</summary>
       <div class="form-row">
         <form th:action="@{'/campaign/' + ${campaign.id} + '/maps/' + ${map.id} + '/background'}" method="post" enctype="multipart/form-data" class="form-row">
-          <input type="file" name="file" accept="image/png,image/jpeg,image/webp,image/gif" required aria-label="Картинка до 5 МБ">
+          <label class="btn btn-sm file-pick" data-file-pick><input type="file" name="file" accept="image/png,image/jpeg,image/webp,image/gif" required aria-label="Картинка до 5 МБ"><span data-file-name>🖼 Выбрать картинку…</span></label>
           <button type="submit" class="btn btn-sm">Загрузить</button>
         </form>
         <th:block th:if="${hasBackground}">

@@ -2,7 +2,7 @@
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head('Навыки ' + ${character.name})}"></head>
 <body>
-<header th:replace="~{fragments/layout :: topbar(${character.id}, 'skills')}"></header>
+<header th:replace="~{fragments/layout :: nav(null, ${character}, 'skills')}"></header>
 
 <!-- По умолчанию видны только изученные навыки; остальное включает app.js (см. блок «Страница навыков») -->
 <main class="page" data-skills th:with="base=@{'/character/' + ${character.id}}">
@@ -47,7 +47,8 @@
 
   <!-- Текущие статы; нажатие — переход к группе навыков -->
   <nav class="skills-stats" th:unless="${sheet.statsMissing and sheet.points == null}" aria-label="Статы и очки">
-    <a th:if="${sheet.points != null}" class="chip" th:href="@{'/character/' + ${character.id} + '/counters'}"
+    <!-- UX-23: очки улучшения — не стат: справа, отдельно -->
+    <a th:if="${sheet.points != null}" class="chip skills-points" th:href="@{'/character/' + ${character.id} + '/counters'}"
        title="Начисляются на вкладке «Счётчики»" th:text="${sheet.pointsName} + ' ' + ${sheet.points}">IP 35</a>
     <th:block th:each="group : ${sheet.groups}">
       <a th:if="${group.stat != null}" class="chip" th:href="'#group-' + ${group.stat.code}" data-skills-jump
@@ -82,6 +83,15 @@
         <div th:each="row : ${group.rows}" class="skill-row" data-skill-row th:id="${row.anchor}"
              th:classappend="${row.level == 0 and row.override == null} ? 'is-zero'"
              th:attr="data-always=${group.special}">
+          <form th:action="${base} + '/skills/pin'" method="post" class="inline skill-pin"
+                th:with="key=${row.customId != null} ? 'custom:' + ${row.customId} : ${row.code}">
+            <input type="hidden" name="key" th:value="${key}">
+            <input type="hidden" name="anchor" th:value="${row.anchor}">
+            <button type="submit" class="icon-btn" th:classappend="${pinned.contains(key)} ? 'is-pinned'"
+                    th:title="${pinned.contains(key)} ? 'Убрать из «Частых навыков» на листе' : 'В «Частые навыки» на листе: проверка одним нажатием'"
+                    th:aria-label="${pinned.contains(key)} ? 'Открепить' : 'Закрепить на листе'"
+                    th:text="${pinned.contains(key)} ? '★' : '☆'">☆</button>
+          </form>
           <div class="skill-name">
             <span data-skill-name th:text="${row.name}">Пистолеты</span>
             <span th:if="${group.special}" class="skill-note" th:text="${row.roleName} + ' · ' + ${row.statName}">Соло · INT</span>

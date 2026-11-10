@@ -78,6 +78,12 @@ public class Cp2020System implements GameSystem {
         return "Cyberpunk 2020";
     }
 
+    /** KF-07: в книге — Contacts: фиксеры, копы, бывшие */
+    @Override
+    public String getContactsTitle() {
+        return "Контакты";
+    }
+
     @Override
     public Currency getCurrency() {
         return CURRENCY;
@@ -135,6 +141,11 @@ public class Cp2020System implements GameSystem {
     @Override
     public List<ItemTypeDefinition> getItemTypes() {
         return Cp2020ItemTypes.ALL;
+    }
+
+    @Override
+    public String getWeaponItemType() {
+        return Cp2020ItemTypes.WEAPON;
     }
 
     @Override
@@ -267,7 +278,10 @@ public class Cp2020System implements GameSystem {
         return Cp2020Initiative.roll(character, getCurrentStats(character), dice);
     }
 
-    /** «Every round... The order of the round is based on an initiative roll» (книга, с. 97) */
+    /**
+     * С. 97: «Every round, each player gets to do something. The order of the round is based on an initiative roll of 1D10
+     * plus the players REF stat». Автор решил (A-13): каждый раунд. Кампания может переключить ({@code Campaign.initiativeEachRound}).
+     */
     @Override
     public boolean rollsInitiativeEachRound() {
         return true;
@@ -303,6 +317,29 @@ public class Cp2020System implements GameSystem {
     @Override
     public List<String> getCombatCheckSkills() {
         return List.of("awareness");
+    }
+
+    @Override
+    public app.charka.system.PrintSheet getPrintSheet(Character character) {
+        return Cp2020Print.sheet(character, getCurrentStats(character), ARMOR);
+    }
+
+    @Override
+    public List<app.charka.system.Reference> getReference() {
+        return Cp2020Reference.sections();
+    }
+
+    /** A-10: зарплата по таблице с. 58 — по лучшей роли и её спецспособности */
+    @Override
+    public app.charka.system.Earning earnings(Character character, int days) {
+        return Cp2020Creation.earnings(character, days);
+    }
+
+    /** A-07: оглушение и смерть — по запросу мастера */
+    @Override
+    public List<app.charka.item.ItemField.Option> getRequestableSaves() {
+        return List.of(new app.charka.item.ItemField.Option(Cp2020HealthStrategy.SAVE_STUN, "Спасбросок от оглушения"),
+                new app.charka.item.ItemField.Option(Cp2020HealthStrategy.SAVE_DEATH, "Спасбросок от смерти"));
     }
 
     @Override

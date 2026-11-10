@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<!-- Способности Космозэков (K-10): «Сложность вдвое» (KZ_HALVE) и «Предсказание» (KZ_PORTENT). Ожидает counter и characterId -->
+<body>
+<div th:fragment="card" class="counter cp-card kz-ability"
+     th:with="v=${counter.view},
+              base=@{/character/{characterId}/counters/{counterId}(characterId=${characterId}, counterId=${counter.id})}">
+  <div class="counter-head">
+    <div>
+      <div class="counter-name" th:text="${counter.name}">Способность</div>
+      <div class="counter-meta" th:text="${v.hint}">Подсказка</div>
+    </div>
+    <form th:action="${base}" th:method="delete" class="inline" data-confirm="Удалить способность?">
+      <button type="submit" class="icon-btn danger" title="Удалить">×</button>
+    </form>
+  </div>
+
+  <th:block th:if="${counter.type == 'KZ_HALVE'}">
+    <div class="form-row">
+      <span class="counter-row-value" th:text="${v.left} + '/' + ${v.max}">1/1</span>
+      <span class="cp-muted-line" th:text="${v.left > 0} ? 'есть в этом бою' : 'потрачена до следующего боя'">есть</span>
+      <form th:if="${v.left < v.max}" th:action="${base} + '/action/RESTORE'" method="post" class="inline">
+        <button type="submit" class="btn btn-sm btn-ghost">Вернуть</button>
+      </form>
+    </div>
+  </th:block>
+
+  <th:block th:if="${counter.type == 'KZ_PORTENT'}">
+    <div class="form-row kz-portent">
+      <form th:each="d : ${v.dice}" th:action="${base} + '/action/USE_' + ${d.slot}" method="post" class="inline">
+        <button type="submit" class="btn kz-die" th:disabled="${v.next > 0}" th:title="'Подставить ' + ${d.value} + ' в следующий бросок к12'"
+                th:text="${d.value}">7</button>
+      </form>
+      <span th:if="${#lists.isEmpty(v.dice) and v.next == 0}" class="cp-muted-line">Кубики потрачены — сон бросит новые</span>
+    </div>
+    <div th:if="${v.next > 0}" class="cp-callout">
+      <span class="cp-callout-text" th:text="'Следующий бросок к12 будет ' + ${v.next}">Следующий бросок к12 будет 7</span>
+      <form th:action="${base} + '/action/CANCEL'" method="post"><button type="submit" class="btn btn-sm btn-ghost">Вернуть</button></form>
+    </div>
+    <form th:action="${base} + '/action/ROLL'" method="post" class="inline" data-confirm="Бросить 3к12 заново (длительный отдых)?">
+      <button type="submit" class="btn btn-sm btn-ghost">🎲 Бросить 3к12</button>
+    </form>
+  </th:block>
+</div>
+</body>
+</html>

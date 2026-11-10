@@ -2,22 +2,220 @@
 
 // U-03: CSRF. Сервер кладёт токен в cookie XSRF-TOKEN; каждый запрос, кроме чтения, несёт его заголовком —
 // формы обновления на месте, ход фишки, автосохранение карты
+// A-14: у каждого запроса срок — 20 с (файл — 60 с). Без него оборвавшийся на телефоне запрос висит вечно:
+// формы ждут его и не отправляются, опрос хода и ленты останавливается — «приложение перестало отвечать»
+const REQUEST_TIMEOUT = 20000;
+const UPLOAD_TIMEOUT = 60000;
 (() => {
   const plain = window.fetch.bind(window);
+  const bounded = (input, init) => {
+    if (init.signal || init.keepalive) return plain(input, init);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), init.body instanceof FormData ? UPLOAD_TIMEOUT : REQUEST_TIMEOUT);
+    return plain(input, { ...init, signal: controller.signal }).finally(() => clearTimeout(timer));
+  };
   window.fetch = (input, init = {}) => {
     const method = (init.method || 'GET').toUpperCase();
-    if (method === 'GET' || method === 'HEAD') return plain(input, init);
+    if (method === 'GET' || method === 'HEAD') return bounded(input, init);
     const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/);
-    if (!match) return plain(input, init);
+    if (!match) return bounded(input, init);
     const headers = new Headers(init.headers || {});
     headers.set('X-XSRF-TOKEN', decodeURIComponent(match[1]));
-    return plain(input, { ...init, headers });
+    return bounded(input, { ...init, headers });
+  };
+})();
+
+// A-14: ошибки скрипта уходят в журнал сервера — по ним видно, что ломается у игроков; не больше 5 за страницу
+(() => {
+  let sent = 0;
+  const report = (message, stack) => {
+    if (sent++ >= 5) return;
+    try {
+      fetch('/client-error', { method: 'POST', keepalive: true, body: new URLSearchParams({
+        page: location.pathname + location.search, message: String(message).slice(0, 500), stack: String(stack || '').slice(0, 2000) }) })
+        .catch(() => { /* сервер недоступен — некуда писать */ });
+    } catch (e) { /* только журнал */ }
+  };
+  window.addEventListener('error', e => report(e.message, e.error && e.error.stack));
+  window.addEventListener('unhandledrejection', e => report(e.reason && e.reason.message || e.reason, e.reason && e.reason.stack));
+  window.reportClientError = report;
+})();
+
+// KF-06: окно внутри свёрнутого <details> или скрытой вкладки не рисуется, а showModal всё равно делает страницу
+// неотзывчивой — «экран боя завис, помогает только перезагрузка» (диалог атаки лежит в свёрнутом Char Info).
+// BF-01: раскрыть предков мало — панель «Действия вне очереди» — меню (details[data-menu]), и то же нажатие,
+// что открыло окно, сворачивает её обратно («нажатие мимо»). Поэтому окно из свёрнутого или скрытого места
+// на время переезжает в <body> и возвращается на место, когда закрыто
+(() => {
+  const show = HTMLDialogElement.prototype.showModal;
+  HTMLDialogElement.prototype.showModal = function () {
+    const parent = this.parentElement;
+    let folded = false;
+    for (let node = parent; node; node = node.parentElement) {
+      if (node.tagName === 'DETAILS' && !node.open) folded = true;
+    }
+    const hidden = parent && parent !== document.body && !parent.getClientRects().length && getComputedStyle(parent).display !== 'contents';
+    if (parent && parent !== document.body && (folded || hidden)) {
+      const placeholder = document.createComment('dialog');
+      this.replaceWith(placeholder);
+      document.body.appendChild(this);
+      this.addEventListener('close', () => {
+        if (placeholder.isConnected) placeholder.replaceWith(this);
+      }, { once: true });
+    }
+    return show.call(this);
   };
 })();
 
 // Обработчики элементов страницы: вызывается при загрузке и после каждого обновления на месте.
 // Обработчики на document сюда не класть, они накопятся: они в конце файла
+// J-02: бросок «катится» — число быстро меняется, кубик крутится, затем встаёт с толчком; итог и фишки проявляются после.
+// Около 0,7 с: ощутимо, но не задерживает стол. Новая запись ленты катится один раз (ключи в sessionStorage), итог
+// атаки в строке ([data-roll-now]) — всегда: он приходит только в ответ на действие
+const ROLL_MS = 700;
+const FEED_SEEN_KEY = 'charka.feed.seen';
+
+function rollAnimation(holder, own) {
+  const roll = holder.matches('[data-roll-anim]') ? holder : holder.querySelector('[data-roll-anim]');
+  if (!roll || roll.dataset.rolling) return;
+  const value = roll.querySelector('[data-roll-value]') || roll;
+  const final = Number(roll.dataset.final);
+  if (!Number.isFinite(final)) return;
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  roll.dataset.rolling = '1';
+  const low = Math.max(1, final - 9);
+  const high = Math.max(final + 9, 10);
+  const start = performance.now();
+  holder.classList.add('is-rolling');
+  holder.classList.remove('is-landed');
+  let next = 0;
+  const tick = now => {
+    const t = (now - start) / ROLL_MS;
+    if (t >= 1) {
+      value.textContent = final;
+      holder.classList.remove('is-rolling');
+      // перезапуск анимации толчка
+      void holder.offsetWidth;
+      holder.classList.add('is-landed');
+      delete roll.dataset.rolling;
+      if (own && navigator.vibrate) navigator.vibrate(holder.querySelector('.jchip-crit') ? [30, 40, 60] : 25);
+      return;
+    }
+    // замедляется к концу, как кубик
+    if (now >= next) {
+      let shown;
+      do { shown = low + Math.floor(Math.random() * (high - low + 1)); } while (shown === Number(value.textContent) && high > low);
+      value.textContent = shown;
+      next = now + 40 + 160 * t * t;
+    }
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+// KF-03: итог действия катится один раз — опрос ленты зовёт revealRolls снова, и без метки кубик крутился дважды
+function revealRolls() {
+  document.querySelectorAll('[data-roll-now]:not([data-rolled])').forEach(holder => {
+    holder.dataset.rolled = '1';
+    rollAnimation(holder, true);
+  });
+  const rows = [...document.querySelectorAll('[data-feed-key]')];
+  if (!rows.length) return;
+  let stored = null;
+  try { stored = JSON.parse(sessionStorage.getItem(FEED_SEEN_KEY) || 'null'); } catch (e) { /* только удобство */ }
+  // первый взгляд на ленту — история не катится
+  const first = stored === null;
+  const seen = new Set(stored || []);
+  rows.forEach(row => {
+    const key = row.dataset.feedKey;
+    if (seen.has(key)) return;
+    seen.add(key);
+    if (!first) rollAnimation(row, false);
+  });
+  try { sessionStorage.setItem(FEED_SEEN_KEY, JSON.stringify([...seen].slice(-400))); } catch (e) { /* только удобство */ }
+}
+
 function initPage() {
+  revealRolls();
+  hideBattleUndo();
+
+  // R-14: экран боя — до низа окна под шапкой, какой бы высоты она ни была
+  const battleScreen = document.querySelector('.battle-screen');
+  if (battleScreen) {
+    battleScreen.style.setProperty('--battle-offset', Math.round(battleScreen.getBoundingClientRect().top + scrollY + 12) + 'px');
+  }
+
+  // UX-26: Космозэки — нажатие на цифру к100 подсвечивает её зону в фигуре; повторное — снимает
+  document.querySelectorAll('[data-kz-digits]').forEach(strip => {
+    const body = strip.closest('.kz-compact');
+    strip.querySelectorAll('[data-kz-digit]').forEach(button => button.addEventListener('click', () => {
+      const again = button.classList.contains('is-picked');
+      strip.querySelectorAll('.is-picked').forEach(other => other.classList.remove('is-picked'));
+      body.querySelectorAll('.kz-fz.is-hit').forEach(zone => zone.classList.remove('is-hit'));
+      if (again) return;
+      button.classList.add('is-picked');
+      const zone = button.dataset.kzZone && body.querySelector('.kz-fz[data-kz-zone="' + button.dataset.kzZone + '"]');
+      if (zone) zone.classList.add('is-hit');
+    }));
+  });
+
+  // UX-21: поиск по длинному выпадающему списку: input[data-select-filter="имя select"] прячет неподходящие варианты
+  document.querySelectorAll('[data-select-filter]').forEach(input => {
+    const select = input.form && input.form.querySelector('select[name="' + input.dataset.selectFilter + '"]');
+    if (!select) return;
+    input.addEventListener('input', () => {
+      const query = input.value.trim().toLowerCase();
+      let first = null;
+      [...select.options].forEach(option => {
+        const fits = !query || option.text.toLowerCase().includes(query);
+        option.hidden = !fits;
+        if (fits && !first) first = option;
+      });
+      if (first && select.selectedOptions[0] && select.selectedOptions[0].hidden) select.value = first.value;
+    });
+  });
+
+  // Вкладки: [data-tabs="ключ"] с кнопками [data-tab] и панелями [data-tab-panel]; выбор запоминается на устройстве.
+  // [data-tab-go="вкладка"] где угодно на странице открывает её
+  document.querySelectorAll('[data-tabs]').forEach(holder => {
+    const key = 'charka.tabs.' + holder.dataset.tabs;
+    const buttons = [...holder.querySelectorAll('[data-tab]')];
+    const show = name => {
+      if (!buttons.some(button => button.dataset.tab === name)) name = buttons[0] && buttons[0].dataset.tab;
+      buttons.forEach(button => {
+        button.classList.toggle('is-active', button.dataset.tab === name);
+        button.setAttribute('aria-selected', button.dataset.tab === name);
+      });
+      holder.querySelectorAll('[data-tab-panel]').forEach(panel => { panel.hidden = panel.dataset.tabPanel !== name; });
+      try { localStorage.setItem(key, name); } catch (e) { /* только удобство */ }
+    };
+    let stored = null;
+    try { stored = localStorage.getItem(key); } catch (e) { /* только удобство */ }
+    show(stored || holder.dataset.tabDefault);
+    // UX-01: якорь ведёт в другую вкладку (итог действия у предмета в «Рюкзаке») — открыть её
+    try {
+      const anchored = location.hash && holder.querySelector('#' + CSS.escape(decodeURIComponent(location.hash.slice(1))));
+      const anchoredPanel = anchored && anchored.closest('[data-tab-panel]');
+      if (anchoredPanel && anchoredPanel.hidden) show(anchoredPanel.dataset.tabPanel);
+    } catch (e) { /* якорь не id */ }
+    buttons.forEach(button => button.addEventListener('click', () => show(button.dataset.tab)));
+    document.querySelectorAll('[data-tab-go]').forEach(go => go.addEventListener('click', () => {
+      show(go.dataset.tabGo);
+      holder.scrollIntoView({ block: 'nearest' });
+    }));
+  });
+
+  // R-19: выбор файла кнопкой — имя выбранного файла вместо подписи
+  document.querySelectorAll('[data-file-pick]').forEach(pick => {
+    const input = pick.querySelector('input[type=file]');
+    const label = pick.querySelector('[data-file-name]');
+    const empty = label.textContent;
+    input.addEventListener('change', () => {
+      const file = input.files && input.files[0];
+      label.textContent = file ? '📄 ' + file.name : empty;
+      pick.classList.toggle('is-picked', !!file);
+    });
+  });
 
   // Диалог по кнопке: [data-dialog-open="id диалога"]; закрывает [data-dialog-close] внутри него
   document.querySelectorAll('[data-dialog-open]').forEach(btn => {
@@ -122,8 +320,11 @@ function initPage() {
       if (!panel) return;
       const open = panel.classList.toggle('is-open');
       if (open) {
-        const first = panel.querySelector('input:not([type=hidden]), select, textarea');
-        if (first) first.focus();
+        // A-03: форма правки предмета приходит по первому ✎
+        loadLazy(panel).then(() => {
+          const first = panel.querySelector('input:not([type=hidden]), select, textarea');
+          if (first) first.focus();
+        });
       }
     });
   });
@@ -133,6 +334,84 @@ function initPage() {
     form.addEventListener('submit', e => {
       if (!confirm(form.dataset.confirm)) e.preventDefault();
     });
+  });
+
+  // A-11: «📖 Правила» — окно с содержимым по первому открытию, дальше из памяти страницы (lazyHtml)
+  document.querySelectorAll('[data-reference-open]').forEach(button => {
+    const dialog = button.nextElementSibling;
+    button.addEventListener('click', async () => {
+      dialog.showModal();
+      if (!dialog.dataset.ready) {
+        try {
+          dialog.querySelector('[data-reference-body]').innerHTML = await lazyHtml(button.dataset.referenceSrc);
+          dialog.dataset.ready = '1';
+        } catch (e) {
+          dialog.querySelector('[data-reference-body]').textContent = 'Справка не загрузилась — нет связи с сервером';
+        }
+      }
+    });
+    dialog.querySelector('[data-dialog-close]').addEventListener('click', () => dialog.close());
+  });
+
+  // R-04: «💬 Стол» — на странице с карточкой чата прокрутка к ней, иначе выезжающая панель; открытая панель
+  // переживает обновление страницы после отправки (sessionStorage)
+  document.querySelectorAll('[data-table-open]').forEach(button => {
+    const drawer = button.parentElement.querySelector('[data-table-drawer]');
+    const open = async () => {
+      const pinned = document.querySelector('main [data-chat]');
+      if (pinned) {
+        pinned.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+      drawer.showModal();
+      try { sessionStorage.setItem('charka.table', '1'); } catch (e) { /* только удобство */ }
+      try {
+        const url = button.dataset.tableSrc + '?returnTo=' + encodeURIComponent(location.pathname);
+        drawer.querySelector('[data-table-body]').innerHTML = await fetch(url, { cache: 'no-store' }).then(r => r.text());
+        safely('chat', initChat);
+        const input = drawer.querySelector('input[name="text"]');
+        if (input && !matchMedia('(pointer: coarse)').matches) input.focus();
+      } catch (e) {
+        drawer.querySelector('[data-table-body]').textContent = 'Стол не загрузился — нет связи с сервером';
+      }
+    };
+    button.addEventListener('click', open);
+    drawer.querySelector('[data-table-close]').addEventListener('click', () => drawer.close());
+    drawer.addEventListener('close', () => { try { sessionStorage.removeItem('charka.table'); } catch (e) { /* только удобство */ } });
+    let reopen = false;
+    try { reopen = sessionStorage.getItem('charka.table') === '1'; } catch (e) { /* только удобство */ }
+    if (reopen && !document.querySelector('main [data-chat]')) open();
+  });
+
+  // R-09a: «Частые навыки» — после проверки открыть «Стол»: итог там
+  document.querySelectorAll('form[data-opens-table]').forEach(form => form.addEventListener('submit', () => {
+    try { sessionStorage.setItem('charka.table', '1'); } catch (e) { /* только удобство */ }
+  }));
+
+  // R-04a: одна форма проверки — у выбранного персонажа его навыки с итогом, у мастера и систем без навыков — ±Мод и подпись
+  document.querySelectorAll('[data-check-form]').forEach(holder => {
+    const who = holder.querySelector('[data-check-who]');
+    const me = holder.closest('[data-chat]') && holder.closest('[data-chat]').querySelector('[data-me]');
+    if (me && [...who.options].some(option => option.value === me.value)) who.value = me.value;
+    const sync = () => {
+      let skilled = false;
+      holder.querySelectorAll('[data-check-skill]').forEach(select => {
+        const active = select.dataset.checkSkill === who.value;
+        select.hidden = !active;
+        select.disabled = !active;
+        skilled = skilled || active;
+      });
+      holder.querySelectorAll('[data-check-mod]').forEach(field => { field.hidden = skilled; });
+    };
+    who.addEventListener('change', sync);
+    if (me) me.addEventListener('change', () => { if ([...who.options].some(option => option.value === me.value)) { who.value = me.value; sync(); } });
+    sync();
+  });
+
+  // A-02: приглашение — у ноутбука несколько адресов, QR-код того, что выбран
+  document.querySelectorAll('[data-invite-select]').forEach(select => {
+    const codes = select.closest('[data-invite]').querySelectorAll('[data-invite-qr]');
+    select.addEventListener('change', () => codes.forEach((code, i) => { code.hidden = String(i) !== select.value; }));
   });
 
   // Форма создания счётчика: доп. поля показываются только для выбранного типа.
@@ -158,135 +437,19 @@ function initPage() {
     sync();
   });
 
-  // Форма предмета: показываем поля выбранного типа; поля других типов выключены и не отправляются
-  document.querySelectorAll('[data-item-form]').forEach(form => {
-    const type = form.elements.itemType;
-    if (!type) return;
-    const sync = () => {
-      form.querySelectorAll('[data-item-fields]').forEach(group => {
-        const active = group.dataset.itemFields === type.value;
-        group.hidden = !active;
-        group.querySelectorAll('input, select').forEach(field => { field.disabled = !active; });
-      });
-    };
-    type.addEventListener('change', sync);
-    sync();
-  });
+  initItemForms(document);
 
-  // Поле с типичными значениями: на сервер уходит текстовое поле за списком, оно видно только при «Другой…».
-  // Если у поля есть data-name-prefix, выбор подставляет название предмета, пока его не ввели руками
-  document.querySelectorAll('select[data-suggest]').forEach(select => {
-    const input = select.nextElementSibling;
-    const name = select.form.elements.itemName;
-    const prefix = select.dataset.namePrefix;
-    let filled = '';
-    const sync = () => {
-      const custom = select.value === '__other';
-      input.hidden = !custom;
-      input.required = custom && select.required;
-    };
-    const fillName = () => {
-      if (!prefix || (name.value && name.value !== filled)) return;
-      filled = input.value ? prefix + input.value : '';
-      name.value = filled;
-    };
-    const known = [...select.options].some(option => option.value === input.value);
-    select.value = known ? input.value : '__other';
-    select.hidden = false;
-    sync();
-    select.addEventListener('change', () => {
-      const custom = select.value === '__other';
-      input.value = custom ? '' : select.value;
-      sync();
-      fillName();
-      if (custom) input.focus();
-    });
-    input.addEventListener('input', fillName);
-  });
-
-  // Окно «Добавить»: одно на страницу, инвентарь подставляет кнопка. Запоминает последнюю вкладку и возвращает к инвентарю
+  // Окно «Добавить»: содержимое приходит при первом открытии (A-03) — setupAddDialog
   document.querySelectorAll('[data-add-dialog]').forEach(dialog => {
-    const memoryKey = 'charka.addItem.tab';
-    const stored = {
-      get() { try { return localStorage.getItem(memoryKey); } catch (e) { return null; } },
-      set(value) { try { localStorage.setItem(memoryKey, value); } catch (e) { /* без памяти — первая вкладка */ } }
-    };
-    const panels = [...dialog.querySelectorAll('[data-add-panel]')];
-    const tabs = [...dialog.querySelectorAll('[data-add-tab]')];
-    const show = code => {
-      const panel = panels.find(candidate => candidate.dataset.addPanel === code) || panels[0];
-      panels.forEach(candidate => { candidate.hidden = candidate !== panel; });
-      tabs.forEach(tab => { tab.classList.toggle('is-active', tab.dataset.addTab === panel.dataset.addPanel); });
-      const first = panel.querySelector('[data-add-search], input[name=itemName]');
-      // на телефоне клавиатура закрыла бы половину списка
-      if (first && dialog.open && !matchMedia('(pointer: coarse)').matches) first.focus();
-    };
-    const addTabs = dialog.querySelector('.add-tabs');
-    let pendingConfirm = null;
-    dialog.querySelectorAll('[data-add-form=catalog]').forEach(form => form.addEventListener('submit', e => {
-      if (pendingConfirm && !confirm(pendingConfirm)) e.preventDefault();
+    document.querySelectorAll('[data-add-item]').forEach(button => button.addEventListener('click', async () => {
+      if (!dialog.dataset.ready) {
+        dialog.innerHTML = await lazyHtml(dialog.dataset.addSrc);
+        initItemForms(dialog);
+        setupAddDialog(dialog);
+        dialog.dataset.ready = '1';
+      }
+      dialog.openFor(button);
     }));
-    tabs.forEach(tab => tab.addEventListener('click', () => {
-      stored.set(tab.dataset.addTab);
-      show(tab.dataset.addTab);
-    }));
-
-    dialog.querySelector('[data-dialog-close]').addEventListener('click', () => dialog.close());
-    document.querySelectorAll('[data-add-item]').forEach(button => button.addEventListener('click', () => {
-      const items = dialog.dataset.base + button.dataset.addItem + '/items';
-      // кнопка киберware: одна вкладка, и выбор сразу устанавливает
-      const then = button.dataset.addThen || '';
-      pendingConfirm = then ? button.dataset.addConfirm : null;
-      dialog.querySelectorAll('[data-add-then]').forEach(input => { input.value = then; });
-      dialog.querySelectorAll('[data-add-form=catalog] input[name=quantity]').forEach(input => { input.value = 1; input.hidden = !!then; });
-      dialog.querySelectorAll('.add-own').forEach(own => { own.hidden = !!then; });
-      if (addTabs) addTabs.hidden = !!then;
-      dialog.querySelector('[data-add-target]').textContent = button.dataset.addTitle || 'Добавить в «' + button.dataset.addItemName + '»';
-      dialog.querySelectorAll('[data-add-form=catalog]').forEach(form => { form.action = items + '/catalog'; });
-      dialog.querySelectorAll('[data-add-form=own]').forEach(form => { form.action = items; });
-      dialog.querySelectorAll('[data-add-anchor]').forEach(input => { input.value = 'inventory-' + button.dataset.addItem; });
-      syncBuy(buys.length > 0 && buys[0].checked);
-      dialog.showModal();
-      show(button.dataset.addTabOpen || stored.get());
-    }));
-
-    // Поиск: только совпавшие строки, группы раскрыты; Enter не должен добавить первую строку
-    dialog.querySelectorAll('[data-add-search]').forEach(search => {
-      const form = search.closest('form');
-      search.addEventListener('keydown', e => { if (e.key === 'Enter') e.preventDefault(); });
-      search.addEventListener('input', () => {
-        const query = search.value.trim().toLowerCase();
-        form.querySelectorAll('.add-entry').forEach(entry => { entry.hidden = !entry.dataset.search.includes(query); });
-        form.querySelectorAll('[data-add-group]').forEach(group => {
-          group.open = query !== '';
-          group.hidden = query !== '' && !group.querySelector('.add-entry:not([hidden])');
-        });
-      });
-    });
-    // «Купить»: одна галочка на всех вкладках, запоминается; что не по карману — приглушено
-    const buyKey = 'charka.addItem.buy';
-    const buys = [...dialog.querySelectorAll('[data-add-buy]')];
-    const syncBuy = checked => {
-      buys.forEach(input => { input.checked = checked; });
-      dialog.querySelectorAll('[data-add-form=catalog]').forEach(form => {
-        const quantity = Number(form.querySelector('input[name=quantity]').value) || 1;
-        form.querySelectorAll('.add-entry').forEach(entry => {
-          entry.classList.toggle('is-dear', checked && Number(entry.dataset.cost) * quantity > Number(buys[0].dataset.balance));
-        });
-      });
-    };
-    buys.forEach(input => input.addEventListener('change', () => {
-      try { localStorage.setItem(buyKey, input.checked ? '1' : ''); } catch (e) { /* только удобство */ }
-      syncBuy(input.checked);
-    }));
-    dialog.querySelectorAll('[data-add-form=catalog] input[name=quantity]').forEach(input =>
-      input.addEventListener('input', () => syncBuy(buys.length > 0 && buys[0].checked)));
-    if (buys.length) {
-      let remembered = false;
-      try { remembered = localStorage.getItem(buyKey) === '1'; } catch (e) { /* без памяти — не покупать */ }
-      syncBuy(remembered);
-    }
-    show(stored.get());
   });
 
   // Мастер создания персонажа CP2020: остаток очков, производные, пакет роли, деньги. Сервер проверяет всё ещё раз (Cp2020Creation)
@@ -739,27 +902,176 @@ function initPage() {
   });
 
   // Запоминаемый выбор: <select data-remember="ключ"> — последняя карта начала боя
-  document.querySelectorAll('select[data-remember]').forEach(select => {
-    const key = 'charka.remember.' + select.dataset.remember;
-    try {
-      const stored = localStorage.getItem(key);
-      if (stored !== null && [...select.options].some(option => option.value === stored)) select.value = stored;
-    } catch (e) { /* только удобство */ }
-    select.addEventListener('change', () => {
-      try { localStorage.setItem(key, select.value); } catch (e) { /* только удобство */ }
+  document.querySelectorAll('select[data-remember]').forEach(rememberSelect);
+  // A-09: галочка тоже запоминается: <input type="checkbox" data-remember="ключ"> — «🙈 Скрыто» у мастера
+  document.querySelectorAll('input[type=checkbox][data-remember]').forEach(box => {
+    const key = 'charka.remember.' + box.dataset.remember;
+    try { box.checked = localStorage.getItem(key) === '1'; } catch (e) { /* только удобство */ }
+    box.addEventListener('change', () => {
+      try { localStorage.setItem(key, box.checked ? '1' : ''); } catch (e) { /* только удобство */ }
     });
   });
 
-  initBattle();
-  initEditor();
-  initChat();
+  // A-14: каждая часть отдельно — ошибка в одной не мешает остальным
+  safely('battle', initBattle);
+  safely('editor', initEditor);
+  safely('chat', initChat);
+  safely('turn', initTurnWatch);
+  safely('requests', initRequests);
+}
+
+function safely(name, init) {
+  try {
+    init();
+  } catch (e) {
+    console.error(name, e);
+    if (window.reportClientError) window.reportClientError(name + ': ' + e.message, e.stack);
+  }
+}
+
+// Запоминаемый выбор одного списка: и на странице, и в копии формы (меню фишки мастера, GM-01)
+function rememberSelect(select) {
+  const key = 'charka.remember.' + select.dataset.remember;
+  try {
+    const stored = localStorage.getItem(key);
+    if (stored !== null && [...select.options].some(option => option.value === stored)) select.value = stored;
+  } catch (e) { /* только удобство */ }
+  select.addEventListener('change', () => {
+    try { localStorage.setItem(key, select.value); } catch (e) { /* только удобство */ }
+  });
+}
+
+// A-04: «мой ход» на телефоне игрока. Опрос /turn раз в 2 с; ход сменился — если подошла очередь игрока,
+// вибрация, звук (галочка «Звук», запоминается) и заголовок вкладки; экран обновляется сам, если ничего не открыто
+const turnWatch = { url: null, turn: null, mine: [], timer: null };
+const TURN_SOUND_KEY = 'charka.turnSound';
+
+function initTurnWatch() {
+  clearTimeout(turnWatch.timer);
+  const holder = document.querySelector('[data-turn-watch]');
+  if (!holder) {
+    turnWatch.url = null;
+    return;
+  }
+  Object.assign(turnWatch, { url: holder.dataset.turnWatch, turn: holder.dataset.turn, mine: holder.dataset.mine.split(',') });
+  if (holder.querySelector('.turn-panel.is-mine') && !document.title.startsWith('▶')) document.title = '▶ Ваш ход · ' + document.title;
+  let sound = false;
+  try { sound = localStorage.getItem(TURN_SOUND_KEY) === '1'; } catch (e) { /* без памяти — без звука */ }
+  holder.querySelectorAll('[data-turn-sound]').forEach(box => {
+    box.checked = sound;
+    box.addEventListener('change', () => {
+      try { localStorage.setItem(TURN_SOUND_KEY, box.checked ? '1' : ''); } catch (e) { /* только удобство */ }
+      holder.querySelectorAll('[data-turn-sound]').forEach(other => { other.checked = box.checked; });
+      if (box.checked) beep();
+    });
+  });
+  turnWatch.timer = setTimeout(pollTurn, 2000);
+}
+
+async function pollTurn() {
+  if (!turnWatch.url || !document.querySelector('[data-turn-watch]')) return;
+  try {
+    const response = await fetch(turnWatch.url, { cache: 'no-store' });
+    if (response.ok) {
+      const state = await response.json();
+      if (state.turn !== turnWatch.turn) {
+        turnWatch.turn = state.turn;
+        turnChanged(turnWatch.mine.includes(String(state.current)));
+        return;
+      }
+    }
+  } catch (e) { /* сеть пропала: попробуем позже */ }
+  turnWatch.timer = setTimeout(pollTurn, document.hidden ? 5000 : 2000);
+}
+
+function turnChanged(mine) {
+  if (mine) {
+    if (navigator.vibrate) navigator.vibrate([250, 120, 250]);
+    let sound = false;
+    try { sound = localStorage.getItem(TURN_SOUND_KEY) === '1'; } catch (e) { /* без звука */ }
+    if (sound) beep();
+  }
+  // открытый диалог, раскрытое меню или поле с вводом не сбрасываем — полоса «Обновить»
+  const busy = document.querySelector('dialog[open], details[data-menu][open]')
+    || (document.activeElement && document.activeElement.matches('input:not([type=checkbox]), textarea, select') && document.activeElement.value);
+  if (busy || submitting) {
+    const bar = document.querySelector('[data-turn-changed]');
+    if (bar) bar.hidden = false;
+    if (mine) document.title = '▶ Ваш ход · ' + document.title.replace(/^▶ Ваш ход · /, '');
+    turnWatch.timer = setTimeout(pollTurn, 2000);
+    return;
+  }
+  visit(location.href);
+}
+
+// Короткий сигнал без файла: WebAudio, два тона
+function beep() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    const audio = beep.context || (beep.context = new AudioCtx());
+    [0, 0.18].forEach((start, i) => {
+      const tone = audio.createOscillator();
+      const gain = audio.createGain();
+      tone.frequency.value = i ? 990 : 660;
+      gain.gain.setValueAtTime(0.18, audio.currentTime + start);
+      gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + start + 0.16);
+      tone.connect(gain).connect(audio.destination);
+      tone.start(audio.currentTime + start);
+      tone.stop(audio.currentTime + start + 0.17);
+    });
+  } catch (e) { /* звук не поддерживается */ }
+}
+
+// A-07: запросы бросков от мастера — карточки опрашиваются раз в 3 с (10 с в фоне), подмена только при изменении
+const requestsPoll = { timer: null };
+
+function initRequests() {
+  clearTimeout(requestsPoll.timer);
+  if (!document.querySelector('[data-requests]')) return;
+  pollRequests();
+}
+
+async function pollRequests() {
+  const slots = [...document.querySelectorAll('[data-requests]')];
+  if (!slots.length) return;
+  for (const slot of slots) {
+    try {
+      const response = await fetch(slot.dataset.requests, { cache: 'no-store' });
+      if (response.ok) {
+        const html = (await response.text()).trim();
+        if (slot.dataset.html !== html) {
+          const had = slot.dataset.html !== undefined && slot.dataset.html !== '';
+          slot.dataset.html = html;
+          slot.innerHTML = html;
+          // новый запрос у игрока — как подошедший ход: короткая вибрация
+          if (html && !had && slot.querySelector('.request-card:not(.is-gm)') && navigator.vibrate) navigator.vibrate(150);
+        }
+      }
+    } catch (e) { /* сеть пропала: попробуем позже */ }
+  }
+  requestsPoll.timer = setTimeout(pollRequests, document.hidden ? 10000 : 3000);
 }
 
 // Чат кампании (U-06): лента опрашивается раз в 3 с (раз в 10 с после минуты тишины) с ETag и подменяется целиком,
 // форма отправляется как обычно; после отправки курсор снова в поле
 const chat = { url: null, etag: null, timer: null, quietSince: 0, refocus: false };
 
+// KF-09: «💬 Только сообщения» — броски, проверки и журнал боя прячутся из ленты у этого игрока, на этом устройстве
+const ONLY_MESSAGES_KEY = 'charka.chat.onlyMessages';
+function syncOnlyMessages() {
+  let on = false;
+  try { on = localStorage.getItem(ONLY_MESSAGES_KEY) === '1'; } catch (e) { /* только удобство */ }
+  document.querySelectorAll('[data-chat]').forEach(card => card.classList.toggle('only-messages', on));
+  document.querySelectorAll('[data-chat-only-messages]').forEach(box => { box.checked = on; });
+}
+document.addEventListener('change', e => {
+  if (!e.target.matches('[data-chat-only-messages]')) return;
+  try { localStorage.setItem(ONLY_MESSAGES_KEY, e.target.checked ? '1' : '0'); } catch (err) { /* только удобство */ }
+  syncOnlyMessages();
+});
+
 function initChat() {
+  syncOnlyMessages();
   const card = document.querySelector('[data-chat]');
   clearTimeout(chat.timer);
   if (!card) {
@@ -799,12 +1111,176 @@ async function pollChat() {
         const changed = chat.etag !== null;
         chat.etag = response.headers.get('ETag');
         const feed = card.querySelector('[data-chat-feed]');
-        if (feed) feed.innerHTML = await response.text();
+        if (feed) {
+          feed.innerHTML = await response.text();
+          revealRolls();
+        }
         if (changed) chat.quietSince = Date.now();
       }
     } catch (e) { /* сеть пропала: попробуем позже */ }
   }
   chat.timer = setTimeout(pollChat, Date.now() - chat.quietSince > 60000 ? 10000 : 3000);
+}
+
+// A-03: тяжёлое (окно «Добавить», формы правки предметов) приходит по требованию и хранится в памяти страницы,
+// вне initPage: после действия страница заменяется, а справочник тот же. Адрес несёт версию, если содержимое меняется
+const lazyCache = new Map();
+function lazyHtml(url) {
+  if (!lazyCache.has(url)) {
+    lazyCache.set(url, fetch(url, { headers: { 'X-Requested-With': 'fetch' } })
+      .then(response => { if (!response.ok) throw new Error(response.status); return response.text(); })
+      .catch(error => { lazyCache.delete(url); throw error; }));
+  }
+  return lazyCache.get(url);
+}
+
+// [data-lazy] внутри элемента: заменить содержимым по адресу; формы предмета внутри — настроить
+async function loadLazy(root) {
+  for (const slot of root.querySelectorAll('[data-lazy]')) {
+    const url = slot.dataset.lazy;
+    slot.removeAttribute('data-lazy');
+    const holder = document.createElement('div');
+    // форма правки меняется с предметом — её не кэшируем
+    holder.innerHTML = await fetch(url).then(response => response.text());
+    slot.replaceWith(...holder.childNodes);
+  }
+  initItemForms(root);
+}
+
+// Форма предмета: поля выбранного типа и список типичных значений — на странице и в догруженном
+function initItemForms(root) {
+  // Форма предмета: показываем поля выбранного типа; поля других типов выключены и не отправляются
+  root.querySelectorAll('[data-item-form]:not([data-item-ready])').forEach(form => {
+    form.dataset.itemReady = '1';
+    const type = form.elements.itemType;
+    if (!type) return;
+    const sync = () => {
+      form.querySelectorAll('[data-item-fields]').forEach(group => {
+        const active = group.dataset.itemFields === type.value;
+        group.hidden = !active;
+        group.querySelectorAll('input, select').forEach(field => { field.disabled = !active; });
+      });
+    };
+    type.addEventListener('change', sync);
+    sync();
+  });
+
+  // Поле с типичными значениями: на сервер уходит текстовое поле за списком, оно видно только при «Другой…».
+  // Если у поля есть data-name-prefix, выбор подставляет название предмета, пока его не ввели руками
+  root.querySelectorAll('select[data-suggest]:not([data-suggest-ready])').forEach(select => {
+    select.dataset.suggestReady = '1';
+    const input = select.nextElementSibling;
+    const name = select.form.elements.itemName;
+    const prefix = select.dataset.namePrefix;
+    let filled = '';
+    const sync = () => {
+      const custom = select.value === '__other';
+      input.hidden = !custom;
+      input.required = custom && select.required;
+    };
+    const fillName = () => {
+      if (!prefix || (name.value && name.value !== filled)) return;
+      filled = input.value ? prefix + input.value : '';
+      name.value = filled;
+    };
+    const known = [...select.options].some(option => option.value === input.value);
+    select.value = known ? input.value : '__other';
+    select.hidden = false;
+    sync();
+    select.addEventListener('change', () => {
+      const custom = select.value === '__other';
+      input.value = custom ? '' : select.value;
+      sync();
+      fillName();
+      if (custom) input.focus();
+    });
+    input.addEventListener('input', fillName);
+  });
+}
+
+// Окно «Добавить»: одно на страницу, инвентарь подставляет кнопка (dialog.openFor). Запоминает последнюю вкладку и возвращает к инвентарю
+function setupAddDialog(dialog) {
+  const memoryKey = 'charka.addItem.tab';
+  const stored = {
+    get() { try { return localStorage.getItem(memoryKey); } catch (e) { return null; } },
+    set(value) { try { localStorage.setItem(memoryKey, value); } catch (e) { /* без памяти — первая вкладка */ } }
+  };
+  const panels = [...dialog.querySelectorAll('[data-add-panel]')];
+  const tabs = [...dialog.querySelectorAll('[data-add-tab]')];
+  const show = code => {
+    const panel = panels.find(candidate => candidate.dataset.addPanel === code) || panels[0];
+    panels.forEach(candidate => { candidate.hidden = candidate !== panel; });
+    tabs.forEach(tab => { tab.classList.toggle('is-active', tab.dataset.addTab === panel.dataset.addPanel); });
+    const first = panel.querySelector('[data-add-search], input[name=itemName]');
+    // на телефоне клавиатура закрыла бы половину списка
+    if (first && dialog.open && !matchMedia('(pointer: coarse)').matches) first.focus();
+  };
+  const addTabs = dialog.querySelector('.add-tabs');
+  let pendingConfirm = null;
+  dialog.querySelectorAll('[data-add-form=catalog]').forEach(form => form.addEventListener('submit', e => {
+    if (pendingConfirm && !confirm(pendingConfirm)) e.preventDefault();
+  }));
+  tabs.forEach(tab => tab.addEventListener('click', () => {
+    stored.set(tab.dataset.addTab);
+    show(tab.dataset.addTab);
+  }));
+
+  dialog.querySelector('[data-dialog-close]').addEventListener('click', () => dialog.close());
+  dialog.openFor = button => {
+    const items = dialog.dataset.base + button.dataset.addItem + '/items';
+    // кнопка киберware: одна вкладка, и выбор сразу устанавливает
+    const then = button.dataset.addThen || '';
+    pendingConfirm = then ? button.dataset.addConfirm : null;
+    dialog.querySelectorAll('[data-add-then]').forEach(input => { input.value = then; });
+    dialog.querySelectorAll('[data-add-form=catalog] input[name=quantity]').forEach(input => { input.value = 1; input.hidden = !!then; });
+    dialog.querySelectorAll('.add-own').forEach(own => { own.hidden = !!then; });
+    if (addTabs) addTabs.hidden = !!then;
+    dialog.querySelector('[data-add-target]').textContent = button.dataset.addTitle || 'Добавить в «' + button.dataset.addItemName + '»';
+    dialog.querySelectorAll('[data-add-form=catalog]').forEach(form => { form.action = items + '/catalog'; });
+    dialog.querySelectorAll('[data-add-form=own]').forEach(form => { form.action = items; });
+    dialog.querySelectorAll('[data-add-anchor]').forEach(input => { input.value = 'inventory-' + button.dataset.addItem; });
+    syncBuy(buys.length > 0 && buys[0].checked);
+    dialog.showModal();
+    show(button.dataset.addTabOpen || stored.get());
+  };
+
+  // Поиск: только совпавшие строки, группы раскрыты; Enter не должен добавить первую строку
+  dialog.querySelectorAll('[data-add-search]').forEach(search => {
+    const form = search.closest('form');
+    search.addEventListener('keydown', e => { if (e.key === 'Enter') e.preventDefault(); });
+    search.addEventListener('input', () => {
+      const query = search.value.trim().toLowerCase();
+      form.querySelectorAll('.add-entry').forEach(entry => { entry.hidden = !entry.dataset.search.includes(query); });
+      form.querySelectorAll('[data-add-group]').forEach(group => {
+        group.open = query !== '';
+        group.hidden = query !== '' && !group.querySelector('.add-entry:not([hidden])');
+      });
+    });
+  });
+  // «Купить»: одна галочка на всех вкладках, запоминается; что не по карману — приглушено
+  const buyKey = 'charka.addItem.buy';
+  const buys = [...dialog.querySelectorAll('[data-add-buy]')];
+  const syncBuy = checked => {
+    buys.forEach(input => { input.checked = checked; });
+    dialog.querySelectorAll('[data-add-form=catalog]').forEach(form => {
+      const quantity = Number(form.querySelector('input[name=quantity]').value) || 1;
+      form.querySelectorAll('.add-entry').forEach(entry => {
+        entry.classList.toggle('is-dear', checked && Number(entry.dataset.cost) * quantity > Number(buys[0].dataset.balance));
+      });
+    });
+  };
+  buys.forEach(input => input.addEventListener('change', () => {
+    try { localStorage.setItem(buyKey, input.checked ? '1' : ''); } catch (e) { /* только удобство */ }
+    syncBuy(input.checked);
+  }));
+  dialog.querySelectorAll('[data-add-form=catalog] input[name=quantity]').forEach(input =>
+    input.addEventListener('input', () => syncBuy(buys.length > 0 && buys[0].checked)));
+  if (buys.length) {
+    let remembered = false;
+    try { remembered = localStorage.getItem(buyKey) === '1'; } catch (e) { /* без памяти — не покупать */ }
+    syncBuy(remembered);
+  }
+  show(stored.get());
 }
 
 // Выбор из нескольких вариантов у фишки: второе нажатие мимо закрывает меню
@@ -818,7 +1294,21 @@ document.addEventListener('click', e => {
 document.addEventListener('click', e => {
   const close = e.target.closest('.alert-close');
   if (close) close.closest('.alert').remove();
+  // A-01: плашка «↶ Отменить»
+  const undoClose = e.target.closest('[data-undo-close]');
+  if (undoClose) undoClose.closest('.undo-toast').remove();
 });
+
+// UX-16: в бою плашка «↶ Отменить» не должна закрывать полосу хода — она сверху и через 8 секунд уходит сама
+// (наведение или фокус её держат)
+const hideBattleUndo = () => {
+  const toast = document.querySelector('.battle-screen') && document.querySelector('.undo-toast');
+  if (!toast || toast.dataset.autoHide) return;
+  toast.dataset.autoHide = '1';
+  const timer = setTimeout(() => { if (!toast.matches(':hover, :focus-within')) toast.remove(); }, 8000);
+  toast.addEventListener('mouseleave', () => setTimeout(() => toast.isConnected && !toast.matches(':hover, :focus-within') && toast.remove(), 2000), { once: true });
+  return timer;
+};
 
 // Обновление страницы на месте: формы и ссылки идут через fetch, новая страница заменяет старую без мигания,
 // прокрутка остаётся. Сервер отвечает обычным HTML, на редирект — адресом с якорем (InPlaceRedirectFilter).
@@ -832,6 +1322,8 @@ let submitting = false;
 const revealAnchor = () => {
   const anchored = location.hash && document.getElementById(location.hash.slice(1));
   if (!anchored) return;
+  // строка в свёрнутом блоке (запасное оружие, R-07): раскрыть, иначе её не видно
+  for (let details = anchored.closest('details'); details; details = details.parentElement.closest('details')) details.open = true;
   const top = anchored.getBoundingClientRect().top;
   const topbar = document.querySelector('.topbar');
   if (top < (topbar ? topbar.offsetHeight : 0) || top > innerHeight - 80) anchored.scrollIntoView();
@@ -852,7 +1344,7 @@ const replacePage = html => {
   document.title = next.title;
   document.body.replaceWith(next.body);
   openableDetails().filter(details => opened.has(detailsKey(details))).forEach(details => { details.open = true; });
-  initPage();
+  safely('initPage', initPage);
 };
 
 const fetchPage = async (url, init) => {
@@ -863,13 +1355,15 @@ const fetchPage = async (url, init) => {
 };
 
 // Сервер недоступен: действие могло не выполниться, страница и введённое остаются
-const showConnectionError = () => {
+const showConnectionError = timedOut => {
   const alert = document.createElement('div');
   alert.className = 'alert alert-error';
   alert.setAttribute('role', 'alert');
   const text = document.createElement('span');
   text.className = 'alert-text';
-  text.textContent = 'Нет связи с сервером. Проверьте, прошло ли действие, и повторите.';
+  text.textContent = timedOut
+    ? 'Сервер не ответил за 20 секунд. Проверьте, прошло ли действие, и повторите.'
+    : 'Нет связи с сервером. Проверьте, прошло ли действие, и повторите.';
   const close = document.createElement('button');
   close.type = 'button';
   close.className = 'alert-close';
@@ -877,6 +1371,40 @@ const showConnectionError = () => {
   close.textContent = '×';
   alert.append(text, close);
   (document.querySelector('main') || document.body).prepend(alert);
+};
+
+// KF-06: ответ-ошибка на действие: текст причины со страницы ошибки (или текстом), в открытом окне — внутри него
+// (поверх модального окна ничего не видно), иначе — плашкой внизу экрана, которая не прячет страницу
+const showActionError = (status, body, pressed) => {
+  let message = '';
+  try {
+    const page = new DOMParser().parseFromString(body, 'text/html');
+    const sub = page.querySelector('.page-sub');
+    message = sub ? sub.textContent.trim() : (page.querySelector('.page-title') ? '' : page.body.textContent.trim().slice(0, 300));
+  } catch (e) { /* без текста */ }
+  const title = status === 404 ? 'Не найдено' : status === 403 ? 'Нет доступа' : status >= 500 ? 'Ошибка сервера' : 'Действие не выполнено';
+  const alert = document.createElement('div');
+  alert.className = 'alert alert-error action-error';
+  alert.setAttribute('role', 'alert');
+  const text = document.createElement('span');
+  text.className = 'alert-text';
+  text.textContent = title + (message ? ': ' + message : '') + (status >= 500 ? '. Обновите страницу и проверьте, что изменилось.' : '');
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.className = 'alert-close';
+  close.setAttribute('aria-label', 'Закрыть');
+  close.textContent = '×';
+  close.addEventListener('click', () => alert.remove());
+  alert.append(text, close);
+  const dialog = pressed && pressed.closest && pressed.closest('dialog[open]');
+  if (dialog) {
+    dialog.querySelectorAll('.action-error').forEach(old => old.remove());
+    dialog.prepend(alert);
+    return;
+  }
+  document.querySelectorAll('.action-error.is-floating').forEach(old => old.remove());
+  alert.classList.add('is-floating');
+  document.body.appendChild(alert);
 };
 
 // scroll — куда вернуться при ходьбе по истории; без него та же страница остаётся на месте, новая открывается сверху.
@@ -895,6 +1423,11 @@ const visit = async (url, init, scroll, pressed) => {
     }
     const html = await page.response.text();
     if (ticket !== lastVisit) return;
+    // KF-06: действие не прошло — страница (и бой на ней) остаётся, причина видна там, где нажимали
+    if (!page.response.ok && init && init.method === 'POST') {
+      showActionError(page.response.status, html, pressed);
+      return;
+    }
     const target = new URL(page.url, location.href);
     const samePage = target.pathname + target.search === location.pathname + location.search;
     const x = scrollX;
@@ -916,7 +1449,7 @@ const visit = async (url, init, scroll, pressed) => {
     if (kept) scrollBy(0, kept.getBoundingClientRect().top - pressedTop);
     revealAnchor();
   } catch (e) {
-    if (ticket === lastVisit) showConnectionError();
+    if (ticket === lastVisit) showConnectionError(e && e.name === 'AbortError');
   }
 };
 
@@ -938,11 +1471,19 @@ document.addEventListener('submit', async e => {
   }
   // второе нажатие, пока идёт первое, не должно выстрелить ещё раз
   if (submitting) return;
+  // UX-33: после формы открыть нужную вкладку (бросок из окна кубиков — «Чат», где виден итог)
+  if (form.dataset.tabAfter) {
+    try { localStorage.setItem('charka.tabs.battle-side', form.dataset.tabAfter); } catch (e) { /* только удобство */ }
+  }
   submitting = true;
   document.documentElement.classList.add('is-busy');
-  await visit(new URL(action, location.href).href, { method: 'POST', body: data }, undefined, e.submitter || form);
-  submitting = false;
-  document.documentElement.classList.remove('is-busy');
+  try {
+    await visit(new URL(action, location.href).href, { method: 'POST', body: data }, undefined, e.submitter || form);
+  } finally {
+    // A-14: что бы ни случилось с ответом, следующая форма должна отправляться
+    submitting = false;
+    document.documentElement.classList.remove('is-busy');
+  }
 });
 
 document.addEventListener('click', e => {
@@ -974,8 +1515,8 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 const CELL = 32;
 const POINTER_SHOW_MS = 4000;
 const battle = {
-  url: null, data: null, etag: null, timer: null, view: null, selected: undefined, reach: null, reachFor: null,
-  lastChange: 0, dragging: false, pointerMode: false, adding: false, placing: null, seen: new Map(), turn: null, stage: null
+  url: null, data: null, etag: null, timer: null, view: null, selected: undefined, reach: null, reachFor: null, vision: null,
+  rulerMode: false, ruler: null, lastChange: 0, dragging: false, pointerMode: false, adding: false, placing: null, seen: new Map(), turn: null, stage: null
 };
 
 const svgEl = (name, attrs, parent) => {
@@ -990,14 +1531,64 @@ const meKey = url => {
   const match = /\/campaign\/(\d+)/.exec(url || '');
   return 'charka.me.campaign.' + (match ? match[1] : '');
 };
+// UX-33: игрок за кого играет, не выбирает — вошёл и играет своими: тот, кто сейчас ходит, иначе выбранный в чате,
+// иначе первый свой. Мастер — как выбрал («мастер» — пусто)
 const battleMe = () => {
-  try { return localStorage.getItem(meKey(battle.url)) || ''; } catch (e) { return ''; }
+  let stored = '';
+  try { stored = localStorage.getItem(meKey(battle.url)) || ''; } catch (e) { /* только удобство */ }
+  if (battleGm()) return stored;
+  const screen = document.querySelector('.battle-screen');
+  const mine = (screen && screen.dataset.mine || '').split(',').filter(Boolean);
+  const current = battle.data && battle.data.tokens.find(token => token.current);
+  if (current && mine.includes(String(current.character))) return String(current.character);
+  return mine.includes(stored) ? stored : (mine[0] || '');
 };
+
+// A-15: режим мастера на этом устройстве — cookie, её же проверяет сервер (GmMode). «За NPC» — только свои NPC и по бегу
+const GM_MODE_COOKIE = 'charka.gmMode';
+const gmModeNpc = () => document.cookie.split('; ').includes(GM_MODE_COOKIE + '=npc');
+const battleGm = () => Boolean(battle.stage && battle.stage.dataset.gm === 'true');
+// мастер в «За NPC»: фишки игроков не выбираются и не двигаются
+const npcOnly = () => battleGm() && gmModeNpc();
+// BF-03: игрок управляет только своими персонажами — чужая фишка (враг, NPC) только цель: не выбирается и не тянется
+const myCharacters = () => {
+  const screen = document.querySelector('.battle-screen');
+  return (screen && screen.dataset.mine || '').split(',').filter(Boolean);
+};
+const lockedToken = token => Boolean(token && ((npcOnly() && !token.npc)
+  || (!battleGm() && !myCharacters().includes(String(token.character)))));
+function applyGmMode() {
+  const npc = gmModeNpc();
+  document.querySelectorAll('[data-gm-mode]').forEach(button => {
+    // UX-12: режимы словами, понятными без подсказки
+    button.textContent = npc ? '👹 Играю за NPC' : '👁 Вижу всех';
+    button.classList.toggle('is-active', npc);
+    button.title = npc
+      ? 'Играю за NPC: ходите только своими NPC и по бегу. Нажмите — «Вижу всех»'
+      : 'Вижу всех: любые фишки, Shift — без лимита бега, ＋ Фишка, правка карты. Нажмите — «Играю за NPC»';
+  });
+  document.querySelectorAll('[data-god-only]').forEach(el => { el.hidden = npc; });
+}
 
 // Мера «прямая»: та же формула, что MapRules.distance на сервере
 const battleMeters = (x1, y1, x2, y2) => Math.round(Math.hypot(x2 - x1, y2 - y1) * battle.data.doc.cell);
 
 const tokenById = id => battle.data && battle.data.tokens.find(token => token.id === id);
+
+// M-22: уровень многоуровневой карты как плоский документ — та же формула, что MapDoc.level
+const levelDoc = (doc, level) => {
+  if (!level || !doc.levels || !doc.levels.length) return doc;
+  const floor = doc.levels[level - 1];
+  if (!floor) return doc;
+  return { ...doc, walls: floor.walls, cells: floor.cells, stamps: floor.stamps, labels: floor.labels, zones: [], bg: null };
+};
+const levelName = (doc, level) => level ? doc.levels[level - 1].name : (doc.ground || '1 этаж');
+const levelCount = doc => 1 + ((doc.levels && doc.levels.length) || 0);
+// какой уровень показан: выбранный вкладкой, иначе уровень выбранной фишки
+const battleLevel = () => {
+  const count = battle.data ? levelCount(battle.data.doc) : 1;
+  return battle.level !== undefined && battle.level < count ? battle.level : 0;
+};
 
 function initBattle() {
   const stage = document.querySelector('[data-battle]');
@@ -1007,7 +1598,7 @@ function initBattle() {
     return;
   }
   if (battle.url !== stage.dataset.battle) {
-    Object.assign(battle, { url: stage.dataset.battle, data: null, etag: null, view: null, selected: undefined, reach: null, reachFor: null });
+    Object.assign(battle, { url: stage.dataset.battle, data: null, etag: null, view: null, selected: undefined, reach: null, reachFor: null, vision: null });
   }
   battle.stage = stage;
   battle.turn = stage.dataset.turn;
@@ -1022,6 +1613,10 @@ function initBattle() {
       if (wrap.open) renderBattle();
     });
   }
+  // окно кубиков: бросает тот, за кого играем
+  document.querySelectorAll('[data-dice-me]').forEach(select => {
+    if ([...select.options].some(option => option.value === battleMe())) select.value = battleMe();
+  });
   const me = document.querySelector('[data-battle-me]');
   if (me) {
     me.value = battleMe();
@@ -1032,6 +1627,20 @@ function initBattle() {
       renderBattle();
     });
   }
+  const modeButton = document.querySelector('[data-gm-mode]');
+  if (modeButton) {
+    modeButton.addEventListener('click', () => {
+      const npc = !gmModeNpc();
+      document.cookie = GM_MODE_COOKIE + '=' + (npc ? 'npc' : 'god') + '; path=/; max-age=31536000; SameSite=Lax';
+      battle.adding = false;
+      const chosen = tokenById(battle.selected);
+      if (npc && lockedToken(chosen)) battle.selected = undefined;
+      applyGmMode();
+      battleHint(npc ? 'Играю за NPC: двигаются только NPC, по бегу' : 'Вижу всех: любые фишки, Shift — без лимита бега');
+      renderBattle();
+    });
+  }
+  applyGmMode();
   // «＋ Фишка» мастера: режим остаётся включённым — несколько бандитов подряд
   const addButton = document.querySelector('[data-battle-add]');
   if (addButton) {
@@ -1039,10 +1648,45 @@ function initBattle() {
     addButton.addEventListener('click', () => {
       battle.adding = !battle.adding;
       battle.pointerMode = false;
+      battle.rulerMode = false;
+      battle.ruler = null;
+      const ruler = document.querySelector('[data-battle-ruler]');
+      if (ruler) ruler.classList.remove('is-active');
       addButton.classList.toggle('is-active', battle.adding);
       const pointer = document.querySelector('[data-battle-pointer]');
       if (pointer) pointer.classList.remove('is-active');
       battleHint(battle.adding ? 'Нажимайте клетки: каждое нажатие ставит фишку. Ещё раз «＋ Фишка» — выключить' : '');
+    });
+  }
+  // KF-05: «＋ Предмет» мастера — как «＋ Фишка»: режим остаётся, каждое нажатие клетки кладёт выбранный предмет
+  const lootButton = document.querySelector('[data-battle-loot]');
+  if (lootButton) {
+    lootButton.classList.toggle('is-active', !!battle.looting);
+    lootButton.addEventListener('click', () => {
+      battle.looting = !battle.looting;
+      battle.adding = false;
+      battle.pointerMode = false;
+      battle.rulerMode = false;
+      battle.ruler = null;
+      document.querySelectorAll('[data-battle-pointer], [data-battle-add], [data-battle-ruler]').forEach(other => other.classList.remove('is-active'));
+      lootButton.classList.toggle('is-active', battle.looting);
+      battleHint(battle.looting ? 'Нажимайте клетки: каждое нажатие кладёт предмет. Ещё раз «＋ Предмет» — выключить' : '');
+    });
+    if (addButton) addButton.addEventListener('click', () => { battle.looting = false; lootButton.classList.remove('is-active'); });
+  }
+  // R-18a: линейка — тянуть от клетки к клетке, расстояние по мере системы; видна только на этом устройстве
+  const rulerButton = document.querySelector('[data-battle-ruler]');
+  if (rulerButton) {
+    rulerButton.classList.toggle('is-active', battle.rulerMode);
+    rulerButton.addEventListener('click', () => {
+      battle.rulerMode = !battle.rulerMode;
+      battle.pointerMode = false;
+      battle.adding = false;
+      if (!battle.rulerMode) battle.ruler = null;
+      document.querySelectorAll('[data-battle-pointer], [data-battle-add]').forEach(other => other.classList.remove('is-active'));
+      rulerButton.classList.toggle('is-active', battle.rulerMode);
+      battleHint(battle.rulerMode ? 'Тяните от клетки к клетке — расстояние в метрах. Ещё раз «📏» — выключить' : '');
+      renderBattle();
     });
   }
   const pointerButton = document.querySelector('[data-battle-pointer]');
@@ -1051,6 +1695,9 @@ function initBattle() {
     pointerButton.addEventListener('click', () => {
       battle.pointerMode = !battle.pointerMode;
       battle.adding = false;
+      battle.rulerMode = false;
+      battle.ruler = null;
+      if (rulerButton) rulerButton.classList.remove('is-active');
       pointerButton.classList.toggle('is-active', battle.pointerMode);
       if (addButton) addButton.classList.remove('is-active');
       battleHint(battle.pointerMode ? 'Нажмите клетку — её увидят все. От своей фишки можно протянуть стрелку' : '');
@@ -1063,6 +1710,18 @@ function initBattle() {
       if (factor === 0) battle.view = null;
       else zoomBattle(factor, battle.view.x + battle.view.w / 2, battle.view.y + battle.view.h / 2);
       renderBattle();
+    });
+  });
+  // R-17: портрет в карусели очереди выбирает фишку на карте
+  document.querySelectorAll('[data-select-token]').forEach(button => {
+    button.addEventListener('click', () => {
+      const id = Number(button.dataset.selectToken);
+      if (!tokenById(id)) {
+        battleError('Фишки нет на карте');
+        return;
+      }
+      selectToken(id);
+      if (innerWidth < 900) stage.scrollIntoView({ block: 'center', behavior: 'smooth' });
     });
   });
   if (battle.data) renderBattle();
@@ -1134,12 +1793,34 @@ async function loadReach(id) {
     battle.reach = { meters: reach.meters, run: reach.run, cells: new Map(reach.cells.map(cell => [cell[0] + ',' + cell[1], cell[2]])) };
     renderBattle();
   } catch (e) { /* без области: только подсказка */ }
+  loadVision(id);
+}
+
+// Поле видимости выбранной фишки: что вне его — в тени; чужие фишки помечены «не видна» и «частично»
+async function loadVision(id) {
+  try {
+    const response = await fetch(battle.url + '/participants/' + id + '/view', { cache: 'no-store' });
+    if (!response.ok || battle.reachFor !== id) return;
+    const view = await response.json();
+    if (battle.reachFor !== id) return;
+    battle.vision = { id, w: view.w, cells: view.cells, targets: new Map(view.targets.map(target => [target.id, target])) };
+    renderBattle();
+  } catch (e) { /* без тени */ }
 }
 
 function selectToken(id) {
+  const chosen = tokenById(id);
+  // BF-03: чужую фишку (карусель очереди, «Выбрать») игрок не берёт — только показываем, где она
+  if (chosen && lockedToken(chosen)) {
+    if (chosen.level !== undefined) battle.level = chosen.level || 0;
+    renderBattle();
+    return;
+  }
   battle.selected = id;
+  if (chosen) battle.level = chosen.level || 0;
   battle.reach = null;
   battle.reachFor = null;
+  battle.vision = null;
   if (id) loadReach(id);
   renderBattle();
 }
@@ -1159,6 +1840,10 @@ const zoomBattle = (factor, cx, cy) => {
 };
 
 const MATERIAL_COLORS = { WALL: '#c7cfdb', DOOR: '#b7834a', WINDOW: '#7dd3fc', OBJECT: '#64748b', TERRAIN: '#3f3a2e' };
+// местность своего цвета; остальная — общим цветом TERRAIN
+const TERRAIN_COLORS = { water: '#1e40af', asphalt: '#2a303b', grass: '#1f4d2b', smoke: '#9ca3af', void: '#020305', stairs: '#6b5b3e' };
+// M-23: взрывоопасное — своим цветом, чтобы его было видно издалека
+const EXPLOSIVE_COLOR = '#c2410c';
 
 // Карта без фишек: пол, сетка, зоны, местность, предметы, стены, подписи. Общая для поля боя и редактора.
 // under(svg) рисует то, что ложится под стены (досягаемость); editing — показать проёмы, двери не нажимаются
@@ -1184,8 +1869,14 @@ function drawMapLayers(svg, doc, materials, objects, under, editing, backgroundU
   Object.entries(doc.cells).forEach(([key, code]) => {
     const [x, y] = key.split(',').map(Number);
     const material = materials.get(code);
-    svgEl('rect', { x: x * CELL, y: y * CELL, width: CELL, height: CELL, class: 'battle-terrain', fill: code === 'water' ? '#1e40af' : MATERIAL_COLORS.TERRAIN },
-      svg).appendChild(svgEl('title', {})).textContent = material ? material.label : code;
+    const kind = material && material.smoke ? ' battle-smoke' : material && material.difficult ? ' battle-difficult' : '';
+    svgEl('rect', { x: x * CELL, y: y * CELL, width: CELL, height: CELL, class: 'battle-terrain' + kind, fill: TERRAIN_COLORS[code] || MATERIAL_COLORS.TERRAIN },
+      svg).appendChild(svgEl('title', {})).textContent = (material ? material.label : code)
+      + (material && material.difficult ? ' · трудная местность: бег вдвое дороже' : '')
+      + (material && material.smoke ? ' · закрывает взгляд, стрельба вслепую' : '');
+    if (code === 'stairs') {
+      svgEl('text', { x: (x + 0.5) * CELL, y: (y + 0.5) * CELL, class: 'battle-stairs' }, svg).textContent = '⇅';
+    }
   });
   doc.stamps.forEach(stamp => {
     const object = objects.get(stamp.code);
@@ -1202,8 +1893,11 @@ function drawMapLayers(svg, doc, materials, objects, under, editing, backgroundU
         const material = materials.get(code);
         svgEl('rect', {
           x: (stamp.x + dx) * CELL + 1, y: (stamp.y + dy) * CELL + 1, width: CELL - 2, height: CELL - 2, rx: 3,
-          fill: MATERIAL_COLORS.OBJECT, 'fill-opacity': material && material.sp >= 30 ? 0.95 : 0.7
+          fill: material && material.explosive ? EXPLOSIVE_COLOR : MATERIAL_COLORS.OBJECT, 'fill-opacity': material && material.sp >= 30 ? 0.95 : 0.7
         }, group);
+        if (material && material.explosive && !editing) {
+          svgEl('text', { x: (stamp.x + dx + 0.5) * CELL, y: (stamp.y + dy + 0.5) * CELL, class: 'battle-explosive' }, group).textContent = '💥';
+        }
       }
     }
     svgEl('rect', { x: stamp.x * CELL, y: stamp.y * CELL, width: w * CELL, height: h * CELL, class: 'battle-stamp-outline' }, group);
@@ -1226,7 +1920,11 @@ function drawMapLayers(svg, doc, materials, objects, under, editing, backgroundU
     const title = svgEl('title', {}, line);
     title.textContent = (material ? material.label + (material.sp ? ' SP ' + material.sp : '') : value)
       + (type === 'door' && !editing ? (state === 'open' ? ' · открыта, нажмите — закрыть' : ' · закрыта, нажмите — открыть') : '');
-    if (type === 'door' && !editing) line.dataset.edge = key;
+    if (!editing) {
+      // M-23: правая кнопка или долгое нажатие по грани — выбить, разбить; дверь ещё и открывается нажатием
+      line.dataset.edge = key;
+      line.dataset.edgeKind = type;
+    }
   });
   doc.labels.forEach(label => {
     svgEl('text', { x: (label.x + 0.5) * CELL, y: (label.y + 0.5) * CELL, class: 'battle-label' }, svg).textContent = label.text;
@@ -1236,43 +1934,88 @@ function renderBattle() {
   const stage = battle.stage;
   const data = battle.data;
   if (!stage || !data || !stage.isConnected) return;
-  const doc = data.doc;
+  const level = battleLevel();
+  const doc = levelDoc(data.doc, level);
   const width = doc.w * CELL;
   const height = doc.h * CELL;
+  const freshView = !battle.view;
   if (!battle.view) battle.view = { x: -CELL / 2, y: -CELL / 2, w: width + CELL, h: height + CELL };
   // высота поля — по пропорциям карты: широкая улица на телефоне не оставляет пустоты сверху и снизу
-  if (stage.clientWidth) {
+  // R-14: на экране боя поле занимает всю середину, высоту задаёт раскладка
+  if (stage.clientWidth && !('battleFill' in stage.dataset)) {
     stage.style.height = Math.round(Math.min(innerHeight * 0.7, Math.max(240, stage.clientWidth * (doc.h + 1) / (doc.w + 1)))) + 'px';
   }
   const materials = new Map(data.materials.map(material => [material.code, material]));
   const objects = new Map(data.objects.map(object => [object.code, object]));
   const me = battleMe();
+  // UX-15, UX-17: на сенсорном экране вся карта — это клетки по 12 px: фишку пальцем не взять. Клетка — не меньше 44 px,
+  // в центре — своя фишка (или чей ход), рамка — по пропорциям поля, без пустых полос; «⤢» по-прежнему показывает всю карту
+  if (freshView && !battle.coarseFitted && stage.clientWidth && matchMedia('(pointer: coarse)').matches) {
+    battle.coarseFitted = true;
+    const minCell = 44;
+    if (stage.clientWidth / (battle.view.w / CELL) < minCell) {
+      const focus = data.tokens.find(token => String(token.character) === me && token.x !== null)
+        || data.tokens.find(token => token.current && token.x !== null);
+      const w = stage.clientWidth / minCell * CELL;
+      const h = w * (stage.clientHeight || stage.clientWidth) / stage.clientWidth;
+      const cx = focus ? (focus.x + 0.5) * CELL : width / 2;
+      const cy = focus ? (focus.y + 0.5) * CELL : height / 2;
+      battle.view = { x: cx - w / 2, y: cy - h / 2, w, h };
+    }
+  }
   // фишка ещё не выбрана: своя по «Я — …», у мастера — чей ход; null — выбор снят нажатием
   if (battle.selected && !tokenById(battle.selected)) battle.selected = undefined;
   if (battle.selected === undefined) {
     battle.selected = null;
     const mine = data.tokens.find(token => String(token.character) === me && token.x !== null);
-    const current = data.tokens.find(token => token.current && token.x !== null);
+    const current = data.tokens.find(token => token.current && token.x !== null && !lockedToken(token));
     const chosen = mine || (me === '' ? current : null);
     if (chosen) {
       battle.selected = chosen.id;
+      if (battle.level === undefined) battle.level = chosen.level || 0;
       loadReach(chosen.id);
     }
   }
+  renderLevels();
+  renderClimb();
+  const selectedToken = tokenById(battle.selected);
+  const onLevel = token => (token.level || 0) === level;
 
   const svg = svgEl('svg', {
     viewBox: [battle.view.x, battle.view.y, battle.view.w, battle.view.h].join(' '),
     class: 'battle-svg', role: 'img', 'aria-label': 'Карта боя', 'data-metric': data.metric
   });
   drawMapLayers(svg, doc, materials, objects, svg => {
-    if (battle.reach && battle.selected) {
+    if (battle.reach && battle.selected && selectedToken && onLevel(selectedToken)) {
       const group = svgEl('g', { class: 'battle-reach' }, svg);
       battle.reach.cells.forEach((cost, key) => {
         const [x, y] = key.split(',').map(Number);
         svgEl('rect', { x: x * CELL, y: y * CELL, width: CELL, height: CELL }, group);
       });
     }
-  }, false, data.backgroundUrl);
+    // тень вне поля видимости: подряд идущие клетки строки — один прямоугольник
+    // M-16: игроку без выбранной своей фишки — туман по всем его персонажам (сервер не отдал скрытые фишки)
+    const own = battle.vision && battle.vision.id === battle.selected && battle.vision.cells && selectedToken && onLevel(selectedToken);
+    const fogCells = data.fogLevels ? data.fogLevels[level] : data.fog;
+    const vision = own ? battle.vision : fogCells ? { w: doc.w, cells: fogCells } : null;
+    if (vision) {
+      const fog = svgEl('g', { class: 'battle-fog' }, svg);
+      const hatch = svgEl('pattern', { id: 'battle-fog-hatch', width: 10, height: 10, patternUnits: 'userSpaceOnUse', patternTransform: 'rotate(45)' }, fog);
+      svgEl('rect', { width: 10, height: 10, class: 'battle-fog-shade' }, hatch);
+      svgEl('line', { x1: 0, y1: 0, x2: 0, y2: 10, class: 'battle-fog-line' }, hatch);
+      for (let y = 0; y * vision.w < vision.cells.length; y++) {
+        let start = -1;
+        for (let x = 0; x <= vision.w; x++) {
+          const dark = x < vision.w && vision.cells[y * vision.w + x] === '0';
+          if (dark && start < 0) start = x;
+          if (!dark && start >= 0) {
+            svgEl('rect', { x: start * CELL, y: y * CELL, width: (x - start) * CELL, height: CELL }, fog);
+            start = -1;
+          }
+        }
+      }
+    }
+  }, false, level === 0 ? data.backgroundUrl : null);
 
   const now = Date.now();
   data.pointers.forEach(pointer => {
@@ -1289,24 +2032,129 @@ function renderBattle() {
     svgEl('text', { x: (pointer.x + 0.5) * CELL, y: (pointer.y - 0.15) * CELL, class: 'battle-pointer-label' }, group).textContent = pointer.who;
   });
 
-  data.tokens.filter(token => token.x !== null).forEach(token => {
+  const seen = battle.vision && battle.vision.id === battle.selected ? battle.vision.targets : null;
+  // M-22: на показанном уровне — все фишки; с уровня ниже — те, что видны сквозь пустоту (притушены)
+  const throughVoid = token => (token.level || 0) < level && doc.cells[token.x + ',' + token.y] === 'void';
+  data.tokens.filter(token => token.x !== null && (onLevel(token) || throughVoid(token))).forEach(token => {
+    const sight = seen && seen.get(token.id);
     const group = svgEl('g', {
-      class: 'battle-token' + (token.npc ? ' npc' : ' player') + (token.current ? ' is-current' : '') + (token.out ? ' is-out' : '')
+      class: 'battle-token' + (token.npc ? ' npc' : ' player') + (onLevel(token) ? '' : ' is-below') + (token.current ? ' is-current' : '') + (token.out ? ' is-out' : '')
         + (token.done ? ' is-done' : '') + (token.alarming ? ' is-alarming' : '') + (token.id === battle.selected ? ' is-selected' : '')
-        + (String(token.character) === me ? ' is-me' : ''),
+        + (String(token.character) === me ? ' is-me' : '')
+        + (sight && sight.visibility === 'none' ? ' is-unseen' : '') + (sight && sight.visibility === 'partial' ? ' is-partial' : ''),
       transform: `translate(${(token.x + 0.5) * CELL} ${(token.y + 0.5) * CELL})`,
       tabindex: 0, 'data-token': token.id, role: 'button',
       'aria-label': token.name + (token.status ? ', ' + token.status : '')
     }, svg);
-    svgEl('title', {}, group).textContent = token.name + (token.status ? ' · ' + token.status : '');
+    svgEl('title', {}, group).textContent = token.name + (onLevel(token) ? '' : ' · внизу: ' + levelName(data.doc, token.level || 0))
+      + (token.status ? ' · ' + token.status : '')
+      + (sight ? ' · ' + (sight.visibility === 'none' ? (sight.canShoot ? 'не видна, только вслепую' : 'не видна')
+        : sight.visibility === 'partial' ? 'видна частично' : 'видна') + (sight.cover ? ', укрытие: ' + sight.cover : '') : '');
     svgEl('circle', { r: CELL * 0.46, class: 'battle-token-ring' }, group);
     svgEl('circle', { r: CELL * 0.38, class: 'battle-token-body' }, group);
     svgEl('text', { class: 'battle-token-text', dy: '0.35em' }, group).textContent = token.initials;
+    // щиток: цель за укрытием или видна частично
+    if (sight && sight.visibility !== 'none' && (sight.cover || sight.visibility === 'partial')) {
+      svgEl('path', { d: 'M 0 -6 L 6 -3.5 L 6 1 Q 6 5.5 0 8 Q -6 5.5 -6 1 L -6 -3.5 Z', class: 'battle-token-cover',
+        transform: `translate(${CELL * 0.33} ${-CELL * 0.33})` }, group);
+    }
   });
 
+  // KF-05: предметы на карте — значок в углу клетки поверх фишки: нажатие — «Подобрать»
+  (data.loot || []).filter(loot => (loot.level || 0) === level).forEach(loot => {
+    const group = svgEl('g', { class: 'battle-loot', transform: `translate(${(loot.x + 0.78) * CELL} ${(loot.y + 0.22) * CELL})`,
+      tabindex: 0, role: 'button', 'data-loot': loot.id, 'aria-label': 'Предмет: ' + loot.name }, svg);
+    svgEl('title', {}, group).textContent = loot.name + (loot.quantity > 1 ? ' ×' + loot.quantity : '') + ' — нажмите, чтобы подобрать';
+    svgEl('rect', { x: -CELL * 0.2, y: -CELL * 0.2, width: CELL * 0.4, height: CELL * 0.4, rx: 3, class: 'battle-loot-box' }, group);
+    svgEl('text', { class: 'battle-loot-icon', dy: '0.35em' }, group).textContent = '📦';
+  });
+
+  drawRuler(svg);
   stage.replaceChildren(svg);
   wireBattleSvg(svg);
   renderTray();
+}
+
+// M-22: вкладки уровней: название и сколько фишек там стоит
+function renderLevels() {
+  const holder = document.querySelector('[data-battle-levels]');
+  if (!holder || !battle.data) return;
+  const doc = battle.data.doc;
+  const count = levelCount(doc);
+  holder.hidden = count < 2;
+  holder.replaceChildren();
+  if (count < 2) return;
+  const shown = battleLevel();
+  for (let level = count - 1; level >= 0; level--) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    const here = battle.data.tokens.filter(token => token.x !== null && (token.level || 0) === level).length;
+    button.className = 'btn btn-sm' + (level === shown ? ' btn-primary' : ' btn-ghost');
+    button.textContent = levelName(doc, level) + (here ? ' · ' + here : '');
+    button.addEventListener('click', () => {
+      battle.level = level;
+      renderBattle();
+    });
+    holder.appendChild(button);
+  }
+}
+
+// M-22: выбранная фишка стоит на лестнице — кнопки «⇅ На 2 этаж»; та же проверка, что LevelMap.stairsFrom
+function renderClimb() {
+  const holder = document.querySelector('[data-battle-climb]');
+  if (!holder || !battle.data) return;
+  holder.replaceChildren();
+  const token = tokenById(battle.selected);
+  const doc = battle.data.doc;
+  const stairsAt = level => level >= 0 && level < levelCount(doc) && levelDoc(doc, level).cells[token.x + ',' + token.y] === 'stairs';
+  const from = token ? token.level || 0 : 0;
+  const targets = token && token.x !== null && stairsAt(from) ? [from + 1, from - 1].filter(stairsAt) : [];
+  holder.hidden = targets.length === 0 || lockedToken(token);
+  targets.forEach(level => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'btn btn-sm btn-primary';
+    button.textContent = (level > from ? '⇡ ' : '⇣ ') + levelName(doc, level);
+    button.title = 'По лестнице: ' + token.name + ' → ' + levelName(doc, level) + ' (бег за подъём — вдвое больше высоты)';
+    button.addEventListener('click', async () => {
+      try {
+        const response = await fetch(battle.url + '/participants/' + token.id + '/climb', {
+          method: 'POST', body: new URLSearchParams({ level })
+        });
+        const text = await response.text();
+        if (!response.ok) {
+          battleError(text);
+          return;
+        }
+        battle.level = level;
+        battleHint(token.name + ' → ' + text);
+        loadReach(token.id);
+      } catch (e) {
+        battleError('Нет связи с сервером');
+      }
+      battle.lastChange = Date.now();
+      pollBattle();
+    });
+    holder.appendChild(button);
+  });
+}
+
+// Линейка поверх фишек: от центра клетки к центру клетки, подпись — метры по мере системы и клетки
+function drawRuler(svg) {
+  const old = svg.querySelector('.battle-ruler');
+  if (old) old.remove();
+  const ruler = battle.ruler;
+  if (!ruler) return;
+  const group = svgEl('g', { class: 'battle-ruler' }, svg);
+  const [x1, y1, x2, y2] = [(ruler.from.x + 0.5) * CELL, (ruler.from.y + 0.5) * CELL, (ruler.to.x + 0.5) * CELL, (ruler.to.y + 0.5) * CELL];
+  svgEl('line', { x1, y1, x2, y2, class: 'battle-ruler-line' }, group);
+  svgEl('circle', { cx: x1, cy: y1, r: 4, class: 'battle-ruler-end' }, group);
+  svgEl('circle', { cx: x2, cy: y2, r: 4, class: 'battle-ruler-end' }, group);
+  const meters = battleMeters(ruler.from.x, ruler.from.y, ruler.to.x, ruler.to.y);
+  const cells = Math.max(Math.abs(ruler.to.x - ruler.from.x), Math.abs(ruler.to.y - ruler.from.y));
+  const label = svgEl('text', { x: (x1 + x2) / 2, y: (y1 + y2) / 2 - 8, class: 'battle-ruler-label' }, group);
+  label.textContent = meters + ' м';
+  battleHint('📏 ' + meters + ' м · ' + cells + ' кл. по большей стороне');
 }
 
 // Клетка предмета, повёрнутого на rot четвертей: та же формула, что MapObject.cellAt
@@ -1351,13 +2199,15 @@ function renderTray() {
 }
 
 async function moveToken(token, x, y, free) {
-  const before = { x: token.x, y: token.y };
+  const before = { x: token.x, y: token.y, level: token.level };
+  // M-22: на другой уровень — только из лотка или мастер без ограничения; иначе сервер откажет
+  if (token.x === null || free) token.level = battleLevel();
   token.x = x;
   token.y = y;
   renderBattle();
   try {
     const response = await fetch(battle.url + '/participants/' + token.id + '/move', {
-      method: 'POST', body: new URLSearchParams({ x, y, free: Boolean(free) })
+      method: 'POST', body: new URLSearchParams({ x, y, free: Boolean(free), level: battleLevel() })
     });
     if (!response.ok) {
       Object.assign(token, before);
@@ -1381,7 +2231,7 @@ async function addToken(x, y) {
   const who = document.querySelector('[data-battle-add-who]');
   if (!who || !who.value) return;
   const [kind, value] = [who.value.slice(0, 2), who.value.slice(2)];
-  const params = new URLSearchParams({ x, y });
+  const params = new URLSearchParams({ x, y, level: battleLevel() });
   if (kind === 'c:') params.set('character', value);
   else params.set('template', value);
   try {
@@ -1396,6 +2246,55 @@ async function addToken(x, y) {
   } catch (e) {
     battleError('Нет связи с сервером');
   }
+}
+
+// KF-05: предметы на карте. Адрес — рядом с картой боя: /campaign/{id}/encounter/loot
+const lootUrl = () => battle.url.replace(/\/map$/, '/loot');
+
+async function lootPost(path, params, done) {
+  try {
+    const response = await fetch(lootUrl() + path, { method: 'POST', body: new URLSearchParams(params) });
+    const text = await response.text();
+    if (!response.ok) {
+      battleError(text || 'Не получилось');
+      return;
+    }
+    battleHint(text);
+    // строка участника получает новое оружие, отмена — плашку: страница обновляется на месте, карта и режим остаются
+    battle.lastChange = Date.now();
+    if (done) await visit(location.href);
+    else pollBattle();
+  } catch (e) {
+    battleError('Нет связи с сервером');
+  }
+}
+
+function placeLoot(x, y) {
+  const what = document.querySelector('[data-battle-loot-what]');
+  if (!what || !what.value) return;
+  lootPost('', { key: what.value, x, y, level: battleLevel() }, false);
+}
+
+// Кто может подобрать: фишки на этой клетке и соседних, на том же уровне. Игрок — свои и выбранная, мастер — любые;
+// выбранная и чей ход — первыми
+function lootMenu(lootId, event) {
+  const loot = (battle.data.loot || []).find(candidate => candidate.id === lootId);
+  if (!loot) return;
+  const gm = battle.stage && battle.stage.dataset.gm === 'true';
+  const me = battleMe();
+  const near = battle.data.tokens.filter(token => token.x !== null && !token.out && (token.level || 0) === (loot.level || 0)
+      && Math.max(Math.abs(token.x - loot.x), Math.abs(token.y - loot.y)) <= 1
+      && (gm ? !lockedToken(token) : (String(token.character) === me || token.id === battle.selected)))
+    .sort((a, b) => (b.id === battle.selected) - (a.id === battle.selected) || (b.current === true) - (a.current === true));
+  const actions = near.map(token => ['Подобрать: ' + token.name, null,
+    () => lootPost('/' + loot.id + '/take', { participant: token.id }, true)]);
+  if (gm) actions.push(['Убрать с карты', null, () => lootPost('/' + loot.id + '/remove', {}, false)]);
+  const title = '📦 ' + loot.name + (loot.quantity > 1 ? ' ×' + loot.quantity : '');
+  if (!actions.length) {
+    battleHint(title + ': подойдите вплотную, чтобы подобрать');
+    return;
+  }
+  battleMenuAt(event, title, actions);
 }
 
 async function sendPointer(x, y, from) {
@@ -1424,22 +2323,35 @@ function wireBattleSvg(svg) {
 
   svg.addEventListener('pointerdown', event => {
     if (event.button !== 0) return;
-    const tokenEl = event.target.closest('[data-token]');
+    const lootEl = event.target.closest('[data-loot]');
+    const tokenEl = lootEl ? null : event.target.closest('[data-token]');
     const start = cellAt(event);
     // после захвата указателя pointerup приходит на сам svg: дверь запоминаем здесь
     const door = event.target.closest('[data-edge]');
-    press = { tokenEl, token: tokenEl ? tokenById(Number(tokenEl.dataset.token)) : null, door: door && door.dataset.edge,
-      x: event.clientX, y: event.clientY, start, moved: false };
+    const pressed = tokenEl ? tokenById(Number(tokenEl.dataset.token)) : null;
+    // A-15: в «За NPC» фишка игрока — только цель (долгое нажатие — атака), не тянется и не выбирается
+    const locked = lockedToken(pressed);
+    press = { tokenEl: locked ? null : tokenEl, token: locked ? null : pressed, locked: locked ? pressed : null, door: door && door.dataset.edge, doorKind: door && door.dataset.edgeKind,
+      x: event.clientX, y: event.clientY, start, moved: false, ruler: battle.rulerMode && inside(start),
+      loot: lootEl ? Number(lootEl.dataset.loot) : null };
     svg.setPointerCapture(event.pointerId);
+    if (press.ruler) {
+      battle.ruler = { from: { x: start.x, y: start.y }, to: { x: start.x, y: start.y } };
+      drawRuler(svg);
+      return;
+    }
     if (!battle.pointerMode) {
       // долгое нажатие: по фишке — атака (телефон без правой кнопки), по пустой клетке — указатель для всех
       longPress = setTimeout(() => {
         if (!press || press.moved) return;
         const held = press;
         press = null;
-        // долгое нажатие на выбранную или свою фишку — не атака по себе
+        // долгое нажатие на выбранную или свою фишку — не атака по себе; GM-01: мастер в «Боге» — меню правки и на ней
         const own = held.token && (held.token.id === battle.selected || String(held.token.character) === battleMe());
-        if (held.token && !own) attackMenu(held.token, event);
+        if (held.locked) attackMenu(held.locked, event);
+        else if (held.token && (!own || (battleGm() && !npcOnly()))) attackMenu(held.token, event);
+        else if (!held.token && held.door) edgeMenu(held.door, held.doorKind, event);
+        else if (!held.token && explosiveAt(start.x, start.y)) explosiveMenu(start.x, start.y, event);
         else if (inside(start)) sendPointer(start.x, start.y);
       }, 600);
     }
@@ -1449,11 +2361,29 @@ function wireBattleSvg(svg) {
   svg.addEventListener('contextmenu', event => {
     event.preventDefault();
     const tokenEl = event.target.closest('[data-token]');
-    if (tokenEl) attackMenu(tokenById(Number(tokenEl.dataset.token)), event);
+    if (tokenEl) {
+      attackMenu(tokenById(Number(tokenEl.dataset.token)), event);
+      return;
+    }
+    const edge = event.target.closest('[data-edge]');
+    if (edge) {
+      edgeMenu(edge.dataset.edge, edge.dataset.edgeKind, event);
+      return;
+    }
+    const cell = cellAt(event);
+    if (explosiveAt(cell.x, cell.y)) explosiveMenu(cell.x, cell.y, event);
   });
 
   svg.addEventListener('pointermove', event => {
     if (!press) return;
+    if (press.ruler) {
+      const cell = cellAt(event);
+      if (inside(cell) && (cell.x !== battle.ruler.to.x || cell.y !== battle.ruler.to.y)) {
+        battle.ruler.to = { x: cell.x, y: cell.y };
+        drawRuler(svg);
+      }
+      return;
+    }
     const dx = event.clientX - press.x;
     const dy = event.clientY - press.y;
     if (!press.moved && Math.hypot(dx, dy) < 5) return;
@@ -1466,7 +2396,7 @@ function wireBattleSvg(svg) {
       // M-16: бег за раунд — MA × 3 м по пути в обход стен (с. 98); сервер сверит, мастер с Shift ставит без ограничения
       const known = battle.reach && battle.reachFor === press.token.id && battle.reach.run;
       const path = known ? battle.reach.cells.get(cell.x + ',' + cell.y) : undefined;
-      const free = event.shiftKey;
+      const free = event.shiftKey && !npcOnly();
       const far = known && path === undefined && !free;
       press.tokenEl.classList.toggle('is-far', Boolean(far));
       if (free) battleHint('Без ограничения бега (мастер)');
@@ -1490,6 +2420,7 @@ function wireBattleSvg(svg) {
     press = null;
     battle.dragging = false;
     const cell = cellAt(event);
+    if (current.ruler) return;
     if (battle.pointerMode) {
       if (!inside(cell)) return;
       const from = current.token && current.moved && current.token.x !== null ? { x: current.token.x, y: current.token.y } : null;
@@ -1497,7 +2428,7 @@ function wireBattleSvg(svg) {
       return;
     }
     if (current.token && current.moved) {
-      if (inside(cell) && (cell.x !== current.token.x || cell.y !== current.token.y)) moveToken(current.token, cell.x, cell.y, event.shiftKey);
+      if (inside(cell) && (cell.x !== current.token.x || cell.y !== current.token.y)) moveToken(current.token, cell.x, cell.y, event.shiftKey && !npcOnly());
       else renderBattle();
       return;
     }
@@ -1506,15 +2437,27 @@ function wireBattleSvg(svg) {
       sendPointer(cell.x, cell.y);
       return;
     }
-    if (current.door && !current.token) {
+    if (current.locked) {
+      battleHint('Играю за NPC: ' + current.locked.name + ' — фишка игрока. Атака по ней — правой кнопкой или долгим нажатием');
+      return;
+    }
+    if (current.door && current.doorKind === 'door' && !current.token) {
       toggleDoor(current.door);
+      return;
+    }
+    if (current.loot && !battle.looting) {
+      lootMenu(current.loot, event);
       return;
     }
     if (current.token) {
       tokenClick(current.token);
       return;
     }
-    if (battle.adding && inside(cell) && !current.token) {
+    if (battle.looting && !npcOnly() && inside(cell)) {
+      placeLoot(cell.x, cell.y);
+      return;
+    }
+    if (battle.adding && !npcOnly() && inside(cell) && !current.token) {
       addToken(cell.x, cell.y);
       return;
     }
@@ -1570,13 +2513,102 @@ function wireBattleSvg(svg) {
 
 async function toggleDoor(edge) {
   try {
-    const response = await fetch(battle.url + '/door', { method: 'POST', body: new URLSearchParams({ edge }) });
+    const response = await fetch(battle.url + '/door', { method: 'POST', body: new URLSearchParams({ edge, level: battleLevel() }) });
     if (!response.ok) battleError(await response.text());
   } catch (e) {
     battleError('Нет связи с сервером');
   }
   battle.lastChange = Date.now();
   pollBattle();
+}
+
+// M-23: взрывоопасный предмет в клетке (бочка, баллон)
+function explosiveAt(x, y) {
+  if (!battle.data) return false;
+  const materials = new Map(battle.data.materials.map(material => [material.code, material]));
+  const objects = new Map(battle.data.objects.map(object => [object.code, object]));
+  return levelDoc(battle.data.doc, battleLevel()).stamps.some(stamp => {
+    const object = objects.get(stamp.code);
+    if (!object) return false;
+    const rot = ((stamp.rot % 4) + 4) % 4;
+    const w = rot % 2 === 0 ? object.w : object.h;
+    const h = rot % 2 === 0 ? object.h : object.w;
+    if (x < stamp.x || y < stamp.y || x >= stamp.x + w || y >= stamp.y + h) return false;
+    const material = materials.get(stampCell(object, rot, x - stamp.x, y - stamp.y));
+    return Boolean(material && material.explosive);
+  });
+}
+
+// Меню по месту нажатия: заголовок и кнопки действий [подпись, пояснение, что сделать]
+function battleMenuAt(event, title, actions) {
+  const menu = document.querySelector('[data-battle-menu]');
+  if (!menu) return;
+  menu.replaceChildren();
+  const head = document.createElement('div');
+  head.className = 'battle-menu-head';
+  head.textContent = title;
+  menu.appendChild(head);
+  actions.forEach(([label, note, run]) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'btn btn-sm';
+    button.textContent = label;
+    button.addEventListener('click', () => {
+      closeBattleMenu();
+      run();
+    });
+    menu.appendChild(button);
+    if (note) {
+      const line = document.createElement('div');
+      line.className = 'battle-menu-note';
+      line.textContent = note;
+      menu.appendChild(line);
+    }
+  });
+  const holder = menu.parentElement.getBoundingClientRect();
+  const x = event ? event.clientX - holder.left : holder.width / 2;
+  const y = event ? event.clientY - holder.top : holder.height / 2;
+  menu.style.left = Math.min(Math.max(8, x), holder.width - 260) + 'px';
+  menu.hidden = false;
+  menu.style.top = Math.min(Math.max(8, y), Math.max(8, holder.height - menu.offsetHeight - 8)) + 'px';
+}
+
+async function battlePost(path, params) {
+  try {
+    const response = await fetch(battle.url + path, { method: 'POST', body: new URLSearchParams({ ...params, level: battleLevel() }) });
+    const text = await response.text();
+    if (response.ok) battleHint(text);
+    else battleError(text);
+  } catch (e) {
+    battleError('Нет связи с сервером');
+  }
+  battle.lastChange = Date.now();
+  pollBattle();
+}
+
+// M-23: грань — выбить дверь, разбить окно; стену — мастер
+function edgeMenu(edge, kind, event) {
+  const actions = [];
+  if (kind === 'door') actions.push(['💥 Выбить дверь', 'Станет проёмом. Бросок, если нужен, просит мастер', () => battlePost('/break', { edge })]);
+  if (kind === 'window') actions.push(['💥 Разбить окно', 'Можно пролезть', () => battlePost('/break', { edge })]);
+  if (kind === 'wall' && battleGm()) actions.push(['💥 Проломить стену', 'Мастер: стена станет проёмом', () => battlePost('/break', { edge })]);
+  if (!actions.length) {
+    battleHint(kind === 'wall' ? 'Стену ломает мастер — или взрыв' : '');
+    return;
+  }
+  battleMenuAt(event, kind === 'door' ? 'Дверь' : kind === 'window' ? 'Окно' : 'Стена', actions);
+}
+
+// M-23: попали в бочку — взрыв задевает всех в радиусе; стрелок — выбранная или своя фишка
+function explosiveMenu(x, y, event) {
+  const shooter = tokenById(battle.selected) || battle.data.tokens.find(token => String(token.character) === battleMe());
+  const params = { x, y };
+  if (shooter) params.by = shooter.character;
+  battleMenuAt(event, 'Взрывоопасно', [[
+    '💥 Взорвать' + (shooter ? ' — стрелял ' + shooter.name : ''),
+    'Если выстрел по ней попал: урон всем в радиусе, соседнее рвётся следом',
+    () => battlePost('/detonate', params)
+  ]]);
 }
 
 const closeBattleMenu = () => {
@@ -1595,20 +2627,82 @@ function tokenClick(token) {
 // Кто атакует: выбранная фишка, иначе своя по «Я — …», у мастера — чей ход
 const battleAttacker = target => {
   const candidates = [tokenById(battle.selected), battle.data.tokens.find(token => String(token.character) === battleMe()),
-    battle.data.tokens.find(token => token.current)];
-  return candidates.find(token => token && token.id !== target.id && token.x !== null) || null;
+    battle.data.tokens.find(token => token.current),
+    // A-15: в «За NPC» без выбора атакует NPC (ближайший к цели), а не игрок
+    npcOnly() ? battle.data.tokens.filter(token => token.npc && token.x !== null && token.id !== target.id)
+      .sort((a, b) => Math.hypot(a.x - target.x, a.y - target.y) - Math.hypot(b.x - target.x, b.y - target.y))[0] : null];
+  return candidates.find(token => token && token.id !== target.id && token.x !== null && !lockedToken(token)) || null;
 };
 
 // Меню атаки: расстояние, линия видимости и укрытие считает сервер, оружие — из строки атакующего
 async function attackMenu(token, event) {
   if (!token || token.x === null) return;
   const attacker = battleAttacker(token);
-  if (!attacker) {
+  const gm = battle.stage && battle.stage.dataset.gm === 'true';
+  if (!attacker && !gm) {
     battleError('Сначала выберите, кто атакует: нажмите свою фишку');
     return;
   }
   const menu = document.querySelector('[data-battle-menu]');
   if (!menu) return;
+  menu.replaceChildren();
+  if (attacker) await attackSection(menu, attacker, token);
+  else {
+    const head = document.createElement('div');
+    head.className = 'battle-menu-head';
+    head.textContent = token.name;
+    menu.appendChild(head);
+  }
+  if (gm) gmSection(menu, token);
+  const select = document.createElement('button');
+  select.type = 'button';
+  select.className = 'btn btn-sm btn-ghost';
+  select.textContent = 'Выбрать ' + token.name;
+  select.addEventListener('click', () => {
+    closeBattleMenu();
+    selectToken(token.id);
+  });
+  if (!lockedToken(token)) menu.appendChild(select);
+  const holder = menu.parentElement.getBoundingClientRect();
+  const x = event ? event.clientX - holder.left : holder.width / 2;
+  const y = event ? event.clientY - holder.top : holder.height / 2;
+  menu.style.left = Math.min(Math.max(8, x), holder.width - 260) + 'px';
+  // GM-01: на телефоне полоса хода прилипает снизу поверх карты — меню не уходит под неё, остальное прокручивается
+  const bar = document.querySelector('.battle-bar');
+  const barTop = bar && getComputedStyle(bar).position === 'sticky' ? bar.getBoundingClientRect().top - holder.top : holder.height;
+  const room = Math.max(120, Math.min(holder.height, barTop) - 16);
+  menu.style.maxHeight = room + 'px';
+  menu.style.top = Math.min(Math.max(8, y), Math.max(8, room + 8 - menu.offsetHeight)) + 'px';
+  menu.hidden = false;
+  menu.style.top = Math.min(Math.max(8, y), Math.max(8, room + 8 - menu.offsetHeight)) + 'px';
+}
+
+// R-15a: правка мастера в меню фишки — те же формы, что в боевом блоке участника: урон вручную, инициатива, убрать из боя;
+// GM-01: лечение и ＋/− действие раунда. Только в режиме «Бог» (A-15): «За NPC» мастер играет, а не правит
+function gmSection(menu, token) {
+  if (npcOnly()) return;
+  const row = document.getElementById('combatant-' + token.character);
+  if (!row) return;
+  const forms = [...row.querySelectorAll('.encounter-damage, .encounter-heal, .encounter-actions-adjust, .encounter-minor form')]
+    .filter(form => !/\/wait$/.test(form.getAttribute('action') || ''));
+  if (!forms.length) return;
+  const box = document.createElement('div');
+  box.className = 'battle-menu-gm';
+  const title = document.createElement('div');
+  title.className = 'battle-menu-note';
+  title.textContent = 'Мастер: ' + token.name;
+  box.appendChild(title);
+  forms.forEach(form => {
+    const copy = form.cloneNode(true);
+    copy.removeAttribute('id');
+    if (copy.dataset.confirm) copy.addEventListener('submit', e => { if (!confirm(copy.dataset.confirm)) e.preventDefault(); });
+    copy.querySelectorAll('select[data-remember]').forEach(rememberSelect);
+    box.appendChild(copy);
+  });
+  menu.appendChild(box);
+}
+
+async function attackSection(menu, attacker, token) {
   let sight = { meters: battleMeters(attacker.x, attacker.y, token.x, token.y), blocked: false, cover: null };
   try {
     const response = await fetch(`${battle.url}/sight?from=${attacker.id}&to=${token.id}`, { cache: 'no-store' });
@@ -1620,29 +2714,38 @@ async function attackMenu(token, event) {
   try { last = localStorage.getItem('charka.battle.weapon.' + attacker.character); } catch (e) { /* только удобство */ }
   dialogs.sort((a, b) => (b.dataset.attack === last) - (a.dataset.attack === last));
 
-  menu.replaceChildren();
   const head = document.createElement('div');
   head.className = 'battle-menu-head';
   head.textContent = `${attacker.name} → ${token.name} · ${sight.meters} м`;
   menu.appendChild(head);
-  if (sight.blocked) {
-    const warn = document.createElement('div');
-    warn.className = 'battle-menu-warn';
-    warn.textContent = 'Нет линии видимости';
-    menu.appendChild(warn);
-  } else if (sight.coverLabel) {
-    const cover = document.createElement('div');
-    cover.className = 'battle-menu-note';
-    cover.textContent = 'Укрытие: ' + sight.coverLabel;
-    menu.appendChild(cover);
-  }
+  const line = (text, className) => {
+    const el = document.createElement('div');
+    el.className = className;
+    el.textContent = text;
+    menu.appendChild(el);
+  };
+  if (sight.blocked && sight.throughLabel) line('Не видна — только вслепую сквозь: ' + sight.throughLabel, 'battle-menu-warn');
+  else if (sight.blocked) line('Нет линии видимости', 'battle-menu-warn');
+  else if (sight.visibility === 'partial') line('Видна частично' + (sight.coverLabel ? ' · укрытие: ' + sight.coverLabel : ''), 'battle-menu-note');
+  else if (sight.coverLabel) line('Укрытие: ' + sight.coverLabel, 'battle-menu-note');
+  // M-17: промах одиночным выстрелом или очередью может попасть в первого из них (хоумбрю)
+  if (sight.inTheWay && sight.inTheWay.length) line('На линии огня: ' + sight.inTheWay.join(', ') + ' — промах может попасть', 'battle-menu-warn');
+  const adjacent = Math.max(Math.abs(attacker.x - token.x), Math.abs(attacker.y - token.y)) <= 1;
+  // предел действий системы (Космозэки — одно за ход): кнопки видны, но заняты до следующего раунда
+  // BF-02: игрок действует только на своём ходу (мастер — когда угодно)
+  const notTurn = row && row.querySelector('[data-not-turn]');
+  const spent = notTurn || (row && row.querySelector('[data-no-actions]'));
+  if (notTurn) line('Сейчас не ваш ход — действовать можно на своём ходу', 'battle-menu-warn');
+  else if (spent) line('Действие в этом раунде сделано — осталось перемещение', 'battle-menu-warn');
   dialogs.forEach(dialog => {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'btn btn-sm' + (dialog.dataset.attack === last || dialogs.length === 1 ? ' btn-primary' : '');
     const title = dialog.querySelector('h2');
-    button.textContent = title ? title.textContent.replace(/^[^:]*:\s*/, '') : 'Атака';
-    button.disabled = sight.blocked;
+    const why = attackVerdict(dialog, sight, adjacent);
+    button.textContent = (title ? title.textContent.replace(/^[^:]*:\s*/, '') : 'Атака') + (why.note ? ' · ' + why.note : '');
+    button.disabled = !why.ok || !!spent;
+    if (why.title) button.title = why.title;
     button.addEventListener('click', () => {
       try { localStorage.setItem('charka.battle.weapon.' + attacker.character, dialog.dataset.attack); } catch (e) { /* только удобство */ }
       closeBattleMenu();
@@ -1656,21 +2759,24 @@ async function attackMenu(token, event) {
     none.textContent = 'Атаковать нечем';
     menu.appendChild(none);
   }
-  const select = document.createElement('button');
-  select.type = 'button';
-  select.className = 'btn btn-sm btn-ghost';
-  select.textContent = 'Выбрать ' + token.name;
-  select.addEventListener('click', () => {
-    closeBattleMenu();
-    selectToken(token.id);
-  });
-  menu.appendChild(select);
-  const holder = menu.parentElement.getBoundingClientRect();
-  const x = event ? event.clientX - holder.left : holder.width / 2;
-  const y = event ? event.clientY - holder.top : holder.height / 2;
-  menu.style.left = Math.min(Math.max(8, x), holder.width - 220) + 'px';
-  menu.style.top = Math.max(8, y) + 'px';
-  menu.hidden = false;
+}
+
+// Можно ли этим оружием по цели: видна или вслепую сквозь одну преграду (если у оружия есть такой модификатор),
+// ближний бой — только с соседней клетки, дальний — не дальше последней полосы дальности (двойная дальность, с. 99)
+function attackVerdict(dialog, sight, adjacent) {
+  // KF-01: вплотную ли — говорит сервер (data-attack-melee); стрельба Космозэков расстояния не спрашивает, но она не ближний бой
+  const melee = 'attackMelee' in dialog.dataset ? dialog.dataset.attackMelee === 'true' : !dialog.querySelector('[data-attack-distance]');
+  const blind = sight.blindOption && dialog.querySelector(`input[type="checkbox"][value="${sight.blindOption}"]`);
+  if (sight.blocked && !(sight.throughLabel && blind && !melee)) return { ok: false, note: 'не видна' };
+  if (melee) return adjacent ? { ok: true, note: '' } : { ok: false, note: 'не рядом' };
+  const bands = [...dialog.querySelectorAll('[data-attack-band]')]
+    .map(band => ({ meters: Number(band.dataset.attackBand), label: band.textContent.trim() }))
+    .sort((a, b) => a.meters - b.meters);
+  const band = bands.find(candidate => sight.meters <= candidate.meters);
+  if (bands.length && !band) return { ok: false, note: 'вне дальности', title: 'Предел оружия ' + bands[bands.length - 1].meters + ' м' };
+  const difficulty = band ? band.label.split('·').pop().trim() : '';
+  const notes = [sight.blocked ? 'вслепую' : '', difficulty ? 'сложн. ' + difficulty : ''].filter(Boolean);
+  return { ok: true, note: notes.join(', '), title: band ? band.label : '' };
 }
 
 // M-10: кого задевает. Взрыв — радиус зоны × единиц заряда от цели, зона огня — половина ширины от цели.
@@ -1728,14 +2834,27 @@ function openAttackFromMap(dialog, target, sight) {
     distance.value = sight.meters;
     distance.dispatchEvent(new Event('input', { bubbles: true }));
   }
-  // бегал в этом раунде — атака уже второе действие (с. 98)
+  // A-05: бегал или уже стрелял в этом раунде — штраф за следующее действие (с. 98) по свежим данным карты
   const attacker = battleAttacker(target);
-  const moved = battle.data.movedOption && dialog.querySelector(`input[value="${battle.data.movedOption}"]`);
-  if (moved) moved.checked = Boolean(attacker && attacker.moved > 0);
+  const actions = attacker && dialog.querySelector('select[name="option.action"]');
+  if (actions) actions.value = attacker.actionOption || '';
   const cover = dialog.querySelector('select[name="option.cover"]');
   if (cover) cover.value = sight.cover || '';
   if (cover && sight.cover) {
     const more = cover.closest('details');
+    if (more) more.open = true;
+  }
+  // стрельба вслепую: флажок ставит и снимает карта
+  if (dialog.mapBlind) {
+    const before = dialog.querySelector(`input[type="checkbox"][value="${dialog.mapBlind}"]`);
+    if (before) before.checked = false;
+    dialog.mapBlind = null;
+  }
+  const blind = sight.blocked && sight.blindOption && dialog.querySelector(`input[type="checkbox"][value="${sight.blindOption}"]`);
+  if (blind) {
+    blind.checked = true;
+    dialog.mapBlind = sight.blindOption;
+    const more = blind.closest('details');
     if (more) more.open = true;
   }
   dialog.showModal();
@@ -1743,7 +2862,7 @@ function openAttackFromMap(dialog, target, sight) {
 
 // Редактор карты (M-06, M-07). Все инструменты — операции над словарями документа: грань стены — ключ «x,y,h|v»,
 // поэтому общая стена двух комнат одна сама собой, а ластик удаляет ключ. Документ сохраняется целиком через 2 с после правки
-const editor = { url: null, data: null, doc: null, undo: [], redo: [], tool: 'room', size: 1, rot: 0, zone: 'players', gap: 1,
+const editor = { url: null, data: null, doc: null, root: null, level: 0, undo: [], redo: [], tool: 'room', size: 1, rot: 0, zone: 'players', gap: 1,
   density: 15, saveTimer: null, view: null, selection: null, clipboard: null, hover: null, space: false };
 
 const EDITOR_TOOLS = { k: 'calibrate', r: 'room', w: 'wall', f: 'fill', b: 'brush', o: 'object', l: 'row', s: 'scatter', z: 'zone', t: 'label', v: 'select', x: 'eraser' };
@@ -1765,7 +2884,7 @@ function initEditor() {
     return;
   }
   if (editor.url !== holder.dataset.mapEditor) {
-    Object.assign(editor, { url: holder.dataset.mapEditor, data: null, doc: null, undo: [], redo: [], view: null, selection: null });
+    Object.assign(editor, { url: holder.dataset.mapEditor, data: null, doc: null, root: null, level: 0, undo: [], redo: [], view: null, selection: null });
   }
   editor.tool = editorMemory('tool') || 'room';
   holder.querySelectorAll('[data-tool]').forEach(button => button.addEventListener('click', () => setTool(button.dataset.tool)));
@@ -1773,14 +2892,70 @@ function initEditor() {
   holder.querySelector('[data-editor-redo]').addEventListener('click', redoEdit);
   // правка ещё не сохранена — рисуем своё; иначе берём с сервера: «Ещё вариант» заменил карту там
   if (editor.data && editor.saveTimer) {
+    renderEditorLevels();
     renderEditor();
     return;
   }
   fetch(editor.url, { cache: 'no-store' }).then(response => response.json()).then(data => {
     editor.data = data;
-    editor.doc = data.doc;
-    renderEditor();
+    editor.root = data.doc;
+    setEditorLevel(0);
   }).catch(() => editorStatus('Карта не загрузилась', true));
+}
+
+// M-22: правится один уровень — его вид делит стены, клетки, предметы и подписи с корнем документа
+function setEditorLevel(level, silent) {
+  const root = editor.root;
+  root.levels = root.levels || [];
+  editor.level = Math.min(Math.max(0, level), root.levels.length);
+  editor.doc = levelDoc(root, editor.level);
+  editor.selection = null;
+  renderEditorLevels();
+  if (!silent) renderEditor();
+}
+
+function renderEditorLevels() {
+  const holder = document.querySelector('[data-editor-levels]');
+  if (!holder || !editor.root) return;
+  holder.replaceChildren();
+  const count = levelCount(editor.root);
+  for (let level = count - 1; level >= 0; level--) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'btn btn-sm' + (level === editor.level ? ' btn-primary' : ' btn-ghost');
+    button.textContent = levelName(editor.root, level);
+    button.title = 'Править этот уровень. Лестница — клетка «Лестница» на соседних уровнях в одном месте, «Пустота» — видно вниз';
+    button.addEventListener('click', () => setEditorLevel(level));
+    holder.appendChild(button);
+  }
+  const add = document.createElement('button');
+  add.type = 'button';
+  add.className = 'btn btn-sm btn-ghost';
+  add.textContent = '＋ Этаж';
+  add.title = 'Новый уровень над верхним: этаж, крыша, балкон';
+  add.addEventListener('click', () => {
+    beginEdit();
+    const number = levelCount(editor.root);
+    editor.root.levels.push({ name: (number + 1) + ' этаж', z: number * 3, walls: {}, cells: {}, stamps: [], labels: [] });
+    setEditorLevel(number);
+    editDone();
+  });
+  holder.appendChild(add);
+  if (editor.level > 0 && editor.level === count - 1) {
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'btn btn-sm btn-ghost';
+    remove.textContent = '✕ Уровень';
+    remove.title = 'Убрать верхний уровень со всем, что на нём нарисовано';
+    remove.addEventListener('click', () => {
+      if (!confirm('Убрать уровень «' + levelName(editor.root, editor.level) + '» со всем, что на нём?')) return;
+      beginEdit();
+      editor.root.levels.pop();
+      setEditorLevel(editor.level - 1);
+      editDone();
+    });
+    holder.appendChild(remove);
+  }
 }
 
 const editorStatus = (text, error) => {
@@ -1817,7 +2992,7 @@ const toolObject = () => {
 
 // Снимок до правки: Ctrl+Z возвращает его
 const beginEdit = () => {
-  editor.undo.push(JSON.stringify(editor.doc));
+  editor.undo.push(JSON.stringify(editor.root));
   if (editor.undo.length > 100) editor.undo.shift();
   editor.redo = [];
 };
@@ -1834,7 +3009,7 @@ async function saveEditor() {
   editor.saveTimer = null;
   editorStatus('Сохраняю…');
   try {
-    const response = await fetch(editor.url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editor.doc) });
+    const response = await fetch(editor.url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editor.root) });
     if (!response.ok) {
       editorStatus('Не сохранено: ' + await response.text(), true);
       return;
@@ -1847,15 +3022,17 @@ async function saveEditor() {
 
 function undoEdit() {
   if (!editor.undo.length) return;
-  editor.redo.push(JSON.stringify(editor.doc));
-  editor.doc = JSON.parse(editor.undo.pop());
+  editor.redo.push(JSON.stringify(editor.root));
+  editor.root = JSON.parse(editor.undo.pop());
+  setEditorLevel(editor.level, true);
   editDone();
 }
 
 function redoEdit() {
   if (!editor.redo.length) return;
-  editor.undo.push(JSON.stringify(editor.doc));
-  editor.doc = JSON.parse(editor.redo.pop());
+  editor.undo.push(JSON.stringify(editor.root));
+  editor.root = JSON.parse(editor.redo.pop());
+  setEditorLevel(editor.level, true);
   editDone();
 }
 
@@ -1863,7 +3040,7 @@ function redoEdit() {
 window.addEventListener('pagehide', () => {
   if (editor.url && editor.saveTimer && editor.doc) {
     // keepalive вместо sendBeacon: маяку не задать заголовок CSRF
-    fetch(editor.url, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editor.doc) });
+    fetch(editor.url, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editor.root) });
   }
 });
 
@@ -2022,7 +3199,9 @@ function eraseAt(hit) {
   delete editor.doc.cells[cellKey(hit.x, hit.y)];
   const index = stampAt(hit.x, hit.y);
   if (index >= 0) editor.doc.stamps.splice(index, 1);
-  editor.doc.labels = editor.doc.labels.filter(label => label.x !== hit.x || label.y !== hit.y);
+  // на месте: у верхнего уровня список общий с документом (M-22)
+  const keptLabels = editor.doc.labels.filter(label => label.x !== hit.x || label.y !== hit.y);
+  editor.doc.labels.splice(0, editor.doc.labels.length, ...keptLabels);
   editor.doc.zones = editor.doc.zones.filter(zone => !(hit.x >= zone.x && hit.y >= zone.y && hit.x < zone.x + zone.w && hit.y < zone.y + zone.h));
 }
 

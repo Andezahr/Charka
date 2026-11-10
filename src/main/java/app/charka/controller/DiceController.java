@@ -47,10 +47,12 @@ public class DiceController {
                                   @RequestParam(required = false) String expression,
                                   @RequestParam(required = false) String quick,
                                   @RequestParam(required = false) String label,
+                                  @RequestParam(defaultValue = "false") boolean hidden,
                                   RedirectAttributes redirectAttributes) {
         String toRoll = quick != null ? quick : expression;
         try {
-            addResult(redirectAttributes, diceService.rollForCampaign(campaignId, toRoll, label), label);
+            // A-09: 🙈 — бросок мастера, которого игроки не видят
+            addResult(redirectAttributes, app.charka.dice.HiddenRolls.run(hidden, () -> diceService.rollForCampaign(campaignId, toRoll, label)), label);
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("rollError", e.getMessage());
         }
@@ -67,7 +69,7 @@ public class DiceController {
                                     @RequestParam(required = false) String label,
                                     RedirectAttributes redirectAttributes) {
         CheckRequest request = new CheckRequest(label, modifier, difficulty);
-        addCheck(redirectAttributes, checkService.checkForCharacter(characterId, request), label);
+        addCheck(redirectAttributes, checkService.tableCheckForCharacter(characterId, request), label);
         return "redirect:/character/" + characterId + "#dice";
     }
 
@@ -76,10 +78,18 @@ public class DiceController {
                                    @RequestParam(defaultValue = "0") int modifier,
                                    @RequestParam(required = false) Integer difficulty,
                                    @RequestParam(required = false) String label,
+                                   @RequestParam(defaultValue = "false") boolean hidden,
                                    RedirectAttributes redirectAttributes) {
         CheckRequest request = new CheckRequest(label, modifier, difficulty);
-        addCheck(redirectAttributes, checkService.checkForCampaign(campaignId, request), label);
+        addCheck(redirectAttributes, app.charka.dice.HiddenRolls.run(hidden, () -> checkService.tableCheckForCampaign(campaignId, request)), label);
         return "redirect:/campaign/" + campaignId + "#dice";
+    }
+
+    /** A-09: скрытый бросок — показать всем; только мастер (права — {@code AccessInterceptor}) */
+    @PostMapping("/campaign/{campaignId}/rolls/{rollId}/reveal")
+    public String reveal(@PathVariable Long campaignId, @PathVariable Long rollId, jakarta.servlet.http.HttpServletRequest request) {
+        diceService.reveal(campaignId, rollId);
+        return "redirect:" + Referers.back(request, "/campaign/" + campaignId) + "#chat";
     }
 
     private static void addResult(RedirectAttributes redirectAttributes, DiceResult result, String label) {

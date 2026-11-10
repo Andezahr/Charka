@@ -2,11 +2,13 @@
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head('Вход')}"></head>
 <body>
-<header th:replace="~{fragments/layout :: topbar(null, 'home')}"></header>
+<header th:replace="~{fragments/layout :: nav(null, null, 'home')}"></header>
 <main class="page page-narrow">
   <section class="card">
     <div class="card-head"><h1 class="card-title"><span class="dot"></span>Вход</h1></div>
     <div class="card-body">
+      <p th:if="${inviteCampaign != null}" class="page-sub">Приглашение в кампанию <strong th:text="${inviteCampaign}">Последний шанс</strong>.
+        Впервые здесь — придумайте логин и пароль и нажмите «Я новый игрок».</p>
       <div th:if="${param.error != null}" class="alert alert-error" role="alert"><span class="alert-text">Неверный логин или пароль</span></div>
       <div th:if="${param.logout != null}" class="alert alert-success" role="status"><span class="alert-text">Вы вышли</span></div>
       <form th:action="@{/login}" method="post" class="form">
@@ -14,7 +16,11 @@
           <input type="text" name="username" required autofocus autocomplete="username" autocapitalize="none"></label>
         <label class="field"><span class="label">Пароль</span>
           <input type="password" name="password" required autocomplete="current-password"></label>
-        <button type="submit" class="btn btn-primary">Войти</button>
+        <div class="form-row">
+          <button type="submit" class="btn btn-primary">Войти</button>
+          <!-- A-02: регистрация тем же вводом, без повтора пароля -->
+          <button type="submit" class="btn" th:formaction="@{/register}">Я новый игрок</button>
+        </div>
       </form>
       <p class="page-sub">Нет учётной записи? <a th:href="@{/register}">Зарегистрироваться</a></p>
     </div>

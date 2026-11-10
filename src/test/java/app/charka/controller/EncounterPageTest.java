@@ -180,7 +180,7 @@ class EncounterPageTest {
         String html = page(base);
 
         assertThat(html).contains("Раунд 1").contains("Следующий ход").contains("Ход: ").contains("combatant-" + shooter.getId());
-        assertThat(page("/campaign/" + campaign.getId())).contains("Идёт бой · раунд 1");
+        assertThat(page("/campaign/" + campaign.getId())).contains("⚔ Бой · раунд 1");
         assertThat(page("/character/" + shooter.getId())).contains("⚔ Бой");
     }
 

@@ -2,7 +2,7 @@
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head('Экран мастера: ' + ${campaign.name})}"></head>
 <body>
-<header th:replace="~{fragments/layout :: topbar(null, 'campaign')}"></header>
+<header th:replace="~{fragments/layout :: nav(${campaign}, null, 'gm')}"></header>
 
 <main class="page">
   <div class="page-head">
@@ -12,8 +12,6 @@
       <p class="page-sub" th:if="${campaign.currentDate != null}">Сейчас <span th:text="${campaign.currentDate}">дата</span></p>
     </div>
     <div class="page-actions">
-      <a th:href="@{'/campaign/' + ${campaign.id}}" class="btn btn-ghost">← Кампания</a>
-      <a th:href="@{'/campaign/' + ${campaign.id} + '/encounter'}" class="btn btn-primary">⚔ Бой</a>
     </div>
   </div>
 

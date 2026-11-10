@@ -1,9 +1,16 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <body>
+<!-- UX-30: здоровье по частям одной полосой (Космозэки: цифры 0…9 цветом ХП зоны). Пусто у системы — ничего -->
+<div th:fragment="segments(card)" th:unless="${card == null or #lists.isEmpty(card.segments)}" class="hp-segments" role="img"
+     th:attr="aria-label=${#strings.listJoin(card.segments.![title], '; ')}">
+  <span th:each="s : ${card.segments}" class="hp-seg" th:classappend="'is-' + ${s.css}" th:title="${s.title}" th:text="${s.label}">0</span>
+</div>
+
 <!-- Что может участник: спасброски, оружие, урон, ожидание -->
-<div th:fragment="actions(row, base)" class="encounter-actions"
-     th:with="url=${base + '/participants/' + row.participant.id}, presetOptions=${row.attackOptions()}">
+<div th:fragment="actions(row, base)" class="encounter-actions" th:attr="data-no-actions=${row.canAct} ? null : 'true'"
+     th:with="url=${base + '/participants/' + row.participant.id}, presetOptions=${row.attackOptions()},
+              targets=${hiddenCharacterIds == null or #sets.isEmpty(hiddenCharacterIds) ? row.targets : row.targets.?[!#root.hiddenCharacterIds.contains(id)]}">
   <div th:if="${!#lists.isEmpty(row.card.saves) or row.card.stabilizable}" class="encounter-saves">
     <form th:each="save : ${row.card.saves}" th:action="@{${url} + '/save/' + ${save.code}}" method="post" class="form-row"
           th:with="left=${luckLeft != null ? luckLeft.get(row.character.id) : null}">
@@ -16,6 +23,9 @@
     </form>
   </div>
 
+  <!-- Предел действий системы (Космозэки — одно за ход): атака, перезарядка и проверка — в следующем раунде -->
+  <p th:unless="${row.canAct}" class="item-action-note">Действие в этом раунде сделано — осталось перемещение</p>
+
   <div th:each="weapon : ${row.weapons}" class="encounter-weapon">
     <div class="item-head">
       <span class="row-title" th:text="${weapon.item.name}">Minami</span>
@@ -25,8 +35,8 @@
     <p th:if="${weapon.form.unavailable != null}" class="item-action-note" th:text="${weapon.form.unavailable}">Магазин пуст</p>
     <div class="item-actions">
       <button type="button" class="btn btn-sm btn-primary" th:attr="data-dialog-open='attack-' + ${weapon.item.id}"
-              th:disabled="${weapon.form.unavailable != null}" th:text="${weapon.form.actionLabel}">Атаковать</button>
-      <dialog th:replace="~{fragments/attack :: dialog(${row.character.id}, ${weapon.item}, ${weapon.form}, ${row.targets})}"></dialog>
+              th:disabled="${weapon.form.unavailable != null or !row.canAct}" th:text="${weapon.form.actionLabel}">Атаковать</button>
+      <dialog th:replace="~{fragments/attack :: dialog(${row.character.id}, ${weapon.item}, ${weapon.form}, ${targets})}"></dialog>
       <th:block th:each="action : ${weapon.actions.?[shownInCombat]}">
         <form th:replace="~{fragments/items :: action-form(${action}, @{${weapon.url} + '/action/' + ${action.code}}, null)}"></form>
       </th:block>
@@ -39,22 +49,10 @@
       <span class="item-value" th:text="${ability.form.damage}">1D6/2 + BODY</span>
     </div>
     <div class="item-actions" th:with="attackUrl=${ability.url}">
-      <button type="button" class="btn btn-sm btn-primary" th:attr="data-dialog-open='attack-' + ${ability.id}" th:text="${ability.form.actionLabel}">Атаковать</button>
-      <dialog th:replace="~{fragments/attack :: dialog(${row.character.id}, ${ability}, ${ability.form}, ${row.targets})}"></dialog>
+      <button type="button" class="btn btn-sm btn-primary" th:attr="data-dialog-open='attack-' + ${ability.id}" th:disabled="${!row.canAct}" th:text="${ability.form.actionLabel}">Атаковать</button>
+      <dialog th:replace="~{fragments/attack :: dialog(${row.character.id}, ${ability}, ${ability.form}, ${targets})}"></dialog>
     </div>
   </div>
-
-  <form th:if="${row.card.healthCounterId != null}" th:action="@{${url} + '/damage'}" method="post" class="form-row encounter-damage">
-    <input type="number" name="amount" class="narrow" min="0" placeholder="Урон" required aria-label="Урон">
-    <select name="location" aria-label="Зона попадания">
-      <option value="">Случайная зона</option>
-      <option th:each="l : ${row.card.locations}" th:value="${l.code}" th:text="${l.label}">Торс</option>
-    </select>
-    <select name="damageType" aria-label="Тип урона">
-      <option th:each="t : ${row.card.damageTypes}" th:value="${t.code}" th:text="${t.label}">Обычный</option>
-    </select>
-    <button type="submit" class="btn btn-sm btn-danger">Нанести</button>
-  </form>
 
   <form th:unless="${#lists.isEmpty(row.checks)}" th:action="@{${url} + '/check'}" method="post" class="form-row encounter-check">
     <select name="skill" class="grow" aria-label="Навык">
@@ -68,13 +66,13 @@
       <input th:if="${left != null and left > 0}" type="number" name="luck" class="narrow" min="0" th:max="${left}"
              th:title="'Удача: есть ' + ${left}" th:placeholder="'🍀 ' + ${left}" aria-label="Удача">
     </th:block>
-    <button type="submit" class="btn btn-sm">🎲 Проверка</button>
+    <button type="submit" class="btn btn-sm" th:disabled="${!row.canAct}">🎲 Проверка</button>
   </form>
 
-  <form th:each="contest : ${contests}" th:unless="${#lists.isEmpty(row.targets)}"
+  <form th:each="contest : ${contests}" th:unless="${#lists.isEmpty(targets)}"
         th:action="@{${url} + '/contest/' + ${contest.code}}" method="post" class="form-row encounter-check">
     <select name="target" class="grow" aria-label="Против кого">
-      <option th:each="t : ${row.targets}" th:value="${t.id}" th:text="${t.name}">Олежа</option>
+      <option th:each="t : ${targets}" th:value="${t.id}" th:text="${t.name}">Олежа</option>
     </select>
     <input th:if="${luckLeft != null and luckLeft.get(row.character.id) != null and luckLeft.get(row.character.id) > 0}" type="number" name="luck"
            min="0" th:max="${luckLeft.get(row.character.id)}" class="narrow" th:title="'Удача: есть ' + ${luckLeft.get(row.character.id)}"
@@ -82,18 +80,143 @@
     <button type="submit" class="btn btn-sm" th:text="'🎲 ' + ${contest.label}">🎲 Facedown</button>
   </form>
 
-  <div class="encounter-minor">
+  <div class="encounter-minor" th:if="${row.current and !row.participant.waiting and !view.lastInRound}">
     <form th:if="${row.current and !row.participant.waiting and !view.lastInRound}" th:action="@{${url} + '/wait'}" method="post">
       <button type="submit" class="btn btn-sm btn-ghost" title="Вступит позже в этом раунде">Подождать</button>
     </form>
-    <form th:action="@{${url} + '/initiative'}" method="post" class="form-row">
-      <input type="number" name="initiative" class="narrow" th:value="${row.participant.initiative}" required aria-label="Инициатива" title="Игрок бросил свой кубик">
-      <button type="submit" class="btn btn-sm btn-ghost">Инициатива</button>
-    </form>
-    <form th:action="@{${url} + '/remove'}" method="post" th:attr="data-confirm='Убрать ' + ${row.character.name} + ' из боя?'">
-      <button type="submit" class="btn btn-sm btn-ghost">Убрать из боя</button>
-    </form>
   </div>
+  <!-- R-15a: правка мастера отдельно от хода; у мастера она же — в меню фишки на карте -->
+  <details class="cp-more item-more encounter-edit">
+    <summary th:text="${isGm} ? 'Правка: урон, лечение, действия, инициатива' : 'Правка: урон вручную, инициатива, убрать из боя'">Правка: урон вручную, инициатива, убрать из боя</summary>
+    <form th:if="${row.card.healthCounterId != null}" th:action="@{${url} + '/damage'}" method="post" class="form-row encounter-damage">
+      <input type="number" name="amount" class="narrow" min="0" placeholder="Урон" required aria-label="Урон">
+      <select name="location" aria-label="Зона попадания">
+        <option value="">Случайная зона</option>
+        <option th:each="l : ${row.card.locations}" th:value="${l.code}" th:text="${l.label}">Торс</option>
+      </select>
+      <select th:unless="${#lists.isEmpty(row.card.damageTypes)}" name="damageType" aria-label="Тип урона">
+        <option th:each="t : ${row.card.damageTypes}" th:value="${t.code}" th:text="${t.label}">Обычный</option>
+      </select>
+      <!-- K-03: без типов урона (Космозэки) — сколько попаданий (броня из каждого) и «броня ½» ближнего оружия -->
+      <th:block th:if="${#lists.isEmpty(row.card.damageTypes)}">
+        <label title="Попаданий: броня вычитается из каждого">×<input type="number" name="hits" min="1" max="200" value="1" class="narrow" aria-label="Попаданий"></label>
+        <label class="check" title="Оружие ближнего боя: броня вдвое меньше"><input type="checkbox" name="armorHalf" value="true"> броня ½</label>
+      </th:block>
+      <button type="submit" class="btn btn-sm btn-danger">Нанести</button>
+    </form>
+    <!-- GM-01: мастер лечит без броска и без действия участника; зона — если система лечит по зонам (Космозэки) -->
+    <form th:if="${isGm and row.card.healthCounterId != null}" th:action="@{${url} + '/heal'}" method="post" class="form-row encounter-heal">
+      <input type="number" name="points" class="narrow" min="1" placeholder="ХП" required aria-label="Сколько вылечить">
+      <select th:unless="${#lists.isEmpty(row.healZones)}" name="location" aria-label="Какую зону лечить" data-remember="gm-heal-zone">
+        <option value="">Все зоны</option>
+        <option th:each="l : ${row.healZones}" th:value="${l.code}" th:text="${l.label}">Голова</option>
+      </select>
+      <button type="submit" class="btn btn-sm btn-success">Вылечить</button>
+    </form>
+    <!-- GM-01: ещё действие в этом раунде (delta −1: сделанных меньше) или забрать одно -->
+    <div th:if="${isGm}" class="form-row encounter-actions-adjust">
+      <span class="muted" th:text="${row.canAct} ? 'Действия раунда: есть' : 'Действия раунда: потрачены'">Действия раунда: есть</span>
+      <form th:action="@{${url} + '/actions'}" method="post">
+        <input type="hidden" name="delta" value="-1">
+        <button type="submit" class="btn btn-sm" title="Дать ещё одно действие в этом раунде">＋ Действие</button>
+      </form>
+      <form th:action="@{${url} + '/actions'}" method="post">
+        <input type="hidden" name="delta" value="1">
+        <button type="submit" class="btn btn-sm btn-ghost" title="Забрать одно действие этого раунда">− Действие</button>
+      </form>
+    </div>
+
+    <div class="encounter-minor">
+      <form th:action="@{${url} + '/initiative'}" method="post" class="form-row">
+        <input type="number" name="initiative" class="narrow" th:value="${row.participant.initiative}" required aria-label="Инициатива" title="Игрок бросил свой кубик">
+        <button type="submit" class="btn btn-sm btn-ghost">Инициатива</button>
+      </form>
+      <form th:action="@{${url} + '/remove'}" method="post" th:attr="data-confirm='Убрать ' + ${row.character.name} + ' из боя?'">
+        <button type="submit" class="btn btn-sm btn-ghost">Убрать из боя</button>
+      </form>
+    </div>
+  </details>
 </div>
+<!-- Итоги действий участника: атака, действие с оружием, упавший заряд (в строке или в панели игрока) -->
+<!-- Инвентарь из боя: свои персонажи (мастеру — тот, кто ходит). Носимое сверху, остальное ниже; управлять — «Снаряжение» -->
+<th:block th:fragment="bag(rows)">
+  <button type="button" class="btn btn-ghost" data-dialog-open="battle-bag" title="Что у меня с собой">🎒 Инвентарь</button>
+  <dialog id="battle-bag" class="dialog reference-dialog">
+    <div class="add-dialog-head">
+      <h2 class="card-title">🎒 Инвентарь</h2>
+      <button type="button" class="icon-btn" data-dialog-close aria-label="Закрыть">✕</button>
+    </div>
+    <div class="bag-body" th:with="system=${@gameSystemRegistry.get(campaign.system)}">
+      <section th:each="row : ${rows}" class="bag-character">
+        <div class="bag-character-head">
+          <strong th:if="${#lists.size(rows) > 1 or isGm}" th:text="${row.character.name}">Колясик</strong>
+          <a class="btn btn-sm btn-ghost" th:href="@{'/character/' + ${row.character.id} + '/gear'}">Снаряжение ↗</a>
+        </div>
+        <th:block th:each="pass : ${ {true, false} }"><th:block th:each="inv : ${row.character.inventories}" th:if="${inv.carried == pass}">
+          <h3 class="item-section-title">
+            <span th:text="${inv.name}">На теле</span>
+            <span th:unless="${inv.carried}" class="badge">не носится</span>
+          </h3>
+          <p th:if="${#lists.isEmpty(inv.content)}" class="empty">Пусто</p>
+          <div th:each="item : ${inv.content}" class="bag-item" th:with="summary=${system.getItemSummary(item)}">
+            <span class="row-title" th:text="${item.name}">Пистолет</span>
+            <span th:if="${item.quantity != null and item.quantity > 1}" class="badge" th:text="'×' + ${item.quantity}">×3</span>
+            <span th:if="${summary.main != null}" class="item-main" th:text="${summary.main}">5/7</span>
+            <span th:each="line : ${summary.lines}" class="item-value" th:text="${line}">DMG 20</span>
+            <!-- UX-19a: простые действия предмета — здесь же; с выбором (откуда, сколько) — на листе -->
+            <span class="bag-actions" th:with="returnCampaign=${campaign.id},
+                       itemUrl=${'/character/' + row.character.id + '/inventories/' + inv.id + '/items/' + item.id}">
+              <th:block th:each="action : ${system.getItemActions(item).?[!hidden and !secondary and sources.isEmpty() and amount == null]}">
+                <form th:replace="~{fragments/items :: action-form(${action}, @{${itemUrl} + '/action/' + ${action.code}}, null)}"></form>
+              </th:block>
+            </span>
+          </div>
+        </th:block></th:block>
+      </section>
+    </div>
+  </dialog>
+</th:block>
+
+<th:block th:fragment="results(row)">
+  <th:block th:if="${resultCharacterId == row.character.id and combatResult != null}">
+    <div th:replace="~{fragments/attack :: result(${combatResult})}"></div>
+  </th:block>
+  <th:block th:if="${row.hasItem(actionItemId)}">
+    <th:block th:if="${attackResult != null and !attackResult.detached}">
+      <div th:replace="~{fragments/attack :: result(${attackResult})}"></div>
+    </th:block>
+    <div th:if="${actionResult != null}" class="alert alert-success item-result" role="status">
+      <span class="alert-text" th:text="${actionResult}">Перезаряжено</span>
+      <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+    </div>
+    <div th:if="${actionError != null}" class="alert alert-error item-result" role="alert">
+      <span class="alert-text" th:text="${actionError}">Магазин пуст</span>
+      <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+    </div>
+  </th:block>
+  <th:block th:each="blast : ${row.blasts}">
+    <div th:replace="~{fragments/attack :: pending(${row.character.id}, ${blast}, ${row.targets})}"></div>
+  </th:block>
+  <div th:if="${blastError != null and !#lists.isEmpty(row.blasts)}" class="alert alert-error item-result" role="alert">
+    <span class="alert-text" th:text="${blastError}">Выберите, кого задело</span>
+    <button type="button" class="alert-close" aria-label="Закрыть">×</button>
+  </div>
+</th:block>
+
+<!-- R-17: портрет в карусели очереди; hidden — участники в тумане (M-16) -->
+<li th:fragment="portrait(row, hidden)" class="carousel-item"
+    th:with="dark=${hidden.contains(row.participant.id)}, unseen=${unseenIds != null and unseenIds.contains(row.participant.id)}"
+    th:classappend="${(row.current ? 'is-current ' : '') + (row.participant.done ? 'is-done ' : '') + (row.participant.waiting ? 'is-waiting ' : '')
+                     + (row.card.out ? 'is-out ' : '') + (row.character.npc ? 'npc ' : 'player ') + (dark ? 'is-hidden' : '')}">
+  <button type="button" class="carousel-btn" th:attr="data-select-token=${dark ? null : row.participant.id}"
+          th:title="${dark} ? 'Вне видимости: кто-то из врагов' : ${row.character.name} + (${row.card.status != null} ? ' · ' + ${row.card.status} : '') + ' · инициатива ' + ${row.participant.initiative}">
+    <span class="carousel-init" th:text="${dark} ? '?' : ${row.participant.initiative}">17</span>
+    <span class="carousel-name" th:text="${dark} ? '?' : ${row.character.name}">Колясик</span>
+    <span th:if="${unseen}" class="carousel-mark" title="Его не видит ни один персонаж игроков: у них в очереди — «?»">👁 нет</span>
+    <span th:if="${row.participant.waiting}" class="carousel-mark">ждёт</span>
+    <span th:if="${!dark and row.declaration != null}" class="carousel-mark pink" th:text="${row.declaration.label}">Выхватывает</span>
+  </button>
+</li>
+
 </body>
 </html>

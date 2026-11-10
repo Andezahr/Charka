@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<!-- A-12: лист на бумаге. Свои стили, без приложения: чёрное на белом, два столбца, A4; PDF — печатью браузера -->
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title th:text="${title} + ' · печать · Charka'">Колясик · печать</title>
+  <style>
+    @page { size: A4; margin: 10mm; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #fff; color: #111; font: 9.5pt/1.3 'Segoe UI', Arial, sans-serif; }
+    .print-bar { position: sticky; top: 0; display: flex; gap: 8px; align-items: center; padding: 8px 12px; background: #f1f3f6; border-bottom: 1px solid #ccc; }
+    .print-bar button { font: inherit; padding: 6px 14px; cursor: pointer; }
+    .sheet { width: 190mm; margin: 0 auto; padding: 6mm 0; }
+    .sheet + .sheet { break-before: page; page-break-before: always; }
+    h1 { margin: 0; font-size: 16pt; }
+    .meta { color: #444; margin-bottom: 3mm; }
+    .cols { column-count: 2; column-gap: 6mm; }
+    section { break-inside: avoid; margin: 0 0 3mm; border: 1px solid #999; border-radius: 2mm; padding: 1.5mm 2.5mm; }
+    h2 { margin: 0 0 1mm; font-size: 10.5pt; text-transform: uppercase; letter-spacing: .03em; }
+    dl { display: grid; grid-template-columns: 1fr auto; gap: 0 4mm; margin: 0; }
+    dt { margin: 0; } dd { margin: 0; text-align: right; font-weight: 600; }
+    dl.stats { grid-template-columns: repeat(3, 1fr auto); }
+    ul { margin: 0; padding-left: 4mm; }
+    li { margin: 0 0 .5mm; }
+    .track { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1mm 2mm; margin: 1mm 0; }
+    .track .level { font-size: 8pt; }
+    .boxes { display: flex; gap: 1mm; }
+    .box { width: 5mm; height: 5mm; border: 1px solid #333; }
+    .box.is-filled { background: #333; }
+    .note { font-size: 8pt; color: #444; margin: 1mm 0 0; }
+    .lines { border-bottom: 1px solid #bbb; height: 6mm; }
+    @media print { .print-bar { display: none; } .sheet { padding: 0; } }
+  </style>
+</head>
+<body>
+<div class="print-bar">
+  <button type="button" onclick="window.print()">🖨 Печать или PDF</button>
+  <span>Лист без приложения: урон отмечайте в клетках карандашом.</span>
+</div>
+
+<article th:each="s : ${sheets}" class="sheet">
+  <h1 th:text="${s.character.name}">Колясик</h1>
+  <div class="meta">
+    <span th:unless="${#lists.isEmpty(s.roles)}" th:text="${#strings.listJoin(s.roles, ', ')} + ' · '">Соло · </span>
+    <span th:if="${s.character.campaign != null}" th:text="${s.character.campaign.name} + ' · ' + ${s.character.campaign.currentDate}">Последний шанс · 2037-10-27</span>
+    <span th:text="' · деньги: ' + ${s.money} + ' ' + ${s.currency}"> · деньги: 1200 eb</span>
+  </div>
+
+  <section th:if="${s.system.track != null}" th:with="t=${s.system.track}">
+    <h2 th:text="${t.title}">Здоровье</h2>
+    <div class="track">
+      <div th:each="g, gi : ${t.groups}">
+        <div class="level" th:text="${g.label}">Лёгкое</div>
+        <div class="boxes">
+          <span th:each="b : ${#numbers.sequence(1, g.boxes)}" class="box"
+                th:classappend="${gi.index * g.boxes + b <= t.filled} ? 'is-filled'"></span>
+        </div>
+      </div>
+    </div>
+    <p class="note" th:text="${t.note}">Попадание: зона → минус SP…</p>
+  </section>
+
+  <div class="cols">
+    <section th:each="b : ${s.system.blocks}">
+      <h2 th:text="${b.title}">Характеристики</h2>
+      <dl th:classappend="${b.title == 'Характеристики'} ? 'stats'">
+        <th:block th:each="l : ${b.lines}">
+          <dt th:text="${l.label}">REF</dt>
+          <dd th:text="${l.value}">8</dd>
+        </th:block>
+      </dl>
+    </section>
+    <section th:each="entry : ${s.sections}">
+      <h2 th:text="${entry.key}">Оружие</h2>
+      <ul><li th:each="line : ${entry.value}" th:text="${line}">Arasaka Minami 10 · WA 0 · 2D6+3</li></ul>
+    </section>
+    <section th:unless="${#lists.isEmpty(s.installed)}">
+      <h2>Вживлено</h2>
+      <ul><li th:each="line : ${s.installed}" th:text="${line}">Нейроинтерфейс</li></ul>
+    </section>
+    <section>
+      <h2>Заметки</h2>
+      <div class="lines"></div><div class="lines"></div><div class="lines"></div><div class="lines"></div>
+    </section>
+  </div>
+</article>
+</body>
+</html>

@@ -217,8 +217,8 @@ class NpcServiceTest {
                 .andReturn().getResponse().getContentAsString();
         String home = mockMvc.perform(get("/")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
-        assertThat(campaignPage).contains("＋ NPC", "Корп-охрана", "＋ Копия", "Цел", "SP торса");
-        assertThat(npcSheet).contains("Лист NPC", "<span class=\"target-group\">Игроки</span>");
+        assertThat(campaignPage).contains("＋ NPC", "Корп-охрана", "＋ Копия", "Без ранений", "SP голова");
+        assertThat(npcSheet).contains("class=\"chip\">NPC</span>", "<span class=\"target-group\">Игроки</span>");
         assertThat(playerSkills).contains("<optgroup label=\"NPC\"");
         assertThat(home).contains("Игрок").doesNotContain("Бандит");
     }

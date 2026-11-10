@@ -41,30 +41,60 @@ public class EncounterController {
     private final app.charka.map.BattleMapService battleMapService;
     private final app.charka.chat.ChatService chatService;
     private final app.charka.security.AccessService accessService;
+    private final app.charka.encounter.SceneService sceneService;
 
     @GetMapping
-    public String page(@PathVariable Long campaignId, Model model) {
+    public String page(@PathVariable Long campaignId,
+                       @org.springframework.web.bind.annotation.RequestParam(name = "map", required = false) Long chosenMap,
+                       Model model) {
+        // UX-23: «⚔ Бой» из списка карт — эта карта выбрана на старте боя
+        model.addAttribute("chosenMap", chosenMap);
         Campaign campaign = campaignService.getById(campaignId);
         model.addAttribute("campaign", campaign);
         // куда вернуть атаку и действия с оружием
         model.addAttribute("returnCampaign", campaignId);
         Optional<EncounterView> view = encounterService.view(campaignId);
+        // и в идущем бою (＋ Фишка), и до него (UX-09: «＋ NPC» в «Кто участвует»)
+        model.addAttribute("npcTemplates", systemRegistry.get(campaign.getSystem()).getNpcTemplates());
         if (view.isPresent()) {
             model.addAttribute("view", view.get());
             model.addAttribute("attackObjects", attackService.objectTargets(campaign));
             model.addAttribute("hasField", view.get().encounter().getMapDoc() != null);
-            model.addAttribute("npcTemplates", systemRegistry.get(campaign.getSystem()).getNpcTemplates());
-            model.addAttribute("feed", chatService.feed(campaignId, ChatController.FEED_SIZE));
+            // KF-05: что мастер может положить на карту — справочник системы по группам
+            model.addAttribute("lootCatalog", systemRegistry.get(campaign.getSystem()).getItemCatalog().stream()
+                    .collect(java.util.stream.Collectors.groupingBy(app.charka.item.CatalogItem::group,
+                            java.util.LinkedHashMap::new, java.util.stream.Collectors.toList())));
+            model.addAttribute("feed", chatService.feedFor(campaign, ChatController.FEED_SIZE));
             // U-03: игрок действует своими персонажами, остальные строки — только смотрит
             model.addAttribute("controllable", view.get().rows().stream().map(row -> row.character())
                     .filter(accessService::canControl).map(app.charka.model.Character::getId).collect(java.util.stream.Collectors.toSet()));
-            model.addAttribute("difficultyPresets", systemRegistry.get(campaign.getSystem()).getCheckResolver().getDifficultyPresets());
+            model.addAttribute("difficultyPresets", systemRegistry.get(campaign.getSystem()).getTableCheckResolver().getDifficultyPresets());
             model.addAttribute("contests", systemRegistry.get(campaign.getSystem()).getCombatContests());
             app.charka.system.GameSystem system = systemRegistry.get(campaign.getSystem());
             model.addAttribute("luckLeft", view.get().rows().stream().collect(java.util.stream.Collectors.toMap(
                     row -> row.character().getId(), row -> system.getLuck(row.character()), (first, second) -> first)));
+            // A-04: игроку — свой экран сверху: чей ход и сколько до него
+            // M-16: кого игрок не видит на карте — в очереди и списке без имени
+            java.util.Set<Long> mine = campaign.getCharacters().stream().filter(accessService::canControl)
+                    .map(app.charka.model.Character::getId).collect(java.util.stream.Collectors.toSet());
+            java.util.Set<Long> hiddenIds = battleFieldService.hiddenFor(campaignId,
+                    accessService.isGm(campaign) ? app.charka.map.BattleFieldService.Viewer.GM : new app.charka.map.BattleFieldService.Viewer(mine));
+            model.addAttribute("hiddenIds", hiddenIds);
+            // M-18: игроку скрытые NPC не попадают в списки целей атаки и противостояния
+            model.addAttribute("hiddenCharacterIds", view.get().rows().stream().filter(row -> hiddenIds.contains(row.participant().getId()))
+                    .map(row -> row.character().getId()).collect(java.util.stream.Collectors.toSet()));
+            // мастеру — кого не видит ни один персонаж игроков: метка в очереди
+            model.addAttribute("unseenIds", accessService.isGm(campaign) ? battleFieldService.hiddenFor(campaignId,
+                    new app.charka.map.BattleFieldService.Viewer(campaign.getCharacters().stream().filter(c -> !c.isNpc())
+                            .map(app.charka.model.Character::getId).collect(java.util.stream.Collectors.toSet()))) : java.util.Set.of());
+            if (!accessService.isGm(campaign)) {
+                model.addAttribute("myRows", view.get().rows().stream().filter(row -> accessService.canControl(row.character())).toList());
+                model.addAttribute("turnsAhead", turnsAhead(view.get()));
+            }
         } else {
             model.addAttribute("candidates", encounterService.candidates(campaignId));
+            // A-06: заготовки — бой одним нажатием
+            model.addAttribute("scenes", sceneService.list(campaignId));
         }
         model.addAttribute("maps", battleMapService.list(campaignId));
         model.addAttribute("isGm", accessService.isGm(campaign));
@@ -94,9 +124,14 @@ public class EncounterController {
 
     /** Положить карту под идущий бой: фишки расставляются заново */
     @PostMapping("/attach")
-    public String attach(@PathVariable Long campaignId, @RequestParam Long map, RedirectAttributes redirectAttributes) {
+    public String attach(@PathVariable Long campaignId, @RequestParam(required = false) Long map, RedirectAttributes redirectAttributes) {
         return attempt(campaignId, redirectAttributes, () -> {
-            battleFieldService.attach(campaignId, map);
+            // R-14: пусто — пустая карта
+            if (map == null) {
+                battleFieldService.attachEmpty(campaignId);
+            } else {
+                battleFieldService.attach(campaignId, map);
+            }
             return null;
         });
     }
@@ -111,9 +146,59 @@ public class EncounterController {
         });
     }
 
+    /**
+     * A-04: кто перед каждым участником ещё походит в этом раунде, считая того, кто ходит сейчас.
+     * Ждущие и выбывшие очередь не держат.
+     */
+    static java.util.Map<Long, Integer> turnsAhead(EncounterView view) {
+        java.util.Map<Long, Integer> ahead = new java.util.HashMap<>();
+        int pending = 0;
+        for (EncounterView.Row row : view.rows()) {
+            ahead.put(row.character().getId(), pending);
+            if (!row.participant().isDone() && !row.participant().isWaiting() && !row.card().out()) {
+                pending++;
+            }
+        }
+        return ahead;
+    }
+
+    /** A-04: чей ход — для опроса с телефона игрока; сменился — вибрация и обновление его экрана */
+    @GetMapping("/turn")
+    @org.springframework.web.bind.annotation.ResponseBody
+    public java.util.Map<String, Object> turn(@PathVariable Long campaignId) {
+        return encounterService.view(campaignId)
+                .<java.util.Map<String, Object>>map(view -> java.util.Map.of(
+                        "turn", view.encounter().getRound() + ":" + (view.current() == null ? "" : view.current().getId()),
+                        "current", view.current() == null ? "" : view.current().getId(),
+                        "name", view.current() == null ? "" : view.current().getName()))
+                .orElse(java.util.Map.of("turn", "", "current", "", "name", ""));
+    }
+
+    /** M-16: туман для игроков на карте — выбор кампании */
+    @PostMapping("/fog")
+    public String fog(@PathVariable Long campaignId, @RequestParam boolean on) {
+        encounterService.setFogOfWar(campaignId, on);
+        return redirect(campaignId, null);
+    }
+
+    /** A-13: инициатива каждый раунд или раз за бой — выбор кампании, с нового раунда */
+    @PostMapping("/initiative-mode")
+    public String initiativeMode(@PathVariable Long campaignId, @RequestParam boolean eachRound) {
+        encounterService.setInitiativeEachRound(campaignId, eachRound);
+        return redirect(campaignId, null);
+    }
+
+    /** «Следующий ход» у мастера; игрок передаёт ход только на своём ходу («Закончить ход») */
     @PostMapping("/next")
     public String next(@PathVariable Long campaignId, RedirectAttributes redirectAttributes) {
         try {
+            Campaign campaign = campaignService.getById(campaignId);
+            if (!accessService.isGm(campaign)) {
+                app.charka.model.Character current = encounterService.view(campaignId).map(EncounterView::current).orElse(null);
+                if (current == null || !accessService.canControl(current)) {
+                    throw new IllegalArgumentException("Сейчас ход не ваш: передать его может тот, кто ходит, или мастер");
+                }
+            }
             EncounterService.Turn turn = encounterService.next(campaignId);
             redirectAttributes.addFlashAttribute("roundReport", turn.report());
             return redirect(campaignId, turn.character());
@@ -153,6 +238,15 @@ public class EncounterController {
         });
     }
 
+    /** K-07: рывок — действие на перемещение */
+    @PostMapping("/participants/{participantId}/dash")
+    public String dash(@PathVariable Long campaignId, @PathVariable Long participantId, RedirectAttributes redirectAttributes) {
+        return attempt(campaignId, redirectAttributes, () -> {
+            encounterService.dash(campaignId, participantId);
+            return null;
+        });
+    }
+
     @PostMapping("/participants/{participantId}/join")
     public String join(@PathVariable Long campaignId, @PathVariable Long participantId, RedirectAttributes redirectAttributes) {
         return attempt(campaignId, redirectAttributes, () -> {
@@ -179,7 +273,8 @@ public class EncounterController {
         try {
             SkillCheck check = encounterService.check(campaignId, participantId, skill, difficulty, modifier, luck);
             redirectAttributes.addFlashAttribute("combatResult", new AttackResult(check.label(), check.result().outcome(),
-                    !Boolean.FALSE.equals(check.result().success()), check.result().steps()));
+                    !Boolean.FALSE.equals(check.result().success()), check.result().steps())
+                    .withRoll(check.result().total(), check.result().difficulty()));
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("encounterError", e.getMessage());
         }
@@ -232,9 +327,35 @@ public class EncounterController {
                          @RequestParam int amount,
                          @RequestParam(required = false) String location,
                          @RequestParam(required = false) String damageType,
+                         @RequestParam(defaultValue = "1") int hits,
+                         @RequestParam(defaultValue = "false") boolean armorHalf,
                          RedirectAttributes redirectAttributes) {
         return health(campaignId, participantId, "Урон", redirectAttributes,
-                () -> encounterService.damage(campaignId, participantId, amount, location, damageType));
+                () -> encounterService.damage(campaignId, participantId, amount, location, damageType, hits, armorHalf));
+    }
+
+    /** GM-01: мастер лечит с карты боя — очки, зона (если система лечит по зонам) */
+    @PostMapping("/participants/{participantId}/heal")
+    public String heal(@PathVariable Long campaignId, @PathVariable Long participantId,
+                       @RequestParam int points,
+                       @RequestParam(required = false) String location,
+                       RedirectAttributes redirectAttributes) {
+        return health(campaignId, participantId, "Лечение", redirectAttributes,
+                () -> encounterService.heal(campaignId, participantId, points, location));
+    }
+
+    /** GM-01: мастер даёт ({@code delta=-1}) или забирает ({@code delta=1}) действие участника в этом раунде */
+    @PostMapping("/participants/{participantId}/actions")
+    public String actions(@PathVariable Long campaignId, @PathVariable Long participantId, @RequestParam int delta,
+                          RedirectAttributes redirectAttributes) {
+        Long character = encounterService.characterOf(campaignId, participantId);
+        redirectAttributes.addFlashAttribute("resultCharacterId", character);
+        try {
+            encounterService.adjustActions(campaignId, participantId, delta);
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("encounterError", e.getMessage());
+        }
+        return redirect(campaignId, character);
     }
 
     @PostMapping("/participants/{participantId}/save/{code}")

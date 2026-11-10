@@ -53,6 +53,17 @@ public final class Cp2020Fumbles {
             return title;
         }
 
+        /** A-11: «1–4 обошлось…», «5 оружие выпало…» — для справки */
+        java.util.List<String> ranges() {
+            java.util.List<String> ranges = new java.util.ArrayList<>();
+            int from = 1;
+            for (Outcome outcome : outcomes) {
+                ranges.add((from == outcome.upTo() ? String.valueOf(from) : from + "–" + outcome.upTo()) + " " + outcome.text());
+                from = outcome.upTo() + 1;
+            }
+            return ranges;
+        }
+
         String outcome(int roll) {
             for (Outcome outcome : outcomes) {
                 if (roll <= outcome.upTo()) {

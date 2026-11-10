@@ -31,11 +31,20 @@ public class AccessInterceptor implements HandlerInterceptor {
 
     /** Бой — для всех за столом, но начать, закончить и править карту может только мастер */
     private static final Set<String> GM_ONLY_IN_FIGHT = Set.of("/encounter/start", "/encounter/end", "/encounter/attach",
-            "/encounter/save-map", "/encounter/edit-map", "/encounter/map/doc", "/encounter/participants", "/encounter/map/tokens");
+            "/encounter/save-map", "/encounter/edit-map", "/encounter/map/doc", "/encounter/participants", "/encounter/map/tokens",
+            "/encounter/initiative-mode", "/encounter/fog",
+            // KF-05: положить предмет на карту и убрать его — мастер; подобрать — любой за своего персонажа
+            "/encounter/loot");
+    /** GM-01: лечить и править число действий участника с карты — только мастер */
+    private static final Pattern GM_ONLY_PARTICIPANT = Pattern.compile("^/encounter/participants/\\d+/(heal|actions)$");
+
+    /** BF-03: участник боя в адресе — игрок меняет только своих (ходить за врага, ждать, вступать, правка) */
+    private static final Pattern PARTICIPANT = Pattern.compile("^/encounter(?:/map)?/participants/(\\d+)(?:/.*)?$");
 
     private final AccessService accessService;
     private final CampaignRepository campaignRepository;
     private final CharacterRepository characterRepository;
+    private final app.charka.repository.EncounterRepository encounterRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -46,7 +55,7 @@ public class AccessInterceptor implements HandlerInterceptor {
         String path = request.getRequestURI().substring(request.getContextPath().length());
         Matcher campaign = CAMPAIGN.matcher(path);
         if (campaign.matches()) {
-            checkCampaign(Long.valueOf(campaign.group(1)), campaign.group(2) == null ? "" : campaign.group(2), request.getMethod());
+            checkCampaign(Long.valueOf(campaign.group(1)), campaign.group(2) == null ? "" : campaign.group(2), request.getMethod(), request);
             return true;
         }
         Matcher character = CHARACTER.matcher(path);
@@ -61,21 +70,49 @@ public class AccessInterceptor implements HandlerInterceptor {
         }
         Matcher export = EXPORT.matcher(path);
         if (export.matches()) {
-            checkCampaign(Long.valueOf(export.group(1)), "/export", request.getMethod());
+            checkCampaign(Long.valueOf(export.group(1)), "/export", request.getMethod(), request);
         }
         return true;
     }
 
-    private void checkCampaign(Long id, String rest, String method) {
+    private void checkCampaign(Long id, String rest, String method, HttpServletRequest request) {
         Campaign campaign = campaignRepository.findById(id).orElseThrow(NotFoundException.forId("Campaign", id));
         if (accessService.isGm(campaign)) {
             return;
         }
+        // A-02: по приглашению игрок создаёт себе персонажа мастером создания
+        if (rest.startsWith("/characters/new") && invited(request, id)) {
+            return;
+        }
         boolean playerPath = (rest.isEmpty() && "GET".equals(method))
                 || rest.equals("/chat")
-                || ((rest.equals("/encounter") || rest.startsWith("/encounter/")) && !GM_ONLY_IN_FIGHT.contains(rest));
+                // A-01: своё действие игрок отменяет сам, чьё оно — проверяет UndoService
+                || rest.startsWith("/undo/")
+                // A-07: свои запросы бросков игрок видит и бросает; чей запрос — проверяет контроллер
+                || (rest.equals("/requests") && "GET".equals(method)) || rest.matches("/requests/\\d+/roll")
+                // A-11: справка правил — всем за столом
+                || (rest.equals("/reference") && "GET".equals(method))
+                || ((rest.equals("/encounter") || rest.startsWith("/encounter/")) && !GM_ONLY_IN_FIGHT.contains(rest)
+                    && !GM_ONLY_PARTICIPANT.matcher(rest).matches());
         if (!playerPath || !accessService.isPlayer(campaign)) {
             throw NotFoundException.forId("Campaign", id).get();
         }
+        Matcher participant = PARTICIPANT.matcher(rest);
+        if (participant.matches() && !"GET".equals(method)) {
+            Long participantId = Long.valueOf(participant.group(1));
+            boolean own = encounterRepository.findByCampaignId(id).stream()
+                    .flatMap(encounter -> encounter.getParticipants().stream())
+                    .filter(p -> p.getId().equals(participantId))
+                    .anyMatch(p -> accessService.canControl(p.getCharacter()));
+            if (!own) {
+                throw new IllegalArgumentException(app.charka.encounter.RoundActions.NOT_YOUR_CHARACTER);
+            }
+        }
+    }
+
+    private static boolean invited(HttpServletRequest request, Long campaignId) {
+        jakarta.servlet.http.HttpSession session = request.getSession(false);
+        return session != null && session.getAttribute(InviteService.INVITED) instanceof java.util.Collection<?> invited
+                && invited.contains(campaignId);
     }
 }

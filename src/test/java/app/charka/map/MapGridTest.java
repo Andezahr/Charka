@@ -86,6 +86,82 @@ class MapGridTest {
     }
 
     @Nested
+    @DisplayName("Видимость цели и поле видимости")
+    class Visibility {
+
+        @Test
+        @DisplayName("Открытое поле: цель видна целиком, укрытия нет")
+        void open() {
+            MapGrid.Sight sight = new MapGrid(doc(), RULES).sight(0, 0, 6, 3, 1);
+
+            assertThat(sight.visibility()).isEqualTo(MapGrid.Visibility.FULL);
+            assertThat(sight.exposed()).isEqualTo(MapGrid.SAMPLES);
+            assertThat(sight.cover()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("Цель выглядывает из-за угла: видна частично, укрыта стеной")
+        void corner() {
+            MapDoc doc = doc();
+            // стена вдоль x = 5 от y = 0 до y = 4, цель за ней на краю
+            for (int y = 0; y <= 4; y++) {
+                doc.walls().put(MapDoc.left(5, y), "brick");
+            }
+            MapGrid.Sight sight = new MapGrid(doc, RULES).sight(0, 2, 6, 5, 1);
+
+            assertThat(sight.visibility()).isEqualTo(MapGrid.Visibility.PARTIAL);
+            assertThat(sight.cover()).get().extracting(Material::code).isEqualTo("brick");
+        }
+
+        @Test
+        @DisplayName("За закрытой дверью не видно; одна преграда с прочностью — стрельба вслепую сквозь неё")
+        void through() {
+            MapDoc doc = doc();
+            for (int y = 0; y < 10; y++) {
+                doc.walls().put(MapDoc.left(5, y), y == 3 ? "door:wood" : "brick");
+            }
+            MapGrid grid = new MapGrid(doc, RULES);
+            MapGrid.Sight sight = grid.sight(3, 3, 7, 3, 1);
+
+            assertThat(sight.visibility()).isEqualTo(MapGrid.Visibility.NONE);
+            assertThat(sight.through()).get().extracting(Material::code).isEqualTo("wood");
+
+            // две стены — уже не прострелить
+            for (int y = 0; y < 10; y++) {
+                doc.walls().put(MapDoc.left(7, y), "brick");
+            }
+            assertThat(new MapGrid(doc, RULES).sight(3, 3, 8, 3, 1).through()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("Цель за колонной видна частично и укрыта ею; линия огня — клетки между")
+        void pillar() {
+            MapDoc doc = doc();
+            doc.stamps().add(new MapDoc.Stamp("pillar", 4, 4, 0));
+            MapGrid.Sight sight = new MapGrid(doc, RULES).sight(0, 3, 5, 4, 1);
+
+            assertThat(sight.visibility()).isEqualTo(MapGrid.Visibility.PARTIAL);
+            assertThat(sight.cover()).get().extracting(Material::code).isEqualTo("pillar");
+            assertThat(sight.path()).anyMatch(cell -> cell[0] == 4 && cell[1] == 4);
+        }
+
+        @Test
+        @DisplayName("Поле видимости: из комнаты не видно за глухой стеной, видно в открытую дверь")
+        void field() {
+            MapDoc doc = doc();
+            for (int y = 0; y < 10; y++) {
+                doc.walls().put(MapDoc.left(5, y), y == 5 ? "door:wood:open" : "brick");
+            }
+            boolean[] visible = new MapGrid(doc, RULES).visibleFrom(2, 5);
+
+            assertThat(visible[5 * 10 + 2]).isTrue();
+            assertThat(visible[0 * 10 + 4]).isTrue();
+            assertThat(visible[5 * 10 + 8]).as("напротив двери").isTrue();
+            assertThat(visible[0 * 10 + 8]).as("за стеной в углу").isFalse();
+        }
+    }
+
+    @Nested
     @DisplayName("Досягаемость")
     class Reach {
 

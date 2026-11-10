@@ -48,6 +48,7 @@ public class SkillController {
         CheckResolver resolver = systemRegistry.forCharacter(character).getCheckResolver();
         model.addAttribute("character", character);
         model.addAttribute("sheet", skillService.getSheet(characterId));
+        model.addAttribute("pinned", character.getPinnedSkills());
         model.addAttribute("difficultyPresets", resolver.getDifficultyPresets());
         model.addAttribute("luck", systemRegistry.forCharacter(character).getLuck(character));
         model.addAttribute("opponents", character.getCampaign() == null
@@ -61,6 +62,14 @@ public class SkillController {
     /**
      * Уровни приходят полями {@code level.<код навыка>} и {@code custom.<id строки>}.
      */
+    /** R-09a: ☆ — навык в «Частые» на листе (проверка одним нажатием) */
+    @PostMapping("/skills/pin")
+    public String pin(@PathVariable Long characterId, @RequestParam String key, @RequestParam(required = false) String anchor) {
+        skillService.togglePinned(characterId, key);
+        return "redirect:/character/" + characterId + "/skills"
+                + (anchor != null && anchor.matches("[A-Za-z0-9_-]+") ? "#" + anchor : "");
+    }
+
     @PostMapping("/skills")
     public String updateLevels(@PathVariable Long characterId,
                                @RequestParam Map<String, String> params,

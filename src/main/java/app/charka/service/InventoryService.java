@@ -24,6 +24,10 @@ public interface InventoryService {
     @Transactional
     void delete(Long id);
 
+    /** R-08: носимый — на листе, неносимый — только в «Снаряжении» */
+    @Transactional
+    Inventory setCarried(Long id, boolean carried);
+
     @Transactional(readOnly = true)
     List<Item> getContent(Long id);
 }

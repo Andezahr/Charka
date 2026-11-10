@@ -60,7 +60,7 @@ class WoundControllerTest {
                             .param("severity", "2")
                             .contentType(MediaType.APPLICATION_FORM_URLENCODED))
                     .andExpect(status().is3xxRedirection())
-                    .andExpect(redirectedUrl("/character/1"));
+                    .andExpect(redirectedUrl("/character/1#wounds"));
 
             verify(woundService).create(eq(CHAR_ID), argThat(w ->
                     "Порез".equals(w.getName()) && Long.valueOf(2).equals(w.getSeverity())
@@ -75,7 +75,7 @@ class WoundControllerTest {
                             .param("name", "Царапина")
                             .contentType(MediaType.APPLICATION_FORM_URLENCODED))
                     .andExpect(status().is3xxRedirection())
-                    .andExpect(redirectedUrl("/character/1"));
+                    .andExpect(redirectedUrl("/character/1#wounds"));
 
             verify(woundService).create(eq(CHAR_ID), argThat(w ->
                     "Царапина".equals(w.getName()) && w.getSeverity() == null
@@ -127,7 +127,7 @@ class WoundControllerTest {
                             .param("severity", "3")
                             .contentType(MediaType.APPLICATION_FORM_URLENCODED))
                     .andExpect(status().is3xxRedirection())
-                    .andExpect(redirectedUrl("/character/1"));
+                    .andExpect(redirectedUrl("/character/1#wounds"));
 
             verify(woundService).getById(5L);
             verify(woundService).update(eq(5L), argThat(w ->
@@ -153,7 +153,7 @@ class WoundControllerTest {
                             .param("name", "Ожог")
                             .contentType(MediaType.APPLICATION_FORM_URLENCODED))
                     .andExpect(status().is3xxRedirection())
-                    .andExpect(redirectedUrl("/character/1"));
+                    .andExpect(redirectedUrl("/character/1#wounds"));
 
             verify(woundService).getById(6L);
             verify(woundService, never()).update(anyLong(), any());
@@ -185,7 +185,7 @@ class WoundControllerTest {
 
             mockMvc.perform(post("/character/{charId}/wounds/{woundId}/delete", CHAR_ID, 5L))
                     .andExpect(status().is3xxRedirection())
-                    .andExpect(redirectedUrl("/character/1"));
+                    .andExpect(redirectedUrl("/character/1#wounds"));
 
             verify(woundService).getById(5L);
             verify(woundService).delete(5L);
@@ -205,7 +205,7 @@ class WoundControllerTest {
 
             mockMvc.perform(post("/character/{charId}/wounds/{woundId}/delete", CHAR_ID, 6L))
                     .andExpect(status().is3xxRedirection())
-                    .andExpect(redirectedUrl("/character/1"));
+                    .andExpect(redirectedUrl("/character/1#wounds"));
 
             verify(woundService).getById(6L);
             verify(woundService, never()).delete(anyLong());

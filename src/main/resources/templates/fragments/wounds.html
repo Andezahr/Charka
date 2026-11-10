@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- R-09: журнал здоровья — новые записи сверху. R-23: журнал пишется сам (урон, медпомощь),
+     ручная запись (сломанное ребро, яд) — раскрытием -->
+<div th:fragment="log" class="wound-log">
+  <details class="add-own" th:open="${#lists.isEmpty(woundLog) and healthStatus == null}">
+    <summary>Запись вручную</summary>
+    <form th:action="@{'/character/' + ${character.id} + '/wounds'}" method="post" class="form-row">
+      <input type="text" name="name" class="grow" th:placeholder="${healthStatus != null} ? 'Запись: сломано ребро' : 'Описание раны'" required autocomplete="off" aria-label="Что случилось">
+      <input type="number" name="severity" class="narrow" placeholder="Тяжесть" min="1" step="1" aria-label="Тяжесть">
+      <button type="submit" class="btn btn-sm btn-primary">＋ Запись</button>
+    </form>
+  </details>
+  <div class="list">
+    <!-- Журнал: новые сверху; видно 8, старые свёрнуты -->
+    <th:block th:each="wound, state : ${woundLog}" th:if="${state.index < 8}">
+    <div class="row" data-editable>
+      <div class="row-main">
+        <div class="row-title" th:text="${wound.name}">Название</div>
+        <div class="row-meta">
+          <span th:if="${wound.severity != null}" class="chip red" th:text="(${healthStatus != null} ? 'Урон ' : 'Тяжесть ') + ${wound.severity}">Тяжесть 1</span>
+          <span th:if="${wound.date != null}" th:text="${wound.date}">дата</span>
+        </div>
+      </div>
+      <div class="row-actions">
+        <button type="button" class="icon-btn" data-edit-toggle title="Редактировать">✎</button>
+        <form th:action="@{'/character/' + ${character.id} + '/wounds/' + ${wound.id} + '/delete'}"
+              method="post" class="inline">
+          <button type="submit" class="icon-btn danger" title="Удалить">✕</button>
+        </form>
+      </div>
+      <form th:action="@{'/character/' + ${character.id} + '/wounds/' + ${wound.id} + '/edit'}"
+            method="post" class="edit-panel">
+        <div class="form-row">
+          <input type="text" name="name" class="grow" th:value="${wound.name}" required placeholder="Описание" aria-label="Описание">
+          <input type="number" name="severity" class="narrow" th:value="${wound.severity}" min="1" placeholder="Тяжесть" aria-label="Тяжесть">
+          <button type="submit" class="btn btn-sm btn-primary">Сохранить</button>
+        </div>
+      </form>
+    </div>
+    </th:block>
+    <details th:if="${#lists.size(woundLog) > 8}" class="add-own">
+      <summary th:text="'Раньше: ещё ' + ${#lists.size(woundLog) - 8}">Раньше</summary>
+      <div th:each="wound, state : ${woundLog}" th:if="${state.index >= 8}" class="row">
+        <div class="row-main">
+          <div class="row-title" th:text="${wound.name}">Запись</div>
+          <div class="row-meta"><span th:if="${wound.date != null}" th:text="${wound.date}">дата</span></div>
+        </div>
+        <form th:action="@{'/character/' + ${character.id} + '/wounds/' + ${wound.id} + '/delete'}" method="post" class="inline">
+          <button type="submit" class="icon-btn danger" title="Удалить">✕</button>
+        </form>
+      </div>
+    </details>
+    <div th:if="${#lists.isEmpty(character.wounds)}" class="empty">Нет ран — персонаж цел</div>
+  </div>
+</div>
+</body>
+</html>

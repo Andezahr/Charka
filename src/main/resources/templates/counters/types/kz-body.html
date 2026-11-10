@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<!-- Тело Космозэков (K-02): зоны со своим ХП и бронёй. card и card-compact ожидают counter (counter.view = KzBodyView) и characterId -->
+<body>
+
+<!-- Зоны плитками: нажатие выбирает зону урона (радио внутри формы урона) -->
+<th:block th:fragment="zones(h, pick)">
+  <div class="kz-zones">
+    <label th:each="z : ${h.zones}" class="kz-zone" th:classappend="'is-' + ${z.css}"
+           th:title="${z.name} + ': цифры ' + ${z.digits} + (${z.multiplier > 1} ? ', урон ×' + ${z.multiplier} : '') + (${z.armorFrom != null} ? ', броня: ' + ${z.armorFrom} : '')">
+      <input th:if="${pick}" type="radio" name="location" th:value="${z.code}" class="kz-zone-pick">
+      <span class="kz-zone-name"><span th:text="${z.name}">Голова</span> <small th:text="${z.digits}">0</small></span>
+      <span class="kz-zone-hp"><b th:text="${z.hp}">100</b><small th:text="'/' + ${z.maxHp}">/100</small>
+        <small th:if="${z.armor > 0}" class="kz-zone-armor" th:text="'🛡' + ${z.armor}">🛡20</small>
+        <small th:if="${z.multiplier > 1}" class="kz-zone-mult" th:text="'×' + ${z.multiplier}">×2</small></span>
+      <span class="kz-bar"><span th:style="'width:' + ${z.percent} + '%'"></span></span>
+    </label>
+  </div>
+</th:block>
+
+<!-- Урон: число, зона нажатием по плитке (или случайно), сколько попаданий, «броня ½» -->
+<form th:fragment="damage(h, base)" th:action="${base} + '/health/damage'" method="post" class="kz-damage">
+  <th:block th:replace="~{:: zones(${h}, true)}"></th:block>
+  <div class="form-row">
+    <label class="check kz-random"><input type="radio" name="location" value="" checked> Случайно</label>
+    <input type="number" name="amount" min="0" placeholder="Урон" required class="cp-amount" aria-label="Урон одного попадания">
+    <label class="kz-hits" title="Попаданий: броня вычитается из каждого">×<input type="number" name="hits" min="1" max="200" value="1" class="narrow" aria-label="Попаданий"></label>
+    <label class="check" title="Оружие ближнего боя: броня вдвое меньше"><input type="checkbox" name="armorHalf" value="true"> броня ½</label>
+    <button type="submit" class="btn btn-danger">Нанести</button>
+  </div>
+</form>
+
+<div th:fragment="card" class="counter counter-wide cp-card kz-body" data-editable
+     th:with="h=${counter.view},
+              base=@{/character/{characterId}/counters/{counterId}(characterId=${characterId}, counterId=${counter.id})}"
+     th:classappend="'is-' + ${h.statusCss}">
+  <div class="counter-head">
+    <div>
+      <div class="counter-name" th:text="${counter.name}">Здоровье</div>
+      <div class="counter-meta" th:text="${h.statusLabel}">Без ранений</div>
+    </div>
+    <form th:action="${base}" th:method="delete" class="inline" data-confirm="Удалить счётчик?">
+      <button type="submit" class="icon-btn danger" title="Удалить счётчик">×</button>
+    </form>
+  </div>
+
+  <div th:if="${h.unconscious}" class="cp-callout danger">
+    <span class="cp-callout-text">Зона на нуле — без сознания.</span>
+    <form th:action="${base} + '/action/AWAKE'" method="post"><button type="submit" class="btn btn-sm">Очнулся</button></form>
+  </div>
+  <div th:if="${h.awake}" class="cp-callout">
+    <span class="cp-callout-text">Зона на нуле, но мастер отметил: в сознании.</span>
+    <form th:action="${base} + '/action/AWAKE'" method="post"><button type="submit" class="btn btn-sm btn-ghost">Снова без сознания</button></form>
+  </div>
+  <div th:if="${h.dead}" class="cp-callout">Отмечен мёртвым.</div>
+
+  <th:block th:replace="~{:: damage(${h}, ${base})}"></th:block>
+
+  <details class="cp-more">
+    <summary>Лечение и правка</summary>
+    <!-- tools: и в карточке, и на листе (card-compact) — без второго набора зон и формы урона (UX-25) -->
+    <div class="cp-more-body" th:fragment="tools(h, base)">
+      <form th:action="${base} + '/health/heal'" method="post" class="form-row">
+        <input type="number" name="points" min="1" placeholder="ХП в каждую зону" required aria-label="ХП в каждую зону">
+        <button type="submit" class="btn btn-sm btn-success">Вылечить все зоны</button>
+      </form>
+      <form th:action="${base} + '/attributes'" method="post" class="form">
+        <div class="field-grid">
+          <label class="field" th:each="z : ${h.zones}">
+            <span class="label" th:text="${z.name} + ': ХП / броня'">Голова</span>
+            <span class="form-row">
+              <input type="number" th:name="'attributes[hp_' + ${z.code} + ']'" min="0" th:max="${z.maxHp}" th:value="${z.hp}" class="narrow" aria-label="ХП">
+              <input type="number" th:name="'attributes[armor_' + ${z.code} + ']'" min="0" max="500"
+                     th:value="${z.armorFrom == 'вручную' ? z.armor : 0}" class="narrow" aria-label="Броня вручную"
+                     title="Броня без предмета (звери, роботы); надетые предметы считаются сами">
+            </span>
+          </label>
+          <label class="field">
+            <span class="label">Отдых при промотке времени</span>
+            <select name="attributes[rest]">
+              <option th:each="o : ${h.restOptions}" th:value="${o.value}" th:text="${o.label}" th:selected="${o.value == '' + h.rest}">Сон и еда</option>
+            </select>
+          </label>
+        </div>
+        <button type="submit" class="btn btn-sm btn-primary">Сохранить</button>
+      </form>
+      <div class="form-row">
+        <form th:action="${base} + '/action/DEAD'" method="post">
+          <button type="submit" class="btn btn-sm btn-ghost" th:text="${h.dead} ? 'Жив' : 'Отметить мёртвым'">Отметить мёртвым</button>
+        </form>
+        <form th:action="${base} + '/reset'" method="post" data-confirm="Полностью вылечить все зоны?">
+          <button type="submit" class="btn btn-sm btn-warning">Полностью вылечить</button>
+        </form>
+      </div>
+      <form th:action="${base} + '/texts'" method="post" class="form-row">
+        <select name="preset" aria-label="Готовый набор зон">
+          <option th:each="p : ${h.presets}" th:value="${p.value}" th:text="${p.label}">Человек</option>
+        </select>
+        <button type="submit" class="btn btn-sm" data-confirm="Заменить зоны готовым набором?">Набор зон</button>
+      </form>
+      <form th:action="${base} + '/texts'" method="post" class="form">
+        <label class="field">
+          <span class="label">Свои зоны: строка на зону — «Название | цифры к10 | ХП | множитель урона»</span>
+          <textarea name="zones" rows="6" th:text="${h.zonesText}">Голова | 0 | 100 | 2</textarea>
+        </label>
+        <button type="submit" class="btn btn-sm">Сохранить зоны</button>
+      </form>
+    </div>
+  </details>
+</div>
+
+<!-- UX-25, UX-26: на листе — полоса «цифра к100 → зона», фигура из зон (у человека) с ХП и бронёй;
+     урон, лечение и правка — кнопками. Второго набора зон и второй формы урона здесь нет -->
+<div th:fragment="card-compact" class="cp-compact kz-body kz-compact" id="state-health"
+     th:with="h=${counter.view},
+              base=@{/character/{characterId}/counters/{counterId}(characterId=${characterId}, counterId=${counter.id})}"
+     th:classappend="'is-' + ${h.statusCss}">
+  <div class="cp-compact-head">
+    <span class="cp-compact-title">Тело</span>
+    <span class="cp-health-status" th:text="${h.statusLabel}">Без ранений</span>
+    <span th:if="${h.unconscious}" class="state-fact is-warn" th:text="'на нуле: ' + ${h.downZones} + '. Попадания в эту зону урона не наносят'">на нуле: правая рука</span>
+    <span th:if="${h.awake}" class="state-fact">зона на нуле, но мастер отметил: в сознании</span>
+    <form th:if="${h.unconscious}" th:action="${base} + '/action/AWAKE'" method="post" class="inline">
+      <button type="submit" class="btn btn-sm">Очнулся</button>
+    </form>
+    <div class="state-tools">
+      <details th:unless="${h.dead}" class="state-tool">
+        <summary class="btn btn-sm btn-danger-ghost">Урон…</summary>
+        <th:block th:replace="~{:: damage(${h}, ${base})}"></th:block>
+      </details>
+      <details class="state-tool">
+        <summary class="btn btn-sm">Лечение, зоны и броня…</summary>
+        <div class="state-tool-body">
+          <div th:replace="~{:: tools(${h}, ${base})}"></div>
+        </div>
+      </details>
+    </div>
+  </div>
+  <div class="kz-digits" data-kz-digits>
+    <span class="kz-digits-title">Последняя цифра броска к100 — зона</span>
+    <div class="kz-digit-row">
+      <button th:each="d : ${h.digitCells}" type="button" class="kz-digit" th:classappend="'is-' + ${d.css}"
+              th:attr="data-kz-digit=${d.digit},data-kz-zone=${d.zone != null} ? ${d.zone.code} : '',aria-label='Цифра ' + ${d.digit} + ': ' + ${d.label}"
+              th:title="${d.label}"><b th:text="${d.digit}">0</b><span class="kz-digit-bar"></span></button>
+    </div>
+  </div>
+  <div class="kz-figure" th:classappend="${h.humanShape} ? 'is-human'">
+    <div th:each="z : ${h.zones}" class="kz-fz" th:classappend="'is-' + ${z.css} + ' kz-at-' + ${z.code}" th:attr="data-kz-zone=${z.code}">
+      <span class="kz-fz-name"><span th:text="${z.name}">Голова</span> <small th:text="'цифра ' + ${z.digits}">цифра 0</small>
+        <small th:if="${z.multiplier > 1}" class="kz-fz-mult" th:text="'урон ×' + ${z.multiplier}">урон ×2</small></span>
+      <span class="kz-fz-hp"><b th:text="${z.hp}">100</b> <small th:text="'из ' + ${z.maxHp}">из 100</small>
+        <small class="kz-fz-armor" th:classappend="${z.armor > 0} ? 'has-armor'" th:text="${z.armor > 0} ? 'броня ' + ${z.armor} : 'без брони'"
+               th:title="${z.armorFrom}">броня 20</small></span>
+      <span class="kz-bar"><span th:style="'width:' + ${z.percent} + '%'"></span></span>
+    </div>
+  </div>
+</div>
+</body>
+</html>

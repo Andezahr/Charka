@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- A-07: открытые запросы бросков. Игрок — свои, одна кнопка; мастер — все: бросить за игрока или снять.
+     Опрашивается app.js ([data-requests]) и подменяется целиком -->
+<th:block th:fragment="list">
+  <div th:each="r : ${requests}" class="request-card" th:classappend="${isGm} ? 'is-gm'">
+    <div class="request-text">
+      <span class="request-who" th:text="${r.character.name}">Колясик</span>
+      <span th:text="${isGm} ? 'ждёт: ' + ${r.label} : 'Мастер просит: ' + ${r.label}">Мастер просит: Внимательность 15</span>
+    </div>
+    <form th:action="@{'/campaign/' + ${campaignId} + '/requests/' + ${r.id} + '/roll'}" method="post">
+      <button type="submit" class="btn btn-sm btn-primary" th:text="${isGm} ? '🎲 За игрока' : '🎲 Бросить'">🎲 Бросить</button>
+    </form>
+    <form th:if="${isGm}" th:action="@{'/campaign/' + ${campaignId} + '/requests/' + ${r.id} + '/cancel'}" method="post">
+      <button type="submit" class="icon-btn" title="Снять запрос">×</button>
+    </form>
+  </div>
+</th:block>
+
+<!-- Место для запросов на странице: наполняет опрос -->
+<div th:fragment="slot(campaignId, characterId)" class="requests-slot"
+     th:attr="data-requests=${characterId != null} ? @{'/campaign/' + ${campaignId} + '/requests'(character=${characterId})} : @{'/campaign/' + ${campaignId} + '/requests'}"></div>
+
+<!-- A-07, A-08: мастер просит бросок — у одного или у всех сразу. Игроки отмечены; NPC мастер бросает сам при отправке -->
+<section th:fragment="ask-form(campaign)" class="card" id="ask-roll"
+         th:with="choices=${@rollRequestService.choices(campaign.id)},plain=${@rollRequestService.plainChecks(campaign.id)}">
+  <div class="card-head"><h2 class="card-title"><span class="dot"></span>Попросить бросок</h2></div>
+  <div class="card-body">
+    <form th:action="@{'/campaign/' + ${campaign.id} + '/requests'}" method="post" class="form">
+      <!-- UX-21: длинный список навыков — с поиском; один вариант (Космозэки: «Проверка») — без выпадающего списка -->
+      <div th:if="${#lists.size(choices) > 8}" class="form-row">
+        <input type="search" class="grow" placeholder="Найти навык" autocomplete="off" aria-label="Найти навык" data-select-filter="what">
+      </div>
+      <div class="form-row">
+        <input th:if="${#lists.size(choices) == 1}" type="hidden" name="what" th:value="${choices[0].value}">
+        <select th:if="${#lists.size(choices) > 1}" name="what" class="grow" required aria-label="Что бросать" data-remember="request-what">
+          <option th:each="c : ${choices}" th:value="${c.value}" th:text="${c.label}">Внимательность</option>
+        </select>
+        <!-- KF-10: max — не ступень одной системы: у Космозэков свои числа -->
+        <input type="number" name="difficulty" class="narrow" min="1" max="1000" th:placeholder="${plain} ? 'Сложн.' : 'DC'" aria-label="Сложность"
+               title="Сложность проверки; спасброску не нужна" th:attr="list=${'dc-' + campaign.id}">
+        <datalist th:id="${'dc-' + campaign.id}">
+          <option th:each="p : ${difficultyPresets}" th:value="${p.value}" th:label="${p.key}">15</option>
+        </datalist>
+      </div>
+      <!-- KF-10: простая проверка — что проверяем, мастер пишет словами; пусто — «Проверка» -->
+      <div th:if="${plain}" class="form-row">
+        <input type="text" name="subject" class="grow" maxlength="200" autocomplete="off" placeholder="Что проверяем: взлом, погоня…"
+               aria-label="Что проверяем">
+      </div>
+      <div class="chips request-targets">
+        <label th:each="c : ${campaign.characters}" class="check">
+          <input type="checkbox" name="character" th:value="${c.id}" th:checked="${!c.npc}">
+          <span th:text="${c.name}">Колясик</span>
+        </label>
+      </div>
+      <div class="form-row">
+        <button type="submit" class="btn btn-primary" title="Каждому отмеченному игроку — карточка с одной кнопкой; NPC бросаются сразу">Попросить</button>
+        <button type="submit" name="rollNow" value="true" class="btn" title="Бросить сразу за всех отмеченных">🎲 Бросить за всех</button>
+        <!-- A-09: броски NPC игроки не увидят -->
+        <label class="check" title="Броски NPC игроки не увидят, в общую строку они не попадут">
+          <input type="checkbox" name="hidden" value="true" data-remember="request-hidden"><span>🙈 NPC скрыто</span>
+        </label>
+      </div>
+    </form>
+  </div>
+</section>
+</body>
+</html>

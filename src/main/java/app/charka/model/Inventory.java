@@ -17,6 +17,10 @@ public class Inventory {
 
     private String name;
 
+    /** R-08: носимый — на листе; неносимый (машина, нычка) — только на вкладке «Снаряжение» */
+    @Column(nullable = false)
+    private boolean carried = true;
+
     @JsonManagedReference
     @OneToMany(mappedBy = "inventory", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Item> content = new ArrayList<>();
