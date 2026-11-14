@@ -295,7 +295,7 @@ public class KzBodyStrategy extends AbstractCounterStrategy implements HealthCou
         StringBuilder line = new StringBuilder("Урон " + request.getAmount());
         if (armor > 0) {
             if (request.extra(ARMOR_HALF, 0) > 0) {
-                // HOMEBREW: половина брони — вниз
+                // HOMEBREW: половина брони — вниз (RULES_KOSMOZEKI.md, раздел 10: есть ли это округление в документе)
                 effective = armor / 2;
                 line.append(" − броня ").append(armor).append(" (½ = ").append(effective).append(")");
             } else {
