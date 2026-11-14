@@ -1,19 +1,20 @@
 package app.charka.map;
 
+import app.charka.support.CharkaTest;
+
 import app.charka.system.GameSystemRegistry;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
+
+
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@SpringBootTest
-@ActiveProfiles("test")
+@CharkaTest
 @DisplayName("Генератор карт (M-08)")
 class MapGeneratorTest {
 

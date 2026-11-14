@@ -1,5 +1,7 @@
 package app.charka.attack;
 
+import app.charka.support.CharkaTest;
+
 import app.charka.encounter.EncounterService;
 import app.charka.encounter.EncounterView;
 import app.charka.item.CatalogItem;
@@ -19,11 +21,10 @@ import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.Answers;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+
+
+
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -37,8 +38,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
 
 /** REF 6 у всех, BODY 6: прибавки к урону нет, BTM 2 */
-@SpringBootTest
-@ActiveProfiles("test")
+@CharkaTest
 @Transactional
 @DisplayName("Ближний бой: весь ход на настоящих сервисах")
 class MeleeAttackTest {
@@ -53,7 +53,7 @@ class MeleeAttackTest {
     @Autowired private GameSystemRegistry systemRegistry;
     @Autowired private EntityManager entityManager;
 
-    @MockitoBean(answers = Answers.CALLS_REAL_METHODS) private DiceRoller dice;
+    @Autowired private DiceRoller dice;
 
     private Campaign campaign;
     private Character attacker;

@@ -31,9 +31,10 @@ public class SecurityConfig {
     /** «Запомнить меня» на 30 дней: телефон у стола не спрашивает пароль каждый раз */
     private static final int REMEMBER_SECONDS = (int) Duration.ofDays(30).toSeconds();
 
+    /** Стоимость BCrypt: 10 — по умолчанию Spring; тесты ставят 4, чтобы вход не тормозил прогон (TT-01) */
     @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+    public PasswordEncoder passwordEncoder(@Value("${charka.security.bcrypt-strength:10}") int strength) {
+        return new BCryptPasswordEncoder(strength);
     }
 
     @Bean

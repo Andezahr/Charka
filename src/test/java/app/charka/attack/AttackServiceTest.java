@@ -1,5 +1,7 @@
 package app.charka.attack;
 
+import app.charka.support.CharkaTest;
+
 import app.charka.model.Campaign;
 import app.charka.model.Character;
 import app.charka.model.Inventory;
@@ -20,11 +22,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.Answers;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.context.ActiveProfiles;
+
+
+
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -37,8 +38,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
 
-@SpringBootTest
-@ActiveProfiles("test")
+@CharkaTest
 @Transactional
 @DisplayName("Атака: весь ход на настоящих сервисах")
 class AttackServiceTest {
@@ -54,7 +54,7 @@ class AttackServiceTest {
     @Autowired private app.charka.repository.RollLogRepository rollLogRepository;
     @Autowired private app.charka.chat.ChatService chatService;
 
-    @MockitoBean(answers = Answers.CALLS_REAL_METHODS) private DiceRoller dice;
+    @Autowired private DiceRoller dice;
 
     private Character shooter;
     private Character victim;

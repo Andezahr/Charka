@@ -1,5 +1,7 @@
 package app.charka.system.cp2020;
 
+import app.charka.support.CharkaTest;
+
 import app.charka.creation.CharacterCreation;
 import app.charka.model.Campaign;
 import app.charka.model.Character;
@@ -13,13 +15,12 @@ import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.Answers;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcPrint;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+
+
+
+
+
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,9 +39,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
 
-@SpringBootTest
-@ActiveProfiles("test")
-@AutoConfigureMockMvc(print = MockMvcPrint.NONE)
+@CharkaTest
 @Transactional
 @DisplayName("Мастер создания персонажа CP2020 (P-01)")
 class Cp2020CreationTest {
@@ -51,7 +50,7 @@ class Cp2020CreationTest {
     @Autowired private CharacterRepository characterRepository;
     @Autowired private EntityManager entityManager;
 
-    @MockitoBean(answers = Answers.CALLS_REAL_METHODS) private DiceRoller dice;
+    @Autowired private DiceRoller dice;
 
     private Campaign campaign;
 

@@ -1,5 +1,7 @@
 package app.charka.attack;
 
+import app.charka.support.CharkaTest;
+
 import app.charka.check.CheckRequest;
 import app.charka.check.CheckResult;
 import app.charka.item.ItemField.Option;
@@ -19,14 +21,13 @@ import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.Answers;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
+
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+
+
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -43,8 +44,7 @@ import static org.mockito.Mockito.when;
  * Проверка, что контракт атаки не привязан к Cyberpunk 2020: система в духе D&D 5e, только в тестах.
  * Сложность задаёт цель (класс брони), заклинание — не предмет, расстояния нет, огненный шар — спасбросок на половину урона.
  */
-@SpringBootTest
-@ActiveProfiles("test")
+@CharkaTest
 @Transactional
 @Import(OtherSystemAttackTest.Config.class)
 @DisplayName("Контракт атаки подходит другой системе")
@@ -150,7 +150,7 @@ class OtherSystemAttackTest {
     @Autowired private InventoryService inventoryService;
     @Autowired private EntityManager entityManager;
 
-    @MockitoBean(answers = Answers.CALLS_REAL_METHODS) private DiceRoller dice;
+    @Autowired private DiceRoller dice;
 
     private Character wizard;
     private Character orc;

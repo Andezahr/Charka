@@ -1,5 +1,7 @@
 package app.charka.map;
 
+import app.charka.support.CharkaTest;
+
 import app.charka.model.BattleMap;
 import app.charka.model.Campaign;
 import app.charka.repository.CampaignRepository;
@@ -10,8 +12,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
+
+
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -21,9 +23,7 @@ import java.util.NoSuchElementException;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@SpringBootTest
-@org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
-@ActiveProfiles("test")
+@CharkaTest
 @Transactional
 @DisplayName("Карты кампании (M-01)")
 class BattleMapServiceTest {

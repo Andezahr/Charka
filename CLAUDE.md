@@ -30,7 +30,7 @@
 - Spring Security (U-03): вход по логину и паролю, права по кампаниям — `AccessInterceptor`; `charka.security.enabled=false` (профиль тестов) — без входа. CSRF-токен в cookie `XSRF-TOKEN`, `app.js` шлёт его заголовком
 - Spring Data JPA / Hibernate, **PostgreSQL 17 в Docker** (`compose.yaml`: контейнер `charka-postgres`, `localhost:5433/charka`, `charka`/`charka_dev_pw`; переопределяется `DB_URL`/`DB_USER`/`DB_PASSWORD`). `spring-boot-docker-compose` поднимает контейнер сам при `spring-boot:run` — нужен запущенный Docker Desktop. Установленный в системе PostgreSQL (5432) не используется
 - **Flyway**: схема только миграциями `src/main/resources/db/migration/V<n>__*.sql`, Hibernate `ddl-auto=validate` → любое изменение сущности = новая миграция
-- Тесты: H2 в режиме PostgreSQL на тех же миграциях (`application-test.yml`, `@ActiveProfiles("test")` у `@SpringBootTest`) — SQL миграций держать переносимым
+- Тесты: H2 в режиме PostgreSQL на тех же миграциях (`application-test.yml`; интеграционный тест — `@CharkaTest` или `@CharkaSecuredTest` из `support/`, не голый `@SpringBootTest`: иначе свой контекст Spring) — SQL миграций держать переносимым
 - Lombok (`@Data`, `@RequiredArgsConstructor`), Bean Validation
 - Тесты: JUnit 5, Spring Boot Test (MockMvc, Mockito)
 - Сборка: Maven Wrapper. Профили `dev`/`prod` объявлены в pom, но отдельных `application-*.yml` нет.
@@ -40,7 +40,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 1122 тестов, на 2026-11-10 все зелёные (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 1156 тестов, на 2026-11-14 все зелёные, ~1 мин 20 с с clean (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw test -Dtest='EncounterServiceTest,GmBattleEditTest'   # по ходу работы — только затронутое; полный прогон — перед коммитом (TODO.md, раздел 0, п. 4)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
@@ -225,7 +225,7 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 - «Не найдено» → `NotFoundException` (404), сообщение `"Item not found for id=%d"`; `IllegalArgumentException` — только некорректный ввод (400).
 - Контроллеры (кроме счётчиков) принимают `@RequestParam` и собирают сущность вручную, после POST — `redirect:/...`.
 - Контроллер счётчиков — образец «нового» стиля: DTO + `@Valid` + flash-сообщения `successMessage`/`errorMessage`.
-- Тесты разбиты на `@Nested` классы по операциям.
+- Тесты разбиты на `@Nested` классы по операциям. Интеграционные — `@CharkaTest` (без входа) или `@CharkaSecuredTest` (со входом): один контекст на прогон. Кубики там — мок: поле `@Autowired DiceRoller dice` и `when(dice.roll(10))`; без поля броски случайные (`RandomDiceListener`). Свой `@MockitoBean`, `@TestPropertySource` или `@Import` — новый контекст, только если без него никак.
 - Имя фрагмента не должно совпадать с тегом HTML (`form`, `slot`…): селектор `~{file :: form}` найдёт элементы `<form>`.
 - Отмена (A-01) снимает таблицы списком `CampaignSnapshots.TABLES`: новая таблица игрового состояния персонажа или боя — добавить туда, иначе её изменения не откатываются. Новый изменяющий маршрут вне игры (как заметки) — в `UndoInterceptor.SKIPPED`.
 

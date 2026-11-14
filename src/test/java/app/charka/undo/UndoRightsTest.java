@@ -1,5 +1,7 @@
 package app.charka.undo;
 
+import app.charka.support.CharkaSecuredTest;
+
 import app.charka.model.Campaign;
 import app.charka.model.Character;
 import app.charka.repository.AppUserRepository;
@@ -13,10 +15,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcPrint;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
+
+
+
+
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,9 +32,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest(properties = "charka.security.enabled=true")
-@AutoConfigureMockMvc(print = MockMvcPrint.NONE)
-@ActiveProfiles("test")
+@CharkaSecuredTest
 @Transactional
 @DisplayName("Отмена (A-01): кто может отменить")
 class UndoRightsTest {

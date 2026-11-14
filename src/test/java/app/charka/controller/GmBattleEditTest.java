@@ -1,5 +1,7 @@
 package app.charka.controller;
 
+import app.charka.support.CharkaSecuredTest;
+
 import app.charka.encounter.EncounterService;
 import app.charka.encounter.EncounterView;
 import app.charka.model.Campaign;
@@ -26,11 +28,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcPrint;
-import org.springframework.boot.test.context.SpringBootTest;
+
+
+
 import org.springframework.data.domain.PageRequest;
-import org.springframework.test.context.ActiveProfiles;
+
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,9 +51,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * GM-01: мастер с карты боя лечит, бьёт и правит число действий участника; BF-01: лечение «в нулях» и атака в том же раунде.
  */
-@SpringBootTest(properties = "charka.security.enabled=true")
-@AutoConfigureMockMvc(print = MockMvcPrint.NONE)
-@ActiveProfiles("test")
+@CharkaSecuredTest
 @Transactional
 @DisplayName("Правка мастера в бою (GM-01, BF-01)")
 class GmBattleEditTest {
@@ -68,7 +68,7 @@ class GmBattleEditTest {
     @Autowired private JournalEntryRepository journalRepository;
     @Autowired private EntityManager entityManager;
 
-    @org.springframework.test.context.bean.override.mockito.MockitoBean(answers = org.mockito.Answers.CALLS_REAL_METHODS)
+    @Autowired
     private app.charka.model.counters.strategy.health.DiceRoller dice;
 
     private Campaign campaign;

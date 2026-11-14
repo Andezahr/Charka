@@ -1,5 +1,7 @@
 package app.charka.map;
 
+import app.charka.support.CharkaTest;
+
 import app.charka.encounter.EncounterService;
 import app.charka.model.BattleMap;
 import app.charka.model.Campaign;
@@ -13,8 +15,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
+
+
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -23,8 +25,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@SpringBootTest
-@ActiveProfiles("test")
+@CharkaTest
 @Transactional
 @DisplayName("M-22: многоуровневые карты")
 class LevelMapTest {

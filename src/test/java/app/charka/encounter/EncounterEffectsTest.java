@@ -1,5 +1,7 @@
 package app.charka.encounter;
 
+import app.charka.support.CharkaTest;
+
 import app.charka.attack.AttackForm;
 import app.charka.attack.AttackRequest;
 import app.charka.attack.AttackResult;
@@ -20,11 +22,10 @@ import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.Answers;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+
+
+
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -37,8 +38,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
 
-@SpringBootTest
-@ActiveProfiles("test")
+@CharkaTest
 @Transactional
 @DisplayName("Эффекты по раундам боя")
 class EncounterEffectsTest {
@@ -52,7 +52,7 @@ class EncounterEffectsTest {
     @Autowired private GameSystemRegistry registry;
     @Autowired private EntityManager entityManager;
 
-    @MockitoBean(answers = Answers.CALLS_REAL_METHODS) private DiceRoller dice;
+    @Autowired private DiceRoller dice;
 
     private Campaign campaign;
     private Character thrower;

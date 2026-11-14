@@ -1,5 +1,7 @@
 package app.charka.system.cp2020;
 
+import app.charka.support.CharkaTest;
+
 import app.charka.attack.AttackRequest;
 import app.charka.attack.AttackResult;
 import app.charka.attack.AttackService;
@@ -17,13 +19,12 @@ import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.Answers;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcPrint;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+
+
+
+
+
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,9 +41,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /** LUCK 6 у всех по умолчанию */
-@SpringBootTest
-@ActiveProfiles("test")
-@AutoConfigureMockMvc(print = MockMvcPrint.NONE)
+@CharkaTest
 @Transactional
 @DisplayName("Удача CP2020 (с. 26)")
 class Cp2020LuckTest {
@@ -58,7 +57,7 @@ class Cp2020LuckTest {
     @Autowired private EntityManager entityManager;
     @Autowired private app.charka.repository.EncounterRepository encounterRepository;
 
-    @MockitoBean(answers = Answers.CALLS_REAL_METHODS) private DiceRoller dice;
+    @Autowired private DiceRoller dice;
 
     private Campaign campaign;
     private Character lucky;

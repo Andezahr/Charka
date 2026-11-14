@@ -1,5 +1,7 @@
 package app.charka.attack;
 
+import app.charka.support.CharkaTest;
+
 import app.charka.encounter.EncounterService;
 import app.charka.map.BattleFieldService;
 import app.charka.map.BattleMapService;
@@ -18,11 +20,10 @@ import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.Answers;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+
+
+
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -33,8 +34,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
 
-@SpringBootTest
-@ActiveProfiles("test")
+@CharkaTest
 @Transactional
 @DisplayName("M-17: промах попадает в стоящего на линии огня (хоумбрю)")
 class StrayShotTest {
@@ -50,7 +50,7 @@ class StrayShotTest {
     @Autowired private ItemService itemService;
     @Autowired private EntityManager entityManager;
 
-    @MockitoBean(answers = Answers.CALLS_REAL_METHODS) private DiceRoller dice;
+    @Autowired private DiceRoller dice;
 
     private Campaign campaign;
     private Character shooter;

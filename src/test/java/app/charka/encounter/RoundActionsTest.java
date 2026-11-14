@@ -1,5 +1,7 @@
 package app.charka.encounter;
 
+import app.charka.support.CharkaTest;
+
 import app.charka.attack.AttackRequest;
 import app.charka.attack.AttackResult;
 import app.charka.attack.AttackService;
@@ -15,13 +17,12 @@ import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.Answers;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcPrint;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+
+
+
+
+
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,9 +36,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
-@SpringBootTest
-@AutoConfigureMockMvc(print = MockMvcPrint.NONE)
-@ActiveProfiles("test")
+@CharkaTest
 @Transactional
 @DisplayName("Штраф за несколько действий в раунде (A-05)")
 class RoundActionsTest {
@@ -51,7 +50,7 @@ class RoundActionsTest {
     @Autowired private EncounterService encounterService;
     @Autowired private EntityManager entityManager;
 
-    @MockitoBean(answers = Answers.CALLS_REAL_METHODS) private DiceRoller dice;
+    @Autowired private DiceRoller dice;
 
     private Campaign campaign;
     private Character shooter;

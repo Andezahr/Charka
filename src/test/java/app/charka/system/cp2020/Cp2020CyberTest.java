@@ -1,5 +1,7 @@
 package app.charka.system.cp2020;
 
+import app.charka.support.CharkaTest;
+
 import app.charka.attack.AttackRequest;
 import app.charka.attack.AttackResult;
 import app.charka.attack.AttackService;
@@ -26,13 +28,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.Answers;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcPrint;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+
+
+
+
+
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,9 +51,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /** BODY 6 и EMP 6 у всех по умолчанию: человечность 60, BTM 2 */
-@SpringBootTest
-@ActiveProfiles("test")
-@AutoConfigureMockMvc(print = MockMvcPrint.NONE)
+@CharkaTest
 @Transactional
 @DisplayName("Киберware CP2020")
 class Cp2020CyberTest {
@@ -68,7 +67,7 @@ class Cp2020CyberTest {
     @Autowired private GameSystemRegistry registry;
     @Autowired private EntityManager entityManager;
 
-    @MockitoBean(answers = Answers.CALLS_REAL_METHODS) private DiceRoller dice;
+    @Autowired private DiceRoller dice;
 
     private Campaign campaign;
     private Character owner;

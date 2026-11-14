@@ -1,5 +1,7 @@
 package app.charka.security;
 
+import app.charka.support.CharkaSecuredTest;
+
 import app.charka.model.AppUser;
 import app.charka.model.Campaign;
 import app.charka.model.Character;
@@ -13,9 +15,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
+
+
+
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,9 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest(properties = "charka.security.enabled=true")
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
+@CharkaSecuredTest
 @Transactional
 @DisplayName("Пользователи и права (U-03)")
 class SecurityTest {

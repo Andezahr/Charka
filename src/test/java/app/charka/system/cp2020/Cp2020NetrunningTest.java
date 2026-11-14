@@ -1,5 +1,7 @@
 package app.charka.system.cp2020;
 
+import app.charka.support.CharkaTest;
+
 import app.charka.model.Campaign;
 import app.charka.model.Character;
 import app.charka.model.Item;
@@ -12,11 +14,10 @@ import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.Answers;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+
+
+
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -27,8 +28,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
 
-@SpringBootTest
-@ActiveProfiles("test")
+@CharkaTest
 @Transactional
 @DisplayName("Нетраннинг CP2020: дека и программы (P-05)")
 class Cp2020NetrunningTest {
@@ -41,7 +41,7 @@ class Cp2020NetrunningTest {
     @Autowired private app.charka.repository.CharacterRepository characterRepository;
     @Autowired private app.charka.service.MoneyService moneyService;
 
-    @MockitoBean(answers = Answers.CALLS_REAL_METHODS) private DiceRoller dice;
+    @Autowired private DiceRoller dice;
 
     private Character runner;
     private Long inventoryId;

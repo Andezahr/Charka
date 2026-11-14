@@ -1,5 +1,7 @@
 package app.charka.controller;
 
+import app.charka.support.CharkaTest;
+
 import app.charka.model.Campaign;
 import app.charka.model.Character;
 import app.charka.model.Item;
@@ -12,13 +14,12 @@ import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.Answers;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcPrint;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+
+
+
+
+
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,9 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Лист с настоящими шаблонами: стандартные тесты контроллеров Thymeleaf не запускают, ошибка в шаблоне видна только здесь.
  */
-@SpringBootTest
-@AutoConfigureMockMvc(print = MockMvcPrint.NONE)
-@ActiveProfiles("test")
+@CharkaTest
 @Transactional
 @DisplayName("Атака на листе персонажа: шаблоны")
 class AttackPageTest {
@@ -49,7 +48,7 @@ class AttackPageTest {
     @Autowired private ItemService itemService;
     @Autowired private EntityManager entityManager;
 
-    @MockitoBean(answers = Answers.CALLS_REAL_METHODS) private DiceRoller dice;
+    @Autowired private DiceRoller dice;
 
     private Character thrower;
     private Character victim;

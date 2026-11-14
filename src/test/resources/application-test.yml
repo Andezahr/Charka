@@ -9,3 +9,5 @@ spring:
 charka:
   security:
     enabled: false
+    # TT-01: дешёвый BCrypt — тесты входа не ждут хэша
+    bcrypt-strength: 4

@@ -34,6 +34,8 @@
 	</scm>
 
 	<properties>
+		<!-- TT-01: пустой argLine, если его не задал агент (jacoco и т.п.) -->
+		<argLine></argLine>
 		<java.version>24</java.version>
 		<maven.compiler.source>${java.version}</maven.compiler.source>
 		<maven.compiler.target>${java.version}</maven.compiler.target>
@@ -163,6 +165,14 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+			<!-- TT-01: прогон тестов короткий — JIT C1 хватает, полная оптимизация C2 не окупается -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<argLine>@{argLine} -XX:TieredStopAtLevel=1 -Xshare:auto</argLine>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>

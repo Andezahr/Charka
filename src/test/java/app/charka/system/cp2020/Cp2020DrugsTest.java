@@ -1,5 +1,7 @@
 package app.charka.system.cp2020;
 
+import app.charka.support.CharkaTest;
+
 import app.charka.effect.EffectTemplate.DurationUnit;
 import app.charka.effect.TimedEffectService;
 import app.charka.effect.TimedEffects;
@@ -20,13 +22,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.Answers;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcPrint;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+
+
+
+
+
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,9 +44,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /** Кубики всегда 3: срок 1D6+1 = 4 */
-@SpringBootTest
-@ActiveProfiles("test")
-@AutoConfigureMockMvc(print = MockMvcPrint.NONE)
+@CharkaTest
 @Transactional
 @DisplayName("Временные эффекты и препараты (P-03, с. 122–123)")
 class Cp2020DrugsTest {
@@ -61,7 +60,7 @@ class Cp2020DrugsTest {
     @Autowired private GameSystemRegistry registry;
     @Autowired private EntityManager entityManager;
 
-    @MockitoBean(answers = Answers.CALLS_REAL_METHODS) private DiceRoller dice;
+    @Autowired private DiceRoller dice;
 
     private Campaign campaign;
     private Character user;

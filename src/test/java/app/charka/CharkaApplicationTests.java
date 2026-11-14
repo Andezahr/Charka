@@ -1,11 +1,12 @@
 package app.charka;
 
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
+import app.charka.support.CharkaTest;
 
-@SpringBootTest
-@ActiveProfiles("test")
+import org.junit.jupiter.api.Test;
+
+
+
+@CharkaTest
 class CharkaApplicationTests {
 
 	@Test

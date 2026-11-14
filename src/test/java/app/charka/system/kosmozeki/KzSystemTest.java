@@ -1,5 +1,7 @@
 package app.charka.system.kosmozeki;
 
+import app.charka.support.CharkaTest;
+
 import app.charka.attack.AttackRequest;
 import app.charka.attack.AttackResult;
 import app.charka.attack.AttackService;
@@ -26,11 +28,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.Answers;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+
+
+
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -47,8 +48,7 @@ import static org.mockito.Mockito.when;
 /**
  * Система «Космозэки» (этап 15, {@code RULES_KOSMOZEKI.md}): кубик, тело по зонам, стрельба, патроны, лечение, создание.
  */
-@SpringBootTest
-@ActiveProfiles("test")
+@CharkaTest
 @Transactional
 @DisplayName("Космозэки")
 class KzSystemTest {
@@ -65,7 +65,7 @@ class KzSystemTest {
     @Autowired private EntityManager entityManager;
     @Autowired private app.charka.undo.RerollService rerollService;
 
-    @MockitoBean(answers = Answers.CALLS_REAL_METHODS) private DiceRoller dice;
+    @Autowired private DiceRoller dice;
 
     private Campaign campaign;
     private Character shooter;
