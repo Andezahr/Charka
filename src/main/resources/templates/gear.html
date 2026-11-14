@@ -6,6 +6,10 @@
 
 <!-- R-08: «Снаряжение» — все инвентари (носимые и нет), вживлённое целиком, журнал денег и регулярные траты -->
 <main class="page">
+  <!-- TURN-01: подпись игроку в бою вне его хода; отказывает сервер (TurnGuard) -->
+  <div th:if="${notYourTurn}" class="alert alert-warning" role="status" data-not-turn>
+    <span class="alert-text">⏳ Идёт бой, сейчас ход не ваш: лист только для просмотра. Урон, спасброски и заметки — можно.</span>
+  </div>
   <div th:if="${errorMessage != null}" class="alert alert-error" role="alert">
     <span class="alert-text" th:text="${errorMessage}">Ошибка</span>
     <button type="button" class="alert-close" aria-label="Закрыть">×</button>

@@ -252,7 +252,7 @@ class GmBattleEditTest {
 
             mockMvc.perform(post(attack).param("target", String.valueOf(guard.getId())).param("mode", "FIRE").param("rounds", "1")
                             .param("returnCampaign", String.valueOf(campaign.getId())).with(user("kolya")).with(csrf()))
-                    .andExpect(flash().attribute("actionError", app.charka.encounter.RoundActions.NOT_YOUR_TURN));
+                    .andExpect(flash().attribute("encounterError", app.charka.encounter.RoundActions.NOT_YOUR_TURN));
             mockMvc.perform(post(participant(zek) + "/dash").with(user("kolya")).with(csrf()))
                     .andExpect(flash().attribute("encounterError", app.charka.encounter.RoundActions.NOT_YOUR_TURN));
             flush();
@@ -267,7 +267,7 @@ class GmBattleEditTest {
         }
 
         @Test
-        @DisplayName("BF-03: игрок не трогает чужого участника — ждать, рывок, ход фишкой за врага — отказ; свой — можно")
+        @DisplayName("BF-03: игрок не трогает чужого участника — ждать, рывок, ход фишкой за врага — отказ; свой — на его ходу")
         void notOthers() throws Exception {
             mockMvc.perform(post(participant(guard) + "/wait").with(user("kolya")).with(csrf()))
                     .andExpect(status().isBadRequest());
@@ -279,8 +279,9 @@ class GmBattleEditTest {
             flush();
             assertThat(row(guard).participant().isWaiting()).isFalse();
 
+            // TURN-01: своего — тоже только на его ходу
             mockMvc.perform(post(participant(zek) + "/wait").with(user("kolya")).with(csrf()))
-                    .andExpect(status().is3xxRedirection());
+                    .andExpect(flash().attribute("encounterError", app.charka.encounter.RoundActions.NOT_YOUR_TURN));
         }
 
         @Test
@@ -355,8 +356,9 @@ class GmBattleEditTest {
             assertThat(row(zek).participant().isDone()).isTrue();
 
             Long body = row(zek).card().healthCounterId();
+            // TURN-01: вне хода игрок себя не лечит — лечит мастер
             mockMvc.perform(post("/character/" + zek.getId() + "/counters/" + body + "/health/heal").param("points", "1000")
-                    .with(user("kolya")).with(csrf()));
+                    .with(user("master")).with(csrf()));
             flush();
 
             assertThat(row(zek).card().out()).isFalse();
@@ -365,7 +367,7 @@ class GmBattleEditTest {
             mockMvc.perform(post("/character/" + zek.getId() + "/items/" + club.getId() + "/attack")
                             .param("target", String.valueOf(guard.getId())).param("mode", "STRIKE")
                             .param("returnCampaign", String.valueOf(campaign.getId())).with(user("kolya")).with(csrf()))
-                    .andExpect(flash().attribute("actionError", app.charka.encounter.RoundActions.NOT_YOUR_TURN));
+                    .andExpect(flash().attribute("encounterError", app.charka.encounter.RoundActions.NOT_YOUR_TURN));
             // и мастер за него в этом раунде не ударит: действие раунда потрачено
             mockMvc.perform(post("/character/" + zek.getId() + "/items/" + club.getId() + "/attack")
                             .param("target", String.valueOf(guard.getId())).param("mode", "STRIKE")

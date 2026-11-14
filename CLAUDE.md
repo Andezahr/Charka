@@ -40,7 +40,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 1162 тестов, на 2026-11-14 все зелёные (CI: .github/workflows/test.yml), ~1 мин 20 с с clean (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 1166 тестов, на 2026-11-14 все зелёные (CI: .github/workflows/test.yml), ~1 мин 20 с с clean (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw test -Dtest='EncounterServiceTest,GmBattleEditTest'   # по ходу работы — только затронутое; полный прогон — перед коммитом (TODO.md, раздел 0, п. 4)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
@@ -61,7 +61,7 @@ dice/         DiceExpression (разбор NdM±K), DiceResult, DiceService (б�
 attack/       AttackRules (контракт системы: form, plan, spend, outcome, effectHit, isObjectTarget/damageObject — цель-предмет, strayHit — промах в стоящего на линии огня, M-17), LineOfFire и MapBlast (что знает карта, реализации в map/), AttackSource (предмет или способность), ObjectTarget (машина в списке целей), AttackContext, AttackPlan, AttackOutcome, AttackForm, AttackRequest, AttackHit, AreaDamage (урон по площади), LingeringEffect (что остаётся на цели на следующие раунды), AttackResult, AttackService (один ход для всех атак, урон цели, лог, заряды PendingBlast)
 creation/     CharacterCreation (мастер создания персонажа: форма, бросок очков, создание; реализует система)
 npc/          NpcTemplate, NpcSheet (что выбросила система), NpcService (создание по шаблону, копии, удаление)
-security/     SecurityConfig, UserService (регистрация, вход), AccessService (кто что видит: мастер кампании, игрок персонажа), AccessInterceptor (чужое — 404), AuthController, InviteService + InviteController (приглашение по ссылке и QR, A-02), GmMode (A-15: режим мастера на карте «Бог»/«За NPC» — cookie `charka.gmMode`)
+security/     SecurityConfig, UserService (регистрация, вход), AccessService (кто что видит: мастер кампании, игрок персонажа), AccessInterceptor (чужое — 404), TurnGuard (TURN-01: в бою вне своего хода игрок меняет только разрешённое списком), AuthController, InviteService + InviteController (приглашение по ссылке и QR, A-02), GmMode (A-15: режим мастера на карте «Бог»/«За NPC» — cookie `charka.gmMode`)
 chat/         ChatService (чат кампании: сообщения, броски и записи журнала одной лентой; `feedFor` — с «?» вместо врагов в тумане)
 journal/      JournalService (J-01: журнал боя — `capture` собирает действие целиком: броски, проверки, события здоровья; одна запись `JournalEntry` с итогом, фишками и расчётом)
 request/      RollRequestService (запросы бросков мастера игрокам, групповая проверка — A-07, A-08)
@@ -228,6 +228,7 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 - Тесты разбиты на `@Nested` классы по операциям. Интеграционные — `@CharkaTest` (без входа) или `@CharkaSecuredTest` (со входом): один контекст на прогон. Кубики там — мок: поле `@Autowired DiceRoller dice` и `when(dice.roll(10))`; без поля броски случайные (`RandomDiceListener`). Свой `@MockitoBean`, `@TestPropertySource` или `@Import` — новый контекст, только если без него никак.
 - Имя фрагмента не должно совпадать с тегом HTML (`form`, `slot`…): селектор `~{file :: form}` найдёт элементы `<form>`.
 - Отмена (A-01) снимает таблицы списком `CampaignSnapshots.TABLES`: новая таблица игрового состояния персонажа или боя — добавить туда, иначе её изменения не откатываются. Новый изменяющий маршрут вне игры (как заметки) — в `UndoInterceptor.SKIPPED`.
+- Ход (TURN-01): новый изменяющий маршрут персонажа или боя игроку в бою вне хода закрыт сам (`TurnGuard`). Если по правилам его делают на чужом ходу (реакция, урон, спасбросок) — внести в `TurnGuard.CHARACTER_ALLOWED`/`ENCOUNTER_ALLOWED` и в `TurnGuardTest.ALLOWED`.
 
 ## Известные проблемы и долг (кандидаты на модернизацию)
 

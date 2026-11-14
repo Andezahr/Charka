@@ -35,8 +35,12 @@ public class AccessInterceptor implements HandlerInterceptor {
             "/encounter/initiative-mode", "/encounter/fog",
             // KF-05: положить предмет на карту и убрать его — мастер; подобрать — любой за своего персонажа
             "/encounter/loot");
-    /** GM-01: лечить и править число действий участника с карты — только мастер */
-    private static final Pattern GM_ONLY_PARTICIPANT = Pattern.compile("^/encounter/participants/\\d+/(heal|actions)$");
+    /**
+     * GM-01: лечить и править число действий участника с карты — только мастер.
+     * TURN-01: убрать из боя, поставить инициативу вручную, снять эффект — тоже мастер.
+     */
+    private static final Pattern GM_ONLY_PARTICIPANT =
+            Pattern.compile("^/encounter/participants/\\d+/(heal|actions|remove|initiative|effects/\\d+/remove)$");
 
     /** BF-03: участник боя в адресе — игрок меняет только своих (ходить за врага, ждать, вступать, правка) */
     private static final Pattern PARTICIPANT = Pattern.compile("^/encounter(?:/map)?/participants/(\\d+)(?:/.*)?$");

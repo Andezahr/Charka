@@ -52,6 +52,7 @@ public class CharacterController {
     private final app.charka.skill.SkillService skillService;
     private final app.charka.service.ProfileService profileService;
     private final app.charka.service.ItemService itemService;
+    private final app.charka.security.TurnGuard turnGuard;
 
     /**
      * A-03: окно «Добавить» по требованию — при первом открытии; app.js хранит его, пока не изменится {@code v}
@@ -156,6 +157,8 @@ public class CharacterController {
      */
     private void fill(Long id, Model model, boolean gear) {
         Character character = characterService.getById(id);
+        // TURN-01: в бою вне своего хода игрок лист только смотрит
+        model.addAttribute("notYourTurn", turnGuard.waitsForTurn(character));
         List<Inventory> shownInventories = character.getInventories().stream()
                 .filter(inventory -> gear || inventory.isCarried())
                 .sorted(Comparator.comparing(Inventory::getId, Comparator.nullsLast(Comparator.naturalOrder())))

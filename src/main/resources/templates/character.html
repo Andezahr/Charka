@@ -9,6 +9,10 @@
                ownCounters=${counters.?[compactTemplate == null and viewTemplate != 'counters/types/simple']}">
   <!-- A-07: запросы бросков от мастера: карточка с одной кнопкой, приходит опросом -->
   <th:block th:if="${character.campaign != null}"><div th:replace="~{fragments/requests :: slot(${character.campaign.id}, ${character.id})}"></div></th:block>
+  <!-- TURN-01: подпись игроку в бою вне его хода; отказывает сервер (TurnGuard) -->
+  <div th:if="${notYourTurn}" class="alert alert-warning" role="status" data-not-turn>
+    <span class="alert-text">⏳ Идёт бой, сейчас ход не ваш: лист только для просмотра. Урон, спасброски и заметки — можно.</span>
+  </div>
   <div th:if="${errorMessage != null}" class="alert alert-error" role="alert">
     <span class="alert-text" th:text="${errorMessage}">Ошибка</span>
     <button type="button" class="alert-close" aria-label="Закрыть">×</button>
