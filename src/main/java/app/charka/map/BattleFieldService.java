@@ -328,7 +328,7 @@ public class BattleFieldService {
     /** Бег за раунд по правилам системы; null — система его не знает, ограничения нет */
     private Integer runOf(Encounter encounter, EncounterParticipant participant) {
         GameSystem system = systemRegistry.get(encounter.getCampaign().getSystem());
-        return system.getMapRules().reach(system.getCurrentStats(participant.getCharacter()));
+        return system.getMapRules().reach(system.skills().getCurrentStats(participant.getCharacter()));
     }
 
     /**
@@ -398,7 +398,7 @@ public class BattleFieldService {
         Encounter encounter = withMap(campaignId);
         EncounterParticipant participant = participant(encounter, participantId);
         GameSystem system = systemRegistry.get(encounter.getCampaign().getSystem());
-        Integer run = system.getMapRules().reach(system.getCurrentStats(participant.getCharacter()));
+        Integer run = system.getMapRules().reach(system.skills().getCurrentStats(participant.getCharacter()));
         if (run == null || participant.getPosX() == null) {
             return new Reach(run, run, List.of());
         }

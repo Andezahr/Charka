@@ -40,7 +40,7 @@ public class Character {
     @ToString.Include
     private boolean npc;
 
-    /** Коды ролей/классов из {@code GameSystem.getRoles()}; ролей может быть несколько */
+    /** Коды ролей/классов из {@code GameSystem.skills().getRoles()}; ролей может быть несколько */
     @ElementCollection
     @CollectionTable(name = "character_role", joinColumns = @JoinColumn(name = "character_id"))
     @Column(name = "role_code")

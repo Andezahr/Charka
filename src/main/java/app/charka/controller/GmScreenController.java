@@ -42,7 +42,7 @@ public class GmScreenController {
         return characters.stream()
                 .sorted(Comparator.comparing(Character::isNpc).thenComparing(Character::getName, Comparator.nullsLast(String::compareTo)))
                 .map(character -> new Row(character, system.combat().getCombatCard(character),
-                        system.getCurrentStats(character).values().stream()
+                        system.skills().getCurrentStats(character).values().stream()
                                 .map(stat -> stat.name() + " " + stat.value() + (stat.value() != stat.base() ? "*" : ""))
                                 .toList(),
                         character.getMoneyList().stream().map(Money::getAmount).filter(Objects::nonNull).mapToLong(Long::longValue).sum(),

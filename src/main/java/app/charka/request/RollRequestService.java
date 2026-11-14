@@ -69,10 +69,10 @@ public class RollRequestService {
         // UX-21a: то, что в этой кампании уже просили (до пяти навыков), — сразу после спасбросков, остальное по алфавиту
         List<String> frequent = requestRepository.frequentSkillCodes(campaignId).stream().limit(5).toList();
         java.util.Map<String, SkillDefinition> byCode = new java.util.HashMap<>();
-        system.getSkillCatalog().stream().filter(skill -> !skill.custom()).forEach(skill -> byCode.put(skill.code(), skill));
+        system.skills().getSkillCatalog().stream().filter(skill -> !skill.custom()).forEach(skill -> byCode.put(skill.code(), skill));
         frequent.stream().map(byCode::get).filter(java.util.Objects::nonNull)
                 .forEach(skill -> choices.add(new Choice(SKILL_PREFIX + skill.code(), skill.name())));
-        system.getSkillCatalog().stream()
+        system.skills().getSkillCatalog().stream()
                 .filter(skill -> !skill.custom() && !frequent.contains(skill.code()))
                 .sorted(Comparator.comparing(SkillDefinition::name))
                 .forEach(skill -> choices.add(new Choice(SKILL_PREFIX + skill.code(), skill.name())));
@@ -82,7 +82,7 @@ public class RollRequestService {
     /** Открытые запросы кампании, старые сверху */
     /** KF-10: просить простую проверку — где нет каталога навыков */
     public static boolean plainChecks(GameSystem system) {
-        return system.getSkillCatalog().isEmpty();
+        return system.skills().getSkillCatalog().isEmpty();
     }
 
     /** KF-10: что проверяли — подпись без сложности в конце */

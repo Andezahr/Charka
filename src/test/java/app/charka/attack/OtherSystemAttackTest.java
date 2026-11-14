@@ -78,9 +78,15 @@ class OtherSystemAttackTest {
             return new Currency("Золото", "зм");
         }
 
+        /** ARC-01: система отдаёт только нужные ей части — здесь статы */
         @Override
-        public Map<String, StatValue> getCurrentStats(Character character) {
-            return Map.of("dex", new StatValue("dex", "DEX", 2, 2));
+        public app.charka.skill.SkillRules skills() {
+            return new app.charka.skill.SkillRules() {
+                @Override
+                public Map<String, StatValue> getCurrentStats(Character character) {
+                    return Map.of("dex", new StatValue("dex", "DEX", 2, 2));
+                }
+            };
         }
 
         @Override

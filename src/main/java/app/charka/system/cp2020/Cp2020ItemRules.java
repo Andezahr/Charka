@@ -135,10 +135,10 @@ class Cp2020ItemRules implements ItemRules {
             return Cp2020Drugs.perform(item, action, dice);
         }
         if (Cp2020Vehicles.isVehicle(item)) {
-            return Cp2020Vehicles.perform(item, action, params, system.getCurrentStats(item.getInventory().getCharacter()), system.getCheckResolver(), dice);
+            return Cp2020Vehicles.perform(item, action, params, system.skills().getCurrentStats(item.getInventory().getCharacter()), system.getCheckResolver(), dice);
         }
         if (Cp2020Netrunning.isDeck(item) || Cp2020Netrunning.isProgram(item)) {
-            return Cp2020Netrunning.perform(item, action, params, system.getCurrentStats(item.getInventory().getCharacter()), system.net(), system.getCheckResolver(), dice);
+            return Cp2020Netrunning.perform(item, action, params, system.skills().getCurrentStats(item.getInventory().getCharacter()), system.net(), system.getCheckResolver(), dice);
         }
         return Cp2020WornArmor.isArmor(item) ? Cp2020ArmorActions.perform(item, action) : Cp2020WeaponActions.perform(item, action, params);
     }

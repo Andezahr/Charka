@@ -53,7 +53,7 @@ public class Cp2020System implements GameSystem {
 
     private static final CheckResolver CHECK_RESOLVER = new Cp2020CheckResolver();
 
-    private static final SkillProgression SKILL_PROGRESSION = new Cp2020SkillProgression();
+    static final SkillProgression SKILL_PROGRESSION = new Cp2020SkillProgression();
 
     private static final AttackRules ATTACK_RULES = new Cp2020AttackRules();
 
@@ -102,40 +102,6 @@ public class Cp2020System implements GameSystem {
     }
 
     @Override
-    public List<SkillDefinition> getSkillCatalog() {
-        return Cp2020Skills.CATALOG;
-    }
-
-    @Override
-    public List<CharacterRole> getRoles() {
-        return Cp2020Skills.ROLES;
-    }
-
-    @Override
-    public int getRoleUnlockLevel() {
-        return Cp2020Rules.ROLE_UNLOCK_LEVEL;
-    }
-
-    @Override
-    public SkillProgression getSkillProgression() {
-        return SKILL_PROGRESSION;
-    }
-
-    /**
-     * Статы из счётчика характеристик, с текущими штрафами от ран и потери человечности.
-     */
-    @Override
-    public Map<String, StatValue> getCurrentStats(Character character) {
-        Map<String, StatValue> stats = new LinkedHashMap<>();
-        CounterContext context = new CounterContext(null, character.getCounters());
-        context.sibling(Cp2020StatsStrategy.TYPE).ifPresent(counter ->
-                STATS.describe(new CounterContext(counter, character.getCounters())).getStats().forEach(line ->
-                        stats.put(line.getKey(),
-                                new StatValue(line.getKey(), line.getName(), line.getBase(), line.getEffective()))));
-        return stats;
-    }
-
-    @Override
     public AttackRules getAttackRules() {
         return ATTACK_RULES;
     }
@@ -145,11 +111,6 @@ public class Cp2020System implements GameSystem {
     @Override
     public app.charka.map.MapRules getMapRules() {
         return MAP_RULES;
-    }
-
-    @Override
-    public List<CheckRequest.Part> getSkillBonuses(Character character, SkillDefinition definition, CharacterSkill skill) {
-        return Cp2020SkillRules.bonuses(character, definition, skill);
     }
 
     /** Роль, состояние, SP торса и чем вооружён */
@@ -187,7 +148,7 @@ public class Cp2020System implements GameSystem {
 
     @Override
     public app.charka.system.PrintSheet getPrintSheet(Character character) {
-        return Cp2020Print.sheet(character, getCurrentStats(character), ARMOR);
+        return Cp2020Print.sheet(character, skills().getCurrentStats(character), ARMOR);
     }
 
     @Override
@@ -275,7 +236,7 @@ public class Cp2020System implements GameSystem {
         return new Cp2020Netrunning.Net() {
             @Override
             public Map<String, app.charka.skill.StatValue> stats(Character character) {
-                return getCurrentStats(character);
+                return Cp2020System.this.skills().getCurrentStats(character);
             }
 
             @Override
@@ -301,11 +262,6 @@ public class Cp2020System implements GameSystem {
         return Cp2020Lifestyle.TEMPLATES;
     }
 
-    @Override
-    public java.util.Optional<app.charka.skill.SkillOverride> getSkillOverride(Character character, String skillCode) {
-        return Cp2020Chips.override(character, skillCode);
-    }
-
     /** ARC-01: предметы: типы, справочник, действия, строка на листе, вживлённое */
     private volatile Cp2020ItemRules itemsRules;
 
@@ -326,5 +282,16 @@ public class Cp2020System implements GameSystem {
             combatRules = new Cp2020CombatRules(this, healthCounterService);
         }
         return combatRules;
+    }
+
+    /** ARC-01: навыки, роли, прокачка и текущие статы */
+    private volatile Cp2020SkillRulesPart skillsRules;
+
+    @Override
+    public app.charka.skill.SkillRules skills() {
+        if (skillsRules == null) {
+            skillsRules = new Cp2020SkillRulesPart(this);
+        }
+        return skillsRules;
     }
 }

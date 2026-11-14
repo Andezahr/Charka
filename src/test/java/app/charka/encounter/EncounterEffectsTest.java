@@ -354,7 +354,7 @@ class EncounterEffectsTest {
     private AttackForm attackForm(Item item) {
         Item loaded = thrower().getInventories().get(0).getContent().stream()
                 .filter(candidate -> candidate.getId().equals(item.getId())).findFirst().orElseThrow();
-        return registry.forCharacter(thrower()).getAttackRules().form(AttackSource.of(loaded), registry.forCharacter(thrower()).getCurrentStats(thrower()));
+        return registry.forCharacter(thrower()).getAttackRules().form(AttackSource.of(loaded), registry.forCharacter(thrower()).skills().getCurrentStats(thrower()));
     }
 
     @Test

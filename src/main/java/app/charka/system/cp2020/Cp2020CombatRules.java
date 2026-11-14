@@ -72,7 +72,7 @@ class Cp2020CombatRules implements CombatRules {
 
     @Override
     public Initiative rollInitiative(Character character, DiceRoller dice) {
-        return Cp2020Initiative.roll(character, system.getCurrentStats(character), dice);
+        return Cp2020Initiative.roll(character, system.skills().getCurrentStats(character), dice);
     }
 
     /**
@@ -126,7 +126,7 @@ class Cp2020CombatRules implements CombatRules {
         if (!Cp2020Facedown.CODE.equals(code)) {
             return CombatRules.super.getContestRequest(code, character);
         }
-        return Cp2020Facedown.request(character, system.getCurrentStats(character));
+        return Cp2020Facedown.request(character, system.skills().getCurrentStats(character));
     }
 
     @Override

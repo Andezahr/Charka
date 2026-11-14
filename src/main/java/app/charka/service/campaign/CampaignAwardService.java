@@ -93,7 +93,7 @@ public class CampaignAwardService {
     }
 
     private Integer points(GameSystem system, Character character) {
-        SkillProgression progression = system.getSkillProgression();
+        SkillProgression progression = system.skills().getSkillProgression();
         return progression == null ? null : progression.balance(character);
     }
 

@@ -102,11 +102,6 @@ public class KzSystem implements GameSystem {
     }
 
     @Override
-    public List<CharacterRole> getRoles() {
-        return ROLES;
-    }
-
-    @Override
     public AttackRules getAttackRules() {
         return ATTACK_RULES;
     }
@@ -195,5 +190,13 @@ public class KzSystem implements GameSystem {
             combatRules = new KzCombatRules(this);
         }
         return combatRules;
+    }
+
+    /** ARC-01: навыки, роли, прокачка и текущие статы */
+    private static final KzSkillRules SKILLS = new KzSkillRules();
+
+    @Override
+    public app.charka.skill.SkillRules skills() {
+        return SKILLS;
     }
 }

@@ -82,7 +82,7 @@ public class CampaignController {
         model.addAttribute("currency", gameSystem.getCurrency());
         // роли строкой; состояние и SP строка берёт у системы (как в бою), а не из краткой сводки
         model.addAttribute("rosterRoles", visible.stream()
-                .collect(Collectors.toMap(Character::getId, character -> gameSystem.rolesOf(character).stream()
+                .collect(Collectors.toMap(Character::getId, character -> gameSystem.skills().rolesOf(character).stream()
                         .map(app.charka.skill.CharacterRole::name).toList())));
         model.addAttribute("briefs", campaign.getCharacters().stream()
                 .collect(Collectors.toMap(Character::getId, gameSystem::getCharacterBrief)));

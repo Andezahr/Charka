@@ -49,7 +49,7 @@ public class SkillService {
     @Transactional(readOnly = true)
     public boolean hasCatalog(Long characterId) {
         return characterRepository.findById(characterId)
-                .map(character -> !systemRegistry.forCharacter(character).getSkillCatalog().isEmpty())
+                .map(character -> !systemRegistry.forCharacter(character).skills().getSkillCatalog().isEmpty())
                 .orElse(false);
     }
 
@@ -57,15 +57,15 @@ public class SkillService {
     public SkillSheet getSheet(Long characterId) {
         Character character = getCharacter(characterId);
         GameSystem system = systemRegistry.forCharacter(character);
-        Map<String, StatValue> stats = system.getCurrentStats(character);
-        List<CharacterRole> heldRoles = system.rolesOf(character);
-        SkillProgression progression = system.getSkillProgression();
+        Map<String, StatValue> stats = system.skills().getCurrentStats(character);
+        List<CharacterRole> heldRoles = system.skills().rolesOf(character);
+        SkillProgression progression = system.skills().getSkillProgression();
         Integer points = progression == null ? null : progression.balance(character);
 
         List<SkillSheet.Row> specials = new ArrayList<>();
         Map<String, List<SkillSheet.Row>> byStat = new LinkedHashMap<>();
         Map<String, List<SkillDefinition>> customTypes = new LinkedHashMap<>();
-        for (SkillDefinition definition : system.getSkillCatalog()) {
+        for (SkillDefinition definition : system.skills().getSkillCatalog()) {
             List<SkillSheet.Row> rows = definition.special()
                     ? specials
                     : byStat.computeIfAbsent(definition.statCode(), key -> new ArrayList<>());
@@ -105,7 +105,7 @@ public class SkillService {
             }
         });
         List<CharacterRole> unfinished = rolesBelowUnlock(character, system, heldRoles);
-        List<SkillSheet.RoleOption> roleOptions = system.getRoles().stream()
+        List<SkillSheet.RoleOption> roleOptions = system.skills().getRoles().stream()
                 .map(role -> {
                     boolean held = heldRoles.contains(role);
                     boolean available = held || unfinished.isEmpty()
@@ -146,7 +146,7 @@ public class SkillService {
     public SkillImprovement improve(Long characterId, String code, Long skillId) {
         Character character = getCharacter(characterId);
         GameSystem system = systemRegistry.forCharacter(character);
-        SkillProgression progression = system.getSkillProgression();
+        SkillProgression progression = system.skills().getSkillProgression();
         if (progression == null) {
             throw new IllegalArgumentException("В этой системе навыки не развиваются за очки");
         }
@@ -233,7 +233,7 @@ public class SkillService {
         List<CharacterRole> requested = new ArrayList<>();
         if (roleCodes != null) {
             for (String code : roleCodes) {
-                CharacterRole role = system.findRole(code)
+                CharacterRole role = system.skills().findRole(code)
                         .orElseThrow(() -> new IllegalArgumentException("Неизвестная роль: " + code));
                 if (codes.add(role.code())) {
                     requested.add(role);
@@ -242,10 +242,10 @@ public class SkillService {
         }
         boolean adding = !character.getRoles().containsAll(codes);
         if (adding && rolesBelowUnlock(character, system, requested).size() > 1) {
-            List<CharacterRole> unfinished = rolesBelowUnlock(character, system, system.rolesOf(character));
+            List<CharacterRole> unfinished = rolesBelowUnlock(character, system, system.skills().rolesOf(character));
             throw new IllegalArgumentException(unfinished.isEmpty()
                     ? "Новые роли берутся по одной: следующая откроется, когда спецспособность предыдущей достигнет уровня "
-                            + system.getRoleUnlockLevel()
+                            + system.skills().getRoleUnlockLevel()
                     : unlockHint(system, unfinished));
         }
         character.getRoles().clear();
@@ -321,15 +321,15 @@ public class SkillService {
                 ? definition(system, skill.getSkillCode())
                 : plainDefinition(character, system, code);
 
-        StatValue stat = system.getCurrentStats(character).get(definition.statCode());
+        StatValue stat = system.skills().getCurrentStats(character).get(definition.statCode());
         String name = displayName(definition, skill);
         List<CheckRequest.Part> parts = new ArrayList<>();
         parts.add(new CheckRequest.Part(statName(definition.statCode(), stat), stat == null ? 0 : stat.value()));
-        Optional<SkillOverride> override = definition.custom() ? Optional.empty() : system.getSkillOverride(character, definition.code());
+        Optional<SkillOverride> override = definition.custom() ? Optional.empty() : system.skills().getSkillOverride(character, definition.code());
         parts.add(override
                 .map(chip -> new CheckRequest.Part(name + " (" + chip.source() + ")", chip.level()))
                 .orElseGet(() -> new CheckRequest.Part(name, skill == null ? 0 : skill.getLevel())));
-        parts.addAll(system.getSkillBonuses(character, definition, skill));
+        parts.addAll(system.skills().getSkillBonuses(character, definition, skill));
         if (modifier != 0) {
             parts.add(new CheckRequest.Part("Мод.", modifier));
         }
@@ -340,7 +340,7 @@ public class SkillService {
      * Роли, спецспособность которых ещё ниже порога для новой роли; без порога в системе — ни одной.
      */
     private static List<CharacterRole> rolesBelowUnlock(Character character, GameSystem system, List<CharacterRole> roles) {
-        int unlockLevel = system.getRoleUnlockLevel();
+        int unlockLevel = system.skills().getRoleUnlockLevel();
         return roles.stream()
                 .filter(role -> role.specialSkillCode() != null)
                 .filter(role -> {
@@ -354,7 +354,7 @@ public class SkillService {
         String abilities = unfinished.stream()
                 .map(role -> "«" + definition(system, role.specialSkillCode()).name() + "»")
                 .collect(Collectors.joining(", "));
-        return "Новая роль откроется, когда " + abilities + " достигнет уровня " + system.getRoleUnlockLevel();
+        return "Новая роль откроется, когда " + abilities + " достигнет уровня " + system.skills().getRoleUnlockLevel();
     }
 
     private void setPlainLevel(Character character, String code, int level) {
@@ -376,13 +376,13 @@ public class SkillService {
 
     private static SkillSheet.Row row(Character character, GameSystem system, SkillDefinition definition, CharacterSkill skill,
                                       Map<String, StatValue> stats, String roleName, Integer points) {
-        SkillProgression progression = system.getSkillProgression();
+        SkillProgression progression = system.skills().getSkillProgression();
         StatValue stat = stats.get(definition.statCode());
         int statValue = stat == null ? 0 : stat.value();
         int level = skill == null ? 0 : skill.getLevel();
-        Optional<SkillOverride> override = definition.custom() ? Optional.empty() : system.getSkillOverride(character, definition.code());
+        Optional<SkillOverride> override = definition.custom() ? Optional.empty() : system.skills().getSkillOverride(character, definition.code());
         int working = override.map(SkillOverride::level).orElse(level);
-        int bonus = system.getSkillBonuses(character, definition, skill).stream().mapToInt(CheckRequest.Part::value).sum();
+        int bonus = system.skills().getSkillBonuses(character, definition, skill).stream().mapToInt(CheckRequest.Part::value).sum();
         Integer nextCost = progression == null || level >= MAX_LEVEL
                 ? null
                 : progression.cost(character, definition, skill, level);
@@ -410,7 +410,7 @@ public class SkillService {
     }
 
     private static SkillDefinition definition(GameSystem system, String code) {
-        return system.getSkillCatalog().stream()
+        return system.skills().getSkillCatalog().stream()
                 .filter(definition -> definition.code().equals(code))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Неизвестный навык: " + code));
@@ -424,7 +424,7 @@ public class SkillService {
         if (definition.custom()) {
             throw new IllegalArgumentException("Выберите конкретный навык «" + definition.name() + "»");
         }
-        boolean foreignSpecial = definition.special() && system.rolesOf(character).stream()
+        boolean foreignSpecial = definition.special() && system.skills().rolesOf(character).stream()
                 .noneMatch(role -> code.equals(role.specialSkillCode()));
         if (foreignSpecial) {
             throw new IllegalArgumentException("Спецспособность «" + definition.name() + "» доступна только своей роли");

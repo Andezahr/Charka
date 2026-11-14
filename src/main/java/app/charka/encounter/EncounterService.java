@@ -200,7 +200,7 @@ public class EncounterService {
         if (rules == null) {
             return List.of();
         }
-        Map<String, StatValue> stats = system.getCurrentStats(character);
+        Map<String, StatValue> stats = system.skills().getCurrentStats(character);
         List<EncounterView.Weapon> weapons = new ArrayList<>();
         character.getInventories().forEach(inventory -> inventory.getContent().forEach(item -> {
             AttackForm form = rules.form(AttackSource.of(item), stats);
@@ -239,7 +239,7 @@ public class EncounterService {
         if (rules == null) {
             return List.of();
         }
-        Map<String, StatValue> stats = system.getCurrentStats(character);
+        Map<String, StatValue> stats = system.skills().getCurrentStats(character);
         return rules.abilities(character).stream()
                 .map(source -> new EncounterView.Ability(source.ability() + "-" + character.getId(),
                         "/character/" + character.getId() + "/attack/ability/" + source.ability(), source.name(), rules.form(source, stats)))

@@ -339,7 +339,7 @@ public class HealthCounterService {
                         .anyMatch(skill -> skill.getSkillCode().equals(option.skillCode()) && skill.getLevel() > 0))
                 .findFirst()
                 .or(() -> needed.stream()
-                        .filter(option -> system.getSkillCatalog().stream()
+                        .filter(option -> system.skills().getSkillCatalog().stream()
                                 .anyMatch(skill -> skill.code().equals(option.skillCode()) && !skill.special()))
                         .findFirst())
                 .map(CareOption::code)

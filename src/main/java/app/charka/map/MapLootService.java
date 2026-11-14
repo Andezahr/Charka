@@ -117,7 +117,7 @@ public class MapLootService {
         GameSystem system = systemRegistry.forCharacter(character);
         try {
             return system.getAttackRules() != null
-                    && system.getAttackRules().form(AttackSource.of(item), system.getCurrentStats(character)) != null;
+                    && system.getAttackRules().form(AttackSource.of(item), system.skills().getCurrentStats(character)) != null;
         } catch (RuntimeException e) {
             return false;
         }

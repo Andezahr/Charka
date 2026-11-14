@@ -91,7 +91,7 @@ class Cp2020DrugsTest {
 
     private int stat(String code) {
         Character character = reload();
-        return registry.get("CP2020").getCurrentStats(character).get(code).value();
+        return registry.get("CP2020").skills().getCurrentStats(character).get(code).value();
     }
 
     @Nested

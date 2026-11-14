@@ -254,7 +254,7 @@ class Cp2020CyberTest {
         void body() {
             install("Muscle and Bone Lace");
 
-            assertThat(registry.forCharacter(owner()).getCurrentStats(owner()).get("body").value()).isEqualTo(8);
+            assertThat(registry.forCharacter(owner()).skills().getCurrentStats(owner()).get("body").value()).isEqualTo(8);
             assertThat(Cp2020StatsStrategy.body(counter(Cp2020StatsStrategy.TYPE))).isEqualTo(8);
         }
 
@@ -673,7 +673,7 @@ class Cp2020CyberTest {
         }
 
         private java.util.Optional<app.charka.skill.SkillOverride> override(String skill) {
-            return registry.forCharacter(owner()).getSkillOverride(owner(), skill);
+            return registry.forCharacter(owner()).skills().getSkillOverride(owner(), skill);
         }
 
         private void socket() {

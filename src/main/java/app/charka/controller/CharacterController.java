@@ -191,7 +191,7 @@ public class CharacterController {
         model.addAttribute("addDialogVersion", Long.toHexString(java.util.Objects.hash(moneySum,
                 system.items().getSuggestedCatalog(character).stream().map(CatalogItem::key).toList())));
         model.addAttribute("effectTemplates", system.getEffectTemplates());
-        model.addAttribute("effectStats", system.getCurrentStats(character).values());
+        model.addAttribute("effectStats", system.skills().getCurrentStats(character).values());
         model.addAttribute("luckLeft", java.util.Map.of(character.getId(), system.getLuck(character)));
         model.addAttribute("healthStatus", system.getHealthStatus(character));
         // K-11: поля листа от системы (теги, приговор); пусто — блока нет
@@ -235,7 +235,7 @@ public class CharacterController {
         if (attackRules != null) {
             Map<Long, AttackForm> attackForms = new HashMap<>();
             Map<String, String> attackBases = new HashMap<>();
-            Map<String, StatValue> currentStats = system.getCurrentStats(character);
+            Map<String, StatValue> currentStats = system.skills().getCurrentStats(character);
             character.getInventories().stream()
                     .flatMap(inventory -> inventory.getContent().stream())
                     .forEach(item -> {
@@ -295,7 +295,7 @@ public class CharacterController {
         Set<Long> excluded = Set.copyOf(shownElsewhere);
         model.addAttribute("inventorySections", character.getInventories().stream()
                 .collect(Collectors.toMap(Inventory::getId, inventory -> ItemSection.of(inventory, system.items().getItemTypes(), attachments, excluded))));
-        model.addAttribute("roles", system.rolesOf(character));
+        model.addAttribute("roles", system.skills().rolesOf(character));
         model.addAttribute("quickDice", system.getQuickDice());
         model.addAttribute("difficultyPresets", system.getTableCheckResolver().getDifficultyPresets());
         model.addAttribute("recentRolls", diceService.recentForCharacter(id, 5));

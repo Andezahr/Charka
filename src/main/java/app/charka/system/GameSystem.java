@@ -51,6 +51,11 @@ public interface GameSystem {
 
     // ---------- ARC-01: части правил; у системы без части — пустая ----------
 
+    /** ARC-01: навыки, роли, прокачка и текущие статы */
+    default app.charka.skill.SkillRules skills() {
+        return app.charka.skill.SkillRules.NONE;
+    }
+
     /** ARC-01: бой: инициатива, карточка участника, противостояния, действия за раунд */
     default app.charka.encounter.CombatRules combat() {
         GameSystem system = this;
@@ -116,49 +121,6 @@ public interface GameSystem {
         return null;
     }
 
-    default List<SkillDefinition> getSkillCatalog() {
-        return List.of();
-    }
-
-    /**
-     * Роли/классы персонажей.
-     */
-    default List<CharacterRole> getRoles() {
-        return List.of();
-    }
-
-    default Optional<CharacterRole> findRole(String code) {
-        return getRoles().stream().filter(role -> role.code().equals(code)).findFirst();
-    }
-
-    /**
-     * Роли персонажа в порядке каталога системы. Вызывать в транзакции.
-     */
-    default List<CharacterRole> rolesOf(Character character) {
-        return getRoles().stream().filter(role -> character.getRoles().contains(role.code())).toList();
-    }
-
-    /**
-     * Уровень спецспособности, нужный текущим ролям, чтобы взять новую; 0 — без ограничений.
-     */
-    default int getRoleUnlockLevel() {
-        return 0;
-    }
-
-    /**
-     * Прокачка навыков за очки; null — у системы её нет.
-     */
-    default SkillProgression getSkillProgression() {
-        return null;
-    }
-
-    /**
-     * Текущие статы персонажа по коду — с ними складываются навыки. Вызывать в транзакции (читает счётчики).
-     */
-    default Map<String, StatValue> getCurrentStats(Character character) {
-        return Map.of();
-    }
-
     /**
      * Правила атаки оружием; null — у системы их нет.
      */
@@ -171,19 +133,10 @@ public interface GameSystem {
     }
 
     /**
-     * Прибавки к проверке навыка сверх стата и уровня — от других навыков и ролей персонажа. Вызывать в транзакции.
-     *
-     * @param skill строка навыка; null, если её нет
-     */
-    default List<CheckRequest.Part> getSkillBonuses(Character character, SkillDefinition definition, CharacterSkill skill) {
-        return List.of();
-    }
-
-    /**
      * Коротко о персонаже для списка кампании: мастеру не нужно открывать лист. Вызывать в транзакции.
      */
     default List<String> getCharacterBrief(Character character) {
-        return rolesOf(character).stream().map(CharacterRole::name).toList();
+        return skills().rolesOf(character).stream().map(CharacterRole::name).toList();
     }
 
     /**
@@ -208,13 +161,6 @@ public interface GameSystem {
      */
     default List<String> onTimePassed(Campaign campaign, int days) {
         return List.of();
-    }
-
-    /**
-     * Уровень навыка, заданный не персонажем (CP2020: вставленный чип). Пусто — действует природный уровень.
-     */
-    default java.util.Optional<app.charka.skill.SkillOverride> getSkillOverride(Character character, String skillCode) {
-        return java.util.Optional.empty();
     }
 
     /**
