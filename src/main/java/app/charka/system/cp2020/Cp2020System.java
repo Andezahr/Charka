@@ -58,9 +58,9 @@ public class Cp2020System implements GameSystem {
     private static final AttackRules ATTACK_RULES = new Cp2020AttackRules();
 
     /** Стратегия без состояния; нужна только чтобы посчитать текущие статы */
-    private static final Cp2020StatsStrategy STATS = new Cp2020StatsStrategy();
+    static final Cp2020StatsStrategy STATS = new Cp2020StatsStrategy();
 
-    private static final Cp2020ArmorStrategy ARMOR = new Cp2020ArmorStrategy();
+    static final Cp2020ArmorStrategy ARMOR = new Cp2020ArmorStrategy();
 
     private final HealthCounterService healthCounterService;
     private final DiceRoller dice;
@@ -186,42 +186,6 @@ public class Cp2020System implements GameSystem {
     }
 
     @Override
-    public Initiative rollInitiative(Character character, DiceRoller dice) {
-        return Cp2020Initiative.roll(character, getCurrentStats(character), dice);
-    }
-
-    /**
-     * С. 97: «Every round, each player gets to do something. The order of the round is based on an initiative roll of 1D10
-     * plus the players REF stat». Автор решил (A-13): каждый раунд. Кампания может переключить ({@code Campaign.initiativeEachRound}).
-     */
-    @Override
-    public boolean rollsInitiativeEachRound() {
-        return true;
-    }
-
-    /** Состояние, броня головы и торса, штрафы и какие спасброски нужны сейчас */
-    /** С. 97: +3 к инициативе, −3 к попаданию, без прицелов; у холодного оружия и боевых искусств — то же */
-    @Override
-    public List<InitiativeDeclaration> getInitiativeDeclarations() {
-        return List.of(new InitiativeDeclaration("FAST_DRAW", "Выхватывает", 3, "fast_draw"));
-    }
-
-    /** Sandevistan (с. 76): команда, раунд ожидания, затем +3 на 5 раундов */
-    @Override
-    public List<InitiativeDeclaration> getInitiativeDeclarations(Character character) {
-        List<InitiativeDeclaration> declarations = new ArrayList<>(getInitiativeDeclarations());
-        if (Cp2020Cyber.hasSpeedware(character)) {
-            declarations.add(new InitiativeDeclaration("SPEEDWARE", Cp2020Cyber.SPEEDWARE, 3, null, 5));
-        }
-        return declarations;
-    }
-
-    @Override
-    public List<String> getCombatCheckSkills() {
-        return List.of("awareness");
-    }
-
-    @Override
     public app.charka.system.PrintSheet getPrintSheet(Character character) {
         return Cp2020Print.sheet(character, getCurrentStats(character), ARMOR);
     }
@@ -242,38 +206,6 @@ public class Cp2020System implements GameSystem {
     public List<app.charka.item.ItemField.Option> getRequestableSaves() {
         return List.of(new app.charka.item.ItemField.Option(Cp2020HealthStrategy.SAVE_STUN, "Спасбросок от оглушения"),
                 new app.charka.item.ItemField.Option(Cp2020HealthStrategy.SAVE_DEATH, "Спасбросок от смерти"));
-    }
-
-    @Override
-    public CombatCard getCombatCard(Character character) {
-        CounterContext context = new CounterContext(null, character.getCounters());
-        Optional<Counter> health = context.sibling(Cp2020HealthStrategy.TYPE);
-        if (health.isEmpty()) {
-            return GameSystem.super.getCombatCard(character);
-        }
-        Cp2020HealthView view = (Cp2020HealthView) healthCounterService.describe(health.get(), character.getCounters());
-        List<String> lines = new ArrayList<>();
-        if (view.getDamage() > 0) {
-            lines.add("Урон " + view.getDamage() + "/" + view.getMaxDamage());
-        }
-        context.sibling(Cp2020ArmorStrategy.TYPE).ifPresent(armor ->
-                lines.add("SP голова " + ARMOR.sp(armor, Cp2020Location.HEAD) + " · торс " + ARMOR.sp(armor, Cp2020Location.TORSO)));
-        lines.add("BTM −" + view.getBtm());
-        Cp2020Cyber.shortWarning(character).ifPresent(lines::add);
-        if (view.getPenalty() != null) {
-            lines.add(view.getPenalty());
-        }
-        List<CombatCard.Save> saves = new ArrayList<>();
-        if (view.isDeathSaveRequired()) {
-            saves.add(new CombatCard.Save(Cp2020HealthStrategy.SAVE_DEATH, "Спасбросок от смерти, d10 ≤ " + view.getDeathTarget()));
-        }
-        if (view.isStunned()) {
-            saves.add(new CombatCard.Save(Cp2020HealthStrategy.SAVE_STUN, "Оглушён: спасбросок, d10 ≤ " + view.getStunTarget()));
-        }
-        return new CombatCard(health.get().getId(), view.getStatusLabel(), view.isDead(),
-                view.isDead() || !saves.isEmpty(), lines, saves, view.isDeathSaveRequired(),
-                view.getLocations().stream().map(option -> new CombatCard.Option(option.getCode(), option.getLabel())).toList(),
-                view.getDamageTypes().stream().map(option -> new CombatCard.Option(option.getCode(), option.getLabel())).toList());
     }
 
     @Override
@@ -370,24 +302,6 @@ public class Cp2020System implements GameSystem {
     }
 
     @Override
-    public List<app.charka.encounter.CombatContest> getCombatContests() {
-        return List.of(Cp2020Facedown.CONTEST);
-    }
-
-    @Override
-    public app.charka.check.CheckRequest getContestRequest(String code, Character character) {
-        if (!Cp2020Facedown.CODE.equals(code)) {
-            return GameSystem.super.getContestRequest(code, character);
-        }
-        return Cp2020Facedown.request(character, getCurrentStats(character));
-    }
-
-    @Override
-    public String getContestLoserEffect(String code, Character winner) {
-        return Cp2020Facedown.CODE.equals(code) ? Cp2020Facedown.loserEffect(winner) : null;
-    }
-
-    @Override
     public java.util.Optional<app.charka.skill.SkillOverride> getSkillOverride(Character character, String skillCode) {
         return Cp2020Chips.override(character, skillCode);
     }
@@ -401,5 +315,16 @@ public class Cp2020System implements GameSystem {
             itemsRules = new Cp2020ItemRules(this, healthCounterService, dice);
         }
         return itemsRules;
+    }
+
+    /** ARC-01: бой: инициатива, карточка участника, противостояния, действия за раунд */
+    private volatile Cp2020CombatRules combatRules;
+
+    @Override
+    public app.charka.encounter.CombatRules combat() {
+        if (combatRules == null) {
+            combatRules = new Cp2020CombatRules(this, healthCounterService);
+        }
+        return combatRules;
     }
 }

@@ -525,7 +525,7 @@ public class SkillService {
         if (!hasCatalog(characterId)) {
             return List.of();
         }
-        List<String> always = systemRegistry.forCharacter(getCharacter(characterId)).getCombatCheckSkills();
+        List<String> always = systemRegistry.forCharacter(getCharacter(characterId)).combat().getCombatCheckSkills();
         return getSheet(characterId).groups().stream()
                 .flatMap(group -> group.rows().stream())
                 .filter(row -> row.level() > 0 || row.override() != null || always.contains(row.code()))

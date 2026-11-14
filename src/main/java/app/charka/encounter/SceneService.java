@@ -149,12 +149,12 @@ public class SceneService {
         Set<Long> ambush = new HashSet<>();
         if (scene.isWithPlayers()) {
             campaign.getCharacters().stream()
-                    .filter(character -> !character.isNpc() && !system.getCombatCard(character).out())
+                    .filter(character -> !character.isNpc() && !system.combat().getCombatCard(character).out())
                     .forEach(character -> fighters.add(character.getId()));
         }
         for (SceneNpc row : scene.getNpcs()) {
             List<Character> characters = row.getCharacter() != null
-                    ? (system.getCombatCard(row.getCharacter()).out() ? List.of() : List.of(row.getCharacter()))
+                    ? (system.combat().getCombatCard(row.getCharacter()).out() ? List.of() : List.of(row.getCharacter()))
                     : npcService.create(campaignId, row.getTemplateCode(), row.getName(), row.getCount(), row.isAdvanced());
             characters.forEach(character -> {
                 fighters.add(character.getId());

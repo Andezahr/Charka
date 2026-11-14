@@ -97,8 +97,8 @@ public class RoundActions {
 
     /** Осталось ли действие в этом раунде: у системы без предела — всегда */
     public static boolean canAct(EncounterParticipant participant, GameSystem system) {
-        int limit = system.actionsPerRound();
-        return limit <= 0 || done(participant, system.movementIsAction()) < limit;
+        int limit = system.combat().actionsPerRound();
+        return limit <= 0 || done(participant, system.combat().movementIsAction()) < limit;
     }
 
     /**

@@ -57,7 +57,7 @@ public class DowntimeService {
                 .map(character -> {
                     Counter health = healthCounterService.healthCounter(character.getId()).orElse(null);
                     boolean wounded = health != null && health.getValue() != null && health.getValue() > 0
-                            && !system.getCombatCard(character).out();
+                            && !system.combat().getCombatCard(character).out();
                     List<Character> healers = wounded ? healthCounterService.healers(character.getId(), List.of()) : List.of();
                     Long healer = wounded ? bestHealer(character, healers, health) : null;
                     List<app.charka.item.ItemField.Option> rests = health == null ? List.of() : healthCounterService.restOptions(health);

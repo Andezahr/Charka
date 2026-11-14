@@ -331,8 +331,8 @@ class KzSystemTest {
             when(dice.roll(anyInt())).thenReturn(5);
 
             new KzPortentStrategy(dice).performAction(new app.charka.model.counters.strategy.CounterContext(portent, List.of(portent)), "USE_1");
-            assertThat(registry.get(KzSystem.CODE).rollInitiative(fresh, dice).total()).isEqualTo(11);
-            assertThat(registry.get(KzSystem.CODE).rollInitiative(fresh, dice).total()).isEqualTo(5);
+            assertThat(registry.get(KzSystem.CODE).combat().rollInitiative(fresh, dice).total()).isEqualTo(11);
+            assertThat(registry.get(KzSystem.CODE).combat().rollInitiative(fresh, dice).total()).isEqualTo(5);
         }
 
         @Test

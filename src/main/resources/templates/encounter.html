@@ -129,9 +129,9 @@
               <th:block th:if="${open}"><span th:each="line : ${cur.card.lines}" class="chip" th:text="${line}">SP торса 14</span></th:block>
               <span th:if="${!open}" th:each="w : ${cur.weapons}" class="chip" th:text="${w.item.name}">Minami</span>
               <!-- UX-33: число действий — только где за него штраф (CP2020); с пределом (Космозэки) — «Действие: есть/потрачено» в полосе хода -->
-              <span th:if="${cur.actionsDone > 0 and @gameSystemRegistry.get(campaign.system).actionsPerRound() <= 0}" class="chip yellow" th:text="'Действий: ' + ${cur.actionsDone}">Действий: 1</span>
+              <span th:if="${cur.actionsDone > 0 and @gameSystemRegistry.get(campaign.system).combat().actionsPerRound() <= 0}" class="chip yellow" th:text="'Действий: ' + ${cur.actionsDone}">Действий: 1</span>
               <!-- K-07: действие + перемещение (Космозэки): действие можно отдать на ещё одно перемещение -->
-              <form th:if="${(isGm or curMine) and cur.actionsDone == 0 and !@gameSystemRegistry.get(campaign.system).movementIsAction()}"
+              <form th:if="${(isGm or curMine) and cur.actionsDone == 0 and !@gameSystemRegistry.get(campaign.system).combat().movementIsAction()}"
                     method="post" class="inline" th:action="@{${base} + '/participants/' + ${cur.participant.id} + '/dash'}">
                 <button type="submit" class="chip chip-button" title="Действие на ещё одно перемещение">🏃 Рывок</button>
               </form>
@@ -360,7 +360,7 @@
                   <div class="chips">
                     <span th:if="${row.card.status != null}" class="chip" th:classappend="${row.card.alarming} ? 'red'" th:text="${row.card.status}">Цел</span>
                     <span th:each="line : ${row.card.lines}" class="chip" th:text="${line}">SP торса 14</span>
-                    <span th:if="${row.actionsDone > 0 and !row.card.out and @gameSystemRegistry.get(campaign.system).actionsPerRound() <= 0}" class="chip yellow" th:text="'Действий: ' + ${row.actionsDone}"
+                    <span th:if="${row.actionsDone > 0 and !row.card.out and @gameSystemRegistry.get(campaign.system).combat().actionsPerRound() <= 0}" class="chip yellow" th:text="'Действий: ' + ${row.actionsDone}"
                           title="Следующее действие в этом раунде — со штрафом; диалог атаки ставит его сам">Действий: 1</span>
                     <span th:if="${row.participant.done and !row.card.out}" class="chip">Походил</span>
                     <span th:if="${row.participant.waiting}" class="chip">Ждёт</span>
@@ -464,11 +464,11 @@
                     sys=${@gameSystemRegistry.get(campaign.system)}"
            th:attr="data-no-actions=${cur.canAct} ? null : 'true'">
         <!-- UX-31: сколько действий за ход у системы (Космозэки — одно + перемещение) — фишками, чтобы было видно, что осталось -->
-        <span th:if="${sys.actionsPerRound() > 0}" class="turn-chip" th:classappend="${cur.actionsDone >= sys.actionsPerRound()} ? 'is-used'"
-              th:text="${cur.actionsDone >= sys.actionsPerRound()} ? 'Действие: потрачено' : 'Действие: есть'">Действие: есть</span>
-        <span th:if="${!sys.movementIsAction()}" class="turn-chip"
+        <span th:if="${sys.combat().actionsPerRound() > 0}" class="turn-chip" th:classappend="${cur.actionsDone >= sys.combat().actionsPerRound()} ? 'is-used'"
+              th:text="${cur.actionsDone >= sys.combat().actionsPerRound()} ? 'Действие: потрачено' : 'Действие: есть'">Действие: есть</span>
+        <span th:if="${!sys.combat().movementIsAction()}" class="turn-chip"
               th:text="${cur.participant.movedMeters > 0} ? 'Перемещение: ' + ${cur.participant.movedMeters} + ' м' : 'Перемещение: есть'">Перемещение: есть</span>
-        <form th:if="${cur.actionsDone == 0 and !sys.movementIsAction()}" method="post" th:action="@{${url} + '/dash'}">
+        <form th:if="${cur.actionsDone == 0 and !sys.combat().movementIsAction()}" method="post" th:action="@{${url} + '/dash'}">
           <button type="submit" class="btn btn-sm btn-ghost" title="Действие хода — на ещё одно перемещение">🏃 Рывок</button>
         </form>
         <!-- UX-13: атака кнопкой, не только правой кнопкой по врагу; диалоги — в блоке «Ходит» сверху -->

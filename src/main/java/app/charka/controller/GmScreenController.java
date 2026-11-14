@@ -41,7 +41,7 @@ public class GmScreenController {
     static List<Row> rows(List<Character> characters, GameSystem system) {
         return characters.stream()
                 .sorted(Comparator.comparing(Character::isNpc).thenComparing(Character::getName, Comparator.nullsLast(String::compareTo)))
-                .map(character -> new Row(character, system.getCombatCard(character),
+                .map(character -> new Row(character, system.combat().getCombatCard(character),
                         system.getCurrentStats(character).values().stream()
                                 .map(stat -> stat.name() + " " + stat.value() + (stat.value() != stat.base() ? "*" : ""))
                                 .toList(),

@@ -69,7 +69,7 @@ public class EncounterController {
             model.addAttribute("controllable", view.get().rows().stream().map(row -> row.character())
                     .filter(accessService::canControl).map(app.charka.model.Character::getId).collect(java.util.stream.Collectors.toSet()));
             model.addAttribute("difficultyPresets", systemRegistry.get(campaign.getSystem()).getTableCheckResolver().getDifficultyPresets());
-            model.addAttribute("contests", systemRegistry.get(campaign.getSystem()).getCombatContests());
+            model.addAttribute("contests", systemRegistry.get(campaign.getSystem()).combat().getCombatContests());
             app.charka.system.GameSystem system = systemRegistry.get(campaign.getSystem());
             model.addAttribute("luckLeft", view.get().rows().stream().collect(java.util.stream.Collectors.toMap(
                     row -> row.character().getId(), row -> system.getLuck(row.character()), (first, second) -> first)));

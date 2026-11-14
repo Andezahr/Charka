@@ -51,6 +51,18 @@ public interface GameSystem {
 
     // ---------- ARC-01: части правил; у системы без части — пустая ----------
 
+    /** ARC-01: бой: инициатива, карточка участника, противостояния, действия за раунд */
+    default app.charka.encounter.CombatRules combat() {
+        GameSystem system = this;
+        // без своей части боя карточка участника — краткая строка системы (роли)
+        return new app.charka.encounter.CombatRules() {
+            @Override
+            public CombatCard getCombatCard(Character character) {
+                return CombatCard.brief(system.getCharacterBrief(character));
+            }
+        };
+    }
+
     /** ARC-01: предметы: типы, справочник, действия, строка на листе, вживлённое */
     default app.charka.item.ItemRules items() {
         return app.charka.item.ItemRules.NONE;
@@ -175,50 +187,6 @@ public interface GameSystem {
     }
 
     /**
-     * Что можно объявить в начале раунда боя.
-     */
-    default List<InitiativeDeclaration> getInitiativeDeclarations() {
-        return List.of();
-    }
-
-    /**
-     * То же для этого участника: у него может быть своё, например, имплант.
-     */
-    default List<InitiativeDeclaration> getInitiativeDeclarations(Character character) {
-        return getInitiativeDeclarations();
-    }
-
-    /**
-     * Навыки, нужные в бою почти всегда: в проверке из строки участника они первые, даже на уровне 0.
-     */
-    default List<String> getCombatCheckSkills() {
-        return List.of();
-    }
-
-    /**
-     * Инициатива участника боя; по умолчанию d20. Вызывать в транзакции.
-     */
-    default Initiative rollInitiative(Character character, DiceRoller dice) {
-        int roll = dice.roll(20);
-        return new Initiative(roll, "d20 = " + roll);
-    }
-
-    /**
-     * Очередь бросается заново каждый раунд; иначе один раз за бой. Это значение по умолчанию для новой кампании:
-     * дальше решает {@code Campaign.initiativeEachRound} (A-13).
-     */
-    default boolean rollsInitiativeEachRound() {
-        return false;
-    }
-
-    /**
-     * Что показать об участнике в строке боевого трекера. Вызывать в транзакции.
-     */
-    default CombatCard getCombatCard(Character character) {
-        return CombatCard.brief(getCharacterBrief(character));
-    }
-
-    /**
      * Шаблоны быстрого создания NPC; пусто — только пустой NPC.
      */
     default List<NpcTemplate> getNpcTemplates() {
@@ -247,29 +215,6 @@ public interface GameSystem {
      */
     default java.util.Optional<app.charka.skill.SkillOverride> getSkillOverride(Character character, String skillCode) {
         return java.util.Optional.empty();
-    }
-
-    /**
-     * Противостояния в трекере боя: участник против другого участника. Пусто — кнопок нет.
-     */
-    default List<app.charka.encounter.CombatContest> getCombatContests() {
-        return List.of();
-    }
-
-    /**
-     * Из чего складывается бросок участника в противостоянии.
-     *
-     * @throws IllegalArgumentException если такого противостояния нет
-     */
-    default app.charka.check.CheckRequest getContestRequest(String code, Character character) {
-        throw new IllegalArgumentException("Такого противостояния нет: " + code);
-    }
-
-    /**
-     * Что остаётся на проигравшем до конца боя или пока мастер не снимет: название эффекта; null — ничего.
-     */
-    default String getContestLoserEffect(String code, Character winner) {
-        return null;
     }
 
     /**
@@ -320,27 +265,6 @@ public interface GameSystem {
     /** Слагаемое броска для потраченной удачи */
     static app.charka.check.CheckRequest.Part luckPart(int points) {
         return new app.charka.check.CheckRequest.Part("Удача", points);
-    }
-
-    /**
-     * K-07: новый бой — способности «раз за бой» восстанавливаются. Вызывать в транзакции.
-     */
-    default void onEncounterStart(Character character) {
-    }
-
-    /**
-     * K-07: тратит ли бег по карте действие раунда (CP2020 — да, бег — действие; Космозэки — нет: действие и перемещение).
-     */
-    default boolean movementIsAction() {
-        return true;
-    }
-
-    /**
-     * Сколько действий участник может сделать за раунд боя (атака, перезарядка, медпомощь, проверка). 0 — без предела:
-     * CP2020 разрешает несколько, каждое следующее со штрафом ({@code AttackRules.actionOption}); Космозэки — одно.
-     */
-    default int actionsPerRound() {
-        return 0;
     }
 
     /**

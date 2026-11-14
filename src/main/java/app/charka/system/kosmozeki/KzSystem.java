@@ -111,37 +111,6 @@ public class KzSystem implements GameSystem {
         return ATTACK_RULES;
     }
 
-    /** Инициатива — 1к12 раз за бой; отложенный кубик предсказания заменяет бросок */
-    @Override
-    public Initiative rollInitiative(Character character, DiceRoller dice) {
-        List<String> steps = new ArrayList<>();
-        int roll = KzAbilities.d12(character, dice, steps, "к12");
-        return new Initiative(roll, steps.get(0).replace("к12: ", ""));
-    }
-
-    @Override
-    public boolean rollsInitiativeEachRound() {
-        return false;
-    }
-
-    /** За ход — действие и перемещение: бег действие не тратит */
-    @Override
-    public boolean movementIsAction() {
-        return false;
-    }
-
-    /** За ход — одно действие (RULES_KOSMOZEKI.md, раздел 2): вторая атака, перезарядка или лечение — уже в следующем раунде */
-    @Override
-    public int actionsPerRound() {
-        return 1;
-    }
-
-    /** Новый бой: способности «раз за бой» восстанавливаются */
-    @Override
-    public void onEncounterStart(Character character) {
-        KzAbilities.restoreForFight(character);
-    }
-
     @Override
     public String getHealthStatus(Character character) {
         return KzAbilities.bodyCounter(character).map(KzSystem::healthBrief).orElse(null);
@@ -172,41 +141,6 @@ public class KzSystem implements GameSystem {
                 .map(Item::getName)
                 .forEach(brief::add);
         return brief;
-    }
-
-    @Override
-    public CombatCard getCombatCard(Character character) {
-        Optional<Counter> found = KzAbilities.bodyCounter(character);
-        if (found.isEmpty()) {
-            return GameSystem.super.getCombatCard(character);
-        }
-        Counter body = found.get();
-        KzBody zones = KzBodyStrategy.body(body);
-        List<String> lines = new ArrayList<>();
-        for (KzBody.Zone zone : zones.zones()) {
-            int hp = KzBodyStrategy.hp(body, zone);
-            int armor = KzBodyStrategy.armor(body, zone);
-            if (hp < zone.maxHp() || armor > 0) {
-                lines.add(zone.name() + " " + hp + "/" + zone.maxHp() + (armor > 0 ? " 🛡" + armor : ""));
-            }
-        }
-        boolean out = KzBodyStrategy.out(body);
-        // UX-30: в очереди боя — полоса цифр 0…9 цветом ХП зоны: мастер видит, у кого что на нуле, не раскрывая строку
-        List<CombatCard.Segment> segments = new ArrayList<>();
-        for (int digit = 0; digit < 10; digit++) {
-            int d = digit;
-            KzBody.Zone zone = zones.zones().stream().filter(candidate -> candidate.digits().contains(d)).findFirst().orElse(null);
-            if (zone == null) {
-                segments.add(new CombatCard.Segment(String.valueOf(digit), "none", digit + ": мимо зон"));
-                continue;
-            }
-            int hp = KzBodyStrategy.hp(body, zone);
-            int percent = zone.maxHp() == 0 ? 0 : hp * 100 / zone.maxHp();
-            String css = hp <= 0 ? "down" : percent < 35 ? "low" : percent < 100 ? "hurt" : "ok";
-            segments.add(new CombatCard.Segment(String.valueOf(digit), css, digit + ": " + zone.name() + " " + hp + " из " + zone.maxHp()));
-        }
-        return new CombatCard(body.getId(), KzBodyStrategy.statusLabel(body), out, out, lines, List.of(), false,
-                zones.zones().stream().map(zone -> new CombatCard.Option(zone.code(), zone.name())).toList(), List.of(), segments);
     }
 
     /**
@@ -250,5 +184,16 @@ public class KzSystem implements GameSystem {
     @Override
     public app.charka.item.ItemRules items() {
         return ITEMS;
+    }
+
+    /** ARC-01: бой: инициатива, карточка участника, противостояния, действия за раунд */
+    private volatile KzCombatRules combatRules;
+
+    @Override
+    public app.charka.encounter.CombatRules combat() {
+        if (combatRules == null) {
+            combatRules = new KzCombatRules(this);
+        }
+        return combatRules;
     }
 }

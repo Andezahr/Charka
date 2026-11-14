@@ -399,7 +399,7 @@ class Cp2020CyberTest {
             lost(55);
             assertThat(Cp2020Cyber.shortWarning(owner())).contains("EMP 1");
             lost(60);
-            assertThat(registry.forCharacter(owner()).getCombatCard(owner()).lines()).contains("Киберпсих");
+            assertThat(registry.forCharacter(owner()).combat().getCombatCard(owner()).lines()).contains("Киберпсих");
             assertThat(registry.forCharacter(owner()).getCharacterBrief(owner())).contains("Киберпсих");
         }
 

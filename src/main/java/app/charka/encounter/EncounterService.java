@@ -95,7 +95,7 @@ public class EncounterService {
         GameSystem system = system(campaign);
         return campaign.getCharacters().stream()
                 .sorted(Comparator.comparing(Character::isNpc))
-                .map(character -> new EncounterView.Candidate(character, system.getCombatCard(character)))
+                .map(character -> new EncounterView.Candidate(character, system.combat().getCombatCard(character)))
                 .toList();
     }
 
@@ -141,7 +141,7 @@ public class EncounterService {
             participant.setEncounter(encounter);
             participant.setCharacter(member(campaign, characterId));
             // K-07: способности «раз за бой» — до инициативы
-            system.onEncounterStart(participant.getCharacter());
+            system.combat().onEncounterStart(participant.getCharacter());
             roll(participant, system, dice);
             encounter.getParticipants().add(participant);
         }
@@ -175,19 +175,19 @@ public class EncounterService {
         List<Character> fighters = ordered(encounter).stream().map(EncounterParticipant::getCharacter).toList();
         List<EncounterView.Row> rows = ordered(encounter).stream().map(participant -> {
             Character character = participant.getCharacter();
-            CombatCard card = system.getCombatCard(character);
+            CombatCard card = system.combat().getCombatCard(character);
             return new EncounterView.Row(participant, character, declaration(participant, system), available(participant, system), checks(character, system),
                     card, participant == current,
                     weapons(character, system), targets(character, fighters, system), attackService.pendingBlasts(character.getId()),
                     List.copyOf(participant.getEffects()), abilities(character, system),
-                    RoundActions.done(participant, system.movementIsAction()),
-                    system.getAttackRules() == null ? null : system.getAttackRules().actionOption(RoundActions.done(participant, system.movementIsAction())),
+                    RoundActions.done(participant, system.combat().movementIsAction()),
+                    system.getAttackRules() == null ? null : system.getAttackRules().actionOption(RoundActions.done(participant, system.combat().movementIsAction())),
                     RoundActions.canAct(participant, system), healZones(character, card));
         }).toList();
         Set<Long> inFight = fighters.stream().map(Character::getId).collect(Collectors.toSet());
         List<Character> addable = encounter.getCampaign().getCharacters().stream()
                 .filter(character -> !inFight.contains(character.getId()))
-                .filter(character -> !system.getCombatCard(character).out())
+                .filter(character -> !system.combat().getCombatCard(character).out())
                 .sorted(Comparator.comparing(Character::isNpc))
                 .toList();
         boolean roundFresh = encounter.getParticipants().stream().noneMatch(EncounterParticipant::isDone);
@@ -214,7 +214,7 @@ public class EncounterService {
 
     /** Уже включённое не предлагается ещё раз */
     private static List<InitiativeDeclaration> available(EncounterParticipant participant, GameSystem system) {
-        return system.getInitiativeDeclarations(participant.getCharacter()).stream()
+        return system.combat().getInitiativeDeclarations(participant.getCharacter()).stream()
                 .filter(declaration -> participant.getEffects().stream().noneMatch(effect -> effect.getLabel().equals(effectLabel(declaration))))
                 .toList();
     }
@@ -224,7 +224,7 @@ public class EncounterService {
     }
 
     private static InitiativeDeclaration declaration(EncounterParticipant participant, GameSystem system) {
-        return system.getInitiativeDeclarations(participant.getCharacter()).stream()
+        return system.combat().getInitiativeDeclarations(participant.getCharacter()).stream()
                 .filter(declaration -> declaration.code().equals(participant.getDeclaration()))
                 .findFirst().orElse(null);
     }
@@ -250,7 +250,7 @@ public class EncounterService {
     private List<Character> targets(Character attacker, List<Character> fighters, GameSystem system) {
         return fighters.stream()
                 .filter(other -> !other.getId().equals(attacker.getId()))
-                .filter(other -> !system.getCombatCard(other).out())
+                .filter(other -> !system.combat().getCombatCard(other).out())
                 .sorted(Comparator.comparing(other -> other.isNpc() == attacker.isNpc()))
                 .toList();
     }
@@ -468,10 +468,10 @@ public class EncounterService {
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Противника нет в бою"));
         GameSystem system = systemRegistry.forCharacter(initiator.getCharacter());
-        if (system.getCombatContests().stream().noneMatch(contest -> contest.code().equals(code))) {
+        if (system.combat().getCombatContests().stream().noneMatch(contest -> contest.code().equals(code))) {
             throw new IllegalArgumentException("Такого противостояния нет: " + code);
         }
-        app.charka.check.CheckRequest own = system.getContestRequest(code, initiator.getCharacter());
+        app.charka.check.CheckRequest own = system.combat().getContestRequest(code, initiator.getCharacter());
         roundActions.requireTurn(initiator);
         RoundActions.require(initiator, system);
         initiator.setActions(initiator.getActions() + 1);
@@ -480,7 +480,7 @@ public class EncounterService {
             own = own.withPart(GameSystem.luckPart(luck));
         }
         OpposedCheckResult result = checkService.checkOpposed(initiator.getCharacter(), own,
-                target.getCharacter(), null, system.getContestRequest(code, target.getCharacter()));
+                target.getCharacter(), null, system.combat().getContestRequest(code, target.getCharacter()));
         if (result.initiator().result().total() == result.opponent().result().total()
                 || result.winner() == OpposedCheckResult.Winner.NONE) {
             return result;
@@ -488,7 +488,7 @@ public class EncounterService {
         boolean initiatorWon = result.winner() == OpposedCheckResult.Winner.INITIATOR;
         EncounterParticipant winner = initiatorWon ? initiator : target;
         EncounterParticipant loser = initiatorWon ? target : initiator;
-        String label = system.getContestLoserEffect(code, winner.getCharacter());
+        String label = system.combat().getContestLoserEffect(code, winner.getCharacter());
         if (label != null && loser.getEffects().stream().noneMatch(effect -> effect.getLabel().equals(label))) {
             CombatEffect effect = new CombatEffect();
             effect.setParticipant(loser);
@@ -613,8 +613,8 @@ public class EncounterService {
 
     /** Сколько действий осталось в раунде — словами для журнала и итога */
     static String actionsLeft(EncounterParticipant participant, GameSystem system) {
-        int limit = system.actionsPerRound();
-        int done = RoundActions.done(participant, system.movementIsAction());
+        int limit = system.combat().actionsPerRound();
+        int done = RoundActions.done(participant, system.combat().movementIsAction());
         if (limit <= 0) {
             return "Сделано действий в раунде: " + Math.max(0, done);
         }
@@ -670,7 +670,7 @@ public class EncounterService {
     }
 
     private Long healthCounter(Character character) {
-        Long counterId = system(character.getCampaign()).getCombatCard(character).healthCounterId();
+        Long counterId = system(character.getCampaign()).combat().getCombatCard(character).healthCounterId();
         if (counterId == null) {
             throw new IllegalArgumentException("У персонажа нет счётчика здоровья");
         }
@@ -685,7 +685,7 @@ public class EncounterService {
             app.charka.effect.TimedEffects.passRounds(character, 1)
                     .forEach(name -> report.add(character.getName() + ": «" + name + "» закончилось"));
             for (CombatEffect effect : List.copyOf(participant.getEffects())) {
-                if (system.getCombatCard(character).out()) {
+                if (system.combat().getCombatCard(character).out()) {
                     participant.getEffects().clear();
                     break;
                 }
@@ -736,10 +736,10 @@ public class EncounterService {
      * мастер (GM-01). HOMEBREW: решение автора, в правилах систем об этом нет.
      */
     private void sitOut(Encounter encounter, GameSystem system) {
-        int limit = system.actionsPerRound();
+        int limit = system.combat().actionsPerRound();
         encounter.getParticipants().stream()
                 .filter(participant -> !participant.isDone())
-                .filter(participant -> system.getCombatCard(participant.getCharacter()).out())
+                .filter(participant -> system.combat().getCombatCard(participant.getCharacter()).out())
                 .forEach(participant -> {
                     participant.setDone(true);
                     participant.setWaiting(false);
@@ -750,7 +750,7 @@ public class EncounterService {
     }
 
     private static void withdrawDeclaration(EncounterParticipant participant, GameSystem system) {
-        system.getInitiativeDeclarations(participant.getCharacter()).stream()
+        system.combat().getInitiativeDeclarations(participant.getCharacter()).stream()
                 .filter(declaration -> declaration.code().equals(participant.getDeclaration()))
                 .findFirst()
                 .ifPresent(declaration -> {
@@ -804,7 +804,7 @@ public class EncounterService {
     private EncounterParticipant current(Encounter encounter, GameSystem system) {
         List<EncounterParticipant> remaining = ordered(encounter).stream()
                 .filter(participant -> !participant.isDone())
-                .filter(participant -> !system.getCombatCard(participant.getCharacter()).out())
+                .filter(participant -> !system.combat().getCombatCard(participant.getCharacter()).out())
                 .toList();
         return remaining.stream().filter(participant -> !participant.isWaiting()).findFirst()
                 .orElse(remaining.isEmpty() ? null : remaining.getFirst());
@@ -814,7 +814,7 @@ public class EncounterService {
     private EncounterParticipant nextAfter(Encounter encounter, EncounterParticipant current, GameSystem system) {
         return ordered(encounter).stream()
                 .filter(participant -> participant != current && !participant.isDone())
-                .filter(participant -> !system.getCombatCard(participant.getCharacter()).out())
+                .filter(participant -> !system.combat().getCombatCard(participant.getCharacter()).out())
                 .findFirst().orElse(null);
     }
 
@@ -822,13 +822,13 @@ public class EncounterService {
         EncounterParticipant participant = new EncounterParticipant();
         participant.setEncounter(encounter);
         participant.setCharacter(character);
-        system.onEncounterStart(character);
+        system.combat().onEncounterStart(character);
         roll(participant, system, new RoundDice(encounter));
         return participant;
     }
 
     private void roll(EncounterParticipant participant, GameSystem system, RoundDice dice) {
-        Initiative initiative = system.rollInitiative(participant.getCharacter(), dice.of(participant.getCharacter()));
+        Initiative initiative = system.combat().rollInitiative(participant.getCharacter(), dice.of(participant.getCharacter()));
         int bonus = participant.getEffects().stream()
                 .mapToInt(effect -> Integer.parseInt(effect.getData().getOrDefault(INITIATIVE_BONUS, "0")))
                 .sum();
