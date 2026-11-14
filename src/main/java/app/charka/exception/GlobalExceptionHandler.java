@@ -46,6 +46,20 @@ public class GlobalExceptionHandler {
         return new ModelAndView("redirect:" + target);
     }
 
+    /** VER-01: пока игрок нажимал, ту же строку изменил другой — сообщение и назад, а не 500 */
+    public static final String CONFLICT = "Пока вы нажимали, состояние изменилось — посмотрите и повторите";
+
+    @ExceptionHandler(org.springframework.dao.OptimisticLockingFailureException.class)
+    public ModelAndView handleConflict(org.springframework.dao.OptimisticLockingFailureException ex,
+                                       jakarta.servlet.http.HttpServletRequest request) {
+        log.warn("Конфликт версий: {} {} — {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
+        String target = backTo(request);
+        org.springframework.web.servlet.support.RequestContextUtils.getOutputFlashMap(request)
+                .put(target.contains("/encounter") ? "encounterError" : "errorMessage", CONFLICT);
+        ModelAndView redirect = new ModelAndView("redirect:" + target);
+        return redirect;
+    }
+
     static String backTo(jakarta.servlet.http.HttpServletRequest request) {
         String campaign = request.getParameter("returnCampaign");
         if (campaign != null && campaign.matches("\\d+")) {

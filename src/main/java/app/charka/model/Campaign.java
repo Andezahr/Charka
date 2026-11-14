@@ -17,6 +17,12 @@ public class Campaign {
     @GeneratedValue
     private Long id;
 
+    /** VER-01: два изменения одной строки разом — второе получит отказ, а не затрёт первое */
+    @jakarta.persistence.Version
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    @lombok.EqualsAndHashCode.Exclude
+    private long version;
+
     private String name;
 
     /** Код игровой системы ({@code GameSystem.getCode()}), задаётся при создании кампании */

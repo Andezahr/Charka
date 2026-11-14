@@ -32,6 +32,13 @@ public class ApiExceptionHandler {
         return text(HttpStatus.NOT_FOUND.value(), ex.getMessage());
     }
 
+    /** VER-01: конфликт версий — 409 текстом */
+    @ExceptionHandler(org.springframework.dao.OptimisticLockingFailureException.class)
+    public ResponseEntity<String> handleConflict(org.springframework.dao.OptimisticLockingFailureException ex) {
+        log.warn("Конфликт версий: {}", ex.getMessage());
+        return text(HttpStatus.CONFLICT.value(), GlobalExceptionHandler.CONFLICT);
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<String> handleIllegalArgument(IllegalArgumentException ex) {
         return text(HttpStatus.BAD_REQUEST.value(), ex.getMessage());

@@ -136,14 +136,24 @@ public class CampaignSnapshots {
             Table table = TABLES.get(index);
             jdbc.update("DELETE FROM " + table.name() + " WHERE " + where(table, campaignId, characters));
         }
-        jdbc.update("UPDATE campaign SET current_date_value = ? WHERE id = ?",
+        jdbc.update("UPDATE campaign SET current_date_value = ?, version = version + 1 WHERE id = ?",
                 snapshot.currentDate() == null ? null : Date.valueOf(LocalDate.parse(snapshot.currentDate())), campaignId);
         for (Table table : TABLES) {
             for (Map<String, Object> row : snapshot.tables().getOrDefault(table.name(), List.of())) {
                 insert(table.name(), withKept(table.name(), row, kept));
             }
         }
+        // VER-01: восстановленные строки — новая версия, как после любого изменения
+        for (Table table : TABLES) {
+            if (VERSIONED.contains(table.name())) {
+                jdbc.update("UPDATE " + table.name() + " SET version = version + 1 WHERE " + where(table, campaignId, characters));
+            }
+        }
     }
+
+    /** Таблицы с колонкой {@code version} (VER-01) */
+    private static final java.util.Set<String> VERSIONED = java.util.Set.of("encounter", "encounter_participant", "combat_effect",
+            "counter", "inventory", "item");
 
     private List<Map<String, Object>> rows(Table table, long campaignId, List<Long> characters) {
         return jdbc.query("SELECT * FROM " + table.name() + " WHERE " + where(table, campaignId, characters) + " ORDER BY 1, 2",

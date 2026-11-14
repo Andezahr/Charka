@@ -25,6 +25,12 @@ public class Character {
     @ToString.Include
     private Long id;
 
+    /** VER-01: два изменения одной строки разом — второе получит отказ, а не затрёт первое */
+    @jakarta.persistence.Version
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    @lombok.EqualsAndHashCode.Exclude
+    private long version;
+
     @ToString.Include
     private String name;
 
