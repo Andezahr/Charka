@@ -1994,3 +1994,6 @@ a:focus-visible, button:focus-visible, summary:focus-visible, .btn:focus-visible
 .kz-fz-hp { flex-wrap: wrap; }
 .kz-fz-hp small { white-space: nowrap; }
 @media (max-width: 600px) { .kz-fz-armor { margin-left: 0; flex-basis: 100%; } }
+
+/* TURN-02: лист вне своего хода — неактивные кнопки */
+main button:disabled { opacity: .45; cursor: not-allowed; }

@@ -135,9 +135,40 @@ function revealRolls() {
   try { sessionStorage.setItem(FEED_SEEN_KEY, JSON.stringify([...seen].slice(-400))); } catch (e) { /* только удобство */ }
 }
 
+/*
+ * TURN-02: лист в бою вне своего хода — кнопки, которые сервер всё равно отклонит (TurnGuard), неактивны;
+ * урон, спасброски, заметки, контакты, профиль и ☆ навыка — можно. Ход пришёл — лист обновляется сам (опрос /encounter/turn).
+ */
+const TURN_FREE = [/\/health\/(damage|save\/[^/]+)$/, /\/(notes|categories|contacts)(\/|$)/, /\/profile$/, /\/skills\/pin$/,
+  /\/chat$/, /\/requests\/\d+\/roll$/, /\/undo\/\d+$/];
+let sheetTurnTimer = null;
+
+function initSheetTurn() {
+  clearInterval(sheetTurnTimer);
+  const banner = document.querySelector('.alert[data-not-turn][data-character]');
+  if (!banner) return;
+  document.querySelectorAll('main form').forEach(form => {
+    if ((form.getAttribute('method') || 'get').toLowerCase() !== 'post') return;
+    const action = new URL(form.action, location.href).pathname;
+    if (TURN_FREE.some(pattern => pattern.test(action))) return;
+    form.querySelectorAll('button[type="submit"], button:not([type]), input[type="submit"]').forEach(button => {
+      button.disabled = true;
+      button.title = 'Сейчас ход не ваш';
+    });
+  });
+  sheetTurnTimer = setInterval(async () => {
+    if (document.hidden) return;
+    try {
+      const turn = await (await fetch(banner.dataset.notTurn, {headers: {Accept: 'application/json'}})).json();
+      if (!turn.current || String(turn.current) === banner.dataset.character) location.reload();
+    } catch (e) { /* сеть — попробуем в следующий раз */ }
+  }, 4000);
+}
+
 function initPage() {
   revealRolls();
   hideBattleUndo();
+  initSheetTurn();
 
   // R-14: экран боя — до низа окна под шапкой, какой бы высоты она ни была
   const battleScreen = document.querySelector('.battle-screen');

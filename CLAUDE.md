@@ -229,7 +229,7 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 - Имя фрагмента не должно совпадать с тегом HTML (`form`, `slot`…): селектор `~{file :: form}` найдёт элементы `<form>`.
 - Отмена (A-01) снимает таблицы списком `CampaignSnapshots.TABLES`: новая таблица игрового состояния персонажа или боя — добавить туда, иначе её изменения не откатываются. Новый изменяющий маршрут вне игры (как заметки) — в `UndoInterceptor.SKIPPED`.
 - Версии (VER-01): новая сущность игрового состояния (меняется в бою или на листе) — `@Version long version` с `@JsonIgnore` и колонка `version BIGINT DEFAULT 0 NOT NULL` в миграции; если её таблица в `CampaignSnapshots.TABLES` — и в `CampaignSnapshots.VERSIONED`.
-- Ход (TURN-01): новый изменяющий маршрут персонажа или боя игроку в бою вне хода закрыт сам (`TurnGuard`). Если по правилам его делают на чужом ходу (реакция, урон, спасбросок) — внести в `TurnGuard.CHARACTER_ALLOWED`/`ENCOUNTER_ALLOWED` и в `TurnGuardTest.ALLOWED`.
+- Ход (TURN-01): новый изменяющий маршрут персонажа или боя игроку в бою вне хода закрыт сам (`TurnGuard`). Если по правилам его делают на чужом ходу (реакция, урон, спасбросок) — внести в `TurnGuard.CHARACTER_ALLOWED`/`ENCOUNTER_ALLOWED`, в `TurnGuardTest.ALLOWED` и в `TURN_FREE` в `app.js` (кнопки листа вне хода).
 
 ## Известные проблемы и долг (кандидаты на модернизацию)
 
