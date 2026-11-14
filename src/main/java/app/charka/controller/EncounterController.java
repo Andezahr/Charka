@@ -72,7 +72,7 @@ public class EncounterController {
             model.addAttribute("contests", systemRegistry.get(campaign.getSystem()).combat().getCombatContests());
             app.charka.system.GameSystem system = systemRegistry.get(campaign.getSystem());
             model.addAttribute("luckLeft", view.get().rows().stream().collect(java.util.stream.Collectors.toMap(
-                    row -> row.character().getId(), row -> system.getLuck(row.character()), (first, second) -> first)));
+                    row -> row.character().getId(), row -> system.luck().getLuck(row.character()), (first, second) -> first)));
             // A-04: игроку — свой экран сверху: чей ход и сколько до него
             // M-16: кого игрок не видит на карте — в очереди и списке без имени
             java.util.Set<Long> mine = campaign.getCharacters().stream().filter(accessService::canControl)

@@ -279,7 +279,7 @@ public class SkillService {
         if (luck <= 0) {
             return request;
         }
-        systemRegistry.forCharacter(character).spendLuck(character, luck);
+        systemRegistry.forCharacter(character).luck().spendLuck(character, luck);
         return request.withPart(GameSystem.luckPart(luck));
     }
 

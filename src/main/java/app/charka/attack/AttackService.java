@@ -86,7 +86,7 @@ public class AttackService {
         Item targetItem = request.targetItemId() == null ? null : targetItem(attacker, rules, request.targetItemId());
         AttackContext context = new AttackContext(attacker, source, targets, request, system.skills()::getCurrentStats, this::effectsOf, targetItem);
         if (request.luck() > 0) {
-            system.spendLuck(attacker, request.luck());
+            system.luck().spendLuck(attacker, request.luck());
         }
         AttackResult result = journalService.capture(() -> perform(context, rules), done -> draft(attacker, done));
         // A-05: атака в бою — действие раунда

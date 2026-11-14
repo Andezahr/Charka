@@ -83,6 +83,6 @@ public class CampaignTimelineService {
     public void newSession(Long campaignId) {
         Campaign campaign = campaignService.getById(campaignId);
         GameSystem system = systemRegistry.get(campaign.getSystem());
-        campaign.getCharacters().forEach(system::restoreLuck);
+        campaign.getCharacters().forEach(system.luck()::restoreLuck);
     }
 }

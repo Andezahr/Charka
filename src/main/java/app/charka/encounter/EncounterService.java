@@ -476,7 +476,7 @@ public class EncounterService {
         RoundActions.require(initiator, system);
         initiator.setActions(initiator.getActions() + 1);
         if (luck > 0) {
-            system.spendLuck(initiator.getCharacter(), luck);
+            system.luck().spendLuck(initiator.getCharacter(), luck);
             own = own.withPart(GameSystem.luckPart(luck));
         }
         OpposedCheckResult result = checkService.checkOpposed(initiator.getCharacter(), own,
@@ -647,7 +647,7 @@ public class EncounterService {
     public HealthEvent save(Long campaignId, Long participantId, String code, int luck) {
         Character character = participant(campaignId, participantId).getCharacter();
         if (luck > 0) {
-            system(character.getCampaign()).spendLuck(character, luck);
+            system(character.getCampaign()).luck().spendLuck(character, luck);
         }
         return healthCounterService.save(character.getId(), healthCounter(character), code, null, Math.max(0, luck));
     }

@@ -89,7 +89,7 @@ class Cp2020LuckTest {
     }
 
     private int luck() {
-        return registry.get("CP2020").getLuck(characterRepository.findById(lucky.getId()).orElseThrow());
+        return registry.get("CP2020").luck().getLuck(characterRepository.findById(lucky.getId()).orElseThrow());
     }
 
     @Test

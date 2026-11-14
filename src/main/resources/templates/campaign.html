@@ -117,7 +117,7 @@
           <ul th:if="${timeReport != null and !#lists.isEmpty(timeReport)}" class="award-result">
             <li th:each="line : ${timeReport}" th:text="${line}">Колясик: урон 12 → 9</li>
           </ul>
-          <form th:if="${gameSystem.hasLuck()}" th:action="@{'/campaign/' + ${campaign.id} + '/session'}" method="post" class="form-row">
+          <form th:if="${gameSystem.luck().hasLuck()}" th:action="@{'/campaign/' + ${campaign.id} + '/session'}" method="post" class="form-row">
             <button type="submit" class="btn btn-sm btn-ghost" title="Потраченная Удача возвращается всем">🍀 Новая сессия</button>
           </form>
         <!-- Начислить всем: опыт, IP. Галочки — игроки, NPC по умолчанию не получают -->

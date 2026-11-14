@@ -51,6 +51,11 @@ public interface GameSystem {
 
     // ---------- ARC-01: части правил; у системы без части — пустая ----------
 
+    /** ARC-01: удача: сколько осталось, потратить на бросок, вернуть к новой сессии */
+    default app.charka.check.LuckRules luck() {
+        return app.charka.check.LuckRules.NONE;
+    }
+
     /** ARC-01: навыки, роли, прокачка и текущие статы */
     default app.charka.skill.SkillRules skills() {
         return app.charka.skill.SkillRules.NONE;
@@ -179,33 +184,6 @@ public interface GameSystem {
      */
     default List<ExpenseTemplate> getExpenseTemplates() {
         return List.of();
-    }
-
-    /**
-     * Очки, которые игрок прибавляет к важному броску, объявив до него (CP2020: Удача, с. 26). 0 — нет.
-     */
-    default int getLuck(Character character) {
-        return 0;
-    }
-
-    /**
-     * Потратить очки на бросок.
-     *
-     * @throws IllegalArgumentException если столько нет
-     */
-    default void spendLuck(Character character, int points) {
-        if (points > 0) {
-            throw new IllegalArgumentException("Удачи в этой системе нет");
-        }
-    }
-
-    /** Есть ли в системе удача: на странице кампании появляется «Новая сессия» */
-    default boolean hasLuck() {
-        return false;
-    }
-
-    /** Новая игровая сессия: потраченные очки возвращаются */
-    default void restoreLuck(Character character) {
     }
 
     /** Слагаемое броска для потраченной удачи */

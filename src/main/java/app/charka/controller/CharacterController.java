@@ -192,7 +192,7 @@ public class CharacterController {
                 system.items().getSuggestedCatalog(character).stream().map(CatalogItem::key).toList())));
         model.addAttribute("effectTemplates", system.getEffectTemplates());
         model.addAttribute("effectStats", system.skills().getCurrentStats(character).values());
-        model.addAttribute("luckLeft", java.util.Map.of(character.getId(), system.getLuck(character)));
+        model.addAttribute("luckLeft", java.util.Map.of(character.getId(), system.luck().getLuck(character)));
         model.addAttribute("healthStatus", system.getHealthStatus(character));
         // K-11: поля листа от системы (теги, приговор); пусто — блока нет
         model.addAttribute("profileRows", app.charka.service.ProfileService.rows(character, system.getProfileFields()));

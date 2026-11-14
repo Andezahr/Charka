@@ -50,7 +50,7 @@ public class SkillController {
         model.addAttribute("sheet", skillService.getSheet(characterId));
         model.addAttribute("pinned", character.getPinnedSkills());
         model.addAttribute("difficultyPresets", resolver.getDifficultyPresets());
-        model.addAttribute("luck", systemRegistry.forCharacter(character).getLuck(character));
+        model.addAttribute("luck", systemRegistry.forCharacter(character).luck().getLuck(character));
         model.addAttribute("opponents", character.getCampaign() == null
                 ? List.of()
                 : characterService.getCampaignCharacters(character.getCampaign()).stream()

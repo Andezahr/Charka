@@ -47,7 +47,7 @@ public class GmScreenController {
                                 .toList(),
                         character.getMoneyList().stream().map(Money::getAmount).filter(Objects::nonNull).mapToLong(Long::longValue).sum(),
                         character.getEffects().stream().map(effect -> effect.getName() + " " + effect.getRemainingLabel()).toList(),
-                        system.hasLuck() ? system.getLuck(character) : null))
+                        system.luck().hasLuck() ? system.luck().getLuck(character) : null))
                 .toList();
     }
 }
