@@ -2,9 +2,9 @@ package app.charka.controller;
 
 import app.charka.dto.counter.request.CounterCreateRequestDto;
 import app.charka.dto.counter.response.CounterResponseDto;
-import app.charka.model.counters.strategy.health.CareOption;
-import app.charka.model.counters.strategy.health.HealthCounterStrategy;
-import app.charka.model.counters.strategy.CounterStrategyFactory;
+import app.charka.counter.health.CareOption;
+import app.charka.counter.health.HealthCounterStrategy;
+import app.charka.counter.CounterStrategyFactory;
 import app.charka.service.counter.CounterService;
 import app.charka.service.counter.HealthCounterService;
 import lombok.RequiredArgsConstructor;
@@ -33,7 +33,7 @@ class CounterModel {
         List<app.charka.model.Character> healers = healthCounterService.healers(characterId, careOptions());
         model.addAttribute("healers", healers);
         counters.stream()
-                .filter(counter -> counter.getView() instanceof app.charka.model.counters.strategy.health.HealthView)
+                .filter(counter -> counter.getView() instanceof app.charka.counter.health.HealthView)
                 .findFirst()
                 .ifPresent(health -> model.addAttribute("defaultCare",
                         healthCounterService.defaultCare(characterId, health.getId(), healers.isEmpty() ? null : healers.get(0))));

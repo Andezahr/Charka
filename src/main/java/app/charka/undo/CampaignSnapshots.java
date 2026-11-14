@@ -151,6 +151,11 @@ public class CampaignSnapshots {
         }
     }
 
+    /** ARC-05: имена снимаемых таблиц — для теста, что новую таблицу не забыли */
+    static List<String> tableNames() {
+        return TABLES.stream().map(Table::name).toList();
+    }
+
     /** Таблицы с колонкой {@code version} (VER-01) */
     private static final java.util.Set<String> VERSIONED = java.util.Set.of("encounter", "encounter_participant", "combat_effect",
             "counter", "inventory", "item");

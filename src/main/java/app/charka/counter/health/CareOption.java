@@ -1,4 +1,4 @@
-package app.charka.model.counters.strategy.health;
+package app.charka.counter.health;
 
 /**
  * Медпомощь, которую оказывает персонаж своим навыком: стабилизация, лечение.

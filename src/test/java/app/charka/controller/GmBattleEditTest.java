@@ -9,7 +9,7 @@ import app.charka.model.Character;
 import app.charka.model.Item;
 import app.charka.model.JournalEntry;
 import app.charka.model.counters.Counter;
-import app.charka.model.counters.strategy.health.DamageRequest;
+import app.charka.counter.health.DamageRequest;
 import app.charka.repository.AppUserRepository;
 import app.charka.repository.CampaignRepository;
 import app.charka.repository.CharacterRepository;
@@ -69,7 +69,7 @@ class GmBattleEditTest {
     @Autowired private EntityManager entityManager;
 
     @Autowired
-    private app.charka.model.counters.strategy.health.DiceRoller dice;
+    private app.charka.dice.DiceRoller dice;
 
     private Campaign campaign;
     private Character zek;

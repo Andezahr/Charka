@@ -3,8 +3,8 @@ package app.charka.system.cp2020;
 import app.charka.effect.TimedEffects;
 
 import app.charka.model.counters.Counter;
-import app.charka.model.counters.strategy.AbstractCounterStrategy;
-import app.charka.model.counters.strategy.CounterContext;
+import app.charka.counter.AbstractCounterStrategy;
+import app.charka.counter.CounterContext;
 import app.charka.system.cp2020.Cp2020StatsView.StatLine;
 import org.springframework.stereotype.Component;
 

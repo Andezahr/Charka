@@ -3,12 +3,12 @@ package app.charka.system.kosmozeki;
 import app.charka.item.ItemField.Option;
 import app.charka.model.Item;
 import app.charka.model.counters.Counter;
-import app.charka.model.counters.strategy.AbstractCounterStrategy;
-import app.charka.model.counters.strategy.CounterContext;
-import app.charka.model.counters.strategy.health.DamageRequest;
-import app.charka.model.counters.strategy.health.DiceRoller;
-import app.charka.model.counters.strategy.health.HealthCounterStrategy;
-import app.charka.model.counters.strategy.health.HealthEvent;
+import app.charka.counter.AbstractCounterStrategy;
+import app.charka.counter.CounterContext;
+import app.charka.counter.health.DamageRequest;
+import app.charka.dice.DiceRoller;
+import app.charka.counter.health.HealthCounterStrategy;
+import app.charka.counter.health.HealthEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 

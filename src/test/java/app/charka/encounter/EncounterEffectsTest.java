@@ -11,7 +11,7 @@ import app.charka.model.Campaign;
 import app.charka.model.Character;
 import app.charka.model.CombatEffect;
 import app.charka.model.Item;
-import app.charka.model.counters.strategy.health.DiceRoller;
+import app.charka.dice.DiceRoller;
 import app.charka.repository.CampaignRepository;
 import app.charka.repository.CharacterRepository;
 import app.charka.service.CharacterService;

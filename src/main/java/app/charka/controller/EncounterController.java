@@ -5,7 +5,7 @@ import app.charka.attack.AttackService;
 import app.charka.encounter.EncounterService;
 import app.charka.encounter.EncounterView;
 import app.charka.model.Campaign;
-import app.charka.model.counters.strategy.health.HealthEvent;
+import app.charka.counter.health.HealthEvent;
 import app.charka.service.campaign.CampaignService;
 import app.charka.skill.SkillCheck;
 import app.charka.check.OpposedCheckResult;

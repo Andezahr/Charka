@@ -69,7 +69,7 @@ class PrintTest {
         Long inventory = characterRepository.findById(solo.getId()).orElseThrow().getInventories().get(0).getId();
         itemService.addFromCatalog(inventory, "arasaka_minami_10", 1);
         itemService.addFromCatalog(inventory, "armor_light_jacket", 1);
-        healthCounterService.applyDamage(solo.getId(), app.charka.model.counters.strategy.health.DamageRequest.builder()
+        healthCounterService.applyDamage(solo.getId(), app.charka.counter.health.DamageRequest.builder()
                 .amount(6).location("R_LEG").build());
         entityManager.flush();
         entityManager.clear();

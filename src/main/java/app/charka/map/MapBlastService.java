@@ -5,7 +5,7 @@ import app.charka.dice.DiceExpression;
 import app.charka.model.Character;
 import app.charka.model.Encounter;
 import app.charka.model.EncounterParticipant;
-import app.charka.model.counters.strategy.health.DiceRoller;
+import app.charka.dice.DiceRoller;
 import app.charka.repository.EncounterRepository;
 import app.charka.system.GameSystemRegistry;
 import lombok.RequiredArgsConstructor;

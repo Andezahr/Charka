@@ -3,7 +3,7 @@ package app.charka.system.cp2020;
 import app.charka.check.CheckRequest;
 import app.charka.model.Character;
 import app.charka.model.CharacterSkill;
-import app.charka.model.counters.strategy.CounterContext;
+import app.charka.counter.CounterContext;
 import app.charka.skill.CharacterRole;
 import app.charka.skill.SkillDefinition;
 import app.charka.skill.SkillProgression;

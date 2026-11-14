@@ -3,7 +3,7 @@ package app.charka.system.cp2020;
 import app.charka.check.CheckRequest;
 import app.charka.encounter.Initiative;
 import app.charka.model.Character;
-import app.charka.model.counters.strategy.health.DiceRoller;
+import app.charka.dice.DiceRoller;
 import app.charka.skill.StatValue;
 
 import java.util.Map;

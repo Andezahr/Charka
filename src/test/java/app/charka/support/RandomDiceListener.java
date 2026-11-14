@@ -1,6 +1,6 @@
 package app.charka.support;
 
-import app.charka.model.counters.strategy.health.DiceRoller;
+import app.charka.dice.DiceRoller;
 import org.springframework.test.context.TestContext;
 import org.springframework.test.context.support.AbstractTestExecutionListener;
 

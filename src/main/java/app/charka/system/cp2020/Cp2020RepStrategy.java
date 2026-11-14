@@ -1,6 +1,6 @@
 package app.charka.system.cp2020;
 
-import app.charka.model.counters.strategy.AbstractCounterStrategy;
+import app.charka.counter.AbstractCounterStrategy;
 import org.springframework.stereotype.Component;
 
 import java.util.Set;

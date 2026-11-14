@@ -3,7 +3,7 @@ package app.charka.undo;
 import app.charka.exception.CharacterNotFoundException;
 import app.charka.model.Character;
 import app.charka.model.counters.Counter;
-import app.charka.model.counters.strategy.InspirationCounterStrategy;
+import app.charka.counter.InspirationCounterStrategy;
 import app.charka.repository.CharacterRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

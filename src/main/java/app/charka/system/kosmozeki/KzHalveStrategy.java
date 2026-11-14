@@ -1,8 +1,8 @@
 package app.charka.system.kosmozeki;
 
 import app.charka.model.counters.Counter;
-import app.charka.model.counters.strategy.AbstractCounterStrategy;
-import app.charka.model.counters.strategy.CounterContext;
+import app.charka.counter.AbstractCounterStrategy;
+import app.charka.counter.CounterContext;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;

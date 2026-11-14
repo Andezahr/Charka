@@ -1,7 +1,7 @@
 package app.charka.system.kosmozeki;
 
 import app.charka.item.ItemField.Option;
-import app.charka.model.counters.strategy.health.HealthView;
+import app.charka.counter.health.HealthView;
 
 import java.util.List;
 

@@ -1,4 +1,4 @@
-package app.charka.model.counters.strategy.health;
+package app.charka.dice;
 
 /**
  * Источник бросков кубиков. Вынесен в интерфейс, чтобы в тестах подставлять заранее известные броски.

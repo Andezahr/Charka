@@ -3,7 +3,7 @@ package app.charka.system.cp2020;
 import app.charka.check.CheckRequest;
 import app.charka.check.CheckResolver;
 import app.charka.check.CheckResult;
-import app.charka.model.counters.strategy.health.DiceRoller;
+import app.charka.dice.DiceRoller;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;

@@ -3,7 +3,7 @@ package app.charka.effect;
 import app.charka.exception.NotFoundException;
 import app.charka.model.Character;
 import app.charka.model.TimedEffect;
-import app.charka.model.counters.strategy.health.DiceRoller;
+import app.charka.dice.DiceRoller;
 import app.charka.repository.CharacterRepository;
 import app.charka.system.GameSystemRegistry;
 import lombok.RequiredArgsConstructor;

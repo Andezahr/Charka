@@ -1,8 +1,8 @@
 package app.charka.system.kosmozeki;
 
 import app.charka.model.counters.Counter;
-import app.charka.model.counters.strategy.CounterContext;
-import app.charka.model.counters.strategy.health.DamageRequest;
+import app.charka.counter.CounterContext;
+import app.charka.counter.health.DamageRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

@@ -5,7 +5,7 @@ import app.charka.support.CharkaTest;
 import app.charka.model.Campaign;
 import app.charka.model.Character;
 import app.charka.model.Item;
-import app.charka.model.counters.strategy.health.DiceRoller;
+import app.charka.dice.DiceRoller;
 import app.charka.repository.CampaignRepository;
 import app.charka.service.CharacterService;
 import app.charka.service.ItemService;

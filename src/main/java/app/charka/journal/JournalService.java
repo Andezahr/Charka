@@ -6,7 +6,7 @@ import app.charka.model.Campaign;
 import app.charka.model.Character;
 import app.charka.model.JournalEntry;
 import app.charka.model.RollLog;
-import app.charka.model.counters.strategy.health.HealthEvent;
+import app.charka.counter.health.HealthEvent;
 import app.charka.repository.JournalEntryRepository;
 import app.charka.repository.RollLogRepository;
 import lombok.RequiredArgsConstructor;

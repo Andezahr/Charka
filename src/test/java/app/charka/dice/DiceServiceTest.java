@@ -5,7 +5,7 @@ import app.charka.exception.NotFoundException;
 import app.charka.model.Campaign;
 import app.charka.model.Character;
 import app.charka.model.RollLog;
-import app.charka.model.counters.strategy.health.DiceRoller;
+import app.charka.dice.DiceRoller;
 import app.charka.repository.CampaignRepository;
 import app.charka.repository.CharacterRepository;
 import app.charka.repository.RollLogRepository;

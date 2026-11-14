@@ -16,8 +16,8 @@ import app.charka.item.ItemField.Option;
 import app.charka.model.Character;
 import app.charka.model.CharacterSkill;
 import app.charka.model.Item;
-import app.charka.model.counters.strategy.health.DamageRequest;
-import app.charka.model.counters.strategy.health.DiceRoller;
+import app.charka.counter.health.DamageRequest;
+import app.charka.dice.DiceRoller;
 import app.charka.skill.StatValue;
 
 import java.util.ArrayList;

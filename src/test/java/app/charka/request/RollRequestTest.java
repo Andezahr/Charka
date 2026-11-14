@@ -6,7 +6,7 @@ import app.charka.model.Campaign;
 import app.charka.model.Character;
 import app.charka.model.ChatMessage;
 import app.charka.model.RollRequest;
-import app.charka.model.counters.strategy.health.DiceRoller;
+import app.charka.dice.DiceRoller;
 import app.charka.repository.AppUserRepository;
 import app.charka.repository.CampaignRepository;
 import app.charka.repository.CharacterRepository;

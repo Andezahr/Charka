@@ -1,7 +1,7 @@
 package app.charka.controller;
 
 import app.charka.dto.counter.request.HealthDamageRequestDto;
-import app.charka.model.counters.strategy.health.HealthEvent;
+import app.charka.counter.health.HealthEvent;
 import app.charka.service.counter.HealthCounterService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

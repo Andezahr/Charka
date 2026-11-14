@@ -1,7 +1,7 @@
 package app.charka.system.kosmozeki;
 
 import app.charka.model.counters.Counter;
-import app.charka.model.counters.strategy.CounterContext;
+import app.charka.counter.CounterContext;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;

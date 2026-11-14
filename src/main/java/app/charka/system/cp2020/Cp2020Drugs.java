@@ -10,7 +10,7 @@ import app.charka.item.ItemField.Option;
 import app.charka.item.ItemTypeDefinition;
 import app.charka.model.Character;
 import app.charka.model.Item;
-import app.charka.model.counters.strategy.health.DiceRoller;
+import app.charka.dice.DiceRoller;
 
 import java.util.List;
 import java.util.Map;

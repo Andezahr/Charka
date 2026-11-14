@@ -1,6 +1,6 @@
 package app.charka.system.cp2020;
 
-import app.charka.model.counters.strategy.health.HealthView;
+import app.charka.counter.health.HealthView;
 import lombok.Builder;
 import lombok.Value;
 

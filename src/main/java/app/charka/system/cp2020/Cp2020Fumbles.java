@@ -1,6 +1,6 @@
 package app.charka.system.cp2020;
 
-import app.charka.model.counters.strategy.health.DiceRoller;
+import app.charka.dice.DiceRoller;
 import app.charka.skill.SkillDefinition;
 
 import java.util.Set;

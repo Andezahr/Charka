@@ -1,10 +1,10 @@
 package app.charka.system.cp2020;
 
 import app.charka.model.counters.Counter;
-import app.charka.model.counters.strategy.CounterContext;
-import app.charka.model.counters.strategy.health.DamageRequest;
-import app.charka.model.counters.strategy.health.DiceRoller;
-import app.charka.model.counters.strategy.health.HealthEvent;
+import app.charka.counter.CounterContext;
+import app.charka.counter.health.DamageRequest;
+import app.charka.dice.DiceRoller;
+import app.charka.counter.health.HealthEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -359,8 +359,8 @@ class Cp2020HealthStrategyTest {
         @DisplayName("medic: stabilization only for the dying, difficulty = damage; treatment needs more than damage")
         void care() {
             health.setValue(12);
-            app.charka.model.counters.strategy.health.CareOption stabilize = strategy.getCareOptions().get(0);
-            app.charka.model.counters.strategy.health.CareOption treat = strategy.getCareOptions().get(2);
+            app.charka.counter.health.CareOption stabilize = strategy.getCareOptions().get(0);
+            app.charka.counter.health.CareOption treat = strategy.getCareOptions().get(2);
             assertThat(strategy.careDifficulty(context, stabilize)).isNull();
             assertThat(strategy.careDifficulty(context, treat)).isEqualTo(13);
 

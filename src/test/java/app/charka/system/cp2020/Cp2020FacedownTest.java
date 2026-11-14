@@ -12,7 +12,7 @@ import app.charka.model.Character;
 import app.charka.model.CombatEffect;
 import app.charka.model.EncounterParticipant;
 import app.charka.model.counters.Counter;
-import app.charka.model.counters.strategy.health.DiceRoller;
+import app.charka.dice.DiceRoller;
 import app.charka.repository.CampaignRepository;
 import app.charka.repository.CharacterRepository;
 import app.charka.repository.EncounterRepository;

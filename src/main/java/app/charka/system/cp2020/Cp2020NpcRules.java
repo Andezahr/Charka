@@ -1,7 +1,7 @@
 package app.charka.system.cp2020;
 
-import app.charka.model.counters.strategy.health.DiceRoller;
-import app.charka.model.counters.strategy.health.DiceRoller;
+import app.charka.dice.DiceRoller;
+import app.charka.dice.DiceRoller;
 import app.charka.npc.NpcSheet;
 import app.charka.npc.NpcTemplate;
 import java.util.List;

@@ -1,4 +1,4 @@
-package app.charka.model.counters.strategy.health;
+package app.charka.dice;
 
 import org.springframework.stereotype.Component;
 

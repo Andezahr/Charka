@@ -7,7 +7,7 @@ import app.charka.model.Character;
 import app.charka.model.Item;
 import app.charka.model.Money;
 import app.charka.model.counters.Counter;
-import app.charka.model.counters.strategy.health.DiceRoller;
+import app.charka.dice.DiceRoller;
 import app.charka.repository.CampaignRepository;
 import app.charka.repository.CharacterRepository;
 import app.charka.repository.UndoEntryRepository;

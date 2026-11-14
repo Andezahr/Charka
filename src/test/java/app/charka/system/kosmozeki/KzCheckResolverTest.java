@@ -2,7 +2,7 @@ package app.charka.system.kosmozeki;
 
 import app.charka.check.CheckRequest;
 import app.charka.check.CheckResult;
-import app.charka.model.counters.strategy.health.DiceRoller;
+import app.charka.dice.DiceRoller;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;

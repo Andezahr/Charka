@@ -12,7 +12,7 @@ import app.charka.item.ItemTypeDefinition;
 import app.charka.model.Character;
 import app.charka.model.CharacterSkill;
 import app.charka.model.Item;
-import app.charka.model.counters.strategy.health.DiceRoller;
+import app.charka.dice.DiceRoller;
 import app.charka.skill.StatValue;
 
 import java.util.ArrayList;

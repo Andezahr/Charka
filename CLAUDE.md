@@ -40,7 +40,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 1170 тестов, на 2026-11-14 все зелёные (CI: .github/workflows/test.yml), ~1 мин 20 с с clean (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 1171 тестов, на 2026-11-14 все зелёные (CI: .github/workflows/test.yml), ~1 мин 20 с с clean (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw test -Dtest='EncounterServiceTest,GmBattleEditTest'   # по ходу работы — только затронутое; полный прогон — перед коммитом (TODO.md, раздел 0, п. 4)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
@@ -51,13 +51,14 @@ docker compose up -d        # БД вручную (данные в volume charka
 
 ```
 model/         JPA-сущности (используются напрямую и как модель для шаблонов, и для JSON-экспорта)
-  counters/    Counter + strategy/ (стратегии изменения значения счётчика)
+  counters/    Counter (стратегии — в `counter/`)
   notes/       Note, NoteCategory
+counter/       ARC-04: стратегии счётчиков — CounterStrategy, AbstractCounterStrategy, CounterContext, CounterStrategyFactory, SimpleInteger, Inspiration; health/ — HealthCounterStrategy, DamageRequest, HealthEvent, HealthView, CareOption
 repository/    Spring Data репозитории (по одному на сущность)
 service/       бизнес-логика; campaign/, counter/, notes/ — подпакеты. Character, Chronicle, Inventory, Item, Money, Wound — интерфейс здесь (с @Transactional), реализация в impl/ (с @Override и JavaDoc)
 controller/    MVC-контроллеры, возвращают имена шаблонов или redirect
 api/           REST: CampaignExportController, SkillCheckController (проверка навыка)
-dice/         DiceExpression (разбор NdM±K), DiceResult, DiceService (броски + лог RollLog)
+dice/         DiceRoller (источник кубиков; в тестах — мок), RandomDiceRoller, DiceExpression (разбор NdM±K), DiceResult, DiceService (броски + лог RollLog)
 attack/       AttackRules (контракт системы: form, plan, spend, outcome, effectHit, isObjectTarget/damageObject — цель-предмет, strayHit — промах в стоящего на линии огня, M-17), LineOfFire и MapBlast (что знает карта, реализации в map/), AttackSource (предмет или способность), ObjectTarget (машина в списке целей), AttackContext, AttackPlan, AttackOutcome, AttackForm, AttackRequest, AttackHit, AreaDamage (урон по площади), LingeringEffect (что остаётся на цели на следующие раунды), AttackResult, AttackService (один ход для всех атак, урон цели, лог, заряды PendingBlast)
 creation/     CharacterCreation (мастер создания персонажа: форма, бросок очков, создание; реализует система)
 npc/          NpcTemplate, NpcSheet (что выбросила система), NpcService (создание по шаблону, копии, удаление)
@@ -125,7 +126,7 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 `Counter.attributes` (`Map<String,Integer>`, таблица `counter_attribute`) — доп. состояние стратегии сверх одного числа; `Counter.texts` (`counter_text`, K-02) — текстовое (набор зон тела Космозэков), правка — `updateTexts`. `CounterContext` — счётчик + все счётчики персонажа, через него зависимые стратегии читают друг друга.
 
 Стратегии: `SimpleIntegerCounterStrategy` (`"SIMPLE_INTEGER"`, прибавляет input) и связка CP2020 (`system/cp2020/`, доступна только кампаниям CP2020):
-- `strategy/health/HealthCounterStrategy` — точка расширения для систем здоровья (урон, лечение, `healOverTime`, спасброски по коду, стабилизация, `describe` → `HealthView`). `DiceRoller` — кубики (в тестах подменяются).
+- `counter/health/HealthCounterStrategy` — точка расширения для систем здоровья (урон, лечение, `healOverTime`, спасброски по коду, стабилизация, `describe` → `HealthView`). `DiceRoller` — кубики (в тестах подменяются).
 - `Cp2020StatsStrategy` (`"CP2020_STATS"`): все 9 статов `int/ref/tech/cool/attr/luck/ma/body/emp` + `humanityLoss`. Текущие значения: REF/INT/COOL со штрафами от ран (уровень из счётчика здоровья), REF ещё со штрафом брони, EMP = человечность/10 (человечность = EMP×10 − потеря). Производные (`Cp2020Rules`): бег MA×3 м, прыжок бег/4, переноска BODY×10 кг, подъём BODY×40 кг, BTM, спасбросок = BODY.
 - `Cp2020ArmorStrategy` (`"CP2020_ARMOR"`): SP зоны считается из надетых предметов типа «Броня» (`Cp2020WornArmor`, таблица `Cp2020ArmorRules`) и своего слоя счётчика: `sp_<ЗОНА>` — его текущий SP, `max_<ЗОНА>` — полный; `wear()` при пробитии, действие `REPAIR` возвращает полный SP; `encumbrance` — штраф брони к REF.
 - `Cp2020HealthStrategy` (`"CP2020_HEALTH"`, требует stats + armor): value = полученный урон 0..40; attributes: `lost_<ЗОНА>`, флаги `stunned/stabilized/dead/deathSavePending`. Порядок урона: зона → −SP (износ −1 при пробитии; AP — половина SP и урона; BYPASS — без брони) → ×2 в голову → −BTM (мин. 1) → >8 в голову = смерть, >8 в конечность = потеря + спасбросок от смерти → >40 = смерть → авто-спасбросок от оглушения. Таблицы — `Cp2020Rules`.
@@ -227,7 +228,7 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 - Контроллер счётчиков — образец «нового» стиля: DTO + `@Valid` + flash-сообщения `successMessage`/`errorMessage`.
 - Тесты разбиты на `@Nested` классы по операциям. Интеграционные — `@CharkaTest` (без входа) или `@CharkaSecuredTest` (со входом): один контекст на прогон. Кубики там — мок: поле `@Autowired DiceRoller dice` и `when(dice.roll(10))`; без поля броски случайные (`RandomDiceListener`). Свой `@MockitoBean`, `@TestPropertySource` или `@Import` — новый контекст, только если без него никак.
 - Имя фрагмента не должно совпадать с тегом HTML (`form`, `slot`…): селектор `~{file :: form}` найдёт элементы `<form>`.
-- Отмена (A-01) снимает таблицы списком `CampaignSnapshots.TABLES`: новая таблица игрового состояния персонажа или боя — добавить туда, иначе её изменения не откатываются. Новый изменяющий маршрут вне игры (как заметки) — в `UndoInterceptor.SKIPPED`.
+- Отмена (A-01) снимает таблицы списком `CampaignSnapshots.TABLES`: новая таблица игрового состояния персонажа или боя — добавить туда, иначе её изменения не откатываются; не игровая — в `SnapshotTablesTest.NOT_SNAPSHOTTED` с причиной (ARC-05: тест падает на таблице без решения). Новый изменяющий маршрут вне игры (как заметки) — в `UndoInterceptor.SKIPPED`.
 - Правила системы (ARC-01): новый метод правил — в подходящую часть (`ItemRules`, `CombatRules`…), не в `GameSystem`; реализация — в класс части системы (`Cp2020ItemRules`), не в `Cp2020System`. Нет подходящей части — новая часть с доступом в `GameSystem` и `NONE`. Шаблон зовёт часть явно: `system.items().getItemActions(item)`.
 - Версии (VER-01): новая сущность игрового состояния (меняется в бою или на листе) — `@Version long version` с `@JsonIgnore` и колонка `version BIGINT DEFAULT 0 NOT NULL` в миграции; если её таблица в `CampaignSnapshots.TABLES` — и в `CampaignSnapshots.VERSIONED`.
 - Ход (TURN-01): новый изменяющий маршрут персонажа или боя игроку в бою вне хода закрыт сам (`TurnGuard`). Если по правилам его делают на чужом ходу (реакция, урон, спасбросок) — внести в `TurnGuard.CHARACTER_ALLOWED`/`ENCOUNTER_ALLOWED`, в `TurnGuardTest.ALLOWED` и в `TURN_FREE` в `app.js` (кнопки листа вне хода).
@@ -244,7 +245,7 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 - Сущности отдаются прямо в шаблоны и в JSON; DTO есть только у счётчиков.
 - Сервисы ходят в чужие репозитории напрямую (Money/Wound/Inventory → `CharacterRepository`).
 - Принадлежность ресурса персонажу проверяет `OwnershipInterceptor` (U-02) по переменным адреса.
-- Стратегии счётчиков работают через `String`/`Object`, тип — строка; стратегии лежат в `model/` и знают имена шаблонов.
+- Стратегии счётчиков работают через `String`/`Object`, тип — строка; стратегии знают имена шаблонов (с ARC-04 — в `counter/`, не в `model/`).
 - Пользователи есть (U-03), но один мастер на кампанию и нет смены пароля.
 
 ## Планы автора (`TODO.txt`)

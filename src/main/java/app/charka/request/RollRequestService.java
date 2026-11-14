@@ -6,7 +6,7 @@ import app.charka.model.Campaign;
 import app.charka.model.Character;
 import app.charka.model.ChatMessage;
 import app.charka.model.RollRequest;
-import app.charka.model.counters.strategy.health.HealthEvent;
+import app.charka.counter.health.HealthEvent;
 import app.charka.repository.CampaignRepository;
 import app.charka.repository.ChatMessageRepository;
 import app.charka.repository.RollRequestRepository;

@@ -13,9 +13,9 @@ import app.charka.model.Campaign;
 import app.charka.model.Character;
 import app.charka.model.Item;
 import app.charka.model.counters.Counter;
-import app.charka.model.counters.strategy.health.DamageRequest;
-import app.charka.model.counters.strategy.health.DiceRoller;
-import app.charka.model.counters.strategy.health.HealthEvent;
+import app.charka.counter.health.DamageRequest;
+import app.charka.dice.DiceRoller;
+import app.charka.counter.health.HealthEvent;
 import app.charka.repository.CampaignRepository;
 import app.charka.repository.CharacterRepository;
 import app.charka.service.CharacterService;
@@ -330,7 +330,7 @@ class KzSystemTest {
             fresh.getCounters().add(portent);
             when(dice.roll(anyInt())).thenReturn(5);
 
-            new KzPortentStrategy(dice).performAction(new app.charka.model.counters.strategy.CounterContext(portent, List.of(portent)), "USE_1");
+            new KzPortentStrategy(dice).performAction(new app.charka.counter.CounterContext(portent, List.of(portent)), "USE_1");
             assertThat(registry.get(KzSystem.CODE).combat().rollInitiative(fresh, dice).total()).isEqualTo(11);
             assertThat(registry.get(KzSystem.CODE).combat().rollInitiative(fresh, dice).total()).isEqualTo(5);
         }

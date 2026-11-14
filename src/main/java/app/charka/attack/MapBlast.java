@@ -1,7 +1,7 @@
 package app.charka.attack;
 
 import app.charka.model.Character;
-import app.charka.model.counters.strategy.health.DiceRoller;
+import app.charka.dice.DiceRoller;
 
 import java.util.List;
 

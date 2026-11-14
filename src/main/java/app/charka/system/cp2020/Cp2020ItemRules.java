@@ -1,7 +1,7 @@
 package app.charka.system.cp2020;
 
 import app.charka.item.InstalledBlock;
-import app.charka.model.counters.strategy.health.DiceRoller;
+import app.charka.dice.DiceRoller;
 import app.charka.item.CatalogItem;
 import app.charka.item.ItemAction;
 import app.charka.item.ItemAttachments;
@@ -9,7 +9,7 @@ import app.charka.item.ItemSummary;
 import app.charka.item.ItemTypeDefinition;
 import app.charka.model.Character;
 import app.charka.model.Item;
-import app.charka.model.counters.strategy.health.DiceRoller;
+import app.charka.dice.DiceRoller;
 import app.charka.service.counter.HealthCounterService;
 import java.util.List;
 import java.util.Map;

@@ -1,4 +1,4 @@
-package app.charka.model.counters.strategy.health;
+package app.charka.counter.health;
 
 /**
  * Состояние здоровья для отображения. Общая часть, которую можно показать для любой системы;

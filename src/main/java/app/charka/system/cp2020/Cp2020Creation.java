@@ -7,7 +7,7 @@ import app.charka.model.Money;
 import app.charka.model.notes.Note;
 import app.charka.model.notes.NoteCategory;
 import app.charka.model.counters.Counter;
-import app.charka.model.counters.strategy.health.DiceRoller;
+import app.charka.dice.DiceRoller;
 import app.charka.repository.CounterRepository;
 import app.charka.service.CharacterService;
 import app.charka.service.MoneyService;

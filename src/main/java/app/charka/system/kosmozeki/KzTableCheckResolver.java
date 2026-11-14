@@ -3,7 +3,7 @@ package app.charka.system.kosmozeki;
 import app.charka.check.CheckRequest;
 import app.charka.check.CheckResolver;
 import app.charka.check.CheckResult;
-import app.charka.model.counters.strategy.health.DiceRoller;
+import app.charka.dice.DiceRoller;
 
 import java.util.ArrayList;
 import java.util.List;

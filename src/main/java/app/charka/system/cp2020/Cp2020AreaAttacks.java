@@ -6,8 +6,8 @@ import app.charka.attack.AttackRequest;
 import app.charka.dice.DiceExpression;
 import app.charka.dice.DiceResult;
 import app.charka.model.Item;
-import app.charka.model.counters.strategy.health.DamageRequest;
-import app.charka.model.counters.strategy.health.DiceRoller;
+import app.charka.counter.health.DamageRequest;
+import app.charka.dice.DiceRoller;
 
 import java.util.ArrayList;
 import java.util.HashMap;

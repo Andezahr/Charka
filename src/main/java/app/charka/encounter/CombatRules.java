@@ -7,7 +7,7 @@ import app.charka.encounter.Initiative;
 import app.charka.encounter.InitiativeDeclaration;
 import app.charka.model.Campaign;
 import app.charka.model.Character;
-import app.charka.model.counters.strategy.health.DiceRoller;
+import app.charka.dice.DiceRoller;
 import java.util.List;
 
 /**

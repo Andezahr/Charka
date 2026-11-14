@@ -1,6 +1,6 @@
 package app.charka.attack;
 
-import app.charka.model.counters.strategy.health.DamageRequest;
+import app.charka.counter.health.DamageRequest;
 
 import java.util.List;
 

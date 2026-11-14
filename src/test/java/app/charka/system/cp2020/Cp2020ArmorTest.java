@@ -7,7 +7,7 @@ import app.charka.model.Character;
 import app.charka.model.Inventory;
 import app.charka.model.Item;
 import app.charka.model.counters.Counter;
-import app.charka.model.counters.strategy.CounterContext;
+import app.charka.counter.CounterContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

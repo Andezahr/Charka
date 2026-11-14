@@ -1,6 +1,6 @@
 package app.charka.check;
 
-import app.charka.model.counters.strategy.health.DiceRoller;
+import app.charka.dice.DiceRoller;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;

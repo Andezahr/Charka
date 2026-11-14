@@ -1,4 +1,4 @@
-package app.charka.model.counters.strategy;
+package app.charka.counter;
 
 public abstract class AbstractCounterStrategy implements CounterStrategy {
     @Override

@@ -1,7 +1,7 @@
 package app.charka.system.kosmozeki;
 
 import app.charka.model.Campaign;
-import app.charka.model.counters.strategy.health.DiceRoller;
+import app.charka.dice.DiceRoller;
 import app.charka.service.counter.HealthCounterService;
 import java.util.ArrayList;
 import java.util.List;

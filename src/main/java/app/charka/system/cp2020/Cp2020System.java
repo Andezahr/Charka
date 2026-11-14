@@ -3,12 +3,12 @@ package app.charka.system.cp2020;
 import app.charka.attack.AttackRules;
 import app.charka.attack.AttackSource;
 import app.charka.check.CheckResolver;
-import app.charka.model.counters.strategy.health.DiceRoller;
+import app.charka.dice.DiceRoller;
 import app.charka.model.Character;
 import app.charka.model.Item;
 import app.charka.model.counters.Counter;
-import app.charka.model.counters.strategy.CounterContext;
-import app.charka.model.counters.strategy.health.DiceRoller;
+import app.charka.counter.CounterContext;
+import app.charka.dice.DiceRoller;
 import app.charka.service.counter.HealthCounterService;
 import app.charka.skill.SkillProgression;
 import app.charka.skill.StatValue;
@@ -136,12 +136,12 @@ public class Cp2020System implements GameSystem {
 
             @Override
             public String damage(Character character, int amount) {
-                return healthCounterService.applyDamage(character.getId(), app.charka.model.counters.strategy.health.DamageRequest.builder()
+                return healthCounterService.applyDamage(character.getId(), app.charka.counter.health.DamageRequest.builder()
                                 .amount(amount)
                                 .location(Cp2020Location.TORSO.name())
                                 .damageType(Cp2020DamageType.BYPASS.name())
                                 .build())
-                        .map(app.charka.model.counters.strategy.health.HealthEvent::getSummary)
+                        .map(app.charka.counter.health.HealthEvent::getSummary)
                         .orElse(null);
             }
         };

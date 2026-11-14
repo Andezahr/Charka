@@ -6,7 +6,7 @@ import app.charka.model.Campaign;
 import app.charka.model.Character;
 import app.charka.model.Money;
 import app.charka.model.RecurringExpense;
-import app.charka.model.counters.strategy.health.DiceRoller;
+import app.charka.dice.DiceRoller;
 import app.charka.repository.CampaignRepository;
 import app.charka.repository.CharacterRepository;
 import app.charka.service.CharacterService;
@@ -74,7 +74,7 @@ class DowntimeTest {
         medic = member("Доктор", "medtechie", "medical_tech", 7);
         idle = member("Бустер", null, null, 0);
         clear();
-        healthCounterService.applyDamage(wounded.getId(), app.charka.model.counters.strategy.health.DamageRequest.builder()
+        healthCounterService.applyDamage(wounded.getId(), app.charka.counter.health.DamageRequest.builder()
                 .amount(10).location("TORSO").build());
         RecurringExpense rent = new RecurringExpense();
         rent.setName("Квартира");

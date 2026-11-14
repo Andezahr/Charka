@@ -5,7 +5,7 @@ import app.charka.support.CharkaTest;
 import app.charka.model.Campaign;
 import app.charka.model.Character;
 import app.charka.model.counters.Counter;
-import app.charka.model.counters.strategy.health.DiceRoller;
+import app.charka.dice.DiceRoller;
 import app.charka.repository.CampaignRepository;
 import app.charka.repository.CharacterRepository;
 import app.charka.service.CharacterService;
@@ -127,7 +127,7 @@ class Cp2020MedicineTest {
     @Test
     @DisplayName("Журнал здоровья (G-09): прошедший урон и успешная помощь пишутся сами; лист — состояние в шапке")
     void journal() throws Exception {
-        healthCounterService.applyDamage(patient.getId(), app.charka.model.counters.strategy.health.DamageRequest.builder()
+        healthCounterService.applyDamage(patient.getId(), app.charka.counter.health.DamageRequest.builder()
                 .amount(7).location("TORSO").damageType("NORMAL").autoSave(false).build());
         // урон теперь 17: 6 + 5 + 3 + больница 5 = 19 > 17
         when(dice.roll(anyInt())).thenReturn(3);

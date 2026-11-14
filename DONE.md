@@ -85,10 +85,10 @@
   ✅ 2026-10-30 — `CampaignTimelineService` → `registry.get(campaign.system).onTimePassed(...)`; `Cp2020System` → `healOverTime`. `CampaignTimelineServiceTest`.
 - [x] **S-06 [CORE] Валюта системы в UI денег.** Эдди (`eb`) для CP2020, нейтральное «у.е.» для GENERIC.
   ✅ 2026-10-30 — `Currency` системы в модели листа (`currency`): баланс, суммы операций, подсказка поля — «eb» / «у.е.».
-- [x] **S-07 [CP2020] Переезд пакета.** `model/counters/strategy/health/cp2020/*` → `system/cp2020/...`
+- [x] **S-07 [CP2020] Переезд пакета.** `counter/health/cp2020/*` → `system/cp2020/...`
   (стратегии остаются бинами `CounterStrategy`). Делать отдельным коммитом только с перемещением.
   `HealthCounterStrategy` и `DiceRoller` — остаются в ядре.
-  ✅ 2026-10-30 — всё из `model/counters/strategy/health/cp2020/` (и тесты) → плоский пакет `app.charka.system.cp2020` рядом с `Cp2020System`, отдельным коммитом.
+  ✅ 2026-10-30 — всё из `counter/health/cp2020/` (и тесты) → плоский пакет `app.charka.system.cp2020` рядом с `Cp2020System`, отдельным коммитом.
 
 ### Этап 2 — Кубики и проверки ✅ (2026-10-30, D-01..D-05)
 
@@ -559,3 +559,5 @@
 ### Этап 20 — архитектура на долгий срок
 
 - [x] **ARC-01 [CORE] Разбить `GameSystem` на части по областям правил — перед D&D 5e.** ✅ 2026-11-15 — 7 частей за доступами: `items()` — `item/ItemRules` (14 методов), `combat()` — `encounter/CombatRules` (11), `skills()` — `skill/SkillRules` (9, с текущими статами), `luck()` — `check/LuckRules` (4), `sheet()` — `system/SheetRules` (4), `time()` — `system/TimeRules` (5), `npcs()` — `npc/NpcRules` (2). Реализации: `Cp2020ItemRules`, `Cp2020CombatRules`, `Cp2020SkillRulesPart`, `Cp2020LuckRules`, `Cp2020SheetRules`, `Cp2020TimeRules`, `Cp2020NpcRules`, `KzItemRules`, `KzCombatRules`, `KzSkillRules`, `KzSheetRules`, `KzTimeRules`, `KzNpcRules` (без состояния — константы, с зависимостями — создаёт система). В `GameSystem` остались код, название, валюта, счётчики по умолчанию, кубики, резолверы проверок, запрашиваемые спасброски, справка, `getAttackRules`, `getMapRules`, `getCharacterBrief`. Поведение не менялось: 1170 тестов зелёные; тестовая D20-система (`OtherSystemAttackTest`) отдаёт только `skills()` и атаку — так и будет устроена D&D (N-01). Шаблоны переведены на `system.items()…`, `combat()…`, `luck()…`, `sheet()…`.
+- [x] **ARC-05 [CORE] Отмена: таблицы под тестом.** ✅ 2026-11-15 — `SnapshotTablesTest`: каждая таблица схемы (из `information_schema`) — в `CampaignSnapshots.TABLES` или в `NOT_SNAPSHOTTED` с причиной (логи, чат, заметки, контакты, заготовки, карты, пользователи, строки кампании и персонажей); устаревшая запись тоже роняет тест. Забытых таблиц не нашлось. Снимок по затронутому — ARC-06, если отмена станет медленной.
+- [x] **ARC-04 [CORE] Стратегии счётчиков из `model/`.** ✅ 2026-11-15 — `model/counters/strategy` → `counter/` (и `counter/health/`), `DiceRoller` и `RandomDiceRoller` → `dice/` (источник кубиков всего приложения, не часть счётчиков); сущность `Counter` осталась в `model/counters`. Только пакеты, поведение то же; значения по-прежнему `String`.

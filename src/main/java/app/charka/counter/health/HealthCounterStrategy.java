@@ -1,14 +1,14 @@
-package app.charka.model.counters.strategy.health;
+package app.charka.counter.health;
 
 import app.charka.model.counters.Counter;
-import app.charka.model.counters.strategy.CounterContext;
-import app.charka.model.counters.strategy.CounterStrategy;
+import app.charka.counter.CounterContext;
+import app.charka.counter.CounterStrategy;
 
 /**
  * Счётчик здоровья — точка расширения для разных игровых систем (CP2020, D&D…).
  * <p>
  * Это обычная {@link CounterStrategy}, поэтому реализация регистрируется в
- * {@link app.charka.model.counters.strategy.CounterStrategyFactory} автоматически,
+ * {@link app.charka.counter.CounterStrategyFactory} автоматически,
  * а базовые операции счётчика (±N, сброс) продолжают работать.
  * Значение счётчика ({@link Counter#getValue()}) — полученный урон. Характеристики, броня и т.п.
  * живут в отдельных счётчиках: система объявляет их в {@link #getRequiredCounterTypes()}

@@ -1,6 +1,6 @@
 package app.charka.system.kosmozeki;
 
-import app.charka.model.counters.strategy.health.DiceRoller;
+import app.charka.dice.DiceRoller;
 import app.charka.npc.NpcTemplate;
 import java.util.List;
 import app.charka.npc.NpcRules;

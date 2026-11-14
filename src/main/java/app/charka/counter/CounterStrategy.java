@@ -1,4 +1,4 @@
-package app.charka.model.counters.strategy;
+package app.charka.counter;
 
 import app.charka.model.counters.Counter;
 
