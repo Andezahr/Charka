@@ -106,12 +106,7 @@ public class KzSystem implements GameSystem {
         return ATTACK_RULES;
     }
 
-    @Override
-    public String getHealthStatus(Character character) {
-        return KzAbilities.bodyCounter(character).map(KzSystem::healthBrief).orElse(null);
-    }
-
-    private static String healthBrief(Counter body) {
+    static String healthBrief(Counter body) {
         String status = KzBodyStrategy.statusLabel(body);
         KzBody zones = KzBodyStrategy.body(body);
         List<String> hurt = zones.zones().stream()
@@ -164,11 +159,6 @@ public class KzSystem implements GameSystem {
     }
 
     @Override
-    public List<ProfileField> getProfileFields() {
-        return KzProfile.FIELDS;
-    }
-
-    @Override
     public List<Reference> getReference() {
         return KzReference.sections();
     }
@@ -198,5 +188,13 @@ public class KzSystem implements GameSystem {
     @Override
     public app.charka.skill.SkillRules skills() {
         return SKILLS;
+    }
+
+    /** ARC-01: лист персонажа: поля профиля, строка здоровья, заголовок контактов, лист на бумаге */
+    private static final KzSheetRules SHEET = new KzSheetRules();
+
+    @Override
+    public app.charka.system.SheetRules sheet() {
+        return SHEET;
     }
 }

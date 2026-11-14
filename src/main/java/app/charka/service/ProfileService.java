@@ -37,7 +37,7 @@ public class ProfileService {
     @Transactional
     public Character update(Long characterId, Map<String, String> params) {
         Character character = characterRepository.findById(characterId).orElseThrow(CharacterNotFoundException.forId(characterId));
-        apply(character, systemRegistry.forCharacter(character).getProfileFields(), params);
+        apply(character, systemRegistry.forCharacter(character).sheet().getProfileFields(), params);
         return characterRepository.save(character);
     }
 

@@ -75,12 +75,6 @@ public class Cp2020System implements GameSystem {
         return "Cyberpunk 2020";
     }
 
-    /** KF-07: в книге — Contacts: фиксеры, копы, бывшие */
-    @Override
-    public String getContactsTitle() {
-        return "Контакты";
-    }
-
     @Override
     public Currency getCurrency() {
         return CURRENCY;
@@ -129,26 +123,12 @@ public class Cp2020System implements GameSystem {
         return brief;
     }
 
-    @Override
-    public String getHealthStatus(Character character) {
-        return character.getCounters().stream()
-                .filter(counter -> Cp2020HealthStrategy.TYPE.equals(counter.getType()))
-                .findFirst()
-                .map(Cp2020System::healthBrief)
-                .orElse(null);
-    }
-
-    private static String healthBrief(Counter health) {
+    static String healthBrief(Counter health) {
         if (health.getFlag(Cp2020HealthStrategy.DEAD)) {
             return "Мёртв";
         }
         int damage = health.getValue() == null ? 0 : health.getValue();
         return damage == 0 ? "Цел" : Cp2020Rules.levelName(Cp2020Rules.woundLevel(damage)) + " · урон " + damage;
-    }
-
-    @Override
-    public app.charka.system.PrintSheet getPrintSheet(Character character) {
-        return Cp2020Print.sheet(character, skills().getCurrentStats(character), ARMOR);
     }
 
     @Override
@@ -263,5 +243,16 @@ public class Cp2020System implements GameSystem {
     @Override
     public app.charka.check.LuckRules luck() {
         return LUCK;
+    }
+
+    /** ARC-01: лист персонажа: поля профиля, строка здоровья, заголовок контактов, лист на бумаге */
+    private volatile Cp2020SheetRules sheetRules;
+
+    @Override
+    public app.charka.system.SheetRules sheet() {
+        if (sheetRules == null) {
+            sheetRules = new Cp2020SheetRules(this);
+        }
+        return sheetRules;
     }
 }

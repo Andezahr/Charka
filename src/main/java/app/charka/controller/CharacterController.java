@@ -193,9 +193,9 @@ public class CharacterController {
         model.addAttribute("effectTemplates", system.getEffectTemplates());
         model.addAttribute("effectStats", system.skills().getCurrentStats(character).values());
         model.addAttribute("luckLeft", java.util.Map.of(character.getId(), system.luck().getLuck(character)));
-        model.addAttribute("healthStatus", system.getHealthStatus(character));
+        model.addAttribute("healthStatus", system.sheet().getHealthStatus(character));
         // K-11: поля листа от системы (теги, приговор); пусто — блока нет
-        model.addAttribute("profileRows", app.charka.service.ProfileService.rows(character, system.getProfileFields()));
+        model.addAttribute("profileRows", app.charka.service.ProfileService.rows(character, system.sheet().getProfileFields()));
         // журнал здоровья: новые записи сверху
         model.addAttribute("woundLog", character.getWounds().stream()
                 .sorted(java.util.Comparator.comparing(app.charka.model.Wound::getId, java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())))

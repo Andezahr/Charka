@@ -46,7 +46,7 @@ public class Character {
     @Column(name = "role_code")
     private Set<String> roles = new HashSet<>();
 
-    /** K-11: поля листа, которые объявляет система ({@code GameSystem.getProfileFields()}): теги, приговор */
+    /** K-11: поля листа, которые объявляет система ({@code GameSystem.sheet().getProfileFields()}): теги, приговор */
     @ElementCollection
     @CollectionTable(name = "character_profile", joinColumns = @JoinColumn(name = "character_id"))
     @MapKeyColumn(name = "profile_key")

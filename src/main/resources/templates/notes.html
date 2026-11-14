@@ -126,7 +126,7 @@
          одной строкой; отношений три, старые («Семья», «Роман») показываются как есть; долг — в заметке, отдельное поле
          видно только у тех, у кого он уже записан -->
     <section class="card" id="contacts" data-editable
-             th:with="contactsTitle=${@gameSystemRegistry.get(character.campaign.system).contactsTitle},
+             th:with="contactsTitle=${@gameSystemRegistry.get(character.campaign.system).sheet().contactsTitle},
                       relations=${ {T(app.charka.model.Contact.Relation).FRIEND, T(app.charka.model.Contact.Relation).NEUTRAL, T(app.charka.model.Contact.Relation).ENEMY} }">
       <div class="card-head">
         <h2 class="card-title"><span class="dot"></span><th:block th:text="${contactsTitle}">Знакомые</th:block></h2>

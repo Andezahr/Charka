@@ -146,7 +146,7 @@ class Cp2020NetrunningTest {
 
         // атака 4 + INT 6 + 0 + 5 = 15 против 0 + 6 + 0 + 5 = 11
         assertThat(result).contains("Попадание").contains("1D10 = 5 урона");
-        assertThat(registry.get("CP2020").getHealthStatus(characterRepository.findById(victim.getId()).orElseThrow())).isNotNull();
+        assertThat(registry.get("CP2020").sheet().getHealthStatus(characterRepository.findById(victim.getId()).orElseThrow())).isNotNull();
         assertThat(characterRepository.findById(victim.getId()).orElseThrow().getCounters())
                 .filteredOn(c -> Cp2020HealthStrategy.TYPE.equals(c.getType()))
                 .singleElement().satisfies(health -> assertThat(health.getValue()).isPositive());

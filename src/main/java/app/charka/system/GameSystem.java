@@ -51,6 +51,11 @@ public interface GameSystem {
 
     // ---------- ARC-01: части правил; у системы без части — пустая ----------
 
+    /** ARC-01: лист персонажа: поля профиля, строка здоровья, заголовок контактов, лист на бумаге */
+    default app.charka.system.SheetRules sheet() {
+        return app.charka.system.SheetRules.NONE;
+    }
+
     /** ARC-01: удача: сколько осталось, потратить на бросок, вернуть к новой сессии */
     default app.charka.check.LuckRules luck() {
         return app.charka.check.LuckRules.NONE;
@@ -107,11 +112,6 @@ public interface GameSystem {
      */
     default List<app.charka.item.ItemField.Option> getRequestableSaves() {
         return List.of();
-    }
-
-    /** A-12: что печатать на бумажном листе сверх общего; пусто — только общее */
-    default PrintSheet getPrintSheet(Character character) {
-        return PrintSheet.EMPTY;
     }
 
     /** A-11: справка правил для панели «📖 Правила»; пусто — у системы справки нет */
@@ -189,28 +189,6 @@ public interface GameSystem {
     /** Слагаемое броска для потраченной удачи */
     static app.charka.check.CheckRequest.Part luckPart(int points) {
         return new app.charka.check.CheckRequest.Part("Удача", points);
-    }
-
-    /**
-     * K-11: поля листа персонажа, которые система хранит текстом ({@code Character.profile}): теги, приговор. Пусто — нет.
-     */
-    default List<ProfileField> getProfileFields() {
-        return List.of();
-    }
-
-    /**
-     * Состояние здоровья одной строкой для шапки листа: «Серьёзное · урон 6». null — счётчика здоровья нет, на листе — число ран.
-     */
-    default String getHealthStatus(Character character) {
-        return null;
-    }
-
-    /**
-     * KF-07: как в этой системе называются люди, которых знает персонаж (карточка на странице заметок). Ядро — «Знакомые»;
-     * у CP2020 — «Контакты», как в книге.
-     */
-    default String getContactsTitle() {
-        return "Знакомые";
     }
 
     /**

@@ -93,7 +93,7 @@ public class PrintController {
                 .map(row -> row.item().getName() + (row.details().isEmpty() ? "" : " · " + String.join(" · ", row.details())))
                 .toList();
         return new Sheet(character, system.skills().rolesOf(character).stream().map(CharacterRole::name).toList(),
-                system.getPrintSheet(character), sections, installed, moneyService.calculateBalance(character.getId()),
+                system.sheet().getPrintSheet(character), sections, installed, moneyService.calculateBalance(character.getId()),
                 system.getCurrency().symbol());
     }
 
