@@ -212,6 +212,15 @@ class TurnGuardTest {
     }
 
     @Test
+    @org.junit.jupiter.api.extension.ExtendWith(org.springframework.boot.test.system.OutputCaptureExtension.class)
+    @DisplayName("LOG-01: отказ хода — строка WARN в журнале: кампания, игрок, адрес")
+    void logged(org.springframework.boot.test.system.CapturedOutput output) throws Exception {
+        refusal("kolya", "/character/{}/main-weapon", "POST");
+        assertThat(output.getOut()).containsPattern("WARN .*ActionLog.*campaign=" + campaign.getId() + " user=kolya POST /character/"
+                + mine.getId() + "/main-weapon -> 302 отказ: " + java.util.regex.Pattern.quote(RoundActions.NOT_YOUR_TURN));
+    }
+
+    @Test
     @DisplayName("Не в бою — лист без проверки хода")
     void outOfFight() throws Exception {
         encounterService.end(campaign.getId());

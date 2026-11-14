@@ -39,6 +39,8 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(NotYourTurnException.class)
     public ModelAndView handleNotYourTurn(NotYourTurnException ex, jakarta.servlet.http.HttpServletRequest request) {
+        request.setAttribute(app.charka.undo.ActionLog.WARN, true);
+        request.setAttribute(app.charka.undo.ActionLog.REFUSAL, ex.getMessage());
         org.springframework.web.servlet.FlashMap flash = org.springframework.web.servlet.support.RequestContextUtils.getOutputFlashMap(request);
         String target = backTo(request);
         // подпись там, где её показывает страница: бой — encounterError, лист и прочее — errorMessage
@@ -53,6 +55,8 @@ public class GlobalExceptionHandler {
     public ModelAndView handleConflict(org.springframework.dao.OptimisticLockingFailureException ex,
                                        jakarta.servlet.http.HttpServletRequest request) {
         log.warn("Конфликт версий: {} {} — {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
+        request.setAttribute(app.charka.undo.ActionLog.WARN, true);
+        request.setAttribute(app.charka.undo.ActionLog.REFUSAL, CONFLICT);
         String target = backTo(request);
         org.springframework.web.servlet.support.RequestContextUtils.getOutputFlashMap(request)
                 .put(target.contains("/encounter") ? "encounterError" : "errorMessage", CONFLICT);
@@ -86,7 +90,8 @@ public class GlobalExceptionHandler {
 
     /** Некорректные данные запроса → 400 */
     @ExceptionHandler(IllegalArgumentException.class)
-    public ModelAndView handleIllegalArgument(IllegalArgumentException ex) {
+    public ModelAndView handleIllegalArgument(IllegalArgumentException ex, jakarta.servlet.http.HttpServletRequest request) {
+        request.setAttribute(app.charka.undo.ActionLog.REFUSAL, ex.getMessage());
         return errorPage(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 

@@ -36,6 +36,8 @@ public class CampaignLock implements HandlerInterceptor {
     private static final Pattern CHARACTER = Pattern.compile("^/(?:api/)?characters?/(\\d+)(?:/.*)?$");
     private static final Set<String> SAFE_METHODS = Set.of("GET", "HEAD", "OPTIONS");
     private static final String HELD = CampaignLock.class.getName() + ".held";
+    /** LOG-01: кампания запроса — для строки журнала ({@link ActionLog}) */
+    public static final String CAMPAIGN_ID = CampaignLock.class.getName() + ".campaign";
 
     private final Map<Long, ReentrantLock> locks = new ConcurrentHashMap<>();
     private final CharacterRepository characterRepository;
@@ -51,6 +53,7 @@ public class CampaignLock implements HandlerInterceptor {
         if (campaignId == null) {
             return true;
         }
+        request.setAttribute(CAMPAIGN_ID, campaignId);
         ReentrantLock lock = locks.computeIfAbsent(campaignId, id -> new ReentrantLock(true));
         if (!lock.tryLock(WAIT_SECONDS, TimeUnit.SECONDS)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, BUSY);

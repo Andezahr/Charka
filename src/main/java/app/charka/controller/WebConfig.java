@@ -16,10 +16,13 @@ public class WebConfig implements WebMvcConfigurer {
     private final app.charka.security.AccessInterceptor accessInterceptor;
     private final app.charka.security.TurnGuard turnGuard;
     private final app.charka.undo.CampaignLock campaignLock;
+    private final app.charka.undo.ActionLog actionLog;
     private final app.charka.undo.UndoInterceptor undoInterceptor;
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
+        // LOG-01: строка журнала на каждое изменяющее действие (пишется последней, после ответа)
+        registry.addInterceptor(actionLog).addPathPatterns("/campaign/**", "/character/**", "/api/**");
         // сначала права пользователя (U-03), потом принадлежность ресурсов персонажу (U-02)
         registry.addInterceptor(accessInterceptor).addPathPatterns("/campaign/**", "/character/**", "/api/**");
         // VER-01: изменения одной кампании — по одному, до снимка отмены и до проверки хода

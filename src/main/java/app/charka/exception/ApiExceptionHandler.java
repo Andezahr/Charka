@@ -34,13 +34,20 @@ public class ApiExceptionHandler {
 
     /** VER-01: конфликт версий — 409 текстом */
     @ExceptionHandler(org.springframework.dao.OptimisticLockingFailureException.class)
-    public ResponseEntity<String> handleConflict(org.springframework.dao.OptimisticLockingFailureException ex) {
+    public ResponseEntity<String> handleConflict(org.springframework.dao.OptimisticLockingFailureException ex,
+                                                 jakarta.servlet.http.HttpServletRequest request) {
+        request.setAttribute(app.charka.undo.ActionLog.WARN, true);
+        request.setAttribute(app.charka.undo.ActionLog.REFUSAL, GlobalExceptionHandler.CONFLICT);
         log.warn("Конфликт версий: {}", ex.getMessage());
         return text(HttpStatus.CONFLICT.value(), GlobalExceptionHandler.CONFLICT);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<String> handleIllegalArgument(IllegalArgumentException ex) {
+    public ResponseEntity<String> handleIllegalArgument(IllegalArgumentException ex, jakarta.servlet.http.HttpServletRequest request) {
+        if (ex instanceof NotYourTurnException) {
+            request.setAttribute(app.charka.undo.ActionLog.WARN, true);
+        }
+        request.setAttribute(app.charka.undo.ActionLog.REFUSAL, ex.getMessage());
         return text(HttpStatus.BAD_REQUEST.value(), ex.getMessage());
     }
 
