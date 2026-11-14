@@ -34,9 +34,18 @@ class ClientErrorTest {
     @Test
     @DisplayName("У каждого запроса app.js есть срок, форма разблокируется в finally, части страницы настраиваются по отдельности")
     void scriptGuards() throws Exception {
-        String script = new ClassPathResource("static/js/app.js").getContentAsString(StandardCharsets.UTF_8);
+        String script = frontScript();
 
         assertThat(script).contains("const REQUEST_TIMEOUT = 20000;", "controller.abort()", "// A-14: что бы ни случилось с ответом",
                 "safely('chat', initChat);", "safely('initPage', initPage);");
+    }
+
+    /** ARC-02: фронт по частям — все части в порядке страницы (fragments/layout.html) */
+    static String frontScript() throws java.io.IOException {
+        StringBuilder all = new StringBuilder();
+        for (String part : java.util.List.of("core", "page", "poll", "forms", "navigation", "battle", "map-draw", "battle-actions", "editor")) {
+            all.append(new ClassPathResource("static/js/" + part + ".js").getContentAsString(StandardCharsets.UTF_8)).append(System.lineSeparator());
+        }
+        return all.toString();
     }
 }

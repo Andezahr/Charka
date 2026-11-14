@@ -181,7 +181,7 @@ src/main/java/app/charka
 
 src/main/resources
 ├── templates/    Thymeleaf-шаблоны (страницы, фрагменты, карточки счётчиков)
-├── static/       app.css, app.js
+├── static/       app.css, js/ (фронт по частям: core, page, poll, forms, navigation, battle, map-draw, battle-actions, editor)
 └── db/migration/ миграции Flyway
 ```
 

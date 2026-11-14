@@ -92,7 +92,7 @@ class PrintTest {
         int damage = healthCounterService.healthCounter(solo.getId()).orElseThrow().getValue();
         assertThat(damage).isPositive();
         assertThat(html.split("box is-filled", -1).length - 1).isEqualTo(damage);
-        assertThat(html).doesNotContain("topbar", "app.js");
+        assertThat(html).doesNotContain("topbar", "/js/core");
     }
 
     @Test
