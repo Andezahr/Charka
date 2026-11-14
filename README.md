@@ -7,7 +7,7 @@
 ![Java](https://img.shields.io/badge/Java-24-orange)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.3-6DB33F)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-336791)
-![Tests](https://img.shields.io/badge/tests-1156%20passing-brightgreen)
+[![Tests](https://github.com/Andezahr/Charka/actions/workflows/test.yml/badge.svg?branch=develop)](https://github.com/Andezahr/Charka/actions/workflows/test.yml)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
 ---

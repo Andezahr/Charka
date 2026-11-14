@@ -40,7 +40,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 1156 тестов, на 2026-11-14 все зелёные, ~1 мин 20 с с clean (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 1162 тестов, на 2026-11-14 все зелёные (CI: .github/workflows/test.yml), ~1 мин 20 с с clean (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw test -Dtest='EncounterServiceTest,GmBattleEditTest'   # по ходу работы — только затронутое; полный прогон — перед коммитом (TODO.md, раздел 0, п. 4)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
