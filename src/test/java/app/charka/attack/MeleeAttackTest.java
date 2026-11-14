@@ -363,7 +363,7 @@ class MeleeAttackTest {
         Item full = characterRepository.findById(attacker.getId()).orElseThrow().getInventories().get(0).getContent().stream()
                 .filter(item -> item.getId().equals(gun.getId())).findFirst().orElseThrow();
         // магазин полон дроби, а пули всё равно предлагаются: другим видом его можно сменить
-        assertThat(systemRegistry.forCharacter(full.getInventory().getCharacter()).getItemActions(full))
+        assertThat(systemRegistry.forCharacter(full.getInventory().getCharacter()).items().getItemActions(full))
                 .filteredOn(action -> action.code().equals("RELOAD")).singleElement().satisfies(action -> {
                     assertThat(action.sources()).extracting(option -> option.value()).contains(String.valueOf(box.getId()));
                     assertThat(action.isShownInCombat()).isTrue();

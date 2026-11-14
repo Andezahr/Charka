@@ -204,7 +204,7 @@ public class NpcService {
             to.setName(from.getName());
             for (Item item : from.getContent()) {
                 Item copied = copyItem(item, to);
-                system.prepareItemCopy(copied);
+                system.items().prepareItemCopy(copied);
                 to.getContent().add(copied);
             }
         }

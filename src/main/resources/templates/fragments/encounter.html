@@ -158,7 +158,7 @@
             <span th:unless="${inv.carried}" class="badge">не носится</span>
           </h3>
           <p th:if="${#lists.isEmpty(inv.content)}" class="empty">Пусто</p>
-          <div th:each="item : ${inv.content}" class="bag-item" th:with="summary=${system.getItemSummary(item)}">
+          <div th:each="item : ${inv.content}" class="bag-item" th:with="summary=${system.items().getItemSummary(item)}">
             <span class="row-title" th:text="${item.name}">Пистолет</span>
             <span th:if="${item.quantity != null and item.quantity > 1}" class="badge" th:text="'×' + ${item.quantity}">×3</span>
             <span th:if="${summary.main != null}" class="item-main" th:text="${summary.main}">5/7</span>
@@ -166,7 +166,7 @@
             <!-- UX-19a: простые действия предмета — здесь же; с выбором (откуда, сколько) — на листе -->
             <span class="bag-actions" th:with="returnCampaign=${campaign.id},
                        itemUrl=${'/character/' + row.character.id + '/inventories/' + inv.id + '/items/' + item.id}">
-              <th:block th:each="action : ${system.getItemActions(item).?[!hidden and !secondary and sources.isEmpty() and amount == null]}">
+              <th:block th:each="action : ${system.items().getItemActions(item).?[!hidden and !secondary and sources.isEmpty() and amount == null]}">
                 <form th:replace="~{fragments/items :: action-form(${action}, @{${itemUrl} + '/action/' + ${action.code}}, null)}"></form>
               </th:block>
             </span>

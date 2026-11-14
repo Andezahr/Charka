@@ -107,42 +107,6 @@ public class KzSystem implements GameSystem {
     }
 
     @Override
-    public List<ItemTypeDefinition> getItemTypes() {
-        return KzItems.ALL;
-    }
-
-    @Override
-    public String getWeaponItemType() {
-        return KzItems.RANGED;
-    }
-
-    @Override
-    public List<CatalogItem> getItemCatalog() {
-        return KzItems.CATALOG;
-    }
-
-    @Override
-    public List<ItemAction> getItemActions(Item item) {
-        return KzItemActions.actions(item);
-    }
-
-    @Override
-    public String performItemAction(Item item, String action, Map<String, String> params) {
-        return KzItemActions.perform(item, action, params);
-    }
-
-    @Override
-    public ItemSummary getItemSummary(Item item) {
-        ItemSummary summary = KzItemActions.summary(item);
-        return summary != null ? summary : GameSystem.super.getItemSummary(item);
-    }
-
-    @Override
-    public ItemAttachments getItemAttachments(Item item) {
-        return KzItemActions.attachments(item);
-    }
-
-    @Override
     public AttackRules getAttackRules() {
         return ATTACK_RULES;
     }
@@ -280,11 +244,11 @@ public class KzSystem implements GameSystem {
         return KzReference.sections();
     }
 
-    /** Копия NPC получает полный магазин */
+    /** ARC-01: предметы: типы, справочник, действия, строка на листе, вживлённое */
+    private static final KzItemRules ITEMS = new KzItemRules();
+
     @Override
-    public void prepareItemCopy(Item item) {
-        if (KzItems.isRanged(item) && item.getProperties().containsKey(KzItems.CAPACITY)) {
-            item.getProperties().put(KzItems.LOADED, item.getProperties().get(KzItems.CAPACITY));
-        }
+    public app.charka.item.ItemRules items() {
+        return ITEMS;
     }
 }

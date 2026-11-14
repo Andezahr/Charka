@@ -26,7 +26,7 @@ public class Item {
     private Integer cost;
     private String description;
 
-    /** Код типа из {@code GameSystem.getItemTypes()} */
+    /** Код типа из {@code GameSystem.items().getItemTypes()} */
     @Column(name = "item_type", nullable = false)
     private String type = ItemTypeDefinition.GENERIC_CODE;
 

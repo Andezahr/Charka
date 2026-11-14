@@ -35,7 +35,7 @@ public class MapLoot {
     @Column(name = "pos_level", nullable = false)
     private int posLevel;
 
-    /** Ключ справочника системы ({@code GameSystem.getItemCatalog()}) */
+    /** Ключ справочника системы ({@code GameSystem.items().getItemCatalog()}) */
     @Column(name = "catalog_key", nullable = false)
     private String catalogKey;
 

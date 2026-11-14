@@ -3,7 +3,7 @@ package app.charka.item;
 import java.util.List;
 
 /**
- * Действие над предметом на листе персонажа: выстрел, перезарядка. Список даёт {@code GameSystem.getItemActions(Item)}.
+ * Действие над предметом на листе персонажа: выстрел, перезарядка. Список даёт {@code GameSystem.items().getItemActions(Item)}.
  *
  * @param code        код действия, приходит в {@code GameSystem.performItemAction}
  * @param label       подпись кнопки

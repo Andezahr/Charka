@@ -322,7 +322,7 @@ public class AttackService {
                 .filter(rules::isObjectTarget)
                 .map(item -> {
                     Character owner = item.getInventory().getCharacter();
-                    String state = system.getItemSummary(item).main();
+                    String state = system.items().getItemSummary(item).main();
                     return new ObjectTarget("item-" + item.getId(), owner.getId(),
                             item.getName() + " · " + owner.getName() + (state == null ? "" : " · " + state));
                 })

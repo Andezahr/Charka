@@ -55,7 +55,7 @@ public class MapLootService {
         if (!doc.inside(x, y) || level < 0 || (level > 0 && !doc.hasLevel(level))) {
             throw new IllegalArgumentException("Клетка вне карты");
         }
-        CatalogItem entry = systemRegistry.get(encounter.getCampaign().getSystem()).getItemCatalog().stream()
+        CatalogItem entry = systemRegistry.get(encounter.getCampaign().getSystem()).items().getItemCatalog().stream()
                 .filter(candidate -> candidate.key().equals(key)).findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Такого предмета в справочнике нет: " + key));
         MapLoot loot = new MapLoot();

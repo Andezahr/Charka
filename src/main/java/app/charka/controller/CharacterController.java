@@ -80,7 +80,7 @@ public class CharacterController {
         model.addAttribute("character", character);
         model.addAttribute("item", item);
         model.addAttribute("inv", item.getInventory());
-        model.addAttribute("itemTypes", systemRegistry.forCharacter(character).getItemTypes());
+        model.addAttribute("itemTypes", systemRegistry.forCharacter(character).items().getItemTypes());
         return "fragments/items :: edit-form";
     }
 
@@ -130,10 +130,10 @@ public class CharacterController {
     }
 
     private static void addCatalog(Model model, GameSystem system, Character character) {
-        model.addAttribute("itemTypes", system.getItemTypes());
-        model.addAttribute("itemCatalog", system.getItemCatalog().stream()
+        model.addAttribute("itemTypes", system.items().getItemTypes());
+        model.addAttribute("itemCatalog", system.items().getItemCatalog().stream()
                 .collect(Collectors.groupingBy(CatalogItem::typeCode, Collectors.groupingBy(CatalogItem::group, LinkedHashMap::new, Collectors.toList()))));
-        model.addAttribute("suggestedCatalog", system.getSuggestedCatalog(character).stream()
+        model.addAttribute("suggestedCatalog", system.items().getSuggestedCatalog(character).stream()
                 .collect(Collectors.groupingBy(CatalogItem::typeCode)));
     }
 
@@ -185,11 +185,11 @@ public class CharacterController {
                 .collect(Collectors.groupingBy(ExpenseTemplate::group, LinkedHashMap::new, Collectors.toList())));
         model.addAttribute("currency", system.getCurrency());
         // UX-14: «＋ Оружие» на пустой карточке оружия открывает эту вкладку окна «Добавить»
-        model.addAttribute("weaponItemType", system.getWeaponItemType());
+        model.addAttribute("weaponItemType", system.items().getWeaponItemType());
         model.addAttribute("hasAttacks", system.getAttackRules() != null);
         // A-03: окно «Добавить» грузится по требованию; версия меняется вместе с балансом и подсказками справочника
         model.addAttribute("addDialogVersion", Long.toHexString(java.util.Objects.hash(moneySum,
-                system.getSuggestedCatalog(character).stream().map(CatalogItem::key).toList())));
+                system.items().getSuggestedCatalog(character).stream().map(CatalogItem::key).toList())));
         model.addAttribute("effectTemplates", system.getEffectTemplates());
         model.addAttribute("effectStats", system.getCurrentStats(character).values());
         model.addAttribute("luckLeft", java.util.Map.of(character.getId(), system.getLuck(character)));
@@ -200,25 +200,25 @@ public class CharacterController {
         model.addAttribute("woundLog", character.getWounds().stream()
                 .sorted(java.util.Comparator.comparing(app.charka.model.Wound::getId, java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())))
                 .toList());
-        model.addAttribute("itemTypes", system.getItemTypes());
-        model.addAttribute("itemTypeByCode", system.getItemTypes().stream()
+        model.addAttribute("itemTypes", system.items().getItemTypes());
+        model.addAttribute("itemTypeByCode", system.items().getItemTypes().stream()
                 .collect(Collectors.toMap(ItemTypeDefinition::code, Function.identity())));
         model.addAttribute("itemActions", character.getInventories().stream()
                 .flatMap(inventory -> inventory.getContent().stream())
-                .collect(Collectors.toMap(Item::getId, system::getItemActions)));
+                .collect(Collectors.toMap(Item::getId, system.items()::getItemActions)));
         // UX-11: броня в носимом, которую можно надеть, — плашка «Надеть всё» в шапке состояния
         model.addAttribute("unwornArmor", gear ? List.of() : shownInventories.stream()
                 .flatMap(inventory -> inventory.getContent().stream())
-                .filter(item -> system.getItemActions(item).stream()
+                .filter(item -> system.items().getItemActions(item).stream()
                         .anyMatch(action -> action.code().equals(app.charka.item.ItemAction.WEAR) && action.unavailable() == null && !action.hidden()))
                 .toList());
         model.addAttribute("itemNotes", character.getInventories().stream()
                 .flatMap(inventory -> inventory.getContent().stream())
-                .collect(Collectors.toMap(Item::getId, system::getItemNotes)));
+                .collect(Collectors.toMap(Item::getId, system.items()::getItemNotes)));
         model.addAttribute("itemSummaries", character.getInventories().stream()
                 .flatMap(inventory -> inventory.getContent().stream())
-                .collect(Collectors.toMap(Item::getId, system::getItemSummary)));
-        InstalledBlock installed = system.getInstalled(character);
+                .collect(Collectors.toMap(Item::getId, system.items()::getItemSummary)));
+        InstalledBlock installed = system.items().getInstalled(character);
         model.addAttribute("installed", installed);
         Set<Long> installedIds = installed == null ? Set.of()
                 : installed.rows().stream().map(row -> row.item().getId()).collect(Collectors.toSet());
@@ -227,7 +227,7 @@ public class CharacterController {
                 : installed.rows().stream().collect(Collectors.groupingBy(row -> row.item().getInventory().getId(), Collectors.counting())));
         Map<Long, ItemAttachments> attachments = character.getInventories().stream()
                 .flatMap(inventory -> inventory.getContent().stream())
-                .collect(Collectors.toMap(Item::getId, system::getItemAttachments));
+                .collect(Collectors.toMap(Item::getId, system.items()::getItemAttachments));
         model.addAttribute("itemAttachments", attachments);
         // R-07: что показано не в инвентаре — вживлённое и оружие
         Set<Long> shownElsewhere = new java.util.HashSet<>(installedIds);
@@ -294,7 +294,7 @@ public class CharacterController {
         }
         Set<Long> excluded = Set.copyOf(shownElsewhere);
         model.addAttribute("inventorySections", character.getInventories().stream()
-                .collect(Collectors.toMap(Inventory::getId, inventory -> ItemSection.of(inventory, system.getItemTypes(), attachments, excluded))));
+                .collect(Collectors.toMap(Inventory::getId, inventory -> ItemSection.of(inventory, system.items().getItemTypes(), attachments, excluded))));
         model.addAttribute("roles", system.rolesOf(character));
         model.addAttribute("quickDice", system.getQuickDice());
         model.addAttribute("difficultyPresets", system.getTableCheckResolver().getDifficultyPresets());

@@ -49,6 +49,13 @@ public interface GameSystem {
 
     Currency getCurrency();
 
+    // ---------- ARC-01: части правил; у системы без части — пустая ----------
+
+    /** ARC-01: предметы: типы, справочник, действия, строка на листе, вживлённое */
+    default app.charka.item.ItemRules items() {
+        return app.charka.item.ItemRules.NONE;
+    }
+
     /**
      * Типы счётчиков, создаваемых вместе с новым персонажем кампании этой системы.
      */
@@ -141,80 +148,6 @@ public interface GameSystem {
     }
 
     /**
-     * Типы предметов системы; обычный предмет есть всегда.
-     */
-    default List<ItemTypeDefinition> getItemTypes() {
-        return List.of(ItemTypeDefinition.GENERIC);
-    }
-
-    /**
-     * UX-14: тип предмета «оружие» — вкладка окна «Добавить», которую открывает «＋ Оружие» на пустой карточке оружия;
-     * null — открыть последнюю вкладку.
-     */
-    default String getWeaponItemType() {
-        return null;
-    }
-
-    default Optional<ItemTypeDefinition> findItemType(String code) {
-        return getItemTypes().stream().filter(type -> type.code().equals(code)).findFirst();
-    }
-
-    /**
-     * Справочник готовых предметов; пусто — у системы его нет.
-     */
-    default List<CatalogItem> getItemCatalog() {
-        return List.of();
-    }
-
-    /**
-     * Действия над предметом на листе персонажа; пусто — у предмета их нет. Вызывать в транзакции.
-     */
-    default List<ItemAction> getItemActions(Item item) {
-        return List.of();
-    }
-
-    /**
-     * Краткая строка предмета на листе. Вызывать в транзакции.
-     */
-    default ItemSummary getItemSummary(Item item) {
-        return findItemType(item.getType())
-                .map(type -> ItemSummary.allFields(type, item.getProperties()))
-                .orElse(new ItemSummary(null, List.of()));
-    }
-
-    /**
-     * Что показывается вместе с предметом, а не своими строками. Вызывать в транзакции.
-     */
-    default ItemAttachments getItemAttachments(Item item) {
-        return ItemAttachments.NONE;
-    }
-
-    /**
-     * Строки справочника, которые этому персонажу нужны в первую очередь: патроны и магазины к его оружию.
-     */
-    default List<CatalogItem> getSuggestedCatalog(Character character) {
-        return List.of();
-    }
-
-    /**
-     * Что сейчас важно знать о предмете сверх его полей; показывается в строке предмета.
-     */
-    default List<String> getItemNotes(Item item) {
-        return List.of();
-    }
-
-    /**
-     * Выполнить действие над предметом. Вызывать в транзакции.
-     *
-     * @param params параметры формы действия ({@code source}, {@code amount})
-     * @return итог для показа игроку
-     * @throws IllegalArgumentException если действие сейчас невозможно
-     */
-    default String performItemAction(Item item, String action, Map<String, String> params) {
-        throw new IllegalArgumentException("Неизвестное действие с предметом: " + action);
-    }
-
-    /**
      * Правила атаки оружием; null — у системы их нет.
      */
     default app.charka.map.MapRules getMapRules() {
@@ -256,23 +189,6 @@ public interface GameSystem {
     }
 
     /**
-     * Действие блока вживлённого: {@link InstalledBlock#actions()}. Вызывать в транзакции.
-     *
-     * @return итог для показа игроку
-     * @throws IllegalArgumentException если действие сейчас невозможно
-     */
-    default String performInstalledAction(Character character, String action, Map<String, String> params) {
-        throw new IllegalArgumentException("Такого действия нет: " + action);
-    }
-
-    /**
-     * Что вживлено в персонажа; null — у системы такого нет.
-     */
-    default InstalledBlock getInstalled(Character character) {
-        return null;
-    }
-
-    /**
      * Навыки, нужные в бою почти всегда: в проверке из строки участника они первые, даже на уровне 0.
      */
     default List<String> getCombatCheckSkills() {
@@ -300,12 +216,6 @@ public interface GameSystem {
      */
     default CombatCard getCombatCard(Character character) {
         return CombatCard.brief(getCharacterBrief(character));
-    }
-
-    /**
-     * Предмет скопирован новому NPC: что не должно перейти (износ, расход), система убирает здесь.
-     */
-    default void prepareItemCopy(Item item) {
     }
 
     /**
@@ -360,13 +270,6 @@ public interface GameSystem {
      */
     default String getContestLoserEffect(String code, Character winner) {
         return null;
-    }
-
-    /**
-     * Свойства предметов, в которых хранится id другого предмета (программа в деке): при импорте кампании их переводят на новые id.
-     */
-    default java.util.Set<String> getItemReferenceKeys() {
-        return java.util.Set.of();
     }
 
     /**

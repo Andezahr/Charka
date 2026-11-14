@@ -6,7 +6,7 @@ import app.charka.model.Item;
 import java.util.List;
 
 /**
- * Что показывается вместе с предметом, а не своими строками: магазины и патроны оружия. Список даёт {@code GameSystem.getItemAttachments(Item)}.
+ * Что показывается вместе с предметом, а не своими строками: магазины и патроны оружия. Список даёт {@code GameSystem.items().getItemAttachments(Item)}.
  *
  * @param groups     фишки по группам
  * @param items      сами предметы; лежащие в том же инвентаре свёрнуты под предметом и не занимают свои строки

@@ -11,7 +11,7 @@ import java.util.Objects;
 import java.util.function.Consumer;
 
 /**
- * Тип предмета: какие поля у него есть сверх названия, количества и цены. Список типов даёт {@code GameSystem.getItemTypes()}.
+ * Тип предмета: какие поля у него есть сверх названия, количества и цены. Список типов даёт {@code GameSystem.items().getItemTypes()}.
  *
  * @param code        код, хранится в {@code Item.type}
  * @param displayName название для интерфейса

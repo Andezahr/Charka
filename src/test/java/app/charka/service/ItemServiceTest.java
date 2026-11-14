@@ -39,6 +39,7 @@ class ItemServiceTest {
     @Mock private InventoryRepository inventoryRepository;
     @Mock private GameSystemRegistry systemRegistry;
     @Mock private GameSystem gameSystem;
+    @Mock private app.charka.item.ItemRules itemRules;
     @Mock private app.charka.encounter.RoundActions roundActions;
     @InjectMocks private ItemServiceImpl itemService;
 
@@ -323,12 +324,13 @@ class ItemServiceTest {
             when(itemRepository.findById(1L)).thenReturn(Optional.of(worn));
             when(itemRepository.save(worn)).thenReturn(worn);
             when(systemRegistry.forCharacter(any())).thenReturn(gameSystem);
+            when(gameSystem.items()).thenReturn(itemRules);
         }
 
         @Test
         @DisplayName("Состояние типа переживает правку: броня остаётся надетой и изношенной")
         void stateKept() {
-            when(gameSystem.findItemType(Cp2020ItemTypes.ARMOR)).thenReturn(Optional.of(Cp2020ItemTypes.ARMOR_TYPE));
+            when(itemRules.findItemType(Cp2020ItemTypes.ARMOR)).thenReturn(Optional.of(Cp2020ItemTypes.ARMOR_TYPE));
 
             itemService.update(1L, "Жилет", 1, 90, null, Cp2020ItemTypes.ARMOR,
                     Map.of("sp", "14", "hardness", "SOFT", "zone_TORSO", "1"));
@@ -339,7 +341,7 @@ class ItemServiceTest {
         @Test
         @DisplayName("Смена типа стирает состояние прежнего")
         void stateDroppedWithType() {
-            when(gameSystem.findItemType(ItemTypeDefinition.GENERIC_CODE)).thenReturn(Optional.of(ItemTypeDefinition.GENERIC));
+            when(itemRules.findItemType(ItemTypeDefinition.GENERIC_CODE)).thenReturn(Optional.of(ItemTypeDefinition.GENERIC));
 
             itemService.update(1L, "Жилет", 1, 90, null, ItemTypeDefinition.GENERIC_CODE, Map.of());
 

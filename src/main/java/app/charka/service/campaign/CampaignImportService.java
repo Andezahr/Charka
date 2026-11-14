@@ -139,7 +139,7 @@ public class CampaignImportService {
         entityManager.flush();
 
         // Ссылки предметов друг на друга: старый id → новый
-        Set<String> referenceKeys = system.getItemReferenceKeys();
+        Set<String> referenceKeys = system.items().getItemReferenceKeys();
         if (!referenceKeys.isEmpty()) {
             saved.getCharacters().stream()
                     .flatMap(character -> character.getInventories().stream())

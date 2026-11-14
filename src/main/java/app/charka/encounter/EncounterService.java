@@ -205,7 +205,7 @@ public class EncounterService {
         character.getInventories().forEach(inventory -> inventory.getContent().forEach(item -> {
             AttackForm form = rules.form(AttackSource.of(item), stats);
             if (form != null) {
-                weapons.add(new EncounterView.Weapon(item, system.getItemSummary(item), form, system.getItemActions(item),
+                weapons.add(new EncounterView.Weapon(item, system.items().getItemSummary(item), form, system.items().getItemActions(item),
                         "/character/" + character.getId() + "/inventories/" + inventory.getId() + "/items/" + item.getId()));
             }
         }));

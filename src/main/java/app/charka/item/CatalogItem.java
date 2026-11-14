@@ -3,7 +3,7 @@ package app.charka.item;
 import java.util.Map;
 
 /**
- * Готовый предмет из справочника системы ({@code GameSystem.getItemCatalog()}).
+ * Готовый предмет из справочника системы ({@code GameSystem.items().getItemCatalog()}).
  *
  * @param key         код строки справочника
  * @param group       раздел справочника

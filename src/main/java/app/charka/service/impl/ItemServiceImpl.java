@@ -155,7 +155,7 @@ public class ItemServiceImpl implements ItemService {
         int rows = entry.individual() ? quantity : 1;
         int perRow = entry.individual() ? 1 : quantity * entry.packSize();
         // примечание справочника описывает строку продажи, а запас живёт дальше: «цена за коробку» у 20 патронов была бы неправдой
-        boolean keepsNote = system.findItemType(entry.typeCode()).map(type -> !type.stacking()).orElse(true);
+        boolean keepsNote = system.items().findItemType(entry.typeCode()).map(type -> !type.stacking()).orElse(true);
         Item item = null;
         for (int row = 0; row < rows; row++) {
             item = new Item();
@@ -223,7 +223,7 @@ public class ItemServiceImpl implements ItemService {
     }
 
     private static CatalogItem catalogEntry(GameSystem system, String key) {
-        return system.getItemCatalog().stream()
+        return system.items().getItemCatalog().stream()
                 .filter(candidate -> candidate.key().equals(key))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Такого предмета нет в справочнике: " + key));
@@ -245,11 +245,11 @@ public class ItemServiceImpl implements ItemService {
         app.charka.model.Character owner = item.getInventory().getCharacter();
         app.charka.system.GameSystem system = systemRegistry.forCharacter(owner);
         // A-05: то, что делают и в бою (перезарядка, препарат), — действие раунда; учёт вроде «Списать патрон» — нет
-        boolean roundAction = system.getItemActions(item).stream().anyMatch(candidate -> candidate.code().equals(action) && candidate.combat());
+        boolean roundAction = system.items().getItemActions(item).stream().anyMatch(candidate -> candidate.code().equals(action) && candidate.combat());
         if (roundAction) {
             roundActions.require(owner);
         }
-        String result = system.performItemAction(item, action, params);
+        String result = system.items().performItemAction(item, action, params);
         if (roundAction) {
             roundActions.count(owner);
         }
@@ -263,7 +263,7 @@ public class ItemServiceImpl implements ItemService {
     public String performInstalledAction(Long characterId, String action, Map<String, String> params) {
         app.charka.model.Character character = characterRepository.findById(characterId)
                 .orElseThrow(app.charka.exception.CharacterNotFoundException.forId(characterId));
-        return systemRegistry.forCharacter(character).performInstalledAction(character, action, params);
+        return systemRegistry.forCharacter(character).items().performInstalledAction(character, action, params);
     }
 
     /**
@@ -288,7 +288,7 @@ public class ItemServiceImpl implements ItemService {
 
     private ItemTypeDefinition applyType(Item item, Inventory inventory, String typeCode, Map<String, String> properties) {
         GameSystem system = systemRegistry.forCharacter(inventory.getCharacter());
-        ItemTypeDefinition type = system.findItemType(typeCode)
+        ItemTypeDefinition type = system.items().findItemType(typeCode)
                 .orElseThrow(() -> new IllegalArgumentException("Тип предмета недоступен в этой системе: " + typeCode));
         Map<String, String> values = new HashMap<>(type.normalize(properties));
         if (type.code().equals(item.getType())) {

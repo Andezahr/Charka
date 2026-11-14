@@ -107,7 +107,7 @@ public class UndoLabels {
         }
         String label = code;
         if (item.getInventory() != null && item.getInventory().getCharacter() != null) {
-            List<ItemAction> actions = systemRegistry.forCharacter(item.getInventory().getCharacter()).getItemActions(item);
+            List<ItemAction> actions = systemRegistry.forCharacter(item.getInventory().getCharacter()).items().getItemActions(item);
             label = actions.stream().filter(candidate -> candidate.code().equals(code)).map(ItemAction::label)
                     .findFirst().orElse(code);
         }
@@ -121,7 +121,7 @@ public class UndoLabels {
         return jdbc.queryForList("SELECT c.game_system FROM character ch JOIN campaign c ON ch.campaign_id = c.id WHERE ch.id = ?",
                         String.class, characterId).stream().findFirst()
                 .flatMap(systemRegistry::find)
-                .flatMap(system -> system.getItemCatalog().stream().filter(entry -> entry.key().equals(key)).findFirst())
+                .flatMap(system -> system.items().getItemCatalog().stream().filter(entry -> entry.key().equals(key)).findFirst())
                 .map(app.charka.item.CatalogItem::name)
                 .orElse(null);
     }

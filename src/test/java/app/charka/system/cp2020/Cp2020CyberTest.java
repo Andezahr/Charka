@@ -124,7 +124,7 @@ class Cp2020CyberTest {
     }
 
     private InstalledBlock block() {
-        return registry.forCharacter(owner()).getInstalled(owner());
+        return registry.forCharacter(owner()).items().getInstalled(owner());
     }
 
     @Nested
@@ -504,7 +504,7 @@ class Cp2020CyberTest {
         @Test
         @DisplayName("В кампании без киберware блока нет")
         void otherSystems() {
-            assertThat(registry.getGeneric().getInstalled(owner())).isNull();
+            assertThat(registry.getGeneric().items().getInstalled(owner())).isNull();
         }
     }
 
@@ -601,7 +601,7 @@ class Cp2020CyberTest {
         void repair() {
             Item arm = installed("Cyberarm");
             hit("R_ARM", 12);
-            assertThat(registry.forCharacter(owner()).getItemActions(itemService.findById(arm.getId())))
+            assertThat(registry.forCharacter(owner()).items().getItemActions(itemService.findById(arm.getId())))
                     .extracting(ItemAction::code).contains("REPAIR");
 
             assertThat(itemService.performAction(owner.getId(), arm.getId(), "REPAIR", Map.of())).contains("Cybertech");
@@ -609,7 +609,7 @@ class Cp2020CyberTest {
             assertThat(Cp2020Cyberlimbs.damage(itemService.findById(arm.getId()))).isZero();
 
             hit("R_ARM", 40);
-            assertThat(registry.forCharacter(owner()).getItemActions(itemService.findById(arm.getId())))
+            assertThat(registry.forCharacter(owner()).items().getItemActions(itemService.findById(arm.getId())))
                     .extracting(ItemAction::code).doesNotContain("REPAIR");
         }
 
@@ -739,7 +739,7 @@ class Cp2020CyberTest {
             timelineService.proceedDate(campaign.getId(), 4, "Тренировки");
             flush();
             assertThat(override("karate")).hasValueSatisfying(chip -> assertThat(chip.level()).isEqualTo(2));
-            assertThat(registry.forCharacter(owner()).getItemActions(itemService.findById(karate.getId())))
+            assertThat(registry.forCharacter(owner()).items().getItemActions(itemService.findById(karate.getId())))
                     .extracting(ItemAction::code).contains("PRACTICED");
 
             itemService.performAction(owner.getId(), karate.getId(), "PRACTICED", Map.of());
@@ -758,7 +758,7 @@ class Cp2020CyberTest {
             plug(chip("chip_history_1"));
             plug(chip("chip_physics_1"));
             Item third = chip("chip_botany_1");
-            assertThat(registry.forCharacter(owner()).getItemActions(itemService.findById(third.getId())).get(0).unavailable())
+            assertThat(registry.forCharacter(owner()).items().getItemActions(itemService.findById(third.getId())).get(0).unavailable())
                     .contains("INT 2");
             assertThatThrownBy(() -> plug(third)).hasMessageContaining("INT 2");
         }

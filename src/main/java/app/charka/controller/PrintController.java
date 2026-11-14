@@ -74,9 +74,9 @@ public class PrintController {
 
     private Sheet sheet(Character character) {
         GameSystem system = systemRegistry.forCharacter(character);
-        InstalledBlock block = system.getInstalled(character);
+        InstalledBlock block = system.items().getInstalled(character);
         Set<Long> installedIds = block == null ? Set.of() : block.rows().stream().map(row -> row.item().getId()).collect(Collectors.toSet());
-        Map<String, ItemTypeDefinition> types = system.getItemTypes().stream()
+        Map<String, ItemTypeDefinition> types = system.items().getItemTypes().stream()
                 .collect(Collectors.toMap(ItemTypeDefinition::code, type -> type, (first, second) -> first, LinkedHashMap::new));
         Map<String, List<String>> sections = new LinkedHashMap<>();
         types.values().forEach(type -> sections.put(type.displayName(), new ArrayList<>()));

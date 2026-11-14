@@ -352,7 +352,7 @@ class InventoryPageTest {
     }
 
     private int catalogCost(String key) {
-        return systemRegistry.forCharacter(character).getItemCatalog().stream()
+        return systemRegistry.forCharacter(character).items().getItemCatalog().stream()
                 .filter(entry -> entry.key().equals(key)).findFirst().orElseThrow().cost();
     }
 

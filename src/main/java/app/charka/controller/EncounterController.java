@@ -61,7 +61,7 @@ public class EncounterController {
             model.addAttribute("attackObjects", attackService.objectTargets(campaign));
             model.addAttribute("hasField", view.get().encounter().getMapDoc() != null);
             // KF-05: что мастер может положить на карту — справочник системы по группам
-            model.addAttribute("lootCatalog", systemRegistry.get(campaign.getSystem()).getItemCatalog().stream()
+            model.addAttribute("lootCatalog", systemRegistry.get(campaign.getSystem()).items().getItemCatalog().stream()
                     .collect(java.util.stream.Collectors.groupingBy(app.charka.item.CatalogItem::group,
                             java.util.LinkedHashMap::new, java.util.stream.Collectors.toList())));
             model.addAttribute("feed", chatService.feedFor(campaign, ChatController.FEED_SIZE));

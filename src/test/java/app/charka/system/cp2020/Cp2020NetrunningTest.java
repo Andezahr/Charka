@@ -89,7 +89,7 @@ class Cp2020NetrunningTest {
         assertThatThrownBy(() -> act(worm, Cp2020Netrunning.LOAD)).hasMessageContaining("5 MU");
 
         Item reloaded = itemService.findById(deck.getId());
-        assertThat(registry.get("CP2020").getItemSummary(reloaded).main()).isEqualTo("MU 6/10");
+        assertThat(registry.get("CP2020").items().getItemSummary(reloaded).main()).isEqualTo("MU 6/10");
 
         act(pitBull, Cp2020Netrunning.UNLOAD);
         assertThat(act(worm, Cp2020Netrunning.LOAD)).contains("MU 5/10");
@@ -124,7 +124,7 @@ class Cp2020NetrunningTest {
 
         assertThat(act(deck, Cp2020Netrunning.UPGRADE_SPEED)).contains("0 → 1").contains("2000");
         assertThat(act(deck, Cp2020Netrunning.UPGRADE_MEMORY)).contains("10 → 20");
-        assertThat(registry.get("CP2020").getItemSummary(itemService.findById(deck.getId())).main()).isEqualTo("MU 0/20");
+        assertThat(registry.get("CP2020").items().getItemSummary(itemService.findById(deck.getId())).main()).isEqualTo("MU 0/20");
         assertThatThrownBy(() -> act(deck, Cp2020Netrunning.UPGRADE_MEMORY)).isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -181,7 +181,7 @@ class Cp2020NetrunningTest {
     void notLoaded() {
         Item hammer = add("program-hammer");
 
-        assertThat(registry.get("CP2020").getItemActions(itemService.findById(hammer.getId())))
+        assertThat(registry.get("CP2020").items().getItemActions(itemService.findById(hammer.getId())))
                 .singleElement().satisfies(action -> {
                     assertThat(action.code()).isEqualTo(Cp2020Netrunning.LOAD);
                     assertThat(action.unavailable()).contains("Нет деки");

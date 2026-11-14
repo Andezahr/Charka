@@ -62,9 +62,6 @@ public class Cp2020System implements GameSystem {
 
     private static final Cp2020ArmorStrategy ARMOR = new Cp2020ArmorStrategy();
 
-    private static final List<CatalogItem> ITEM_CATALOG =
-            Stream.of(Cp2020Weapons.CATALOG, Cp2020Magazines.CATALOG, Cp2020Ammo.CATALOG, Cp2020Armors.CATALOG, Cp2020Cyberware.CATALOG, Cp2020Chips.CATALOG, Cp2020Drugs.CATALOG, Cp2020Vehicles.CATALOG, Cp2020Netrunning.CATALOG).flatMap(List::stream).toList();
-
     private final HealthCounterService healthCounterService;
     private final DiceRoller dice;
 
@@ -136,91 +133,6 @@ public class Cp2020System implements GameSystem {
                         stats.put(line.getKey(),
                                 new StatValue(line.getKey(), line.getName(), line.getBase(), line.getEffective()))));
         return stats;
-    }
-
-    @Override
-    public List<ItemTypeDefinition> getItemTypes() {
-        return Cp2020ItemTypes.ALL;
-    }
-
-    @Override
-    public String getWeaponItemType() {
-        return Cp2020ItemTypes.WEAPON;
-    }
-
-    @Override
-    public List<CatalogItem> getItemCatalog() {
-        return ITEM_CATALOG;
-    }
-
-    @Override
-    public List<ItemAction> getItemActions(Item item) {
-        if (Cp2020Cyber.isCyber(item)) {
-            return Cp2020Cyber.actions(item);
-        }
-        if (Cp2020Drugs.isDrug(item)) {
-            return Cp2020Drugs.actions(item);
-        }
-        if (Cp2020Vehicles.isVehicle(item)) {
-            return Cp2020Vehicles.actions(item);
-        }
-        if (Cp2020Netrunning.isDeck(item) || Cp2020Netrunning.isProgram(item)) {
-            return Cp2020Netrunning.actions(item);
-        }
-        return Cp2020WornArmor.isArmor(item) ? Cp2020ArmorActions.actions(item) : Cp2020WeaponActions.actions(item);
-    }
-
-    @Override
-    public ItemSummary getItemSummary(Item item) {
-        if (Cp2020Vehicles.isVehicle(item)) {
-            return Cp2020Vehicles.summary(item);
-        }
-        if (Cp2020Drugs.isDrug(item)) {
-            return Cp2020Drugs.summary(item);
-        }
-        if (Cp2020Netrunning.isDeck(item) || Cp2020Netrunning.isProgram(item)) {
-            return Cp2020Netrunning.summary(item);
-        }
-        ItemSummary summary = Cp2020ItemSheet.summary(item);
-        return summary != null ? summary : GameSystem.super.getItemSummary(item);
-    }
-
-    @Override
-    public ItemAttachments getItemAttachments(Item item) {
-        return Cp2020ItemSheet.attachments(item);
-    }
-
-    @Override
-    public List<CatalogItem> getSuggestedCatalog(Character character) {
-        return Cp2020ItemSheet.suggested(character);
-    }
-
-    @Override
-    public List<String> getItemNotes(Item item) {
-        if (Cp2020Vehicles.isVehicle(item)) {
-            return Cp2020Vehicles.notes(item);
-        }
-        if (Cp2020Netrunning.isDeck(item) || Cp2020Netrunning.isProgram(item)) {
-            return Cp2020Netrunning.notes(item);
-        }
-        return Cp2020WornArmor.isArmor(item) ? Cp2020ArmorActions.notes(item) : Cp2020WeaponActions.notes(item);
-    }
-
-    @Override
-    public String performItemAction(Item item, String action, Map<String, String> params) {
-        if (Cp2020Cyber.isCyber(item)) {
-            return Cp2020Cyber.perform(item, action, params, dice, healthCounterService);
-        }
-        if (Cp2020Drugs.isDrug(item)) {
-            return Cp2020Drugs.perform(item, action, dice);
-        }
-        if (Cp2020Vehicles.isVehicle(item)) {
-            return Cp2020Vehicles.perform(item, action, params, getCurrentStats(item.getInventory().getCharacter()), getCheckResolver(), dice);
-        }
-        if (Cp2020Netrunning.isDeck(item) || Cp2020Netrunning.isProgram(item)) {
-            return Cp2020Netrunning.perform(item, action, params, getCurrentStats(item.getInventory().getCharacter()), net(), getCheckResolver(), dice);
-        }
-        return Cp2020WornArmor.isArmor(item) ? Cp2020ArmorActions.perform(item, action) : Cp2020WeaponActions.perform(item, action, params);
     }
 
     @Override
@@ -305,16 +217,6 @@ public class Cp2020System implements GameSystem {
     }
 
     @Override
-    public String performInstalledAction(Character character, String action, Map<String, String> params) {
-        return Cp2020Cyber.therapy(character, action, params);
-    }
-
-    @Override
-    public InstalledBlock getInstalled(Character character) {
-        return Cp2020Cyber.block(character);
-    }
-
-    @Override
     public List<String> getCombatCheckSkills() {
         return List.of("awareness");
     }
@@ -372,18 +274,6 @@ public class Cp2020System implements GameSystem {
                 view.isDead() || !saves.isEmpty(), lines, saves, view.isDeathSaveRequired(),
                 view.getLocations().stream().map(option -> new CombatCard.Option(option.getCode(), option.getLabel())).toList(),
                 view.getDamageTypes().stream().map(option -> new CombatCard.Option(option.getCode(), option.getLabel())).toList());
-    }
-
-    /** HOMEBREW: копия получает снаряжение как новое: целая броня, рабочее оружие, полный магазин. В книге копий нет */
-    @Override
-    public void prepareItemCopy(Item item) {
-        item.getProperties().keySet().removeIf(key -> key.startsWith("wear_") || key.equals(Cp2020ItemTypes.JAMMED));
-        if (Cp2020ItemTypes.WEAPON.equals(item.getType()) && item.getProperties().containsKey(Cp2020ItemTypes.LOADED)) {
-            String capacity = item.getProperties().getOrDefault(Cp2020ItemTypes.INSERTED, item.getProperties().get(Cp2020ItemTypes.SHOTS));
-            if (capacity != null) {
-                item.getProperties().put(Cp2020ItemTypes.LOADED, capacity);
-            }
-        }
     }
 
     @Override
@@ -449,7 +339,7 @@ public class Cp2020System implements GameSystem {
     /**
      * Сетевой бой: статы цели и урон программы. HOMEBREW: урон из Сети идёт в торс без брони (с. 140: «physical damage»), BTM вычитается.
      */
-    private Cp2020Netrunning.Net net() {
+    Cp2020Netrunning.Net net() {
         return new Cp2020Netrunning.Net() {
             @Override
             public Map<String, app.charka.skill.StatValue> stats(Character character) {
@@ -467,11 +357,6 @@ public class Cp2020System implements GameSystem {
                         .orElse(null);
             }
         };
-    }
-
-    @Override
-    public java.util.Set<String> getItemReferenceKeys() {
-        return java.util.Set.of(Cp2020Netrunning.LOADED_IN, Cp2020ItemTypes.LIMB_HOST);
     }
 
     @Override
@@ -505,5 +390,16 @@ public class Cp2020System implements GameSystem {
     @Override
     public java.util.Optional<app.charka.skill.SkillOverride> getSkillOverride(Character character, String skillCode) {
         return Cp2020Chips.override(character, skillCode);
+    }
+
+    /** ARC-01: предметы: типы, справочник, действия, строка на листе, вживлённое */
+    private volatile Cp2020ItemRules itemsRules;
+
+    @Override
+    public app.charka.item.ItemRules items() {
+        if (itemsRules == null) {
+            itemsRules = new Cp2020ItemRules(this, healthCounterService, dice);
+        }
+        return itemsRules;
     }
 }
