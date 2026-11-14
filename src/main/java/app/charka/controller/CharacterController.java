@@ -181,7 +181,7 @@ public class CharacterController {
         model.addAttribute("moneySum", moneySum);
         model.addAttribute("expenses", recurringExpenseService.getByCharacter(id));
         GameSystem system = systemRegistry.forCharacter(character);
-        model.addAttribute("expenseTemplates", system.getExpenseTemplates().stream()
+        model.addAttribute("expenseTemplates", system.time().getExpenseTemplates().stream()
                 .collect(Collectors.groupingBy(ExpenseTemplate::group, LinkedHashMap::new, Collectors.toList())));
         model.addAttribute("currency", system.getCurrency());
         // UX-14: «＋ Оружие» на пустой карточке оружия открывает эту вкладку окна «Добавить»
@@ -190,7 +190,7 @@ public class CharacterController {
         // A-03: окно «Добавить» грузится по требованию; версия меняется вместе с балансом и подсказками справочника
         model.addAttribute("addDialogVersion", Long.toHexString(java.util.Objects.hash(moneySum,
                 system.items().getSuggestedCatalog(character).stream().map(CatalogItem::key).toList())));
-        model.addAttribute("effectTemplates", system.getEffectTemplates());
+        model.addAttribute("effectTemplates", system.time().getEffectTemplates());
         model.addAttribute("effectStats", system.skills().getCurrentStats(character).values());
         model.addAttribute("luckLeft", java.util.Map.of(character.getId(), system.luck().getLuck(character)));
         model.addAttribute("healthStatus", system.sheet().getHealthStatus(character));

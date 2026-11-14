@@ -35,11 +35,7 @@ import app.charka.encounter.CombatRules;
  */
 class KzCombatRules implements CombatRules {
 
-    private final KzSystem system;
 
-    KzCombatRules(KzSystem system) {
-        this.system = system;
-    }
 
     /** Инициатива — 1к12 раз за бой; отложенный кубик предсказания заменяет бросок */
     @Override

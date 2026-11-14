@@ -61,7 +61,7 @@ public class DowntimeService {
                     List<Character> healers = wounded ? healthCounterService.healers(character.getId(), List.of()) : List.of();
                     Long healer = wounded ? bestHealer(character, healers, health) : null;
                     List<app.charka.item.ItemField.Option> rests = health == null ? List.of() : healthCounterService.restOptions(health);
-                    return new Row(character, system.earnings(character, 30), wounded, rests.isEmpty() ? healers : List.of(),
+                    return new Row(character, system.time().earnings(character, 30), wounded, rests.isEmpty() ? healers : List.of(),
                             healer, rests, health == null ? null : healthCounterService.rest(health));
                 })
                 .toList();
@@ -130,7 +130,7 @@ public class DowntimeService {
             if (!worked.contains(character.getId())) {
                 continue;
             }
-            Earning earning = system.earnings(character, days);
+            Earning earning = system.time().earnings(character, days);
             if (earning == null || earning.amount() <= 0) {
                 continue;
             }

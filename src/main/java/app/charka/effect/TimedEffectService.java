@@ -30,7 +30,7 @@ public class TimedEffectService {
     @Transactional
     public String applyTemplate(Long characterId, String code) {
         Character character = character(characterId);
-        EffectTemplate template = systemRegistry.forCharacter(character).findEffectTemplate(code)
+        EffectTemplate template = systemRegistry.forCharacter(character).time().findEffectTemplate(code)
                 .orElseThrow(() -> new IllegalArgumentException("Нет такого эффекта: " + code));
         return describe(TimedEffects.add(character, template, diceRoller));
     }

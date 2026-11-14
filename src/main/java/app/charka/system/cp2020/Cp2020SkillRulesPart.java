@@ -45,11 +45,7 @@ import app.charka.skill.SkillRules;
  */
 class Cp2020SkillRulesPart implements SkillRules {
 
-    private final Cp2020System system;
 
-    Cp2020SkillRulesPart(Cp2020System system) {
-        this.system = system;
-    }
 
     @Override
     public List<SkillDefinition> getSkillCatalog() {

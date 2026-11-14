@@ -136,12 +136,6 @@ public class Cp2020System implements GameSystem {
         return Cp2020Reference.sections();
     }
 
-    /** A-10: зарплата по таблице с. 58 — по лучшей роли и её спецспособности */
-    @Override
-    public app.charka.system.Earning earnings(Character character, int days) {
-        return Cp2020Creation.earnings(character, days);
-    }
-
     /** A-07: оглушение и смерть — по запросу мастера */
     @Override
     public List<app.charka.item.ItemField.Option> getRequestableSaves() {
@@ -157,18 +151,6 @@ public class Cp2020System implements GameSystem {
     @Override
     public NpcSheet rollNpc(String templateCode, boolean advanced, DiceRoller dice) {
         return Cp2020Npcs.roll(templateCode, advanced, dice);
-    }
-
-    /**
-     * Лечение по книге (с. 116, {@link Cp2020HealthStrategy#healOverTime}) и обкатка чипов; что случилось — в отчёт.
-     */
-    @Override
-    public List<String> onTimePassed(Campaign campaign, int days) {
-        List<String> report = healthCounterService.healOverTime(campaign.getId(), days);
-        if (campaign.getCharacters() != null) {
-            campaign.getCharacters().forEach(character -> Cp2020Chips.practice(character, days));
-        }
-        return report == null ? List.of() : report;
     }
 
     /**
@@ -194,16 +176,6 @@ public class Cp2020System implements GameSystem {
         };
     }
 
-    @Override
-    public List<app.charka.effect.EffectTemplate> getEffectTemplates() {
-        return Cp2020Drugs.TEMPLATES;
-    }
-
-    @Override
-    public List<app.charka.system.ExpenseTemplate> getExpenseTemplates() {
-        return Cp2020Lifestyle.TEMPLATES;
-    }
-
     /** ARC-01: предметы: типы, справочник, действия, строка на листе, вживлённое */
     private volatile Cp2020ItemRules itemsRules;
 
@@ -227,14 +199,11 @@ public class Cp2020System implements GameSystem {
     }
 
     /** ARC-01: навыки, роли, прокачка и текущие статы */
-    private volatile Cp2020SkillRulesPart skillsRules;
+    private static final Cp2020SkillRulesPart SKILLS = new Cp2020SkillRulesPart();
 
     @Override
     public app.charka.skill.SkillRules skills() {
-        if (skillsRules == null) {
-            skillsRules = new Cp2020SkillRulesPart(this);
-        }
-        return skillsRules;
+        return SKILLS;
     }
 
     /** ARC-01: удача: сколько осталось, потратить на бросок, вернуть к новой сессии */
@@ -254,5 +223,16 @@ public class Cp2020System implements GameSystem {
             sheetRules = new Cp2020SheetRules(this);
         }
         return sheetRules;
+    }
+
+    /** ARC-01: время: что происходит за прошедшие дни, заработок, шаблоны регулярных трат и временных эффектов */
+    private volatile Cp2020TimeRules timeRules;
+
+    @Override
+    public app.charka.system.TimeRules time() {
+        if (timeRules == null) {
+            timeRules = new Cp2020TimeRules(healthCounterService);
+        }
+        return timeRules;
     }
 }

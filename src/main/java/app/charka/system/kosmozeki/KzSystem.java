@@ -133,21 +133,6 @@ public class KzSystem implements GameSystem {
         return brief;
     }
 
-    /**
-     * Промотка времени: отдых лечит каждую зону (сон +30, сон и еда +60 в день), после сна предсказание бросается заново.
-     */
-    @Override
-    public List<String> onTimePassed(Campaign campaign, int days) {
-        List<String> report = new ArrayList<>(Optional.ofNullable(healthCounterService.healOverTime(campaign.getId(), days)).orElse(List.of()));
-        if (days > 0 && campaign.getCharacters() != null) {
-            campaign.getCharacters().forEach(character -> KzAbilities.counter(character, KzPortentStrategy.TYPE).ifPresent(portent -> {
-                KzPortentStrategy.roll(portent, dice);
-                report.add(character.getName() + ": предсказание " + KzPortentStrategy.dice(portent).values());
-            }));
-        }
-        return report;
-    }
-
     @Override
     public List<NpcTemplate> getNpcTemplates() {
         return KzNpcs.templates();
@@ -172,14 +157,11 @@ public class KzSystem implements GameSystem {
     }
 
     /** ARC-01: бой: инициатива, карточка участника, противостояния, действия за раунд */
-    private volatile KzCombatRules combatRules;
+    private static final KzCombatRules COMBAT = new KzCombatRules();
 
     @Override
     public app.charka.encounter.CombatRules combat() {
-        if (combatRules == null) {
-            combatRules = new KzCombatRules(this);
-        }
-        return combatRules;
+        return COMBAT;
     }
 
     /** ARC-01: навыки, роли, прокачка и текущие статы */
@@ -196,5 +178,16 @@ public class KzSystem implements GameSystem {
     @Override
     public app.charka.system.SheetRules sheet() {
         return SHEET;
+    }
+
+    /** ARC-01: время: что происходит за прошедшие дни, заработок, шаблоны регулярных трат и временных эффектов */
+    private volatile KzTimeRules timeRules;
+
+    @Override
+    public app.charka.system.TimeRules time() {
+        if (timeRules == null) {
+            timeRules = new KzTimeRules(healthCounterService, dice);
+        }
+        return timeRules;
     }
 }

@@ -1,7 +1,7 @@
 package app.charka.effect;
 
 /**
- * Готовый временный эффект системы: препарат, стимулятор. Список даёт {@code GameSystem.getEffectTemplates()}.
+ * Готовый временный эффект системы: препарат, стимулятор. Список даёт {@code GameSystem.time().getEffectTemplates()}.
  *
  * @param code     код
  * @param name     название

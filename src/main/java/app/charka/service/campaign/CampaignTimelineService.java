@@ -58,7 +58,7 @@ public class CampaignTimelineService {
         campaignService.updateCurrentDate(campaign.getId(), newDate);
 
         // Раны заживают и т.п. — по правилам системы кампании (у GENERIC ничего не происходит)
-        List<String> report = new ArrayList<>(systemRegistry.get(campaign.getSystem()).onTimePassed(campaign, daysToSkip));
+        List<String> report = new ArrayList<>(systemRegistry.get(campaign.getSystem()).time().onTimePassed(campaign, daysToSkip));
 
         // Препараты и прочие временные эффекты: часы прошли, дни убывают
         for (var character : campaign.getCharacters()) {
