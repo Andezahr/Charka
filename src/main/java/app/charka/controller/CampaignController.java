@@ -74,7 +74,7 @@ public class CampaignController {
                 .toList());
         GameSystem gameSystem = systemRegistry.find(campaign.getSystem()).orElseGet(systemRegistry::getGeneric);
         model.addAttribute("gameSystem", gameSystem);
-        model.addAttribute("npcTemplates", gameSystem.getNpcTemplates());
+        model.addAttribute("npcTemplates", gameSystem.npcs().getNpcTemplates());
         // R-10: строки экрана мастера — список персонажей обзора
         List<GmScreenController.Row> rows = GmScreenController.rows(visible, gameSystem);
         model.addAttribute("playerRows", rows.stream().filter(row -> !row.character().isNpc()).toList());

@@ -1,31 +1,8 @@
 package app.charka.system;
 
-import app.charka.attack.AttackRules;
-import app.charka.check.CheckRequest;
-import app.charka.check.CheckResolver;
-import app.charka.check.GenericCheckResolver;
-import app.charka.encounter.CombatCard;
-import app.charka.encounter.Initiative;
-import app.charka.encounter.InitiativeDeclaration;
-import app.charka.item.InstalledBlock;
-import app.charka.item.CatalogItem;
-import app.charka.item.ItemAction;
-import app.charka.item.ItemAttachments;
-import app.charka.item.ItemSummary;
-import app.charka.item.ItemTypeDefinition;
 import app.charka.model.Campaign;
 import app.charka.model.Character;
-import app.charka.model.CharacterSkill;
-import app.charka.model.Item;
-import app.charka.model.counters.strategy.health.DiceRoller;
-import app.charka.npc.NpcSheet;
-import app.charka.npc.NpcTemplate;
-import app.charka.skill.CharacterRole;
-import app.charka.skill.SkillDefinition;
-import app.charka.skill.SkillProgression;
-import app.charka.skill.StatValue;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 /**

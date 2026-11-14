@@ -65,7 +65,7 @@ public class NpcService {
         Set<String> taken = takenNames(campaign);
         List<Character> created = new ArrayList<>();
         for (int i = 0; i < count; i++) {
-            NpcSheet sheet = fromTemplate ? system.rollNpc(templateCode, advanced, diceRoller) : null;
+            NpcSheet sheet = fromTemplate ? system.npcs().rollNpc(templateCode, advanced, diceRoller) : null;
             String npcName = count == 1 && !taken.contains(base) ? base : nextName(base, taken, 1);
             taken.add(npcName);
             Character npc = newNpc(campaignId, npcName);
@@ -237,7 +237,7 @@ public class NpcService {
         if (!fromTemplate) {
             return DEFAULT_NAME;
         }
-        return system.getNpcTemplates().stream()
+        return system.npcs().getNpcTemplates().stream()
                 .filter(template -> template.code().equals(templateCode))
                 .map(NpcTemplate::label)
                 .findFirst()

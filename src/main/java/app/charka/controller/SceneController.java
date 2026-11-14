@@ -37,8 +37,8 @@ public class SceneController {
         model.addAttribute("scenes", sceneService.list(campaignId));
         model.addAttribute("fightGoing", encounterService.activeRound(campaignId) != null);
         model.addAttribute("maps", battleMapService.list(campaignId));
-        model.addAttribute("npcTemplates", systemRegistry.get(campaign.getSystem()).getNpcTemplates());
-        model.addAttribute("templateLabels", systemRegistry.get(campaign.getSystem()).getNpcTemplates().stream()
+        model.addAttribute("npcTemplates", systemRegistry.get(campaign.getSystem()).npcs().getNpcTemplates());
+        model.addAttribute("templateLabels", systemRegistry.get(campaign.getSystem()).npcs().getNpcTemplates().stream()
                 .collect(java.util.stream.Collectors.toMap(app.charka.npc.NpcTemplate::code, app.charka.npc.NpcTemplate::label)));
         model.addAttribute("campaignNpcs", campaign.getCharacters().stream().filter(app.charka.model.Character::isNpc).toList());
         return "scenes";

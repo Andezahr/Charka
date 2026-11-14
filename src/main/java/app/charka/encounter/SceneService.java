@@ -104,7 +104,7 @@ public class SceneService {
         } else {
             String code = who == null || !who.startsWith("t:") ? "" : who.substring(2);
             GameSystem system = systemRegistry.get(scene.getCampaign().getSystem());
-            if (!code.isEmpty() && system.getNpcTemplates().stream().noneMatch(template -> template.code().equals(code))) {
+            if (!code.isEmpty() && system.npcs().getNpcTemplates().stream().noneMatch(template -> template.code().equals(code))) {
                 throw new IllegalArgumentException("Нет такого шаблона: " + code);
             }
             if (count < 1 || count > 20) {

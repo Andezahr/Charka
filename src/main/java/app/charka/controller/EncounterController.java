@@ -55,7 +55,7 @@ public class EncounterController {
         model.addAttribute("returnCampaign", campaignId);
         Optional<EncounterView> view = encounterService.view(campaignId);
         // и в идущем бою (＋ Фишка), и до него (UX-09: «＋ NPC» в «Кто участвует»)
-        model.addAttribute("npcTemplates", systemRegistry.get(campaign.getSystem()).getNpcTemplates());
+        model.addAttribute("npcTemplates", systemRegistry.get(campaign.getSystem()).npcs().getNpcTemplates());
         if (view.isPresent()) {
             model.addAttribute("view", view.get());
             model.addAttribute("attackObjects", attackService.objectTargets(campaign));

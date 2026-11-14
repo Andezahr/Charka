@@ -2,30 +2,14 @@ package app.charka.system.cp2020;
 
 import app.charka.attack.AttackRules;
 import app.charka.attack.AttackSource;
-import app.charka.check.CheckRequest;
 import app.charka.check.CheckResolver;
-import app.charka.encounter.CombatCard;
-import app.charka.encounter.InitiativeDeclaration;
-import app.charka.item.InstalledBlock;
 import app.charka.model.counters.strategy.health.DiceRoller;
-import app.charka.encounter.Initiative;
-import app.charka.item.CatalogItem;
-import app.charka.item.ItemAction;
-import app.charka.item.ItemAttachments;
-import app.charka.item.ItemSummary;
-import app.charka.item.ItemTypeDefinition;
-import app.charka.model.Campaign;
 import app.charka.model.Character;
-import app.charka.model.CharacterSkill;
 import app.charka.model.Item;
 import app.charka.model.counters.Counter;
 import app.charka.model.counters.strategy.CounterContext;
 import app.charka.model.counters.strategy.health.DiceRoller;
-import app.charka.npc.NpcSheet;
-import app.charka.npc.NpcTemplate;
 import app.charka.service.counter.HealthCounterService;
-import app.charka.skill.CharacterRole;
-import app.charka.skill.SkillDefinition;
 import app.charka.skill.SkillProgression;
 import app.charka.skill.StatValue;
 import app.charka.system.Currency;
@@ -34,11 +18,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Stream;
 
 /**
  * Cyberpunk 2020 (Friday Night Firefight).
@@ -143,16 +124,6 @@ public class Cp2020System implements GameSystem {
                 new app.charka.item.ItemField.Option(Cp2020HealthStrategy.SAVE_DEATH, "Спасбросок от смерти"));
     }
 
-    @Override
-    public List<NpcTemplate> getNpcTemplates() {
-        return Cp2020Npcs.templates();
-    }
-
-    @Override
-    public NpcSheet rollNpc(String templateCode, boolean advanced, DiceRoller dice) {
-        return Cp2020Npcs.roll(templateCode, advanced, dice);
-    }
-
     /**
      * Сетевой бой: статы цели и урон программы. HOMEBREW: урон из Сети идёт в торс без брони (с. 140: «physical damage»), BTM вычитается.
      */
@@ -234,5 +205,13 @@ public class Cp2020System implements GameSystem {
             timeRules = new Cp2020TimeRules(healthCounterService);
         }
         return timeRules;
+    }
+
+    /** ARC-01: nPC: готовые шаблоны и бросок листа по шаблону */
+    private static final Cp2020NpcRules NPCS = new Cp2020NpcRules();
+
+    @Override
+    public app.charka.npc.NpcRules npcs() {
+        return NPCS;
     }
 }

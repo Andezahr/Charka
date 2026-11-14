@@ -2,33 +2,21 @@ package app.charka.system.kosmozeki;
 
 import app.charka.attack.AttackRules;
 import app.charka.check.CheckResolver;
-import app.charka.encounter.CombatCard;
-import app.charka.encounter.Initiative;
-import app.charka.item.CatalogItem;
-import app.charka.item.ItemAction;
-import app.charka.item.ItemAttachments;
-import app.charka.item.ItemSummary;
-import app.charka.item.ItemTypeDefinition;
-import app.charka.model.Campaign;
 import app.charka.model.Character;
 import app.charka.model.Item;
 import app.charka.model.counters.Counter;
 import app.charka.model.counters.strategy.InspirationCounterStrategy;
 import app.charka.model.counters.strategy.health.DiceRoller;
-import app.charka.npc.NpcTemplate;
 import app.charka.service.counter.HealthCounterService;
 import app.charka.skill.CharacterRole;
 import app.charka.system.Currency;
 import app.charka.system.GameSystem;
-import app.charka.system.ProfileField;
 import app.charka.system.Reference;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
 /**
  * Космозэки — хоумбрю-система друзей автора (правила — {@code RULES_KOSMOZEKI.md}): к100, зоны тела со своим ХП,
@@ -134,16 +122,6 @@ public class KzSystem implements GameSystem {
     }
 
     @Override
-    public List<NpcTemplate> getNpcTemplates() {
-        return KzNpcs.templates();
-    }
-
-    @Override
-    public app.charka.npc.NpcSheet rollNpc(String templateCode, boolean advanced, DiceRoller dice) {
-        return KzNpcs.sheet(templateCode);
-    }
-
-    @Override
     public List<Reference> getReference() {
         return KzReference.sections();
     }
@@ -189,5 +167,13 @@ public class KzSystem implements GameSystem {
             timeRules = new KzTimeRules(healthCounterService, dice);
         }
         return timeRules;
+    }
+
+    /** ARC-01: nPC: готовые шаблоны и бросок листа по шаблону */
+    private static final KzNpcRules NPCS = new KzNpcRules();
+
+    @Override
+    public app.charka.npc.NpcRules npcs() {
+        return NPCS;
     }
 }
