@@ -79,7 +79,7 @@ class KzBodyStrategyTest {
         }
 
         @Test
-        @DisplayName("Ближнее оружие: броня вдвое меньше; HOMEBREW — вниз")
+        @DisplayName("Ближнее оружие: броня вдвое меньше, вниз")
         void halfArmor() {
             strategy.updateAttributes(counter, Map.of(KzBodyStrategy.ARMOR_PREFIX + KzBody.BODY, 15));
             damage(20, KzBody.BODY, Map.of(KzBodyStrategy.ARMOR_HALF, 1));
