@@ -171,7 +171,7 @@ function wireBattleSvg(svg) {
       press.tokenEl.setAttribute('transform', `translate(${cell.point.x} ${cell.point.y})`);
       // M-16: бег за раунд — MA × 3 м по пути в обход стен (с. 98); сервер сверит, мастер с Shift ставит без ограничения
       const known = battle.reach && battle.reachFor === press.token.id && battle.reach.run;
-      const path = known ? battle.reach.cells.get(cell.x + ',' + cell.y) : undefined;
+      const path = known ? battle.reach.cells.get(battleLevel() + ':' + cell.x + ',' + cell.y) : undefined;
       const free = event.shiftKey && !npcOnly();
       const far = known && path === undefined && !free;
       press.tokenEl.classList.toggle('is-far', Boolean(far));

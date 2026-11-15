@@ -37,6 +37,11 @@ public record Material(String code, String label, int sp, Layer layer, boolean b
         return new Material(LevelMap.STAIRS, "Лестница", 0, Layer.TERRAIN, false, false);
     }
 
+    /** ML-03: ступени марша лестницы — бег обычный (высоту оплачивает длина марша), ведут к площадке {@link #stairs()} */
+    public static Material steps() {
+        return new Material(LevelMap.STEPS, "Ступени", 0, Layer.TERRAIN, false, false);
+    }
+
     /** Взрывоопасный предмет: не пройти, поверх видно */
     public static Material explosive(String code, String label, int sp) {
         return new Material(code, label, sp, Layer.OBJECT, true, false, false, false, true);

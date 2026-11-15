@@ -1710,6 +1710,12 @@ button.me-portrait { font: inherit; font-size: var(--fs-body); }
 .battle-climb { display: inline-flex; gap: 6px; flex-wrap: wrap; }
 .battle-token.is-below { opacity: 0.45; }
 .editor-levels { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+/* ML-01: нижний этаж под проёмом, перила по краю проёма, край перекрытия сверху */
+.battle-below { opacity: 0.45; pointer-events: none; }
+.battle-void { fill: rgba(2, 3, 5, 0.25); }
+.battle-rail { stroke: #94a3b8; stroke-width: 2; stroke-dasharray: 1 3; stroke-linecap: round; pointer-events: none; }
+.battle-overhead line { stroke: #fbbf24; stroke-opacity: 0.55; stroke-width: 2; stroke-dasharray: 6 4; pointer-events: none; }
+.battle-step { stroke: #e7d6b0; stroke-opacity: 0.55; stroke-width: 2; pointer-events: none; }
 .battle-stairs { font-size: var(--fs-lead); text-anchor: middle; dominant-baseline: central; fill: #f5e6c8; pointer-events: none; }
 
 /* ---------- Космозэки (K-02): зоны тела плитками ---------- */

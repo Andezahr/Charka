@@ -77,12 +77,17 @@ public class MapController {
     @PostMapping("/generate")
     public String generate(@PathVariable Long campaignId, @RequestParam String template,
                            @RequestParam(required = false) Integer width, @RequestParam(required = false) Integer height,
-                           @RequestParam(required = false) Long seed, RedirectAttributes redirectAttributes) {
+                           @RequestParam(required = false) Long seed, @RequestParam(defaultValue = "false") boolean tier,
+                           RedirectAttributes redirectAttributes) {
         try {
             app.charka.map.MapGenerator.Template chosen = mapGenerator.templateOf(template);
             MapDoc doc = mapGenerator.generate(template, width == null ? chosen.width() : width, height == null ? chosen.height() : height,
                     seed == null ? new java.util.Random().nextLong() : seed, battleMapService.rules(campaignId));
-            BattleMap map = battleMapService.save(campaignId, chosen.label(), doc);
+            // ML-07: «＋ второй ярус» — антресоль с маршем
+            if (tier) {
+                doc = app.charka.map.MapGenerator.withTier(doc, battleMapService.rules(campaignId));
+            }
+            BattleMap map = battleMapService.save(campaignId, chosen.label() + (tier && doc.levelCount() > 1 ? " · два яруса" : ""), doc);
             return "redirect:/campaign/" + campaignId + "/maps/" + map.getId() + "/edit";
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("mapError", e.getMessage());
@@ -91,12 +96,13 @@ public class MapController {
     }
 
     /**
-     * UX-32: у новой кампании карт нет — «Готовые карты» одним нажатием кладёт те же четыре, что у демо-кампании
-     * (улица, бар, склад, парковка) по правилам карты этой системы, и возвращает к началу боя.
+     * UX-32: у новой кампании карт нет — «Готовые карты» одним нажатием кладёт те же, что у демо-кампании
+     * ({@link app.charka.map.MapGenerator#STARTER}: улица, бар, склад, парковка и три многоуровневые), по правилам карты
+     * этой системы, и возвращает к началу боя.
      */
     @PostMapping("/starter")
     public String starter(@PathVariable Long campaignId) {
-        java.util.List.of("street", "bar", "warehouse", "parking").forEach(code -> {
+        app.charka.map.MapGenerator.STARTER.forEach(code -> {
             app.charka.map.MapGenerator.Template chosen = mapGenerator.templateOf(code);
             battleMapService.save(campaignId, chosen.label(),
                     mapGenerator.generate(code, chosen.width(), chosen.height(), 2037, battleMapService.rules(campaignId)));

@@ -46,6 +46,12 @@ public class MapGenerator {
         }
     }
 
+    /**
+     * UX-32, ML-06: готовые карты новой кампании и демо: четыре шаблона и три нарисованные многоуровневые
+     * (бар с антресолью, склад с мостками и крышей, квартира с лестницей и провалом).
+     */
+    public static final List<String> STARTER = List.of("street", "bar", "warehouse", "parking", "mezzanine", "catwalks", "flat");
+
     public static final List<Template> TEMPLATES = List.of(
             new Template("street", "Улица", 30, 18),
             new Template("bar", "Бар", 24, 18),
@@ -121,6 +127,75 @@ public class MapGenerator {
     public Template templateOf(String code) {
         return templates.stream().filter(template -> template.code().equals(code)).findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Нет такого шаблона карты: " + code));
+    }
+
+    /** ML-07: глубина второго яруса — балкон вдоль северного края, клеток */
+    static final int TIER_DEPTH = 3;
+    /** ML-07: ступеней марша на второй ярус (3 ступени — 6 м бега, как стремянка, HOMEBREW ML-03) */
+    static final int TIER_STEPS = 3;
+
+    /**
+     * ML-07: «＋ второй ярус» — к одноуровневой карте добавляется антресоль: пол в {@link #TIER_DEPTH} ряда вдоль
+     * северного края (над остальным — пустота, видно вниз), марш из {@link #TIER_STEPS} ступеней к площадке в первом
+     * свободном столбце и ящики-укрытия на краю. Карта уже многоуровневая или марш поставить негде — без изменений.
+     */
+    public static MapDoc withTier(MapDoc doc, MapRules rules) {
+        if (doc.levelCount() > 1 || doc.h() < TIER_DEPTH + TIER_STEPS + 2 || doc.w() < 6) {
+            return doc;
+        }
+        MapGrid grid = new MapGrid(doc, rules);
+        int landingY = TIER_DEPTH - 1;
+        int column = -1;
+        for (int x = 1; x < doc.w() - 1 && column < 0; x++) {
+            boolean free = true;
+            for (int y = landingY; y <= landingY + TIER_STEPS && free; y++) {
+                // марш — на обычной поверхности (пол, асфальт, газон): не в воде, обломках, дыму и не поверх уровней
+                String code = doc.cells().get(MapDoc.cellKey(x, y));
+                boolean plain = code == null || (!LevelMap.VOID.equals(code) && !LevelMap.STAIRS.equals(code) && !LevelMap.STEPS.equals(code)
+                        && grid.material(x, y).map(material -> !material.difficult() && !material.smoke()).orElse(true));
+                free = plain && !grid.blocked(x, y) && (y == landingY || doc.edge(MapDoc.between(x, y - 1, x, y)) == null);
+            }
+            if (free) {
+                column = x;
+            }
+        }
+        if (column < 0) {
+            return doc;
+        }
+        java.util.Map<String, String> ground = new java.util.LinkedHashMap<>(doc.cells());
+        ground.put(MapDoc.cellKey(column, landingY), LevelMap.STAIRS);
+        for (int y = landingY + 1; y <= landingY + TIER_STEPS; y++) {
+            ground.put(MapDoc.cellKey(column, y), LevelMap.STEPS);
+        }
+        java.util.Map<String, String> upper = new java.util.LinkedHashMap<>();
+        for (int y = 0; y < doc.h(); y++) {
+            for (int x = 0; x < doc.w(); x++) {
+                if (y >= TIER_DEPTH) {
+                    upper.put(MapDoc.cellKey(x, y), LevelMap.VOID);
+                }
+            }
+        }
+        upper.put(MapDoc.cellKey(column, landingY), LevelMap.STAIRS);
+        // внешняя стена здания продолжается наверх: верхняя грань и бока балкона
+        java.util.Map<String, String> walls = new java.util.LinkedHashMap<>();
+        doc.walls().forEach((key, value) -> {
+            String[] parts = key.split(",");
+            int x = Integer.parseInt(parts[0]);
+            int y = Integer.parseInt(parts[1]);
+            boolean outer = "h".equals(parts[2]) ? y == 0 : (x == 0 || x == doc.w()) && y < TIER_DEPTH;
+            if (outer) {
+                walls.put(key, value);
+            }
+        });
+        List<MapDoc.Stamp> stamps = new ArrayList<>();
+        for (int x = 2; x < doc.w() - 1; x += 6) {
+            if (Math.abs(x - column) > 1) {
+                stamps.add(new MapDoc.Stamp("crate", x, landingY, 0));
+            }
+        }
+        MapDoc.Floor tier = new MapDoc.Floor("Антресоль", MapDoc.FLOOR_HEIGHT, walls, upper, stamps, List.of());
+        return new MapDoc(doc.v(), doc.w(), doc.h(), doc.cell(), doc.walls(), ground, doc.stamps(), doc.zones(), doc.labels(),
+                doc.bg(), doc.ground(), List.of(tier));
     }
 
     /**

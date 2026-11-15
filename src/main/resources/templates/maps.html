@@ -57,6 +57,9 @@
             <select name="template" class="grow" aria-label="Шаблон" data-remember="map-template">
               <option th:each="t : ${templates}" th:value="${t.code}" th:text="${t.label} + ' · ' + ${t.width} + '×' + ${t.height}">Улица</option>
             </select>
+            <label class="check" title="ML-07: антресоль вдоль северного края с маршем и ящиками; видно и стреляют вниз">
+              <input type="checkbox" name="tier" value="true"><span>＋ второй ярус</span>
+            </label>
             <button type="submit" class="btn btn-primary">🎲 По шаблону</button>
           </form>
         </div>

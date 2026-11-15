@@ -51,7 +51,7 @@
       <!-- UX-32: карт нет — пустое поле или готовые карты одним нажатием -->
       <div class="card-body encounter-group" th:if="${#lists.isEmpty(maps)}">
         <p class="quiet-empty">Карт у кампании нет: бой начнётся на пустом поле.
-          <button type="submit" class="btn btn-sm" th:formaction="@{'/campaign/' + ${campaign.id} + '/maps/starter'}" formnovalidate>＋ Готовые карты (4)</button>
+          <button type="submit" class="btn btn-sm" th:formaction="@{'/campaign/' + ${campaign.id} + '/maps/starter'}" formnovalidate th:text="'＋ Готовые карты (' + ${T(app.charka.map.MapGenerator).STARTER.size()} + ')'">＋ Готовые карты</button>
         </p>
       </div>
       <div class="card-body encounter-group" th:unless="${#lists.isEmpty(maps)}">

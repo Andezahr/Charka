@@ -82,6 +82,7 @@ final class Cp2020MapRules implements MapRules {
         // M-22: уровни карты
         materials.add(Material.voidCell());
         materials.add(Material.stairs());
+        materials.add(Material.steps());
         // M-23, HOMEBREW: взрывоопасное — прочность как у бака и бочки, урон и радиус в EXPLOSIVES
         materials.add(Material.explosive("cover_fuel_barrel", "Бочка с горючим", 5));
         materials.add(Material.explosive("cover_gas_cylinder", "Газовый баллон", 10));

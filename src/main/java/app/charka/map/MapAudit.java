@@ -133,7 +133,67 @@ public final class MapAudit {
             int[] cover = cover();
             int[] sight = sight();
             int interactive = interactive();
+            levels();
             return new Report(List.copyOf(checks), route[0], route[1], pathCells, cover[0], cover[1], sight[0], interactive);
+        }
+
+        /**
+         * ML-06: уровни выше нижнего. Каждый — достижим ли его пол по лестницам от входа игроков (иначе этаж для красоты,
+         * туда никто не попадёт), сколько до него пути и есть ли на нём укрытия (стрелок наверху без укрытия — мишень).
+         */
+        private void levels() {
+            if (doc.levelCount() <= 1) {
+                return;
+            }
+            // двери открываются, как и в проверке путей
+            MapDoc open = doc;
+            for (int level = 0; level < doc.levelCount(); level++) {
+                MapDoc view = doc.level(level);
+                java.util.Map<String, String> walls = new java.util.LinkedHashMap<>(view.walls());
+                walls.replaceAll((key, value) -> value.startsWith("door:") && !value.endsWith(":open") ? value + ":open" : value);
+                open = open.withLevel(level, new MapDoc(view.v(), view.w(), view.h(), view.cell(), walls, view.cells(),
+                        view.stamps(), view.zones(), view.labels()));
+            }
+            LevelMap levels = new LevelMap(open, rules);
+            int start = -1;
+            for (int c = 0; c < players.length && start < 0; c++) {
+                if (players[c]) {
+                    start = c;
+                }
+            }
+            for (int c = 0; c < walk.length && start < 0; c++) {
+                if (walk[c]) {
+                    start = c;
+                }
+            }
+            if (start < 0) {
+                return;
+            }
+            List<int[]> reach = levels.reach(0, start % w, start / w, Integer.MAX_VALUE / 4);
+            for (int level = 1; level < doc.levelCount(); level++) {
+                MapGrid floor = levels.grid(level);
+                int cells = 0;
+                for (int y = 0; y < h; y++) {
+                    for (int x = 0; x < w; x++) {
+                        if (!floor.blocked(x, y)) {
+                            cells++;
+                        }
+                    }
+                }
+                int at = level;
+                long reached = reach.stream().filter(cell -> cell[3] == at).count();
+                int path = reach.stream().filter(cell -> cell[3] == at).mapToInt(cell -> cell[2]).min().orElse(-1);
+                int[] cover = new Auditor(doc.level(level), rules).cover();
+                String name = "Уровень «" + doc.levelName(level) + "»";
+                String detail = cells + " кл. пола, " + (reached >= cells ? "весь достижим" : "достижимо " + reached)
+                        + (path >= 0 ? " — от входа игроков " + path / doc.cell() + " кл. пути" : "")
+                        + "; у укрытия " + cover[0] + "%";
+                boolean bad = reached == 0 || reached < cells || cover[0] == 0;
+                checks.add(new Check(bad ? Mark.WARN : Mark.OK, name,
+                        detail + (reached == 0 ? " — нет лестницы: добавьте «Лестницу» (^) в одной клетке на обоих уровнях"
+                                : reached < cells ? " — часть пола не связана лестницей" : "")
+                                + (cover[0] == 0 ? " — наверху негде укрыться" : "")));
+            }
         }
 
         /** Самое узкое место между зонами (минимальный разрез по клеткам) и на сколько раздельных проходов оно делится */

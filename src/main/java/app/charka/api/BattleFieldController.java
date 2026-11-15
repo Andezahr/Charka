@@ -75,6 +75,21 @@ public class BattleFieldController {
         return ResponseEntity.noContent().build();
     }
 
+    /** ML-04: прыгнуть вниз в соседнюю клетку проёма; итог — текстом для подсказки */
+    @PostMapping(value = "/participants/{participantId}/jump", produces = "text/plain;charset=UTF-8")
+    public ResponseEntity<String> jump(@PathVariable Long campaignId, @PathVariable Long participantId,
+                                       @RequestParam int x, @RequestParam int y, @RequestParam(defaultValue = "false") boolean free,
+                                       HttpServletRequest request) {
+        boolean gm = accessService.isGm(campaignService.getById(campaignId));
+        if (free && (!gm || GmMode.npcOnly(request))) {
+            throw new IllegalArgumentException("Без ограничения бега — мастер в режиме «Бог»");
+        }
+        if (gm && GmMode.npcOnly(request) && !battleFieldService.isNpc(campaignId, participantId)) {
+            throw new IllegalArgumentException("В режиме «За NPC» фишки игроков не двигаются");
+        }
+        return ResponseEntity.ok(battleFieldService.jump(campaignId, participantId, x, y, free));
+    }
+
     /** M-22: по лестнице на соседний уровень; {@code level} — куда, если лестница ведёт и вверх, и вниз */
     @PostMapping(value = "/participants/{participantId}/climb", produces = "text/plain;charset=UTF-8")
     public ResponseEntity<String> climb(@PathVariable Long campaignId, @PathVariable Long participantId,

@@ -137,4 +137,21 @@ class MapGeneratorTest {
         assertThat(doc.stamps()).allMatch(stamp -> rules.object(stamp.code()).isPresent());
         assertThatThrownBy(() -> generator.generate("castle", 10, 10, 1, rules)).isInstanceOf(IllegalArgumentException.class);
     }
+
+    @org.junit.jupiter.params.ParameterizedTest(name = "{0}")
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"street", "bar", "warehouse", "parking", "office", "port"})
+    @DisplayName("ML-07: «＋ второй ярус» — антресоль с маршем, весь её пол достижим, на ней есть укрытие")
+    void tier(String code) {
+        MapRules rules = systemRegistry.get("CP2020").getMapRules();
+        MapGenerator.Template template = generator.templateOf(code);
+        MapDoc doc = MapGenerator.withTier(generator.generate(code, template.width(), template.height(), 7, rules), rules);
+
+        assertThat(doc.levelCount()).isEqualTo(2);
+        assertThat(doc.cells()).containsValue(LevelMap.STEPS).containsValue(LevelMap.STAIRS);
+        MapAudit.Report report = MapAudit.of(doc, rules);
+        assertThat(report.checks()).filteredOn(check -> check.title().startsWith("Уровень"))
+                .singleElement().satisfies(check -> assertThat(check.mark()).as(check.line()).isEqualTo(MapAudit.Mark.OK));
+        // повторно — без изменений: ярус уже есть
+        assertThat(MapGenerator.withTier(doc, rules)).isSameAs(doc);
+    }
 }

@@ -15,6 +15,12 @@ public final class LevelMap {
     public static final String VOID = "void";
     /** Код материала: лестница — на соседнем уровне в той же клетке тоже лестница, туда можно подняться или спуститься */
     public static final String STAIRS = "stairs";
+    /**
+     * ML-03: код материала: ступени марша — подъём к площадке {@link #STAIRS}. Бег по ним обычный: высоту оплачивает длина
+     * марша, а шаг с площадки на другой уровень бесплатный (HOMEBREW: марш из 3 ступеней — 6 м, как стремянка
+     * {@link #STAIRS_FACTOR} × 3 м). На верхнем уровне над маршем — пустота: лестничный проём.
+     */
+    public static final String STEPS = "steps";
 
     /**
      * HOMEBREW: подъём или спуск по лестнице стоит вдвое больше высоты в метрах бега: 3 м этажа — 6 м бега.
@@ -83,7 +89,56 @@ public final class LevelMap {
         return to;
     }
 
-    /** Сколько метров бега стоит лестница между уровнями */
+    /**
+     * ML-03: куда фишка добежит за {@code meters} м по всем уровням: по своему уровню, через площадку лестницы
+     * ({@link #stairsFrom}) — на соседний, с ценой подъёма {@link #stairsCost}, и дальше по нему.
+     *
+     * @return клетки {@code {x, y, метров пути, уровень}}, по одной на клетку уровня — с самым коротким путём
+     */
+    public List<int[]> reach(int level, int x, int y, int meters) {
+        java.util.Map<String, int[]> best = new java.util.LinkedHashMap<>();
+        java.util.ArrayDeque<int[]> entries = new java.util.ArrayDeque<>();
+        entries.add(new int[]{level, x, y, 0});
+        while (!entries.isEmpty()) {
+            int[] entry = entries.poll();
+            int l = entry[0];
+            for (int[] cell : grid(l).reach(entry[1], entry[2], meters - entry[3])) {
+                int cost = entry[3] + cell[2];
+                String key = l + ":" + cell[0] + "," + cell[1];
+                int[] known = best.get(key);
+                if (known != null && known[2] <= cost) {
+                    continue;
+                }
+                best.put(key, new int[]{cell[0], cell[1], cost, l});
+                for (int to : stairsFrom(l, cell[0], cell[1])) {
+                    int up = cost + stairsCost(l, to, cell[0], cell[1]);
+                    int[] there = best.get(to + ":" + cell[0] + "," + cell[1]);
+                    if (up <= meters && (there == null || there[2] > up) && !grid(to).blocked(cell[0], cell[1])) {
+                        entries.add(new int[]{to, cell[0], cell[1], up});
+                    }
+                }
+            }
+        }
+        return new ArrayList<>(best.values());
+    }
+
+    /**
+     * ML-03: сколько стоит перейти с площадки в клетке {@code (x, y)}: у марша (рядом ступени {@link #STEPS} на нижнем
+     * уровне) — 0, высоту уже оплатили ступени; иначе стремянка или люк — {@link #stairsCost(int, int)}.
+     */
+    public int stairsCost(int from, int to, int x, int y) {
+        int lower = Math.min(from, to);
+        for (int dy = -1; dy <= 1; dy++) {
+            for (int dx = -1; dx <= 1; dx++) {
+                if ((dx != 0 || dy != 0) && is(lower, x + dx, y + dy, STEPS)) {
+                    return 0;
+                }
+            }
+        }
+        return stairsCost(from, to);
+    }
+
+    /** Сколько метров бега стоит стремянка между уровнями: высота × {@link #STAIRS_FACTOR} */
     public int stairsCost(int from, int to) {
         return Math.abs(doc.levelZ(to) - doc.levelZ(from)) * STAIRS_FACTOR;
     }

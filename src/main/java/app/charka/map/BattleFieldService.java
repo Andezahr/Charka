@@ -292,13 +292,15 @@ public class BattleFieldService {
         if (!levels.doc().hasLevel(target)) {
             throw new IllegalArgumentException("Нет такого уровня карты");
         }
-        if (target != participant.getPosLevel() && participant.getPosX() != null && !free) {
-            throw new IllegalArgumentException("На другой уровень — по лестнице");
-        }
-        if (target != participant.getPosLevel()) {
-            participant.setPosLevel(target);
-            participant.setPosX(null);
-            participant.setPosY(null);
+        int fromLevel = participant.getPosLevel();
+        boolean onMap = participant.getPosX() != null;
+        // ML-03: на другой уровень — через площадку лестницы, путь считает reach по уровням; мастер и лоток — сразу
+        if (target != fromLevel && onMap && !free) {
+            boolean viaStairs = levels.reach(fromLevel, participant.getPosX(), participant.getPosY(), Integer.MAX_VALUE / 4).stream()
+                    .anyMatch(cell -> cell[3] == target && cell[0] == x && cell[1] == y);
+            if (!viaStairs) {
+                throw new IllegalArgumentException("На другой уровень — по лестнице");
+            }
         }
         MapGrid grid = levels.grid(target);
         if (!grid.doc().inside(x, y)) {
@@ -310,17 +312,18 @@ public class BattleFieldService {
         if (taken(encounter, participant, target, x, y)) {
             throw new IllegalArgumentException("Клетка занята");
         }
-        Integer run = free || participant.getPosX() == null ? null : runOf(encounter, participant);
+        Integer run = free || !onMap ? null : runOf(encounter, participant);
         if (run != null) {
             int left = Math.max(0, run - participant.getMovedMeters());
-            int cost = grid.reach(participant.getPosX(), participant.getPosY(), left).stream()
-                    .filter(cell -> cell[0] == x && cell[1] == y).mapToInt(cell -> cell[2]).findFirst().orElse(-1);
+            int cost = levels.reach(fromLevel, participant.getPosX(), participant.getPosY(), left).stream()
+                    .filter(cell -> cell[3] == target && cell[0] == x && cell[1] == y).mapToInt(cell -> cell[2]).findFirst().orElse(-1);
             if (cost < 0) {
                 throw new IllegalArgumentException(left == 0 ? "Бег в этом раунде уже весь: " + run + " м"
                         : "Дальше бега: осталось " + left + " из " + run + " м");
             }
             participant.setMovedMeters(participant.getMovedMeters() + cost);
         }
+        participant.setPosLevel(target);
         participant.setPosX(x);
         participant.setPosY(y);
     }
@@ -388,7 +391,7 @@ public class BattleFieldService {
      *
      * @param meters сколько бега осталось; null — система не знает, область не рисуется
      * @param run    весь бег за раунд
-     * @param cells  клетки {@code {x, y, метров пути}}
+     * @param cells  клетки {@code {x, y, метров пути, уровень}}
      */
     public record Reach(Integer meters, Integer run, List<int[]> cells) {
     }
@@ -403,7 +406,8 @@ public class BattleFieldService {
             return new Reach(run, run, List.of());
         }
         int left = Math.max(0, run - participant.getMovedMeters());
-        return new Reach(left, run, levels(encounter).grid(participant.getPosLevel()).reach(participant.getPosX(), participant.getPosY(), left));
+        // ML-03: клетки всех уровней, куда можно добежать через лестницу: {x, y, метров, уровень}
+        return new Reach(left, run, levels(encounter).reach(participant.getPosLevel(), participant.getPosX(), participant.getPosY(), left));
     }
 
     /**
@@ -703,7 +707,7 @@ public class BattleFieldService {
         }
         Integer run = free ? null : runOf(encounter, participant);
         if (run != null) {
-            int cost = levels.stairsCost(participant.getPosLevel(), target);
+            int cost = levels.stairsCost(participant.getPosLevel(), target, participant.getPosX(), participant.getPosY());
             int left = Math.max(0, run - participant.getMovedMeters());
             if (cost > left) {
                 throw new IllegalArgumentException("Лестница — " + cost + " м бега, осталось " + left + " из " + run + " м");
@@ -712,6 +716,75 @@ public class BattleFieldService {
         }
         participant.setPosLevel(target);
         return levels.doc().levelName(target);
+    }
+
+    /**
+     * ML-04: прыгнуть (или упасть) вниз в проём: фишка добегает до края (ближайшая клетка рядом с проёмом) и встаёт на
+     * уровень ниже в клетку проёма — сквозь все проёмы подряд, до пола. Бег — путь до края и шаг. Урона от падения нет ни в книге CP2020, ни в Космозэках: его решает и вводит
+     * мастер, итог это и говорит (правило — решение автора, ML-04).
+     *
+     * @param x, y клетка проёма на уровне фишки
+     * @return итог для подсказки: куда и с какой высоты
+     * @throws IllegalArgumentException не проём, до края не добежать, внизу нельзя встать или занято, бега не хватает
+     */
+    @Transactional
+    public String jump(Long campaignId, Long participantId, int x, int y, boolean free) {
+        Encounter encounter = withMap(campaignId);
+        EncounterParticipant participant = participant(encounter, participantId);
+        if (participant.getPosX() == null) {
+            throw new IllegalArgumentException("Фишка не на карте");
+        }
+        roundActions.requireTurn(participant);
+        LevelMap levels = levels(encounter);
+        int from = participant.getPosLevel();
+        if (from == 0 || !LevelMap.VOID.equals(levels.doc().level(from).cells().get(MapDoc.cellKey(x, y)))) {
+            throw new IllegalArgumentException("Прыгать можно только в проём на уровне выше нижнего");
+        }
+        // до края — по пути бега: ближайшая клетка рядом с проёмом, куда фишка добежит
+        Integer run = free ? null : runOf(encounter, participant);
+        int left = run == null ? Integer.MAX_VALUE / 4 : Math.max(0, run - participant.getMovedMeters());
+        List<int[]> reached = levels.grid(from).reach(participant.getPosX(), participant.getPosY(), left);
+        // нацелились в середину проёма — прыжок с края в ближайшую к цели клетку проёма, до которой добежать
+        int[] spot = {x, y};
+        if (reached.stream().noneMatch(cell -> Math.abs(cell[0] - x) <= 1 && Math.abs(cell[1] - y) <= 1)) {
+            MapDoc upper = levels.doc().level(from);
+            spot = upper.cells().entrySet().stream()
+                    .filter(entry -> LevelMap.VOID.equals(entry.getValue()))
+                    .map(entry -> java.util.Arrays.stream(entry.getKey().split(",")).mapToInt(Integer::parseInt).toArray())
+                    .filter(cell -> reached.stream().anyMatch(r -> Math.abs(r[0] - cell[0]) <= 1 && Math.abs(r[1] - cell[1]) <= 1))
+                    .min(java.util.Comparator.comparingDouble(cell -> Math.hypot(cell[0] - x, cell[1] - y)))
+                    .orElseThrow(() -> new IllegalArgumentException("До края этого проёма не добежать"));
+        }
+        int jx = spot[0];
+        int jy = spot[1];
+        int[] edge = reached.stream()
+                .filter(cell -> Math.abs(cell[0] - jx) <= 1 && Math.abs(cell[1] - jy) <= 1)
+                .min(java.util.Comparator.comparingInt(cell -> cell[2] + ((cell[0] != jx && cell[1] != jy) ? 1 : 0)))
+                .orElseThrow(() -> new IllegalArgumentException("До края этого проёма не добежать"));
+        boolean diagonal = edge[0] != jx && edge[1] != jy;
+        int cost = edge[2] + (int) Math.ceil((diagonal ? Math.sqrt(2) : 1) * levels.doc().cell());
+        int to = from - 1;
+        while (to > 0 && LevelMap.VOID.equals(levels.doc().level(to).cells().get(MapDoc.cellKey(jx, jy)))) {
+            to--;
+        }
+        if (levels.grid(to).blocked(jx, jy)) {
+            throw new IllegalArgumentException("Внизу не встать: " + levels.grid(to).material(jx, jy).map(Material::label).orElse("занято"));
+        }
+        if (taken(encounter, participant, to, jx, jy)) {
+            throw new IllegalArgumentException("Внизу занято");
+        }
+        if (run != null) {
+            if (cost > left) {
+                throw new IllegalArgumentException("До края и прыжок — " + cost + " м бега, осталось " + left + " из " + run + " м");
+            }
+            participant.setMovedMeters(participant.getMovedMeters() + cost);
+        }
+        int height = levels.doc().levelZ(from) - levels.doc().levelZ(to);
+        participant.setPosLevel(to);
+        participant.setPosX(jx);
+        participant.setPosY(jy);
+        return participant.getCharacter().getName() + ": прыжок вниз с " + height + " м — на «" + levels.doc().levelName(to)
+                + "». Урон от падения — по решению мастера (в правилах его нет)";
     }
 
     /** Клетка уровня занята другой фишкой */

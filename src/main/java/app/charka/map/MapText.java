@@ -63,6 +63,8 @@ public final class MapText {
         // M-22: уровни — лестница на соседний уровень в той же клетке, пустота (видно вниз)
         map.put('^', LevelMap.STAIRS);
         map.put('#', LevelMap.VOID);
+        // ML-03: ступени марша, ведут к площадке ^
+        map.put('/', LevelMap.STEPS);
         map.put('C', "car");
         map.put('A', "armored_car");
         map.put('X', "crate");

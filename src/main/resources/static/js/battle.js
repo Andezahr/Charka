@@ -282,8 +282,8 @@ async function loadReach(id) {
     if (!response.ok) return;
     const reach = await response.json();
     if (battle.reachFor !== id) return;
-    // клетка → метры пути: подсказка при переносе показывает бег, а не прямую
-    battle.reach = { meters: reach.meters, run: reach.run, cells: new Map(reach.cells.map(cell => [cell[0] + ',' + cell[1], cell[2]])) };
+    // «уровень:x,y» → метры пути (ML-03: через лестницу — и на соседнем уровне): подсказка при переносе показывает бег
+    battle.reach = { meters: reach.meters, run: reach.run, cells: new Map(reach.cells.map(cell => [(cell[3] || 0) + ':' + cell[0] + ',' + cell[1], cell[2]])) };
     renderBattle();
   } catch (e) { /* без области: только подсказка */ }
   loadVision(id);

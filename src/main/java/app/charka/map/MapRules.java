@@ -119,6 +119,7 @@ public interface MapRules {
                 Material.smoke("smoke", "Дым"),
                 Material.voidCell(),
                 Material.stairs(),
+                Material.steps(),
                 new Material("asphalt", "Асфальт", 0, Material.Layer.TERRAIN, false, false),
                 new Material("grass", "Газон", 0, Material.Layer.TERRAIN, false, false));
 

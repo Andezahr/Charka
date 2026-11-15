@@ -66,7 +66,7 @@ function renderEditorLevels() {
     button.type = 'button';
     button.className = 'btn btn-sm' + (level === editor.level ? ' btn-primary' : ' btn-ghost');
     button.textContent = levelName(editor.root, level);
-    button.title = 'Править этот уровень. Лестница — клетка «Лестница» на соседних уровнях в одном месте, «Пустота» — видно вниз';
+    button.title = 'Править этот уровень. Марш: «Ступени» внизу ведут к «Лестнице» (площадке) — она в одной клетке на обоих уровнях; одна «Лестница» без ступеней — стремянка или люк; «Пустота» — видно вниз';
     button.addEventListener('click', () => setEditorLevel(level));
     holder.appendChild(button);
   }
@@ -74,11 +74,14 @@ function renderEditorLevels() {
   add.type = 'button';
   add.className = 'btn btn-sm btn-ghost';
   add.textContent = '＋ Этаж';
-  add.title = 'Новый уровень над верхним: этаж, крыша, балкон';
+  add.title = 'Новый уровень над верхним — сначала пустой воздух: пол дают комната и кисть «Пол этажа», проём — «Пустота»';
   add.addEventListener('click', () => {
     beginEdit();
     const number = levelCount(editor.root);
-    editor.root.levels.push({ name: (number + 1) + ' этаж', z: number * 3, walls: {}, cells: {}, stamps: [], labels: [] });
+    // ML-02: новый этаж — открытый воздух; пол появляется комнатой или кистью «Пол этажа» (балкон — одна комната)
+    const air = {};
+    for (let y = 0; y < editor.root.h; y++) for (let x = 0; x < editor.root.w; x++) air[cellKey(x, y)] = 'void';
+    editor.root.levels.push({ name: (number + 1) + ' этаж', z: number * 3, walls: {}, cells: air, stamps: [], labels: [] });
     setEditorLevel(number);
     editDone();
   });
@@ -118,6 +121,7 @@ function setTool(tool) {
 const toolMaterial = tool => {
   const stored = editorMemory('material.' + tool);
   const materials = editor.data.materials;
+  if (stored === FLOOR && editor.level > 0 && TOOL_LAYERS[tool] === 'TERRAIN') return stored;
   if (stored && materials.some(material => material.code === stored)) return stored;
   const preset = { room: editor.data.defaults.room, wall: editor.data.defaults.wall, door: editor.data.defaults.door, window: editor.data.defaults.window }[tool];
   if (preset) return preset;
@@ -204,6 +208,12 @@ function drawRoom(a, b, merge) {
     return;
   }
   const material = toolMaterial('room');
+  // ML-02: на верхнем уровне комната — это и пол внутри (балкон, антресоль); внизу пол есть всегда
+  if (editor.level > 0) {
+    for (let x = x1; x <= x2; x++) for (let y = y1; y <= y2; y++) {
+      if (editor.doc.cells[cellKey(x, y)] === 'void') delete editor.doc.cells[cellKey(x, y)];
+    }
+  }
   // дверь или окно на краю остаются: комнату пристроили к готовой
   const put = key => { if (!walls[key] || walls[key] === 'gap') walls[key] = material; };
   for (let x = x1; x <= x2; x++) {
@@ -252,7 +262,7 @@ function fillArea(start, material) {
   const queue = [start];
   while (queue.length && seen.size < 4000) {
     const { x, y } = queue.shift();
-    editor.doc.cells[cellKey(x, y)] = material;
+    setCell(cellKey(x, y), material);
     [[1, 0, edgeLeft(x + 1, y)], [-1, 0, edgeLeft(x, y)], [0, 1, edgeTop(x, y + 1)], [0, -1, edgeTop(x, y)]].forEach(([dx, dy, edge]) => {
       const next = { x: x + dx, y: y + dy };
       const key = cellKey(next.x, next.y);
@@ -263,11 +273,18 @@ function fillArea(start, material) {
   }
 }
 
+// ML-02: «Пол этажа» — не материал, а отсутствие местности: на верхнем уровне так закрашивают пол поверх пустоты
+const FLOOR = 'floor';
+const setCell = (key, material) => {
+  if (material === FLOOR) delete editor.doc.cells[key];
+  else editor.doc.cells[key] = material;
+};
+
 function brushAt(cell, material) {
   const half = Math.floor(editor.size / 2);
   for (let dy = -half; dy <= half; dy++) {
     for (let dx = -half; dx <= half; dx++) {
-      if (insideDoc(cell.x + dx, cell.y + dy)) editor.doc.cells[cellKey(cell.x + dx, cell.y + dy)] = material;
+      if (insideDoc(cell.x + dx, cell.y + dy)) setCell(cellKey(cell.x + dx, cell.y + dy), material);
     }
   }
 }
@@ -502,7 +519,7 @@ function renderOptions() {
       select('Окно', materialsOf('WINDOW'), toolMaterial('window'), remember('window'));
     }
   }
-  if (tool === 'fill' || tool === 'brush') select('Местность', materialsOf('TERRAIN'), toolMaterial(tool), remember(tool));
+  if (tool === 'fill' || tool === 'brush') select('Местность', (editor.level > 0 ? [[FLOOR, '0 · Пол этажа']] : []).concat(materialsOf('TERRAIN')), toolMaterial(tool), remember(tool));
   if (tool === 'brush') select('Кисть', [['1', '1 клетка'], ['3', '3 × 3'], ['5', '5 × 5']], String(editor.size), value => { editor.size = Number(value); });
   if (tool === 'object' || tool === 'row' || tool === 'scatter') {
     select('Предмет', editor.data.objects.map(object => [object.code, object.label + ' ' + object.w + '×' + object.h]), toolObject(),
@@ -546,7 +563,8 @@ function renderEditor() {
   const materials = new Map(editor.data.materials.map(material => [material.code, material]));
   const objects = new Map(editor.data.objects.map(object => [object.code, object]));
   const svg = svgEl('svg', { viewBox: [editor.view.x, editor.view.y, editor.view.w, editor.view.h].join(' '), class: 'battle-svg editor-svg' });
-  drawMapLayers(svg, doc, materials, objects, null, true, editor.data.backgroundUrl);
+  drawMapLayers(svg, doc, materials, objects, null, true, editor.level === 0 ? editor.data.backgroundUrl : null,
+    neighbourLevels(editor.root, editor.level));
   if (editor.selection) {
     const sel = editor.selection;
     svgEl('rect', { x: sel.x * CELL, y: sel.y * CELL, width: sel.w * CELL, height: sel.h * CELL, class: 'editor-selection' }, svg);

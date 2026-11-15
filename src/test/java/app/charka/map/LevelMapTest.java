@@ -188,8 +188,6 @@ class LevelMapTest {
         void climb() {
             field.move(campaign.getId(), token(player).id(), 1, 1, true);
 
-            assertThatThrownBy(() -> field.move(campaign.getId(), token(player).id(), 2, 1, false, 1))
-                    .hasMessageContaining("по лестнице");
             assertThat(field.climb(campaign.getId(), token(player).id(), null, false)).isEqualTo("Балкон");
             entityManager.flush();
             entityManager.clear();
@@ -199,6 +197,73 @@ class LevelMapTest {
             // по балкону ходят как обычно; в пустоту — нельзя
             field.move(campaign.getId(), token(player).id(), 3, 1, false);
             assertThatThrownBy(() -> field.move(campaign.getId(), token(player).id(), 4, 1, false)).hasMessageContaining("Туда не встать");
+        }
+
+        @Test
+        @DisplayName("ML-03: на балкон — одним перетаскиванием через лестницу: путь до площадки + подъём 6 м + шаг; в пустоту — отказ")
+        void dragOverStairs() {
+            field.move(campaign.getId(), token(player).id(), 2, 2, true);
+            entityManager.flush();
+            entityManager.clear();
+            // досягаемость — клетки обоих уровней
+            assertThat(field.reach(campaign.getId(), token(player).id()).cells())
+                    .anyMatch(cell -> cell[3] == 0).anyMatch(cell -> cell[3] == 1 && cell[0] == 2 && cell[1] == 1 && cell[2] == 11);
+
+            field.move(campaign.getId(), token(player).id(), 2, 1, false, 1);
+            entityManager.flush();
+            entityManager.clear();
+            assertThat(token(player).level()).isEqualTo(1);
+            // по диагонали до площадки 2,83 → 3 м, подъём |3 м| × 2 = 6 м, шаг по балкону 2 м
+            assertThat(token(player).moved()).isEqualTo(3 + 6 + 2);
+            assertThatThrownBy(() -> field.move(campaign.getId(), token(player).id(), 5, 1, false, 1)).hasMessageContaining("Туда не встать");
+        }
+
+        @Test
+        @DisplayName("ML-04: прыжок в проём: добежать до края, вниз в ту же клетку; бег — путь и шаг; урон решает мастер")
+        void jumpDown() {
+            field.move(campaign.getId(), token(player).id(), 3, 1, true, 1);
+            entityManager.flush();
+            entityManager.clear();
+            assertThatThrownBy(() -> field.jump(campaign.getId(), token(player).id(), 2, 1, false)).hasMessageContaining("только в проём");
+
+            assertThat(field.jump(campaign.getId(), token(player).id(), 4, 2, false))
+                    .contains("прыжок вниз с 3 м", "Двор", "по решению мастера");
+            entityManager.flush();
+            entityManager.clear();
+            assertThat(token(player).level()).isZero();
+            assertThat(token(player).x()).isEqualTo(4);
+            assertThat(token(player).y()).isEqualTo(2);
+            // (3,1) уже у края: шаг по диагонали в (4,2) — 2,83 → 3 м
+            assertThat(token(player).moved()).isEqualTo(3);
+        }
+
+        @Test
+        @DisplayName("ML-04: в проём дальше от края — фишка сначала добегает до края; не дотянуться — отказ")
+        void jumpFromAfar() {
+            field.move(campaign.getId(), token(player).id(), 0, 0, true, 1);
+            entityManager.flush();
+            entityManager.clear();
+            // (0,0) → край (3,0): 6 м, шаг в (4,0): 2 м
+            field.jump(campaign.getId(), token(player).id(), 4, 0, false);
+            entityManager.flush();
+            entityManager.clear();
+            assertThat(token(player).level()).isZero();
+            assertThat(token(player).moved()).isEqualTo(8);
+            assertThatThrownBy(() -> field.jump(campaign.getId(), token(player).id(), 7, 3, false)).hasMessageContaining("только в проём");
+        }
+
+        @Test
+        @DisplayName("ML-04: нацелились в середину проёма — прыжок с края в ближайшую к цели клетку проёма")
+        void jumpIntoMiddle() {
+            field.move(campaign.getId(), token(player).id(), 3, 1, true, 1);
+            entityManager.flush();
+            entityManager.clear();
+            field.jump(campaign.getId(), token(player).id(), 6, 3, false);
+            entityManager.flush();
+            entityManager.clear();
+            assertThat(token(player).level()).isZero();
+            assertThat(token(player).x()).isEqualTo(4);
+            assertThat(token(player).y()).isEqualTo(3);
         }
 
         @Test

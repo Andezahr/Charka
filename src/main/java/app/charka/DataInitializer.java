@@ -63,8 +63,8 @@ public class DataInitializer implements CommandLineRunner {
         saved.getCharacters().forEach(character -> counterService.createDefaults(character.getId(), counters));
         // M-08: готовые карты боя — бой можно начать сразу
         app.charka.map.MapRules rules = systemRegistry.get(Cp2020System.CODE).getMapRules();
-        List.of("street", "bar", "warehouse", "parking").forEach(code -> {
-            app.charka.map.MapGenerator.Template template = app.charka.map.MapGenerator.template(code);
+        app.charka.map.MapGenerator.STARTER.forEach(code -> {
+            app.charka.map.MapGenerator.Template template = mapGenerator.templateOf(code);
             battleMapService.save(saved.getId(), template.label(),
                     mapGenerator.generate(code, template.width(), template.height(), 2037, rules));
         });

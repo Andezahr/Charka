@@ -18,13 +18,52 @@ const zoomBattle = (factor, cx, cy) => {
 
 const MATERIAL_COLORS = { WALL: '#c7cfdb', DOOR: '#b7834a', WINDOW: '#7dd3fc', OBJECT: '#64748b', TERRAIN: '#3f3a2e' };
 // местность своего цвета; остальная — общим цветом TERRAIN
-const TERRAIN_COLORS = { water: '#1e40af', asphalt: '#2a303b', grass: '#1f4d2b', smoke: '#9ca3af', void: '#020305', stairs: '#6b5b3e' };
+const TERRAIN_COLORS = { water: '#1e40af', asphalt: '#2a303b', grass: '#1f4d2b', smoke: '#9ca3af', void: '#020305', stairs: '#6b5b3e', steps: '#5b4d34' };
 // M-23: взрывоопасное — своим цветом, чтобы его было видно издалека
 const EXPLOSIVE_COLOR = '#c2410c';
 
 // Карта без фишек: пол, сетка, зоны, местность, предметы, стены, подписи. Общая для поля боя и редактора.
 // under(svg) рисует то, что ложится под стены (досягаемость); editing — показать проёмы, двери не нажимаются
-function drawMapLayers(svg, doc, materials, objects, under, editing, backgroundUrl) {
+// (editing === 'ghost' — нижний этаж под проёмом: без нажатий и подписей).
+// ML-01: levels.below — уровень ниже: виден притушенным в клетках пустоты; levels.above — уровень выше: край его
+// перекрытия (балкон, мостик) — пунктиром над головой
+let voidClipCounter = 0;
+
+// ML-03: фишка на площадке лестницы — в той же клетке лестница и на показанном соседнем уровне
+function onLanding(root, token, level) {
+  const from = token.level || 0;
+  if (token.x === null || Math.abs(from - level) !== 1 || level >= levelCount(root)) return false;
+  const key = token.x + ',' + token.y;
+  return levelDoc(root, from).cells[key] === 'stairs' && levelDoc(root, level).cells[key] === 'stairs';
+}
+
+// ML-01: соседние уровни показанного — для вида сквозь проём и края перекрытия сверху
+function neighbourLevels(root, level) {
+  const named = l => ({ ...levelDoc(root, l), levelName: levelName(root, l) });
+  return {
+    below: level > 0 ? named(level - 1) : null,
+    above: level + 1 < levelCount(root) ? named(level + 1) : null
+  };
+}
+
+// Грани между пустотой и полом: края проёмов, балконов и мостков
+function voidEdges(doc) {
+  const isVoid = (x, y) => doc.cells[x + ',' + y] === 'void';
+  const edges = [];
+  Object.entries(doc.cells).forEach(([key, code]) => {
+    if (code !== 'void') return;
+    const [x, y] = key.split(',').map(Number);
+    if (y > 0 && !isVoid(x, y - 1)) edges.push([x, y, x + 1, y]);
+    if (y + 1 < doc.h && !isVoid(x, y + 1)) edges.push([x, y + 1, x + 1, y + 1]);
+    if (x > 0 && !isVoid(x - 1, y)) edges.push([x, y, x, y + 1]);
+    if (x + 1 < doc.w && !isVoid(x + 1, y)) edges.push([x + 1, y, x + 1, y + 1]);
+  });
+  return edges;
+}
+
+function drawMapLayers(svg, doc, materials, objects, under, editing, backgroundUrl, levels) {
+  const ghost = editing === 'ghost';
+  editing = editing === true;
   const width = doc.w * CELL;
   const height = doc.h * CELL;
   const defs = svgEl('defs', {}, svg);
@@ -43,14 +82,40 @@ function drawMapLayers(svg, doc, materials, objects, under, editing, backgroundU
   doc.zones.forEach(zone => svgEl('rect', {
     x: zone.x * CELL, y: zone.y * CELL, width: zone.w * CELL, height: zone.h * CELL, class: 'battle-zone ' + zone.kind
   }, svg));
+  const below = levels && levels.below;
+  if (below) {
+    const voids = Object.entries(doc.cells).filter(([, code]) => code === 'void');
+    if (voids.length) {
+      const id = 'void-clip-' + (++voidClipCounter);
+      const clip = svgEl('clipPath', { id }, defs);
+      voids.forEach(([key]) => {
+        const [x, y] = key.split(',').map(Number);
+        svgEl('rect', { x: x * CELL, y: y * CELL, width: CELL, height: CELL }, clip);
+      });
+      const group = svgEl('g', { class: 'battle-below', 'clip-path': 'url(#' + id + ')' }, svg);
+      drawMapLayers(group, below, materials, objects, null, 'ghost', null);
+    }
+  }
   Object.entries(doc.cells).forEach(([key, code]) => {
     const [x, y] = key.split(',').map(Number);
     const material = materials.get(code);
+    if (code === 'void' && below) {
+      // проём: виден нижний этаж, клетка только с подсказкой
+      svgEl('rect', { x: x * CELL, y: y * CELL, width: CELL, height: CELL, class: 'battle-void' }, svg)
+        .appendChild(svgEl('title', {})).textContent = (material ? material.label : 'Пустота') + ' · внизу — ' + (below.levelName || 'нижний этаж');
+      return;
+    }
     const kind = material && material.smoke ? ' battle-smoke' : material && material.difficult ? ' battle-difficult' : '';
     svgEl('rect', { x: x * CELL, y: y * CELL, width: CELL, height: CELL, class: 'battle-terrain' + kind, fill: TERRAIN_COLORS[code] || MATERIAL_COLORS.TERRAIN },
       svg).appendChild(svgEl('title', {})).textContent = (material ? material.label : code)
       + (material && material.difficult ? ' · трудная местность: бег вдвое дороже' : '')
       + (material && material.smoke ? ' · закрывает взгляд, стрельба вслепую' : '');
+    if (code === 'steps') {
+      // ML-03: ступени марша — поперечные полосы
+      for (let i = 1; i <= 3; i++) {
+        svgEl('line', { x1: x * CELL + 3, y1: y * CELL + i * CELL / 4, x2: (x + 1) * CELL - 3, y2: y * CELL + i * CELL / 4, class: 'battle-step' }, svg);
+      }
+    }
     if (code === 'stairs') {
       svgEl('text', { x: (x + 0.5) * CELL, y: (y + 0.5) * CELL, class: 'battle-stairs' }, svg).textContent = '⇅';
     }
@@ -97,15 +162,28 @@ function drawMapLayers(svg, doc, materials, objects, under, editing, backgroundU
     const title = svgEl('title', {}, line);
     title.textContent = (material ? material.label + (material.sp ? ' SP ' + material.sp : '') : value)
       + (type === 'door' && !editing ? (state === 'open' ? ' · открыта, нажмите — закрыть' : ' · закрыта, нажмите — открыть') : '');
-    if (!editing) {
+    if (!editing && !ghost) {
       // M-23: правая кнопка или долгое нажатие по грани — выбить, разбить; дверь ещё и открывается нажатием
       line.dataset.edge = key;
       line.dataset.edgeKind = type;
     }
   });
+  if (ghost) return;
+  // ML-01: перила по краю проёма своего уровня; край перекрытия уровня выше — пунктиром
+  voidEdges(doc).forEach(([x1, y1, x2, y2]) => svgEl('line', {
+    x1: x1 * CELL, y1: y1 * CELL, x2: x2 * CELL, y2: y2 * CELL, class: 'battle-rail'
+  }, svg));
+  if (levels && levels.above) {
+    const overhead = svgEl('g', { class: 'battle-overhead' }, svg);
+    svgEl('title', {}, overhead).textContent = 'Край перекрытия сверху: ' + (levels.above.levelName || 'этаж выше');
+    voidEdges(levels.above).forEach(([x1, y1, x2, y2]) => svgEl('line', {
+      x1: x1 * CELL, y1: y1 * CELL, x2: x2 * CELL, y2: y2 * CELL
+    }, overhead));
+  }
   doc.labels.forEach(label => {
     svgEl('text', { x: (label.x + 0.5) * CELL, y: (label.y + 0.5) * CELL, class: 'battle-label' }, svg).textContent = label.text;
-  });}
+  });
+}
 
 function renderBattle() {
   const stage = battle.stage;
@@ -156,7 +234,8 @@ function renderBattle() {
   renderLevels();
   renderClimb();
   const selectedToken = tokenById(battle.selected);
-  const onLevel = token => (token.level || 0) === level;
+  // ML-03: фишка на площадке лестницы стоит на обоих уровнях — видна и тянется с любого из них
+  const onLevel = token => (token.level || 0) === level || onLanding(data.doc, token, level);
 
   const svg = svgEl('svg', {
     viewBox: [battle.view.x, battle.view.y, battle.view.w, battle.view.h].join(' '),
@@ -166,7 +245,9 @@ function renderBattle() {
     if (battle.reach && battle.selected && selectedToken && onLevel(selectedToken)) {
       const group = svgEl('g', { class: 'battle-reach' }, svg);
       battle.reach.cells.forEach((cost, key) => {
-        const [x, y] = key.split(',').map(Number);
+        const [cellLevel, xy] = key.split(':');
+        if (Number(cellLevel) !== level) return;
+        const [x, y] = xy.split(',').map(Number);
         svgEl('rect', { x: x * CELL, y: y * CELL, width: CELL, height: CELL }, group);
       });
     }
@@ -192,7 +273,7 @@ function renderBattle() {
         }
       }
     }
-  }, false, level === 0 ? data.backgroundUrl : null);
+  }, false, level === 0 ? data.backgroundUrl : null, neighbourLevels(data.doc, level));
 
   const now = Date.now();
   data.pointers.forEach(pointer => {
@@ -375,10 +456,39 @@ function renderTray() {
   });
 }
 
+// ML-04: фишку отпустили в проём на верхнем уровне — прыжок вниз после подтверждения; урон решает мастер
+async function jumpToken(token, x, y, free) {
+  const level = battleLevel();
+  const root = battle.data.doc;
+  let below = level - 1;
+  while (below > 0 && levelDoc(root, below).cells[x + ',' + y] === 'void') below--;
+  const height = ((root.levels[level - 1] || {}).z || 0) - (below > 0 ? root.levels[below - 1].z : 0);
+  if (!confirm('Прыгнуть вниз с ' + height + ' м на «' + levelName(root, below) + '»?\nУрон от падения — по решению мастера: в правилах его нет.')) return;
+  try {
+    const response = await fetch(battle.url + '/participants/' + token.id + '/jump', {
+      method: 'POST', body: new URLSearchParams({ x, y, free: Boolean(free) })
+    });
+    const text = await response.text();
+    if (!response.ok) {
+      battleError(text);
+      return;
+    }
+    battle.level = below;
+    battleHint(text);
+    await visit(location.href);
+  } catch (e) {
+    battleError('Нет связи с сервером: фишка не сдвинулась');
+  }
+}
+
 async function moveToken(token, x, y, free) {
+  const level = battleLevel();
+  if (level > 0 && (token.level || 0) === level && levelDoc(battle.data.doc, level).cells[x + ',' + y] === 'void') {
+    return jumpToken(token, x, y, free);
+  }
   const before = { x: token.x, y: token.y, level: token.level };
-  // M-22: на другой уровень — только из лотка или мастер без ограничения; иначе сервер откажет
-  if (token.x === null || free) token.level = battleLevel();
+  // M-22, ML-03: на другой уровень — из лотка, мастер без ограничения или с площадки лестницы (путь сверит сервер)
+  if (token.x === null || free || onLanding(battle.data.doc, token, battleLevel())) token.level = battleLevel();
   token.x = x;
   token.y = y;
   renderBattle();
