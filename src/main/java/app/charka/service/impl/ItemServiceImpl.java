@@ -249,9 +249,16 @@ public class ItemServiceImpl implements ItemService {
         if (roundAction) {
             roundActions.require(owner);
         }
+        int granted = system.items().grantedActions(item, action);
+        if (granted > 0) {
+            roundActions.requireTurnOf(owner);
+        }
         String result = system.items().performItemAction(item, action, params);
         if (roundAction) {
             roundActions.count(owner);
+        }
+        if (granted > 0) {
+            roundActions.grant(owner, granted);
         }
         return result;
     }

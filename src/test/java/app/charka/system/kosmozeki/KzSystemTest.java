@@ -189,6 +189,23 @@ class KzSystemTest {
         }
 
         @Test
+        @DisplayName("Броня на несколько зон: «Тело и руки» закрывает тело и обе руки, но не голову")
+        void multiZoneArmor() {
+            Item vest = add(target, "kz-vest");
+            vest.getProperties().put(KzItems.ZONE, KzBody.BODY + "," + KzItems.ZONE_ARMS);
+            itemService.performAction(target.getId(), vest.getId(), KzItemActions.WEAR, Map.of());
+            entityManager.flush();
+            Counter body = body(target);
+            KzBody zones = KzBodyStrategy.body(body);
+            assertThat(KzBodyStrategy.armor(body, zones.zone(KzBody.BODY).orElseThrow())).isEqualTo(20);
+            assertThat(KzBodyStrategy.armor(body, zones.zone(KzBody.LEFT_ARM).orElseThrow())).isEqualTo(20);
+            assertThat(KzBodyStrategy.armor(body, zones.zone(KzBody.HEAD).orElseThrow())).isZero();
+            Item helmet = add(target, "kz-helmet");
+            itemService.performAction(target.getId(), helmet.getId(), KzItemActions.WEAR, Map.of());
+            assertThat(KzItems.isWorn(vest)).isTrue();
+        }
+
+        @Test
         @DisplayName("Ближнее оружие: броня вдвое меньше; зона на нуле — без сознания, урон в неё пропадает")
         void halfArmorAndZero() {
             Item vest = add(target, "kz-vest");
@@ -448,6 +465,27 @@ class KzSystemTest {
     @Nested
     @DisplayName("Одно действие за ход")
     class OneAction {
+
+        @Test
+        @DisplayName("Энергетик «Стального Джо»: после атаки — ещё одно действие в этом ходу; второй раз в те же сутки — отказ")
+        void steelJoe() {
+            Item pistol = add(shooter, "kz-pistol");
+            Item drinks = add(shooter, "kz-steel-joe");
+            drinks.setQuantity(2);
+            encounterService.start(campaign.getId(), List.of(shooter.getId(), target.getId()));
+            entityManager.flush();
+            rollD100(46);
+            attackService.attack(shooter.getId(), pistol.getId(), fire(target.getId(), 1));
+            entityManager.flush();
+
+            assertThat(itemService.performAction(shooter.getId(), drinks.getId(), KzItemActions.DRINK, Map.of())).contains("ещё одно действие");
+            entityManager.flush();
+            rollD100(46);
+            assertThat(attackService.attack(shooter.getId(), pistol.getId(), fire(target.getId(), 1)).hit()).isTrue();
+            assertThatThrownBy(() -> itemService.performAction(shooter.getId(), drinks.getId(), KzItemActions.DRINK, Map.of()))
+                    .hasMessageContaining("раз в сутки");
+            assertThat(drinks.getQuantity()).isEqualTo(1);
+        }
 
         @Test
         @DisplayName("В бою вторая атака и перезарядка в том же раунде — отказ; новый раунд — снова можно")

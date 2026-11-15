@@ -39,6 +39,8 @@ public class KzBodyStrategy extends AbstractCounterStrategy implements HealthCou
     public static final String ZONES = "zones";
     public static final String LOST_PREFIX = "lost_";
     public static final String ARMOR_PREFIX = "armor_";
+    /** Временные ХП зоны сверх полного (автор, 2026-11-15): урон снимает их первыми, лечение их не трогает */
+    public static final String TEMP_PREFIX = "temp_";
     /** Ввод формы: текущее ХП зоны */
     public static final String HP_PREFIX = "hp_";
     /** Мастер поднял: в сознании, хотя зона на нуле */
@@ -165,7 +167,12 @@ public class KzBodyStrategy extends AbstractCounterStrategy implements HealthCou
                 counter.getAttributes().put(REST, Math.max(REST_NONE, Math.min(REST_FED, value)));
             } else if (key.startsWith(HP_PREFIX)) {
                 KzBody.Zone zone = zone(body, key.substring(HP_PREFIX.length()));
-                setLost(counter, zone, zone.maxHp() - Math.max(0, Math.min(zone.maxHp(), value)));
+                int hp = Math.max(0, value);
+                // выше полного — временные ХП
+                setTemp(counter, zone, hp - zone.maxHp());
+                setLost(counter, zone, zone.maxHp() - Math.min(zone.maxHp(), hp));
+            } else if (key.startsWith(TEMP_PREFIX)) {
+                setTemp(counter, zone(body, key.substring(TEMP_PREFIX.length())), value);
             } else if (key.startsWith(ARMOR_PREFIX)) {
                 KzBody.Zone zone = zone(body, key.substring(ARMOR_PREFIX.length()));
                 if (value <= 0) {
@@ -196,7 +203,7 @@ public class KzBodyStrategy extends AbstractCounterStrategy implements HealthCou
             throw new IllegalArgumentException("Нечего менять");
         }
         counter.getTexts().put(ZONES, body.serialize());
-        counter.getAttributes().keySet().removeIf(key -> (key.startsWith(LOST_PREFIX) || key.startsWith(ARMOR_PREFIX))
+        counter.getAttributes().keySet().removeIf(key -> (key.startsWith(LOST_PREFIX) || key.startsWith(ARMOR_PREFIX) || key.startsWith(TEMP_PREFIX))
                 && body.zone(key.substring(key.indexOf('_') + 1)).isEmpty());
         // ХП зоны уменьшили — потеря не больше нового полного
         body.zones().forEach(zone -> setLost(counter, zone, Math.min(zone.maxHp(), lost(counter, zone))));
@@ -330,7 +337,13 @@ public class KzBodyStrategy extends AbstractCounterStrategy implements HealthCou
             return event.summary("Броня выдержала: " + zone.name()).chip("armor", "Броня выдержала");
         }
         int dealt = Math.min(hp, total);
-        setLost(counter, zone, lost(counter, zone) + dealt);
+        int temp = temp(counter, zone);
+        int fromTemp = Math.min(temp, dealt);
+        if (fromTemp > 0) {
+            event.step("Временные ХП: −" + fromTemp);
+            setTemp(counter, zone, temp - fromTemp);
+        }
+        setLost(counter, zone, lost(counter, zone) + dealt - fromTemp);
         int now = hp - dealt;
         event.step(zone.name() + ": " + hp + " → " + now + " из " + zone.maxHp());
         recount(counter);
@@ -469,7 +482,7 @@ public class KzBodyStrategy extends AbstractCounterStrategy implements HealthCou
             int hp = hp(counter, zone);
             int armor = armor(counter, zone);
             rows.add(new KzBodyView.ZoneRow(zone.code(), zone.name(), zone.digitsLabel(), hp, zone.maxHp(), armor,
-                    armor == 0 ? null : armorSource(counter, zone), zone.multiplier(), zone.maxHp() == 0 ? 0 : hp * 100 / zone.maxHp(),
+                    armor == 0 ? null : armorSource(counter, zone), zone.multiplier(), zone.maxHp() == 0 ? 0 : Math.min(100, hp * 100 / zone.maxHp()),
                     zone.digits().stream().sorted().toList()));
         }
         int max = body.zones().stream().mapToInt(KzBody.Zone::maxHp).sum();
@@ -496,8 +509,21 @@ public class KzBodyStrategy extends AbstractCounterStrategy implements HealthCou
         return Math.max(0, Math.min(zone.maxHp(), counter.getAttribute(LOST_PREFIX + zone.code(), 0)));
     }
 
+    /** Текущее ХП зоны вместе с временными: может быть выше полного */
     public static int hp(Counter counter, KzBody.Zone zone) {
-        return zone.maxHp() - lost(counter, zone);
+        return zone.maxHp() - lost(counter, zone) + temp(counter, zone);
+    }
+
+    static int temp(Counter counter, KzBody.Zone zone) {
+        return Math.max(0, counter.getAttribute(TEMP_PREFIX + zone.code(), 0));
+    }
+
+    private static void setTemp(Counter counter, KzBody.Zone zone, int temp) {
+        if (temp <= 0) {
+            counter.getAttributes().remove(TEMP_PREFIX + zone.code());
+        } else {
+            counter.getAttributes().put(TEMP_PREFIX + zone.code(), Math.min(1000, temp));
+        }
     }
 
     private static void setLost(Counter counter, KzBody.Zone zone, int lost) {

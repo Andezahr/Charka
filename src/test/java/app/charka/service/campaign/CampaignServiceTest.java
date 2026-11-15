@@ -32,7 +32,7 @@ class CampaignServiceTest {
     void setUp() {
         campaignService = new CampaignService(campaignRepository,
                 new GameSystemRegistry(List.of(new GenericSystem(), new Cp2020System(null, null))),
-                new app.charka.security.AccessService(null, false));
+                new app.charka.security.AccessService(null, null, false));
     }
 
     @Test

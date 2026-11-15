@@ -98,6 +98,14 @@ public interface ItemRules {
     }
 
     /**
+     * Сколько действий раунда даёт действие с предметом (энергетик Космозэков — ещё одно в этом ходу). Спрашивается до
+     * {@link #performItemAction}: предмет после него может кончиться. Не в бою — ничего.
+     */
+    default int grantedActions(Item item, String action) {
+        return 0;
+    }
+
+    /**
      * Предмет скопирован новому NPC: что не должно перейти (износ, расход), система убирает здесь.
      */
     default void prepareItemCopy(Item item) {

@@ -69,7 +69,7 @@
           <label class="field" th:each="z : ${h.zones}">
             <span class="label" th:text="${z.name} + ': ХП / броня'">Голова</span>
             <span class="form-row">
-              <input type="number" th:name="'attributes[hp_' + ${z.code} + ']'" min="0" th:max="${z.maxHp}" th:value="${z.hp}" class="narrow" aria-label="ХП">
+              <input type="number" th:name="'attributes[hp_' + ${z.code} + ']'" min="0" max="2000" th:value="${z.hp}" class="narrow" aria-label="ХП" title="Выше полного — временные ХП">
               <input type="number" th:name="'attributes[armor_' + ${z.code} + ']'" min="0" max="500"
                      th:value="${z.armorFrom == 'вручную' ? z.armor : 0}" class="narrow" aria-label="Броня вручную"
                      title="Броня без предмета (звери, роботы); надетые предметы считаются сами">

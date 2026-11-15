@@ -26,6 +26,9 @@ final class KzItemActions {
     static final String TAKE_OFF = "TAKE_OFF";
     static final String HEAL_ONE = "HEAL_ONE";
     static final String HEAL_ALL = "HEAL_ALL";
+    static final String DRINK = "DRINK";
+    /** Профиль персонажа: игровая дата, когда пил энергетик «Стального Джо» (раз в сутки) */
+    static final String DRANK_ON = "kz.steelJoeDate";
 
     private KzItemActions() {
     }
@@ -67,6 +70,10 @@ final class KzItemActions {
             if (all > 0) {
                 actions.add(new ItemAction(HEAL_ALL, "+" + all + " во все зоны", noBody, List.of(), null, null, false, false, true, null));
             }
+            if (item.getProperties().containsKey(KzItems.EXTRA_ACTION)) {
+                // не тратит действие: даёт ещё одно в этом ходу
+                actions.add(ItemAction.simple(DRINK, "Выпить: +1 действие", drankToday(owner) ? "Сегодня уже пил — раз в сутки" : null));
+            }
             return actions;
         }
         return List.of();
@@ -91,6 +98,7 @@ final class KzItemActions {
             }
             case HEAL_ONE -> heal(item, params.get("source"), true);
             case HEAL_ALL -> heal(item, null, false);
+            case DRINK -> drink(item);
             default -> throw new IllegalArgumentException("Неизвестное действие с предметом: " + action);
         };
     }
@@ -141,6 +149,37 @@ final class KzItemActions {
         return KzBody.HUMAN.zones().stream().map(KzBody.Zone::code)
                 .filter(code -> KzItems.covers(armor, code))
                 .collect(Collectors.toSet());
+    }
+
+    private static java.time.LocalDate today(Character character) {
+        return character == null || character.getCampaign() == null ? null : character.getCampaign().getCurrentDate();
+    }
+
+    static boolean drankToday(Character character) {
+        java.time.LocalDate today = today(character);
+        return today != null && character.getProfile() != null && today.toString().equals(character.getProfile().get(DRANK_ON));
+    }
+
+    private static String drink(Item drink) {
+        Character owner = owner(drink);
+        if (drankToday(owner)) {
+            throw new IllegalArgumentException("Сегодня уже пил — энергетик действует раз в сутки");
+        }
+        java.time.LocalDate today = today(owner);
+        if (owner != null && today != null) {
+            owner.getProfile().put(DRANK_ON, today.toString());
+        }
+        consume(drink);
+        return drink.getName() + ": в этом ходу ещё одно действие";
+    }
+
+    private static void consume(Item item) {
+        int quantity = item.getQuantity() == null ? 1 : item.getQuantity();
+        if (quantity <= 1) {
+            item.getInventory().getContent().remove(item);
+        } else {
+            item.setQuantity(quantity - 1);
+        }
     }
 
     private static String heal(Item medicine, String zone, boolean one) {

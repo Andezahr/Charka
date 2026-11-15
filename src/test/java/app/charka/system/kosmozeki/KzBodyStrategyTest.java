@@ -64,6 +64,19 @@ class KzBodyStrategyTest {
         }
 
         @Test
+        @DisplayName("Временные ХП сверх полного: ХП руки 130 из 100, урон снимает сначала временные, лечение их не даёт")
+        void tempHp() {
+            strategy.updateAttributes(counter, Map.of(KzBodyStrategy.HP_PREFIX + KzBody.RIGHT_ARM, 130));
+            assertThat(hp(KzBody.RIGHT_ARM)).isEqualTo(130);
+            assertThat(counter.getValue()).isZero();
+            damage(50, KzBody.RIGHT_ARM, Map.of());
+            assertThat(hp(KzBody.RIGHT_ARM)).isEqualTo(80);
+            assertThat(counter.getValue()).isEqualTo(20);
+            KzBodyStrategy.healAll(counter, 100);
+            assertThat(hp(KzBody.RIGHT_ARM)).isEqualTo(100);
+        }
+
+        @Test
         @DisplayName("Голова — урон ×2")
         void headDouble() {
             damage(30, KzBody.HEAD, Map.of());

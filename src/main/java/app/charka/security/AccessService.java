@@ -4,6 +4,7 @@ import app.charka.model.AppUser;
 import app.charka.model.Campaign;
 import app.charka.model.Character;
 import app.charka.repository.AppUserRepository;
+import app.charka.repository.CharacterRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -23,10 +24,13 @@ import java.util.Optional;
 public class AccessService {
 
     private final AppUserRepository userRepository;
+    private final CharacterRepository characterRepository;
     private final boolean enabled;
 
-    public AccessService(AppUserRepository userRepository, @Value("${charka.security.enabled:true}") boolean enabled) {
+    public AccessService(AppUserRepository userRepository, CharacterRepository characterRepository,
+                         @Value("${charka.security.enabled:true}") boolean enabled) {
         this.userRepository = userRepository;
+        this.characterRepository = characterRepository;
         this.enabled = enabled;
     }
 
@@ -52,10 +56,12 @@ public class AccessService {
         return me != null && campaign != null && campaign.getGm() != null && me.equals(campaign.getGm().getId());
     }
 
-    /** Есть свой персонаж в кампании */
+    /** Есть свой персонаж в кампании. Запросом, а не по {@code campaign.getCharacters()}: кампания из списка в шаблоне — без сессии */
+    @Transactional(readOnly = true)
     public boolean isPlayer(Campaign campaign) {
         Long me = current().map(AppUser::getId).orElse(null);
-        return me != null && campaign != null && campaign.getCharacters().stream().anyMatch(character -> owns(character, me));
+        return me != null && campaign != null && campaign.getId() != null
+                && characterRepository.existsByCampaignIdAndPlayerId(campaign.getId(), me);
     }
 
     public boolean canOpen(Campaign campaign) {

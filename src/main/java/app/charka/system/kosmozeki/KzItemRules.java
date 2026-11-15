@@ -51,6 +51,11 @@ class KzItemRules implements ItemRules {
         return KzItemActions.perform(item, action, params);
     }
 
+    @Override
+    public int grantedActions(Item item, String action) {
+        return KzItemActions.DRINK.equals(action) ? 1 : 0;
+    }
+
     /** Копия NPC получает полный магазин */
     @Override
     public void prepareItemCopy(Item item) {

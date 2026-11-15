@@ -144,6 +144,8 @@ class SecurityTest {
             mockMvc.perform(get("/character/" + other.getId()).with(user("kolya"))).andExpect(status().isNotFound());
             mockMvc.perform(get("/api/characters/" + other.getId() + "/skills").with(user("kolya"))).andExpect(status().isNotFound());
             mockMvc.perform(get(base + "/encounter").with(user("kolya"))).andExpect(status().isOk());
+            // чат-панель «Стол» игроку открыта
+            mockMvc.perform(get(base + "/chat/panel").with(user("kolya"))).andExpect(status().isOk());
             mockMvc.perform(post(base + "/encounter/start").param("character", String.valueOf(mine.getId())).with(user("kolya")).with(csrf()))
                     .andExpect(status().isNotFound());
             mockMvc.perform(get(base + "/maps").with(user("kolya"))).andExpect(status().isNotFound());

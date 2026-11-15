@@ -89,7 +89,7 @@ public class AccessInterceptor implements HandlerInterceptor {
             return;
         }
         boolean playerPath = (rest.isEmpty() && "GET".equals(method))
-                || rest.equals("/chat")
+                || rest.equals("/chat") || rest.equals("/chat/panel") || rest.equals("/chat/check")
                 // A-01: своё действие игрок отменяет сам, чьё оно — проверяет UndoService
                 || rest.startsWith("/undo/")
                 // A-07: свои запросы бросков игрок видит и бросает; чей запрос — проверяет контроллер

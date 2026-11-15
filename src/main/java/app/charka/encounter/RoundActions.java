@@ -42,6 +42,12 @@ public class RoundActions {
         participant(character).ifPresent(participant -> participant.setActions(participant.getActions() + 1));
     }
 
+    /** Персонаж получил ещё {@code extra} действий в этом раунде (энергетик); не в бою — ничего */
+    @Transactional
+    public void grant(Character character, int extra) {
+        participant(character).ifPresent(participant -> participant.setActions(participant.getActions() - extra));
+    }
+
     /**
      * Проверка до действия: в бою у персонажа должно остаться действие этого раунда. Не в бою — можно всё.
      *
@@ -75,6 +81,12 @@ public class RoundActions {
         if (current == null || !current.equals(participant.getCharacter().getId())) {
             throw new IllegalArgumentException(NOT_YOUR_TURN);
         }
+    }
+
+    /** Персонаж в бою — только на своём ходу; не в бою — можно */
+    @Transactional(readOnly = true)
+    public void requireTurnOf(Character character) {
+        participant(character).ifPresent(this::requireTurn);
     }
 
     /** То же по участнику боя кампании: ход фишкой, рывок, проверка из трекера */

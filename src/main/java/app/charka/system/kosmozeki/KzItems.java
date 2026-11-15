@@ -52,6 +52,8 @@ public final class KzItems {
     /** Лечение «Жидкой кожи»: в одну зону и во все */
     public static final String HEAL_ONE = "healOne";
     public static final String HEAL_ALL = "healAll";
+    /** Энергетик «Стального Джо» (автор, 2026-11-15): раз в сутки — ещё одно действие в этом ходу */
+    public static final String EXTRA_ACTION = "extraAction";
 
     static final String ZONE_ARMS = "arms";
     static final String ZONE_LEGS = "legs";
@@ -66,6 +68,12 @@ public final class KzItems {
             new Option(KzBody.LEFT_ARM, "Левая рука"),
             new Option(KzBody.RIGHT_LEG, "Правая нога"),
             new Option(KzBody.LEFT_LEG, "Левая нога"),
+            // броня на несколько зон (Todoist 2026-11-15): значение — коды через запятую, см. covers
+            new Option(KzBody.HEAD + "," + KzBody.BODY, "Голова и тело"),
+            new Option(KzBody.BODY + "," + ZONE_ARMS, "Тело и руки"),
+            new Option(KzBody.BODY + "," + ZONE_LEGS, "Тело и ноги"),
+            new Option(ZONE_ARMS + "," + ZONE_LEGS, "Руки и ноги"),
+            new Option(KzBody.BODY + "," + ZONE_ARMS + "," + ZONE_LEGS, "Тело, руки и ноги"),
             new Option(ZONE_ALL, "Всё тело"));
 
     /** KF-02: патроны выбираются из списка — «Другой…» оставляет своё название; у оружия и запаса одно и то же слово */
@@ -107,7 +115,8 @@ public final class KzItems {
 
     public static final ItemTypeDefinition MEDICINE_TYPE = new ItemTypeDefinition(MEDICINE, "Лечилка", List.of(
             ItemField.number(HEAL_ONE, "ХП в одну зону", "+", " в зону", 0, 1000),
-            ItemField.number(HEAL_ALL, "ХП во все зоны", "+", " во все", 0, 1000))).inSection("Вещи").withStacking();
+            ItemField.number(HEAL_ALL, "ХП во все зоны", "+", " во все", 0, 1000),
+            ItemField.flag(EXTRA_ACTION, "Ещё действие в ходу (раз в сутки)", "+1 действие"))).inSection("Вещи").withStacking();
 
     public static final List<ItemTypeDefinition> ALL = List.of(ItemTypeDefinition.GENERIC, RANGED_TYPE, MELEE_TYPE, EXPLOSIVE_TYPE,
             ARMOR_TYPE, AMMO_TYPE, MEDICINE_TYPE);
@@ -170,12 +179,21 @@ public final class KzItems {
         return item.getProperties().containsKey(WORN);
     }
 
-    /** Закрывает ли броня зону с этим кодом */
+    /** Закрывает ли броня зону с этим кодом. Зон может быть несколько — через запятую («body,arms») */
     public static boolean covers(Item armor, String zoneCode) {
-        String zone = armor.getProperties().get(ZONE);
-        if (zone == null) {
+        String zones = armor.getProperties().get(ZONE);
+        if (zones == null) {
             return false;
         }
+        for (String zone : zones.split(",")) {
+            if (coversOne(zone.strip(), zoneCode)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean coversOne(String zone, String zoneCode) {
         return zone.equals(zoneCode) || ZONE_ALL.equals(zone)
                 || (ZONE_ARMS.equals(zone) && (KzBody.RIGHT_ARM.equals(zoneCode) || KzBody.LEFT_ARM.equals(zoneCode)))
                 || (ZONE_LEGS.equals(zone) && (KzBody.RIGHT_LEG.equals(zoneCode) || KzBody.LEFT_LEG.equals(zoneCode)));
@@ -256,6 +274,8 @@ public final class KzItems {
         catalog.add(goods("kz-shake", "«Болтушка»", "Жидкая каша-заменитель в тетрапаке"));
         catalog.add(goods("kz-catdog", "«Котопёс»", "Консервы из двух синт-белков"));
         catalog.add(goods("kz-momentos", "«Моментос»", "Очень клейкая жвачка"));
+        catalog.add(entry("kz-steel-joe", "Ходовые товары", "Энергетик «Стального Джо»", MEDICINE,
+                "Раз в сутки: выпил — и в этом ходу ещё одно действие", Map.of(EXTRA_ACTION, "1"), 1));
         catalog.add(goods("kz-adrenalit", "Adrenalit Energy", "Энергетик с десятикратным кофеином"));
         catalog.add(goods("kz-gubnyak", "Губняк", "Лёгкий наркотик для настроения"));
         CATALOG = List.copyOf(catalog);

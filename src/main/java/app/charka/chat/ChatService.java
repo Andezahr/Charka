@@ -49,7 +49,7 @@ public class ChatService {
         if (gm) {
             return feed(campaign.getId(), limit, true);
         }
-        java.util.Set<Long> mine = campaign.getCharacters().stream().filter(accessService::canControl)
+        java.util.Set<Long> mine = characterRepository.findByCampaign(campaign).stream().filter(accessService::canControl)
                 .map(Character::getId).collect(java.util.stream.Collectors.toSet());
         java.util.Map<String, Boolean> names = battleFieldService.getObject()
                 .fogNames(campaign.getId(), new app.charka.map.BattleFieldService.Viewer(mine));
