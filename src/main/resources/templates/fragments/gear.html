@@ -3,7 +3,20 @@
 <body>
 <!-- R-08: инвентарь — на листе (носимые) и на вкладке «Снаряжение» (все, с переключателем «на листе») -->
 <div th:fragment="inventory(inv, gear)" class="inventory" th:id="'inventory-' + ${inv.id}">
-  <div class="inventory-head" data-editable>
+  <!-- На листе: одна строка — имя (без вкладок), что в руках, «＋ Предмет»; переименовать и удалить — в «Снаряжении» -->
+  <div th:unless="${gear}" class="inventory-bar">
+    <div class="inventory-name">
+      🎒 <span th:text="${inv.name}">Инвентарь</span>
+      <span class="badge" th:text="${#lists.size(inv.content) - installedCounts.getOrDefault(inv.id, 0L)}">0</span>
+    </div>
+    <p th:if="${inventoryWeapons != null and inventoryWeapons.get(inv.id) != null}" class="inventory-weapons">
+      <th:block th:each="w : ${inventoryWeapons.get(inv.id)}">
+        <span class="badge-hand">в руках</span> <a th:href="'#weapons'" th:text="${w.name}">Avenger</a>
+      </th:block>
+    </p>
+    <button type="button" class="btn btn-sm btn-primary inventory-add" th:attr="data-add-item=${inv.id},data-add-item-name=${inv.name}">＋ Предмет</button>
+  </div>
+  <div th:if="${gear}" class="inventory-head" data-editable>
     <div class="inventory-name">
       🎒 <span th:text="${inv.name}">Инвентарь</span>
       <span class="badge" th:text="${#lists.size(inv.content) - installedCounts.getOrDefault(inv.id, 0L)}">0</span>
@@ -34,7 +47,7 @@
 
   <div class="inventory-body">
     <!-- UX-04: запасное оружие лежит в инвентаре обычной строкой; то, что в руках, — в карточке «Оружие» -->
-    <p th:if="${inventoryWeapons != null and inventoryWeapons.get(inv.id) != null}" class="inventory-weapons">
+    <p th:if="${gear and inventoryWeapons != null and inventoryWeapons.get(inv.id) != null}" class="inventory-weapons">
       <th:block th:each="w : ${inventoryWeapons.get(inv.id)}">
         <span class="badge-hand">в руках</span> <a th:href="'#weapons'" th:text="${w.name}">Avenger</a>
       </th:block>
@@ -47,7 +60,7 @@
         </th:block>
       </div>
     </div>
-    <div th:if="${#lists.isEmpty(inventorySections[inv.id]) and (inventoryWeapons == null or inventoryWeapons.get(inv.id) == null)}" class="empty">Пусто. <button type="button" class="btn btn-sm" th:attr="data-add-item=${inv.id},data-add-item-name=${inv.name}">＋ Предмет</button></div>
+    <div th:if="${#lists.isEmpty(inventorySections[inv.id]) and (inventoryWeapons == null or inventoryWeapons.get(inv.id) == null)}" class="empty">Пусто.<th:block th:if="${gear}"> <button type="button" class="btn btn-sm" th:attr="data-add-item=${inv.id},data-add-item-name=${inv.name}">＋ Предмет</button></th:block></div>
   </div>
 </div>
 

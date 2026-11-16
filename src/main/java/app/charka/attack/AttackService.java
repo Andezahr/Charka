@@ -445,6 +445,12 @@ public class AttackService {
                 .orElse(Set.of());
     }
 
+    /** Персонаж — участник идущего боя своей кампании */
+    @Transactional(readOnly = true)
+    public boolean inBattle(Character character) {
+        return participantOf(character).isPresent();
+    }
+
     private Optional<EncounterParticipant> participantOf(Character character) {
         if (character == null || character.getCampaign() == null) {
             return Optional.empty();

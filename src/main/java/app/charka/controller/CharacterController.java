@@ -273,6 +273,8 @@ public class CharacterController {
                     // сначала другая сторона: это самая вероятная цель, и она будет выбрана сразу
                     .sorted(Comparator.comparing(other -> other.isNpc() == character.isNpc()))
                     .toList());
+            // вне боя стреляют чаще всего по врагу без листа: он и выбран сразу
+            model.addAttribute("attackUnlistedFirst", !attackService.inBattle(character));
             model.addAttribute("pendingBlasts", attackService.pendingBlasts(id));
             model.addAttribute("attackObjects", attackService.objectTargets(character.getCampaign()));
             // T-08: удар без предмета (CP2020: рукопашная, приёмы) и на листе, не только в трекере

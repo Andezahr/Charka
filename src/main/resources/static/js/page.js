@@ -141,7 +141,9 @@ function initPage() {
     let distanceValue = remembered.distance || '';
     if (distanceInput) distanceInput.value = distanceValue;
     const chosen = targets.filter(input => (remembered.targets || []).includes(input.value));
-    (chosen.length ? chosen : targets.slice(0, 1)).forEach(input => { input.checked = true; });
+    // вне боя (лист) по умолчанию — цель без листа: стрельба по своим — редкость
+    const fallback = dialog.dataset.attackUnlistedFirst === 'true' && unlisted ? [unlisted] : targets.slice(0, 1);
+    (chosen.length ? chosen : fallback).forEach(input => { input.checked = true; });
 
     const syncName = () => { nameField.hidden = !unlisted.checked; };
     const syncBands = () => {

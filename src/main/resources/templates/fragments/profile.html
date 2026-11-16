@@ -48,12 +48,13 @@
         <dd th:if="${r.value == null}" class="profile-empty">не записано</dd>
       </th:block>
     </dl>
-    <div class="edit-panel">
-      <form th:action="@{'/character/' + ${characterId} + '/profile'}" method="post" class="form">
-        <div class="profile-grid"><th:block th:replace="~{:: fields(${rows})}"></th:block></div>
-        <button type="submit" class="btn btn-sm btn-primary">Сохранить</button>
-      </form>
-    </div>
+  </div>
+  <!-- Прямой потомок [data-editable]: ✎ открывает только его (page.js) -->
+  <div class="edit-panel profile-edit">
+    <form th:action="@{'/character/' + ${characterId} + '/profile'}" method="post" class="form">
+      <div class="profile-grid"><th:block th:replace="~{:: fields(${rows})}"></th:block></div>
+      <button type="submit" class="btn btn-sm btn-primary">Сохранить</button>
+    </form>
   </div>
 </section>
 </body>

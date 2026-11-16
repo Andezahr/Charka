@@ -1622,7 +1622,7 @@ button.me-portrait { font: inherit; font-size: var(--fs-body); }
 
 @media (max-width: 900px) {
   .page-battle { padding: 6px; }
-  .battle-screen { height: auto; min-height: 0; grid-template-columns: minmax(0, 1fr); grid-template-rows: none;
+  .battle-screen, .battle-screen.has-field { height: auto; min-height: 0; grid-template-columns: minmax(0, 1fr); grid-template-rows: none;
     grid-template-areas: "top" "map" "bar" "tools" "side"; }
   .battle-screen:not(.has-field) { grid-template-areas: "top" "map" "bar" "side"; }
   .battle-top { flex-wrap: wrap; }
@@ -1637,6 +1637,12 @@ button.me-portrait { font: inherit; font-size: var(--fs-body); }
   .battle-tools, .battle-toolbar.is-gm .battle-tools { grid-template-columns: none; grid-auto-flow: column; }
   .battle-toolbar .battle-tool, .battle-toolbar.is-gm .battle-tool { width: 44px; height: 44px; }
   .battle-panel { overflow: visible; }
+  /* элементы сетки не шире экрана: иначе карусель и списки раздвигают страницу на телефоне */
+  .battle-screen > *, .battle-top > * { min-width: 0; }
+  .battle-top > .carousel { max-width: 100%; overflow-x: auto; }
+  .battle-toolbar select { max-width: 100%; min-width: 0; }
+  /* «＋ Фишка» и «＋ Предмет» — в одной строке со своим списком, список занимает остаток */
+  .battle-toolbar .btn + select { flex: 1 1 170px; }
 }
 .charinfo.is-mine .charinfo-head { border-color: var(--success); box-shadow: 0 0 0 1px var(--success); }
 .charinfo.is-mine .charinfo-label { color: var(--success); font-weight: 700; }
@@ -1752,6 +1758,7 @@ button.me-portrait { font: inherit; font-size: var(--fs-body); }
 .profile-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px 12px; margin-top: 10px; }
 .profile-grid .profile-multi, .profile-grid .profile-long { grid-column: 1 / -1; }
 .profile-grid input, .profile-grid textarea { width: 100%; }
+.profile-edit { margin: 0 20px 18px; }
 
 /* ---------- KF-06: действие не прошло — причина там, где нажимали ---------- */
 .action-error.is-floating {
@@ -1877,6 +1884,9 @@ details.state-tool[open] > summary { margin-bottom: 8px; }
 #inventories .inventory-head { padding: 0 0 10px; background: transparent; border: 0; }
 #inventories [data-tab-panel] .inventory-name { display: none; }
 #inventories [data-tab-panel] .inventory-head > .row-actions { margin-left: auto; }
+/* На листе: имя (без вкладок), «в руках» и «＋ Предмет» — одной строкой */
+.inventory-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 0 0 10px; min-height: 32px; }
+.inventory-bar .inventory-add { margin-left: auto; }
 #inventories .inventory-body { padding: 0; }
 
 /* UX-02: строка предмета в одну линию */
@@ -2011,3 +2021,39 @@ a:focus-visible, button:focus-visible, summary:focus-visible, .btn:focus-visible
 
 /* TURN-02: лист вне своего хода — неактивные кнопки */
 main button:disabled { opacity: .45; cursor: not-allowed; }
+
+/* Телефон: кнопки строки остаются в одном ряду — группа сжимается, длинная надпись переносится внутри кнопки,
+   а не уезжает за край или на новую строку */
+@media (max-width: 600px) {
+  .row-actions { flex-shrink: 1; min-width: 0; max-width: 100%; }
+  .row-actions > form, .row-actions > .item-action { min-width: 0; flex-shrink: 1; }
+  .row-actions .btn { line-height: 1.2; }
+  .item-row { gap: 4px 6px; padding-right: 6px; }
+  .item-stepper { gap: 0; }
+  .counter-row { gap: 4px; }
+  .counter-row-name, .state-counters .counter-row-name { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .counter-row-delta input[type="number"] { width: 48px; }
+  .state-counters .counter-row { flex: 1 1 100%; }
+  /* «Носимое»: заголовок и «Всё снаряжение» — первой строкой, вкладки инвентарей — второй во всю ширину */
+  #inventories > .card-head > .seg { order: 1; flex-basis: 100%; margin-right: 0; }
+  #inventories > .card-head > .card-title { margin-right: auto; }
+  /* Деньги: «За что» — строкой, сумма и обе кнопки — второй строкой вместе */
+  .money-form > input[name="name"] { flex-basis: 100%; }
+  .money-form > input[name="amount"] { flex: 1 1 0; min-width: 0; }
+  /* ряд из одних кнопок делит ширину поровну: надпись переносится внутри кнопки */
+  .form-row:not(:has(input:not([type="hidden"]), select, textarea)) > .btn,
+  .form-row:not(:has(input:not([type="hidden"]), select, textarea)) > form:has(> .btn) { flex: 1 1 0; min-width: 0; }
+  .form-row:not(:has(input:not([type="hidden"]), select, textarea)) > form > .btn { width: 100%; }
+  /* Полоса хода: фишки «Действие/Перемещение» — первой строкой, кнопки — по три в ряд равной ширины, «Следующий ход» — во всю ширину */
+  .battle-bar { gap: 6px; padding: 8px; }
+  .battle-bar .encounter-now { flex-basis: 100%; }
+  .battle-bar-actions { flex: 1 1 100%; }
+  .battle-bar-actions > .turn-chip { flex: 1 1 calc(50% - 6px); text-align: center; }
+  .battle-bar-actions > .btn, .battle-bar-actions > form { flex: 1 1 calc(33.33% - 6px); min-width: 0; }
+  .battle-bar-actions > form > .btn { width: 100%; }
+  .battle-bar-actions > form.form-row { flex-basis: 100%; flex-wrap: nowrap; }
+  .battle-bar-actions > form.form-row > select { flex: 1 1 auto; min-width: 0; max-width: none; }
+  .battle-bar-actions > form.form-row > .btn { width: auto; }
+  .battle-bar-next { flex: 1 1 100%; margin-left: 0; }
+  .battle-bar-next .btn { width: 100%; }
+}
