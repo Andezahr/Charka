@@ -39,6 +39,24 @@ public class TimedEffectController {
         return "redirect:/character/" + characterId + BACK;
     }
 
+    /** Потратить эффект в бою (энергетик): с листа — обратно к эффектам, из трекера ({@code returnCampaign}) — в бой */
+    @PostMapping("/{effectId}/spend")
+    public String spend(@PathVariable Long characterId, @PathVariable Long effectId,
+                        @RequestParam(required = false) Long returnCampaign, RedirectAttributes redirectAttributes) {
+        // в трекере итог виден по числу действий, там показываем только отказ
+        try {
+            String result = effectService.spend(characterId, effectId);
+            if (returnCampaign == null) {
+                redirectAttributes.addFlashAttribute("effectResult", result);
+            }
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute(returnCampaign != null ? "encounterError" : "errorMessage", e.getMessage());
+        }
+        return returnCampaign != null
+                ? "redirect:/campaign/" + returnCampaign + "/encounter#combatant-" + characterId
+                : "redirect:/character/" + characterId + BACK;
+    }
+
     @PostMapping("/{effectId}/delete")
     public String delete(@PathVariable Long characterId, @PathVariable Long effectId) {
         effectService.remove(characterId, effectId);

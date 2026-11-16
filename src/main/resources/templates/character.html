@@ -223,6 +223,11 @@
               </div>
             </div>
             <div class="row-actions">
+              <!-- KZ-STEEL-JOE: эффект, который тратят в бою на ещё одно действие хода -->
+              <form th:if="${effect.extraActions > 0}" th:action="@{'/character/' + ${character.id} + '/effects/' + ${effect.id} + '/spend'}" method="post" class="inline">
+                <button type="submit" class="btn btn-sm btn-primary" title="В бою на своём ходу: ещё одно действие в этом раунде"
+                        th:text="'⚡ +' + ${effect.extraActions} + ' действие'">⚡ +1 действие</button>
+              </form>
               <form th:action="@{'/character/' + ${character.id} + '/effects/' + ${effect.id} + '/delete'}" method="post" class="inline">
                 <button type="submit" class="icon-btn danger" title="Снять раньше срока" th:attr="aria-label='Снять: ' + ${effect.name}">✕</button>
               </form>

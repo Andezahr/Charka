@@ -4,6 +4,7 @@ import app.charka.exception.NotFoundException;
 import app.charka.model.Character;
 import app.charka.model.TimedEffect;
 import app.charka.dice.DiceRoller;
+import app.charka.encounter.RoundActions;
 import app.charka.repository.CharacterRepository;
 import app.charka.system.GameSystemRegistry;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ public class TimedEffectService {
     private final CharacterRepository characterRepository;
     private final GameSystemRegistry systemRegistry;
     private final DiceRoller diceRoller;
+    private final RoundActions roundActions;
 
     /**
      * Готовый эффект системы; срок бросается.
@@ -54,11 +56,37 @@ public class TimedEffectService {
     @Transactional
     public void remove(Long characterId, Long effectId) {
         Character character = character(characterId);
-        TimedEffect effect = character.getEffects().stream()
+        character.getEffects().remove(find(character, effectId));
+    }
+
+    /**
+     * Потратить эффект в бою (энергетик «Стального Джо»): на своём ходу — ещё действия в этом раунде, эффект снимается.
+     *
+     * @return итог: «Энергетик: в этом ходу ещё одно действие»
+     * @throws IllegalArgumentException эффект ничего не даёт, персонаж не в бою или ход не его
+     * @throws NotFoundException если эффекта нет или он чужой
+     */
+    @Transactional
+    public String spend(Long characterId, Long effectId) {
+        Character character = character(characterId);
+        TimedEffect effect = find(character, effectId);
+        if (effect.getExtraActions() <= 0) {
+            throw new IllegalArgumentException("Этот эффект не даёт действий");
+        }
+        if (!roundActions.inBattle(character)) {
+            throw new IllegalArgumentException("Тратится в бою: на своём ходу — ещё одно действие");
+        }
+        roundActions.requireTurnOf(character);
+        roundActions.grant(character, effect.getExtraActions());
+        character.getEffects().remove(effect);
+        return effect.getName() + ": в этом ходу ещё " + (effect.getExtraActions() == 1 ? "одно действие" : effect.getExtraActions() + " действия");
+    }
+
+    private static TimedEffect find(Character character, Long effectId) {
+        return character.getEffects().stream()
                 .filter(found -> found.getId().equals(effectId))
                 .findFirst()
                 .orElseThrow(NotFoundException.forId("TimedEffect", effectId));
-        character.getEffects().remove(effect);
     }
 
     private Character character(Long characterId) {

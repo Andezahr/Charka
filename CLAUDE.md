@@ -40,7 +40,7 @@
 ```bash
 ./mvnw spring-boot:run      # http://localhost:8080 (слушает 0.0.0.0); сам запускает БД из compose.yaml
 docker compose up -d        # БД вручную (данные в volume charka-pgdata)
-./mvnw test                 # 1184 тестов, на 2026-11-16 все зелёные (CI: .github/workflows/test.yml), ~1 мин 20 с с clean (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
+./mvnw test                 # 1185 тестов, на 2026-11-17 все зелёные (CI: .github/workflows/test.yml), ~1 мин 20 с с clean (считать после `clean`: старые surefire-отчёты завышают число) (живой PostgreSQL не нужен)
 ./mvnw test -Dtest='EncounterServiceTest,GmBattleEditTest'   # по ходу работы — только затронутое; полный прогон — перед коммитом (TODO.md, раздел 0, п. 4)
 ./mvnw spring-boot:build-image   # образ charka/app:latest
 ```
@@ -201,7 +201,7 @@ Default-методы стратегии: `getSystems()` (пусто = униве
 | POST | `/character/{id}/reroll` | K-09: `rerollPath`, `rerollEntry?` и поля исходного запроса → отменить, вдохновение −1, повторить (forward) |
 | POST | `/character/{id}/counters/{cid}/texts` | K-02: `preset` или `zones` → набор зон тела (`Counter.texts`) |
 | POST | `/campaign/{id}/encounter/participants/{pid}/dash` | K-07: рывок — действие на перемещение |
-| POST | `/character/{id}/effects`, `.../effects/{eid}/delete` | `template` (готовый эффект системы) или `name`, `stat`, `modifier`, `duration`, `unit` → временный эффект; раунды идут в трекере, дни — при промотке |
+| POST | `/character/{id}/effects`, `.../effects/{eid}/delete`, `.../effects/{eid}/spend` (`returnCampaign?`) | `template` (готовый эффект системы) или `name`, `stat`, `modifier`, `duration`, `unit` → временный эффект; раунды идут в трекере, дни — при промотке; `spend` — потратить в бою на ещё действие хода (энергетик) |
 | POST | `/character/{id}/contacts`, `.../{cid}/edit\|delete` | контакты: `name`, `role`, `relation`, `owes`, `note` |
 | GET | `/character/{id}/notes/` | заметки (фильтр `?categoryId=`) |
 | POST | `/character/{id}/notes`, `.../{noteId}/edit|delete`; GET `.../{noteId}/edit` | заметки |

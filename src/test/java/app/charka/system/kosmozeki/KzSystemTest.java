@@ -12,6 +12,7 @@ import app.charka.creation.CharacterCreation;
 import app.charka.model.Campaign;
 import app.charka.model.Character;
 import app.charka.model.Item;
+import app.charka.model.TimedEffect;
 import app.charka.model.counters.Counter;
 import app.charka.counter.health.DamageRequest;
 import app.charka.dice.DiceRoller;
@@ -57,6 +58,7 @@ class KzSystemTest {
     @Autowired private CharacterRepository characterRepository;
     @Autowired private CharacterService characterService;
     @Autowired private ItemService itemService;
+    @Autowired private app.charka.effect.TimedEffectService effectService;
     @Autowired private AttackService attackService;
     @Autowired private HealthCounterService healthCounterService;
     @Autowired private CampaignTimelineService timelineService;
@@ -467,24 +469,45 @@ class KzSystemTest {
     class OneAction {
 
         @Test
-        @DisplayName("Энергетик «Стального Джо»: после атаки — ещё одно действие в этом ходу; второй раз в те же сутки — отказ")
+        @DisplayName("Энергетик «Стального Джо»: выпил до боя — эффект до конца суток; в бою после атаки тратится на ещё одно действие")
         void steelJoe() {
             Item pistol = add(shooter, "kz-pistol");
             Item drinks = add(shooter, "kz-steel-joe");
             drinks.setQuantity(2);
+            // за обедом, вне боя: действие не нужно, остаётся эффект
+            assertThat(itemService.performAction(shooter.getId(), drinks.getId(), KzItemActions.DRINK, Map.of())).contains("до конца суток");
+            entityManager.flush();
+            TimedEffect boost = shooter.getEffects().getFirst();
+            assertThat(boost.getExtraActions()).isEqualTo(1);
+            assertThatThrownBy(() -> effectService.spend(shooter.getId(), boost.getId())).hasMessageContaining("в бою");
+            assertThatThrownBy(() -> itemService.performAction(shooter.getId(), drinks.getId(), KzItemActions.DRINK, Map.of()))
+                    .hasMessageContaining("раз в сутки");
+            assertThat(drinks.getQuantity()).isEqualTo(1);
+
             encounterService.start(campaign.getId(), List.of(shooter.getId(), target.getId()));
             entityManager.flush();
             rollD100(46);
             attackService.attack(shooter.getId(), pistol.getId(), fire(target.getId(), 1));
             entityManager.flush();
-
-            assertThat(itemService.performAction(shooter.getId(), drinks.getId(), KzItemActions.DRINK, Map.of())).contains("ещё одно действие");
+            assertThat(effectService.spend(shooter.getId(), boost.getId())).contains("ещё одно действие");
             entityManager.flush();
             rollD100(46);
             assertThat(attackService.attack(shooter.getId(), pistol.getId(), fire(target.getId(), 1)).hit()).isTrue();
-            assertThatThrownBy(() -> itemService.performAction(shooter.getId(), drinks.getId(), KzItemActions.DRINK, Map.of()))
-                    .hasMessageContaining("раз в сутки");
-            assertThat(drinks.getQuantity()).isEqualTo(1);
+            assertThat(shooter.getEffects()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("Энергетик: эффект кончается со сменой суток, на следующий день можно пить снова")
+        void steelJoeNextDay() {
+            Item drinks = add(shooter, "kz-steel-joe");
+            drinks.setQuantity(2);
+            itemService.performAction(shooter.getId(), drinks.getId(), KzItemActions.DRINK, Map.of());
+            entityManager.flush();
+            entityManager.clear();
+            timelineService.proceedDate(campaign.getId(), 1, "ночь");
+            entityManager.flush();
+            assertThat(characterRepository.findById(shooter.getId()).orElseThrow().getEffects()).isEmpty();
+            assertThat(itemService.performAction(shooter.getId(), drinks.getId(), KzItemActions.DRINK, Map.of())).contains("до конца суток");
         }
 
         @Test

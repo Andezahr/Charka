@@ -1,5 +1,7 @@
 package app.charka.system.kosmozeki;
 
+import app.charka.effect.EffectTemplate;
+import app.charka.effect.TimedEffects;
 import app.charka.item.ItemAction;
 import app.charka.item.ItemAttachments;
 import app.charka.item.ItemChip;
@@ -7,6 +9,7 @@ import app.charka.item.ItemField.Option;
 import app.charka.item.ItemSummary;
 import app.charka.model.Character;
 import app.charka.model.Item;
+import app.charka.model.TimedEffect;
 import app.charka.model.counters.Counter;
 
 import java.util.ArrayList;
@@ -71,8 +74,8 @@ final class KzItemActions {
                 actions.add(new ItemAction(HEAL_ALL, "+" + all + " во все зоны", noBody, List.of(), null, null, false, false, true, null));
             }
             if (item.getProperties().containsKey(KzItems.EXTRA_ACTION)) {
-                // не тратит действие: даёт ещё одно в этом ходу
-                actions.add(ItemAction.simple(DRINK, "Выпить: +1 действие", drankToday(owner) ? "Сегодня уже пил — раз в сутки" : null));
+                // пьют когда угодно (за обедом); эффект до конца суток, в бою его тратят на ещё одно действие хода
+                actions.add(ItemAction.simple(DRINK, "Выпить", drankToday(owner) ? "Сегодня уже пил — раз в сутки" : null));
             }
             return actions;
         }
@@ -169,8 +172,16 @@ final class KzItemActions {
         if (owner != null && today != null) {
             owner.getProfile().put(DRANK_ON, today.toString());
         }
+        String name = drink.getName();
         consume(drink);
-        return drink.getName() + ": в этом ходу ещё одно действие";
+        if (owner == null) {
+            return name + ": выпито";
+        }
+        // HOMEBREW: выпить — не действие; эффект держится до смены игровых суток, тратится один раз
+        TimedEffect effect = TimedEffects.add(owner, name, null, 0, "1", EffectTemplate.DurationUnit.DAY,
+                "в бою на своём ходу — ещё одно действие", null);
+        effect.setExtraActions(1);
+        return name + ": до конца суток — одно лишнее действие в бою (кнопка «⚡ +1 действие» в эффектах)";
     }
 
     private static void consume(Item item) {

@@ -471,6 +471,12 @@
         <form th:if="${cur.actionsDone == 0 and !sys.combat().movementIsAction()}" method="post" th:action="@{${url} + '/dash'}">
           <button type="submit" class="btn btn-sm btn-ghost" title="Действие хода — на ещё одно перемещение">🏃 Рывок</button>
         </form>
+        <!-- KZ-STEEL-JOE: выпитый заранее энергетик — потратить на ещё одно действие этого хода -->
+        <form th:each="effect : ${cur.character.effects}" th:if="${effect.extraActions > 0}" method="post"
+              th:action="@{'/character/' + ${cur.character.id} + '/effects/' + ${effect.id} + '/spend'}">
+          <input type="hidden" name="returnCampaign" th:value="${campaign.id}">
+          <button type="submit" class="btn btn-sm" th:title="${effect.name} + ': ещё одно действие в этом ходу'">⚡ +1 действие</button>
+        </form>
         <!-- UX-13: атака кнопкой, не только правой кнопкой по врагу; диалоги — в блоке «Ходит» сверху -->
         <!-- только оружие в руках (R-07): остальное — в блоке «Ходит» сверху и в «Очереди» -->
         <th:block th:each="weapon, ws : ${cur.weapons}"

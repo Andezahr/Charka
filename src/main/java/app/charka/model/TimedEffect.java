@@ -49,6 +49,9 @@ public class TimedEffect {
     /** Что ещё делает эффект: словами, правила ведёт мастер */
     private String note;
 
+    /** Сколько действий хода эффект даёт в бою, когда его тратят (энергетик «Стального Джо»); 0 — не тратится */
+    private int extraActions;
+
     @ManyToOne(optional = false)
     @JsonBackReference
     private Character character;

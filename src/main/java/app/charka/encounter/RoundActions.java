@@ -131,6 +131,12 @@ public class RoundActions {
         return systemRegistry.getObject().forCharacter(character);
     }
 
+    /** Персонаж — участник идущего боя своей кампании */
+    @Transactional(readOnly = true)
+    public boolean inBattle(Character character) {
+        return participant(character).isPresent();
+    }
+
     private Optional<EncounterParticipant> participant(Character character) {
         if (character == null || character.getCampaign() == null) {
             return Optional.empty();
