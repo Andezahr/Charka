@@ -51,7 +51,7 @@ public class SecurityConfig {
         csrfHandler.setCsrfRequestAttributeName(null);
         return http
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/login", "/register", "/css/**", "/js/**", "/favicon.ico", "/error").permitAll()
+                        .requestMatchers("/login", "/register", "/css/**", "/js/**", "/pwa/**", "/favicon.ico", "/error").permitAll()
                         .anyRequest().authenticated())
                 .formLogin(form -> form.loginPage("/login").defaultSuccessUrl("/", false).permitAll())
                 .rememberMe(remember -> remember.key(rememberKey).userDetailsService(userService)

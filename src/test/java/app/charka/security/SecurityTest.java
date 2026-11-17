@@ -89,6 +89,9 @@ class SecurityTest {
         void anonymous() throws Exception {
             mockMvc.perform(get("/")).andExpect(redirectedUrlPattern("**/login"));
             mockMvc.perform(get("/login")).andExpect(status().isOk());
+            // PH-11: ярлык на главный экран берёт манифест и иконку до входа
+            mockMvc.perform(get("/pwa/manifest.webmanifest")).andExpect(status().isOk());
+            mockMvc.perform(get("/pwa/icon-192.png")).andExpect(status().isOk());
 
             assertThat(campaignRepository.findById(campaign.getId()).orElseThrow().getGm().getUsername()).isEqualTo("master");
         }

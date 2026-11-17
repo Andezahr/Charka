@@ -39,6 +39,9 @@ spring:
 server:
   address: 0.0.0.0
   port: 8080
+  # PH-11: ярлык на главный экран — браузер ждёт манифест с этим типом
+  mime-mappings:
+    webmanifest: application/manifest+json
   # A-03: за столом wi-fi и телефоны — HTML листа сжимается в 10 раз
   compression:
     enabled: true
