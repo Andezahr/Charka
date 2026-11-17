@@ -36,6 +36,7 @@ public class BattleFieldService {
     private final app.charka.npc.NpcService npcService;
     private final app.charka.repository.MapLootRepository mapLootRepository;
     private final app.charka.encounter.RoundActions roundActions;
+    private final app.charka.portrait.PortraitVersions portraitVersions;
 
     /**
      * Фишка участника.
@@ -52,7 +53,7 @@ public class BattleFieldService {
      */
     public record Token(Long id, Long character, String name, String initials, boolean npc, Integer x, Integer y,
                         boolean current, boolean done, boolean out, boolean alarming, String status, int moved, String actionOption,
-                        int level) {
+                        int level, String portrait) {
     }
 
     /**
@@ -200,12 +201,14 @@ public class BattleFieldService {
         Encounter encounter = view.get().encounter();
         MapRules rules = rules(encounter);
         Fog fog = fog(encounter, viewer);
+        // PH-20: портрет на фишке; адрес с версией — сменили портрет, сменился и ETag опроса
+        java.util.Map<Long, Long> portraits = portraitVersions.of(campaignId);
         List<Token> tokens = view.get().rows().stream().filter(row -> !fog.hidden().contains(row.participant().getId())).map(row -> {
             EncounterParticipant participant = row.participant();
             return new Token(participant.getId(), row.character().getId(), row.character().getName(), initials(row.character().getName()),
                     row.character().isNpc(), participant.getPosX(), participant.getPosY(), row.current(), participant.isDone(),
                     row.card().out(), row.card().alarming(), row.card().status(), participant.getMovedMeters(), row.actionOption(),
-                    participant.getPosLevel());
+                    participant.getPosLevel(), app.charka.portrait.PortraitVersions.url(campaignId, row.character().getId(), portraits));
         }).toList();
         String turn = encounter.getRound() + ":" + (view.get().current() == null ? "" : view.get().current().getId());
         MapDoc doc = MapDoc.parse(encounter.getMapDoc());

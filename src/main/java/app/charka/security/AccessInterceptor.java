@@ -96,6 +96,8 @@ public class AccessInterceptor implements HandlerInterceptor {
                 || (rest.equals("/requests") && "GET".equals(method)) || rest.matches("/requests/\\d+/roll")
                 // A-11: справка правил — всем за столом
                 || (rest.equals("/reference") && "GET".equals(method))
+                // PH-20: портреты — всем за столом; NPC в тумане отказывает PortraitService
+                || (rest.startsWith("/portraits/") && "GET".equals(method))
                 || ((rest.equals("/encounter") || rest.startsWith("/encounter/")) && !GM_ONLY_IN_FIGHT.contains(rest)
                     && !GM_ONLY_PARTICIPANT.matcher(rest).matches());
         if (!playerPath || !accessService.isPlayer(campaign)) {

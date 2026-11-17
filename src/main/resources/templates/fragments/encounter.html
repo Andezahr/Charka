@@ -210,6 +210,8 @@
                      + (row.card.out ? 'is-out ' : '') + (row.character.npc ? 'npc ' : 'player ') + (dark ? 'is-hidden' : '')}">
   <button type="button" class="carousel-btn" th:attr="data-select-token=${dark ? null : row.participant.id}"
           th:title="${dark} ? 'Вне видимости: кто-то из врагов' : ${row.character.name} + (${row.card.status != null} ? ' · ' + ${row.card.status} : '') + ' · инициатива ' + ${row.participant.initiative}">
+    <span th:if="${dark}" class="avatar avatar-sm portrait"><span class="portrait-letter">?</span></span>
+    <th:block th:unless="${dark}"><span th:replace="~{fragments/portrait :: avatar(${row.character}, 'avatar-sm')}"></span></th:block>
     <span class="carousel-init" th:text="${dark} ? '?' : ${row.participant.initiative}">17</span>
     <span class="carousel-name" th:text="${dark} ? '?' : ${row.character.name}">Колясик</span>
     <span th:if="${unseen}" class="carousel-mark" title="Его не видит ни один персонаж игроков: у них в очереди — «?»">👁 нет</span>

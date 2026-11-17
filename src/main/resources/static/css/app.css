@@ -2057,3 +2057,22 @@ main button:disabled { opacity: .45; cursor: not-allowed; }
   .battle-bar-next { flex: 1 1 100%; margin-left: 0; }
   .battle-bar-next .btn { width: 100%; }
 }
+
+/* ---------- PH-20: портрет персонажа ---------- */
+.avatar.portrait { position: relative; overflow: hidden; border-radius: 50%; }
+.avatar.portrait .portrait-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.avatar-lg { width: 64px; height: 64px; font-size: var(--fs-heading); }
+.avatar-sm { width: 24px; height: 24px; font-size: var(--fs-label); border-width: 1px; }
+.avatar-xs { width: 20px; height: 20px; font-size: var(--fs-tiny); margin-right: 6px; vertical-align: middle; border-width: 1px; }
+.chat-who .avatar-xs { display: inline-flex; }
+.carousel-btn .avatar-sm { margin-left: -5px; }
+.carousel-item.npc .avatar.portrait { color: var(--danger); background: var(--danger-soft); border-color: rgba(248, 113, 113, 0.45); }
+.sheet-face { margin: 0; flex: none; }
+.sheet-face-pick { position: relative; display: block; cursor: pointer; border-radius: 50%; }
+.sheet-face-pick input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.sheet-face-pick:focus-within .avatar, .sheet-face-pick:hover .avatar { border-color: var(--accent); }
+.sheet-face-edit { position: absolute; right: -2px; bottom: -2px; display: grid; place-items: center; width: 24px; height: 24px;
+  border-radius: 50%; background: var(--surface-3); border: 1px solid var(--border); font-size: var(--fs-label); }
+.sheet-face.is-busy .avatar { opacity: .5; }
+.battle-token-portrait { pointer-events: none; }
+@media (pointer: coarse) { .sheet-face-pick .avatar-lg { width: 72px; height: 72px; } }

@@ -45,6 +45,7 @@ public class NpcService {
     private final ItemService itemService;
     private final GameSystemRegistry systemRegistry;
     private final DiceRoller diceRoller;
+    private final app.charka.repository.CharacterPortraitRepository portraitRepository;
 
     /**
      * Каждый NPC бросается отдельно, поэтому двое по одному шаблону различаются.
@@ -99,6 +100,8 @@ public class NpcService {
             copySkills(source, copy);
             copyCounters(source, copy);
             copyInventories(source, copy);
+            // PH-20: копии — с тем же лицом
+            portraitRepository.findById(source.getId()).ifPresent(portrait -> portraitRepository.save(portrait.copyFor(copy.getId())));
             copies.add(copy);
         }
         return copies;

@@ -39,7 +39,9 @@ public class UndoInterceptor implements HandlerInterceptor {
             // A-07: бросок по запросу — как бросок; запрос уже брошен, отменять его нечем
             "/requests",
             // K-09: переброс сам отменяет и повторяет действие — повтор получит свою запись
-            "/reroll");
+            "/reroll",
+            // PH-20: портрет — картинка, не игровое состояние
+            "/portrait");
     private static final Pattern SKIPPED_EXACT = Pattern.compile("^/(check|edit)$");
 
     private static final String BEFORE = UndoInterceptor.class.getName() + ".before";

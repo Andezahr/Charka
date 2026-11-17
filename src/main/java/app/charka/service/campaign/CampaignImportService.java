@@ -41,6 +41,7 @@ public class CampaignImportService {
     private final GameSystemRegistry systemRegistry;
     private final EntityManager entityManager;
     private final app.charka.security.AccessService accessService;
+    private final app.charka.repository.CharacterPortraitRepository portraitRepository;
 
     /**
      * @return новая кампания
@@ -60,7 +61,13 @@ public class CampaignImportService {
         // Категории заметок связаны с заметками в обе стороны: их собираем сами, по названию
         Map<String, List<List<String>>> categoriesByCharacter = new HashMap<>();
         List<List<List<String>>> noteCategories = new ArrayList<>();
+        // PH-20: портреты — не поле персонажа, их кладём после сохранения по номеру персонажа
+        List<app.charka.model.CharacterPortrait> portraits = new ArrayList<>();
         for (JsonNode character : iterable(tree.get("characters"))) {
+            portraits.add(portrait(character.get(CampaignExportService.PORTRAIT)));
+            if (character.isObject()) {
+                ((ObjectNode) character).remove(CampaignExportService.PORTRAIT);
+            }
             List<List<String>> perNote = new ArrayList<>();
             for (JsonNode note : iterable(character.get("notes"))) {
                 List<String> names = new ArrayList<>();
@@ -137,6 +144,11 @@ public class CampaignImportService {
         }
         Campaign saved = campaignRepository.save(campaign);
         entityManager.flush();
+        for (int index = 0; index < portraits.size() && index < saved.getCharacters().size(); index++) {
+            if (portraits.get(index) != null) {
+                portraitRepository.save(portraits.get(index).copyFor(saved.getCharacters().get(index).getId()));
+            }
+        }
 
         // Ссылки предметов друг на друга: старый id → новый
         Set<String> referenceKeys = system.items().getItemReferenceKeys();
@@ -162,5 +174,27 @@ public class CampaignImportService {
 
     private static Iterable<JsonNode> iterable(JsonNode node) {
         return node instanceof ArrayNode array ? array : List.of();
+    }
+
+    /** Портрет из экспорта; битый или чужого типа — пропускается, кампания всё равно импортируется */
+    private static app.charka.model.CharacterPortrait portrait(JsonNode node) {
+        if (node == null || !node.hasNonNull("data") || !node.hasNonNull("type")) {
+            return null;
+        }
+        try {
+            byte[] data = node.get("data").binaryValue();
+            String type = node.get("type").asText();
+            if (data == null || data.length == 0 || data.length > app.charka.portrait.PortraitService.MAX_BYTES
+                    || !app.charka.portrait.PortraitService.TYPES.contains(type)) {
+                return null;
+            }
+            app.charka.model.CharacterPortrait portrait = new app.charka.model.CharacterPortrait();
+            portrait.setData(data);
+            portrait.setContentType(type);
+            portrait.setUpdatedAt(java.time.LocalDateTime.now().truncatedTo(java.time.temporal.ChronoUnit.MILLIS));
+            return portrait;
+        } catch (java.io.IOException e) {
+            return null;
+        }
     }
 }

@@ -6,7 +6,7 @@
  * TURN-02: лист в бою вне своего хода — кнопки, которые сервер всё равно отклонит (TurnGuard), неактивны;
  * урон, спасброски, заметки, контакты, профиль и ☆ навыка — можно. Ход пришёл — лист обновляется сам (опрос /encounter/turn).
  */
-const TURN_FREE = [/\/health\/(damage|save\/[^/]+)$/, /\/(notes|categories|contacts)(\/|$)/, /\/profile$/, /\/skills\/pin$/,
+const TURN_FREE = [/\/health\/(damage|save\/[^/]+)$/, /\/(notes|categories|contacts)(\/|$)/, /\/profile$/, /\/skills\/pin$/, /\/portrait(\/delete)?$/,
   /\/chat$/, /\/requests\/\d+\/roll$/, /\/undo\/\d+$/];
 let sheetTurnTimer = null;
 

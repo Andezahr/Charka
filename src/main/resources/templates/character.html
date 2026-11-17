@@ -20,6 +20,14 @@
   </div>
   <!-- UX-07: шапка в одну строку — имя и роли; кампания уже в крошке, надзаголовка нет -->
   <div class="page-head page-head-compact">
+    <!-- PH-20: портрет — нажатие на лицо открывает выбор картинки; браузер обрезает в квадрат и сжимает (forms.js) -->
+    <form th:action="@{'/character/' + ${character.id} + '/portrait'}" method="post" enctype="multipart/form-data" class="sheet-face">
+      <label class="sheet-face-pick" th:title="${@portraits.url(character) != null} ? 'Сменить портрет' : 'Загрузить портрет'">
+        <span th:replace="~{fragments/portrait :: avatar(${character}, 'avatar-lg')}"></span>
+        <span class="sheet-face-edit" aria-hidden="true">📷</span>
+        <input type="file" name="file" accept="image/*" data-portrait class="visually-hidden" aria-label="Портрет персонажа">
+      </label>
+    </form>
     <h1 class="page-title" th:text="${character.name}">Имя персонажа</h1>
     <p class="page-sub" th:if="${!#lists.isEmpty(roles) or character.birthDate != null or character.npc}">
       <span th:if="${character.npc}" class="chip">NPC</span>
@@ -30,6 +38,10 @@
       <th:block th:if="${character.campaign != null}"><th:block th:replace="~{fragments/reference :: open-button(${character.campaign.id})}"></th:block></th:block>
       <!-- A-12: бумажный лист — в новой вкладке, у него свои стили печати -->
       <a th:href="@{'/character/' + ${character.id} + '/print'}" target="_blank" class="btn btn-sm btn-ghost" title="Лист на бумаге или в PDF — на случай, если сеть упадёт">🖨 Печать</a>
+      <form th:if="${@portraits.url(character) != null}" th:action="@{'/character/' + ${character.id} + '/portrait/delete'}" method="post"
+            data-confirm="Убрать портрет? Вместо него будет буква имени.">
+        <button type="submit" class="btn btn-sm btn-ghost" title="Убрать портрет">✕ Портрет</button>
+      </form>
     </div>
   </div>
 

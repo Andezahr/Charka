@@ -57,7 +57,7 @@ class TurnGuardTest {
             "/campaign/{}/encounter/next");
     // фишка из лотка ставится вне хода (BF-02); фишка на карте — нет, поэтому ход фишкой в этом списке нет
     /** Записи игрока, бою не мешают */
-    private static final Pattern ALLOWED_PREFIX = Pattern.compile("^/character/\\{}/(notes|categories|contacts|profile|skills/pin)(/.*)?$");
+    private static final Pattern ALLOWED_PREFIX = Pattern.compile("^/character/\\{}/(notes|categories|contacts|profile|skills/pin|portrait)(/.*)?$");
     /** Мастерские маршруты боя: игроку закрыты раньше (AccessInterceptor, 404) */
     private static final Pattern VARIABLE = Pattern.compile("\\{}");
 

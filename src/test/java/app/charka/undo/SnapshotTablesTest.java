@@ -38,7 +38,8 @@ class SnapshotTablesTest {
             Map.entry("roll_log", "лог бросков — лента, не состояние"),
             Map.entry("journal_entry", "журнал боя — лента, не состояние"),
             Map.entry("roll_request", "запрос броска уже брошен — отменять нечем (SKIPPED /requests)"),
-            Map.entry("undo_entry", "сама отмена"));
+            Map.entry("undo_entry", "сама отмена"),
+            Map.entry("character_portrait", "картинка, не игровое состояние (PH-20, SKIPPED /portrait)"));
 
     @Autowired private JdbcTemplate jdbc;
 

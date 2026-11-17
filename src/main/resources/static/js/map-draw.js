@@ -311,6 +311,17 @@ function renderBattle() {
     svgEl('circle', { r: CELL * 0.46, class: 'battle-token-ring' }, group);
     svgEl('circle', { r: CELL * 0.38, class: 'battle-token-body' }, group);
     svgEl('text', { class: 'battle-token-text', dy: '0.35em' }, group).textContent = token.initials;
+    // PH-20: портрет в круге поверх букв, ободок цвета стороны — тело фишки под ним; не загрузился — видны буквы
+    if (token.portrait) {
+      if (!svg.querySelector('#token-portrait-clip')) {
+        const clip = svgEl('clipPath', { id: 'token-portrait-clip', clipPathUnits: 'objectBoundingBox' }, svgEl('defs', {}, svg));
+        svgEl('circle', { cx: 0.5, cy: 0.5, r: 0.5 }, clip);
+      }
+      const r = CELL * 0.32;
+      const image = svgEl('image', { href: token.portrait, x: -r, y: -r, width: 2 * r, height: 2 * r, class: 'battle-token-portrait',
+        preserveAspectRatio: 'xMidYMid slice', 'clip-path': 'url(#token-portrait-clip)' }, group);
+      image.addEventListener('error', () => image.remove());
+    }
     // щиток: цель за укрытием или видна частично
     if (sight && sight.visibility !== 'none' && (sight.cover || sight.visibility === 'partial')) {
       svgEl('path', { d: 'M 0 -6 L 6 -3.5 L 6 1 Q 6 5.5 0 8 Q -6 5.5 -6 1 L -6 -3.5 Z', class: 'battle-token-cover',

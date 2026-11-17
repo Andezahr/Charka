@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- PH-20: лицо персонажа — портрет или первая буква имени. Картинка не загрузилась (NPC в тумане) — остаётся буква
+     (app.js убирает img по ошибке). size — класс размера: avatar-sm, avatar-lg -->
+<span th:fragment="avatar(character, size)" class="avatar portrait" th:classappend="${size}"
+      th:with="url=${@portraits.url(character)}">
+  <span class="portrait-letter" th:text="${T(app.charka.portrait.Portraits).letter(character.name)}" aria-hidden="true">К</span>
+  <img th:if="${url != null}" th:src="${url}" alt="" class="portrait-img" loading="lazy" decoding="async">
+</span>
+
+<!-- То же по номеру персонажа: лента чата знает имя и id, а не сущность -->
+<span th:fragment="avatar-by-id(campaignId, characterId, name, size)" class="avatar portrait" th:classappend="${size}"
+      th:with="url=${@portraits.url(campaignId, characterId)}">
+  <span class="portrait-letter" th:text="${T(app.charka.portrait.Portraits).letter(name)}" aria-hidden="true">К</span>
+  <img th:if="${url != null}" th:src="${url}" alt="" class="portrait-img" loading="lazy" decoding="async">
+</span>
+</body>
+</html>

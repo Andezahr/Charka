@@ -100,7 +100,7 @@
         </span>
       </div>
       <th:block th:unless="${ev.kind == 'ROUND' or ev.kind == 'TURN'}">
-      <span class="chat-who" th:text="${e.who}">Колясик</span>
+      <span class="chat-who"><th:block th:if="${e.characterId != null}"><span th:replace="~{fragments/portrait :: avatar-by-id(${campaignId}, ${e.characterId}, ${e.who}, 'avatar-xs')}"></span></th:block><th:block th:text="${e.who}">Колясик</th:block></span>
       <div class="journal" th:classappend="${'kind-' + #strings.toLowerCase(ev.kind)} + ${ev.success == null ? '' : (ev.success ? ' is-ok' : ' is-fail')}">
         <div class="journal-head">
           <span class="journal-title"><th:block th:text="${ev.hidden} ? '🙈 ' : ''"></th:block><th:block th:text="${ev.title}">Avenger → Бустер 1</th:block></span>
@@ -125,7 +125,7 @@
       </th:block>
     </th:block>
     <th:block th:if="${e.event == null}">
-    <span class="chat-who" th:text="${e.who}">Колясик</span>
+    <span class="chat-who"><th:block th:if="${e.characterId != null}"><span th:replace="~{fragments/portrait :: avatar-by-id(${campaignId}, ${e.characterId}, ${e.who}, 'avatar-xs')}"></span></th:block><th:block th:text="${e.who}">Колясик</th:block></span>
     <th:block th:if="${e.roll != null}">
       <span class="chat-text"><th:block th:text="${e.roll.hidden} ? '🙈 ' : '🎲 '">🎲 </th:block><th:block th:text="${e.roll.label != null ? e.roll.label + ': ' : ''} + ${e.roll.expression}">Атака: d10</th:block></span>
       <span class="roll-total" data-roll-anim th:attr="data-final=${e.roll.total}"><b data-roll-value th:text="${e.roll.total}">8</b></span>

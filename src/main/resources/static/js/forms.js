@@ -189,3 +189,49 @@ const hideBattleUndo = () => {
   toast.addEventListener('mouseleave', () => setTimeout(() => toast.isConnected && !toast.matches(':hover, :focus-within') && toast.remove(), 2000), { once: true });
   return timer;
 };
+
+// PH-20: портрет — браузер обрезает картинку в квадрат по центру и сжимает до 512 px (WebP, где нет — JPEG) не больше 300 КБ,
+// подменяет файл в поле и отправляет форму. Сервер только проверяет тип и размер
+const PORTRAIT_SIZE = 512;
+const PORTRAIT_MAX_BYTES = 300 * 1024;
+
+async function shrinkPortrait(file) {
+  const bitmap = await createImageBitmap(file);
+  const side = Math.min(bitmap.width, bitmap.height);
+  const size = Math.min(PORTRAIT_SIZE, side);
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  canvas.getContext('2d').drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, size, size);
+  bitmap.close && bitmap.close();
+  const encode = (type, quality) => new Promise(resolve => canvas.toBlob(resolve, type, quality));
+  for (const quality of [0.85, 0.7, 0.55, 0.4]) {
+    let blob = await encode('image/webp', quality);
+    // Safari старых версий WebP не пишет и отдаёт PNG — тогда JPEG
+    if (!blob || blob.type !== 'image/webp') blob = await encode('image/jpeg', quality);
+    if (blob && blob.size <= PORTRAIT_MAX_BYTES) return new File([blob], 'portrait.' + blob.type.split('/')[1], { type: blob.type });
+  }
+  throw new Error('Картинка не сжимается до 300 КБ');
+}
+
+document.addEventListener('change', async e => {
+  const input = e.target.closest && e.target.closest('input[data-portrait]');
+  if (!input || !input.files || !input.files[0]) return;
+  const form = input.form;
+  form.classList.add('is-busy');
+  try {
+    const transfer = new DataTransfer();
+    transfer.items.add(await shrinkPortrait(input.files[0]));
+    input.files = transfer.files;
+    form.requestSubmit();
+  } catch (error) {
+    form.classList.remove('is-busy');
+    input.value = '';
+    alert('Не удалось прочитать картинку: ' + error.message);
+  }
+});
+
+// Портрет не отдан (NPC в тумане, удалён) — остаётся буква под ним
+document.addEventListener('error', e => {
+  if (e.target instanceof HTMLImageElement && e.target.classList.contains('portrait-img')) e.target.remove();
+}, true);

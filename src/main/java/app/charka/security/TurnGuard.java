@@ -46,7 +46,8 @@ public class TurnGuard implements HandlerInterceptor {
             Pattern.compile("^/categories(/.*)?$"),
             Pattern.compile("^/contacts(/.*)?$"),
             Pattern.compile("^/profile$"),
-            Pattern.compile("^/skills/pin$"));
+            Pattern.compile("^/skills/pin$"),
+            Pattern.compile("^/portrait(/delete)?$"));
 
     /**
      * Можно вне хода в бою: получить урон и спасбросок, объявить до инициативы (CP2020 Fast Draw), вступить из ожидания,

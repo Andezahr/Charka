@@ -88,7 +88,10 @@ public class ChatService {
             copy.setCreatedAt(event.getCreatedAt());
             event = copy;
         }
-        return new Entry(entry.id(), entry.at(), mask.apply(entry.who()), mask.apply(entry.text()), entry.roll(), entry.action(), event, entry.undoId());
+        String who = mask.apply(entry.who());
+        // PH-20: скрытый туманом — и без портрета
+        Long characterId = java.util.Objects.equals(who, entry.who()) ? entry.characterId() : null;
+        return new Entry(entry.id(), entry.at(), who, mask.apply(entry.text()), entry.roll(), entry.action(), event, entry.undoId(), characterId);
     }
 
     /**
@@ -99,13 +102,13 @@ public class ChatService {
      * @param action действие (A-01): id — запись отмены
      */
     public record Entry(Long id, LocalDateTime at, String who, String text, RollLog roll, boolean action,
-                        app.charka.model.JournalEntry event, Long undoId) {
+                        app.charka.model.JournalEntry event, Long undoId, Long characterId) {
         public Entry(Long id, LocalDateTime at, String who, String text, RollLog roll) {
-            this(id, at, who, text, roll, false, null, null);
+            this(id, at, who, text, roll, false, null, null, null);
         }
 
         public Entry(Long id, LocalDateTime at, String who, String text, RollLog roll, boolean action) {
-            this(id, at, who, text, roll, action, null, null);
+            this(id, at, who, text, roll, action, null, null, null);
         }
 
         /** Ключ для браузера: новая запись катит кубик один раз */
@@ -164,13 +167,14 @@ public class ChatService {
     public List<Entry> feed(Long campaignId, int limit, boolean withHidden) {
         List<Entry> entries = new ArrayList<>();
         chatMessageRepository.findByCampaignIdOrderByCreatedAtDescIdDesc(campaignId, PageRequest.of(0, limit))
-                .forEach(message -> entries.add(new Entry(message.getId(), message.getCreatedAt(), message.getAuthor(), message.getText(), null)));
+                .forEach(message -> entries.add(new Entry(message.getId(), message.getCreatedAt(), message.getAuthor(), message.getText(), null,
+                        false, null, null, idOf(message.getCharacter()))));
         // J-01: броски, из которых сложилась запись журнала, показаны внутри неё
         (withHidden ? rollLogRepository.findByCampaignIdOrderByCreatedAtDescIdDesc(campaignId, PageRequest.of(0, limit))
                 : rollLogRepository.findByCampaignIdAndHiddenFalseOrderByCreatedAtDescIdDesc(campaignId, PageRequest.of(0, limit)))
                 .stream().filter(roll -> roll.getJournalEntryId() == null)
                 .forEach(roll -> entries.add(new Entry(roll.getId(), roll.getCreatedAt(),
-                        roll.getCharacter() != null ? roll.getCharacter().getName() : MASTER, null, roll)));
+                        roll.getCharacter() != null ? roll.getCharacter().getName() : MASTER, null, roll, false, null, null, idOf(roll.getCharacter()))));
         List<app.charka.model.JournalEntry> events = new ArrayList<>(withHidden
                 ? journalEntryRepository.findByCampaignIdOrderByCreatedAtDescIdDesc(campaignId, PageRequest.of(0, limit))
                 : journalEntryRepository.findByCampaignIdAndHiddenFalseOrderByCreatedAtDescIdDesc(campaignId, PageRequest.of(0, limit)));
@@ -198,11 +202,16 @@ public class ChatService {
             String label = entry.getLabel();
             // подпись начинается с имени персонажа — в ленте оно уже стоит слева
             String text = label.startsWith(who + ": ") ? label.substring(who.length() + 2) : label;
-            entries.add(new Entry(entry.getId(), entry.getCreatedAt(), who, text, null, true));
+            entries.add(new Entry(entry.getId(), entry.getCreatedAt(), who, text, null, true, null, null, entry.getCharacterId()));
         }
         events.forEach(event -> entries.add(new Entry(event.getId(), event.getCreatedAt(),
-                event.getCharacter() != null ? event.getCharacter().getName() : MASTER, null, null, false, event, undoOf.get(event.getId()))));
+                event.getCharacter() != null ? event.getCharacter().getName() : MASTER, null, null, false, event, undoOf.get(event.getId()),
+                idOf(event.getCharacter()))));
         entries.sort(Comparator.comparing(Entry::at).reversed());
         return entries.size() > limit ? List.copyOf(entries.subList(0, limit)) : entries;
+    }
+
+    private static Long idOf(Character character) {
+        return character == null ? null : character.getId();
     }
 }

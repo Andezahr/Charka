@@ -7,7 +7,7 @@
   <div class="row-main">
     <div class="row-title">
       <a th:href="@{'/character/' + ${row.character.id}}" class="with-avatar">
-        <span class="avatar" th:text="${#strings.substring(row.character.name, 0, 1)}">К</span>
+        <span th:replace="~{fragments/portrait :: avatar(${row.character}, '')}"></span>
         <span th:text="${row.character.name}">Колясик</span>
       </a>
       <span th:if="${row.card.status != null}" class="chip" th:classappend="${row.card.alarming} ? 'red'" th:text="${row.card.status}">Цел</span>
