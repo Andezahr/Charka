@@ -78,14 +78,14 @@ function turnChanged(mine) {
 }
 
 // Короткий сигнал без файла: WebAudio, два тона
-function beep() {
+function beep(tones = [660, 990]) {
   try {
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     const audio = beep.context || (beep.context = new AudioCtx());
-    [0, 0.18].forEach((start, i) => {
+    tones.map((frequency, i) => [i * 0.18, frequency]).forEach(([start, frequency]) => {
       const tone = audio.createOscillator();
       const gain = audio.createGain();
-      tone.frequency.value = i ? 990 : 660;
+      tone.frequency.value = frequency;
       gain.gain.setValueAtTime(0.18, audio.currentTime + start);
       gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + start + 0.16);
       tone.connect(gain).connect(audio.destination);
@@ -288,3 +288,72 @@ document.addEventListener('pointerdown', () => {
   wake.armed = true;
   updateWake();
 }, { capture: true });
+
+// PH-22: громкие броски — крит и критический провал (решает система: фишки jchip-crit и jchip-fumble в журнале) всем за столом
+// крупной плашкой на 2,5 с, со звуком и вибрацией. Новую запись ленты отдаёт revealRolls (один раз, после перезагрузки — нет);
+// скрытые броски мастера (A-09) — нет. Звук — выключатель в меню аккаунта (по умолчанию включён)
+const LOUD_SOUND_KEY = 'charka.loudSound';
+
+function loudRoll(row) {
+  if (row.classList.contains('is-hidden')) return;
+  const chip = row.querySelector('.jchip-crit, .jchip-fumble');
+  if (!chip) return;
+  const fumble = chip.classList.contains('jchip-fumble');
+  const who = row.querySelector('.chat-who');
+  const name = who ? [...who.childNodes].filter(node => node.nodeType === Node.TEXT_NODE).map(node => node.textContent).join('').trim() : '';
+  const title = row.querySelector('.journal-title');
+  const roll = row.querySelector('[data-final]');
+
+  document.querySelectorAll('.loud-roll').forEach(old => old.remove());
+  const card = document.createElement('div');
+  card.className = 'loud-roll ' + (fumble ? 'is-fumble' : 'is-crit');
+  card.setAttribute('role', 'status');
+  const face = who && who.querySelector('.avatar');
+  if (face) {
+    const copy = face.cloneNode(true);
+    copy.classList.remove('avatar-xs');
+    copy.classList.add('avatar-lg');
+    card.appendChild(copy);
+  }
+  const text = document.createElement('div');
+  text.className = 'loud-roll-text';
+  [['loud-roll-verdict', fumble ? '💀 ' + chip.textContent : '✨ ' + chip.textContent], ['loud-roll-who', name],
+    ['loud-roll-what', title ? title.textContent.trim() : ''], ['loud-roll-total', roll ? roll.dataset.final : '']]
+    .filter(([, value]) => value)
+    .forEach(([cls, value]) => {
+      const line = document.createElement('div');
+      line.className = cls;
+      line.textContent = value;
+      text.appendChild(line);
+    });
+  card.appendChild(text);
+  card.addEventListener('click', () => card.remove());
+  document.body.appendChild(card);
+  setTimeout(() => card.remove(), 2600);
+
+  if (navigator.vibrate) navigator.vibrate(fumble ? [400] : [80, 60, 80, 60, 160]);
+  let sound = true;
+  try { sound = localStorage.getItem(LOUD_SOUND_KEY) !== '0'; } catch (e) { /* по умолчанию со звуком */ }
+  if (sound) beep(fumble ? [440, 330, 220] : [660, 880, 1320]);
+}
+
+function initLoudSound() {
+  let on = true;
+  try { on = localStorage.getItem(LOUD_SOUND_KEY) !== '0'; } catch (e) { /* включено */ }
+  document.querySelectorAll('[data-loud-sound]').forEach(box => {
+    box.checked = on;
+    box.addEventListener('change', () => {
+      try { localStorage.setItem(LOUD_SOUND_KEY, box.checked ? '1' : '0'); } catch (e) { /* только удобство */ }
+      if (box.checked) beep([660, 880, 1320]);
+    });
+  });
+}
+
+// браузер даёт звук только после касания: первое касание будит звук, чтобы чужой крит потом прозвучал
+document.addEventListener('pointerdown', () => {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    const audio = beep.context || (beep.context = new AudioCtx());
+    if (audio.state === 'suspended') audio.resume();
+  } catch (e) { /* звука нет */ }
+}, { capture: true, once: true });

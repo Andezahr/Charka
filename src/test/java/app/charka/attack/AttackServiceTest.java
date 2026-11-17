@@ -487,7 +487,7 @@ class AttackServiceTest {
         }
 
         @Test
-        @DisplayName("Броня выдержала — «Не пробил»; промах — «Мимо»")
+        @DisplayName("Броня выдержала — «Не пробил»; промах на 1 — «Мимо» и «Критический провал»")
         void armorAndMiss() {
             when(dice.roll(anyInt())).thenReturn(9, 1, 1);
             attackService.attack(shooter.getId(), minami.getId(), atTorso());
@@ -497,7 +497,8 @@ class AttackServiceTest {
             attackService.attack(shooter.getId(), minami.getId(), atTorso());
             app.charka.model.JournalEntry miss = entries().get(0);
             assertThat(miss.getSuccess()).isFalse();
-            assertThat(miss.chipList()).extracting(chip -> chip[0] + ":" + chip[1]).contains("miss:Мимо");
+            // PH-22: на 1 — фумбл; вид фишки «fumble» лента показывает всем за столом крупной плашкой
+            assertThat(miss.chipList()).extracting(chip -> chip[0] + ":" + chip[1]).contains("miss:Мимо", "fumble:Критический провал");
         }
     }
 }

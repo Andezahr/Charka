@@ -93,6 +93,8 @@
           <a th:href="@{/}" class="crumb-open">Все мои кампании</a>
           <!-- PH-12: экран не гаснет в бою (poll.js, initWake) -->
           <label class="check user-menu-wake"><input type="checkbox" data-wake-toggle checked><span>☀ Экран не гаснет в бою</span></label>
+          <!-- PH-22: звук крита и провала у всех за столом -->
+          <label class="check user-menu-wake"><input type="checkbox" data-loud-sound checked><span>🔊 Звук крита и провала</span></label>
           <!-- на телефоне «Выйти» — здесь, в шапке ему места нет -->
           <form th:action="@{/logout}" method="post" class="user-menu-logout">
             <button type="submit" class="btn btn-sm btn-ghost" th:text="'Выйти (' + ${me.username} + ')'">Выйти</button>

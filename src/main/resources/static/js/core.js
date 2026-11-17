@@ -134,7 +134,10 @@ function revealRolls() {
     const key = row.dataset.feedKey;
     if (seen.has(key)) return;
     seen.add(key);
-    if (!first) rollAnimation(row, false);
+    if (!first) {
+      rollAnimation(row, false);
+      loudRoll(row);
+    }
   });
   try { sessionStorage.setItem(FEED_SEEN_KEY, JSON.stringify([...seen].slice(-400))); } catch (e) { /* только удобство */ }
 }

@@ -140,7 +140,8 @@ public class JournalService {
         List<Chip> chips = new ArrayList<>(draft.chips());
         if (first != null && draft.kind() != Kind.CHECK) {
             if (first.fumble()) {
-                chips.add(new Chip("bad", "Критический провал"));
+                // PH-22: свой вид фишки — по нему лента показывает провал всем за столом
+                chips.add(new Chip("fumble", "Критический провал"));
             } else if (first.critical()) {
                 chips.add(new Chip("crit", "Крит"));
             }

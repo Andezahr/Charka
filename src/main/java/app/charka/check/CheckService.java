@@ -64,7 +64,7 @@ public class CheckService {
     private static app.charka.journal.JournalService.Draft draft(Campaign campaign, Character character, CheckRequest request, CheckResult result) {
         List<app.charka.journal.JournalService.Chip> chips = new java.util.ArrayList<>();
         if (result.fumble()) {
-            chips.add(new app.charka.journal.JournalService.Chip("bad", "Критический провал"));
+            chips.add(new app.charka.journal.JournalService.Chip("fumble", "Критический провал"));
         } else if (result.success() != null) {
             chips.add(new app.charka.journal.JournalService.Chip(result.success() ? "ok" : "bad", result.success() ? "Успех" : "Провал"));
         }

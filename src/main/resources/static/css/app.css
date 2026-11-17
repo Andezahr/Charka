@@ -1667,7 +1667,7 @@ button.me-portrait { font: inherit; font-size: var(--fs-body); }
 .jchip { padding: 1px 8px; border-radius: 999px; font-size: var(--fs-label); font-weight: 600; background: var(--surface-3); color: var(--text-soft); }
 .jchip-hit, .jchip-ok { background: var(--success-soft); color: var(--success); }
 .jchip-miss { background: var(--surface-3); color: var(--muted); }
-.jchip-bad { background: var(--danger-soft); color: var(--danger); }
+.jchip-bad, .jchip-fumble { background: var(--danger-soft); color: var(--danger); }
 .jchip-dmg { background: rgba(248, 113, 113, 0.22); color: #fca5a5; }
 .jchip-armor { background: rgba(148, 163, 184, 0.18); color: #cbd5e1; }
 .jchip-pierce { background: var(--warning-soft); color: var(--warning); }
@@ -2077,3 +2077,19 @@ main button:disabled { opacity: .45; cursor: not-allowed; }
 .battle-token-portrait { pointer-events: none; }
 @media (pointer: coarse) { .sheet-face-pick .avatar-lg { width: 72px; height: 72px; } }
 .user-menu-wake { padding: 6px 10px; font-size: var(--fs-small); white-space: nowrap; }
+
+/* ---------- PH-22: громкие броски ---------- */
+.loud-roll { position: fixed; left: 50%; top: 22%; z-index: 1000; transform: translateX(-50%); display: flex; align-items: center; gap: 16px;
+  max-width: calc(100vw - 32px); padding: 18px 24px; border-radius: 18px; background: var(--surface); border: 2px solid var(--highlight);
+  box-shadow: 0 0 40px rgba(250, 204, 21, 0.45), 0 12px 40px rgba(0, 0, 0, 0.6); cursor: pointer;
+  animation: loud-in 0.35s cubic-bezier(0.2, 1.6, 0.4, 1), loud-out 0.4s ease-in 2.2s forwards; }
+.loud-roll.is-fumble { border-color: var(--danger); box-shadow: 0 0 40px rgba(248, 113, 113, 0.45), 0 12px 40px rgba(0, 0, 0, 0.6); }
+.loud-roll-text { display: grid; gap: 2px; min-width: 0; }
+.loud-roll-verdict { font-family: var(--font-display); font-size: var(--fs-heading); color: var(--highlight); }
+.loud-roll.is-fumble .loud-roll-verdict { color: var(--danger); }
+.loud-roll-who { font-weight: 700; font-size: var(--fs-lead); }
+.loud-roll-what { color: var(--text-soft); font-size: var(--fs-small); overflow-wrap: anywhere; }
+.loud-roll-total { font-family: var(--font-display); font-size: 40px; line-height: 1; }
+@keyframes loud-in { from { opacity: 0; transform: translateX(-50%) scale(0.6); } to { opacity: 1; transform: translateX(-50%) scale(1); } }
+@keyframes loud-out { to { opacity: 0; transform: translateX(-50%) translateY(-12px); } }
+@media (prefers-reduced-motion: reduce) { .loud-roll { animation: loud-out 0.4s ease-in 2.2s forwards; } }
