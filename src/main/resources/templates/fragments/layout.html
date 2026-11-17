@@ -91,6 +91,8 @@
         <summary class="crumb" title="Аккаунт и другие кампании"><span class="user-icon" aria-hidden="true">👤</span><span class="user-name" th:text="${me.username}">kolya</span> ▾</summary>
         <div class="crumb-list user-menu-list">
           <a th:href="@{/}" class="crumb-open">Все мои кампании</a>
+          <!-- PH-12: экран не гаснет в бою (poll.js, initWake) -->
+          <label class="check user-menu-wake"><input type="checkbox" data-wake-toggle checked><span>☀ Экран не гаснет в бою</span></label>
           <!-- на телефоне «Выйти» — здесь, в шапке ему места нет -->
           <form th:action="@{/logout}" method="post" class="user-menu-logout">
             <button type="submit" class="btn btn-sm btn-ghost" th:text="'Выйти (' + ${me.username} + ')'">Выйти</button>
@@ -118,14 +120,14 @@
       <!-- R-06: вкладки «Счётчики» нет — они на листе; /character/{id}/counters перенаправляет туда -->
       <a th:href="@{'/character/' + ${character.id} + '/notes/'}" th:classappend="${active == 'notes'} ? 'is-active'">Заметки</a>
       <th:block th:if="${c != null}" th:with="round=${@encounterService.activeRound(c.id)}">
-        <a th:if="${round != null}" th:href="@{'/campaign/' + ${c.id} + '/encounter'}" class="tab-fight"
+        <a th:if="${round != null}" th:href="@{'/campaign/' + ${c.id} + '/encounter'}" class="tab-fight" data-fight-on
            th:text="'⚔ Бой · раунд ' + ${round}">⚔ Бой · раунд 2</a>
       </th:block>
     </nav>
     <nav class="tabs" th:if="${character == null and c != null}" th:with="round=${@encounterService.activeRound(c.id)}">
       <a th:href="@{'/campaign/' + ${c.id}}" th:classappend="${active == 'overview'} ? 'is-active'">Обзор</a>
       <a th:href="@{'/campaign/' + ${c.id} + '/encounter'}" th:classappend="${active == 'encounter'} ? 'is-active'"
-         th:text="${round != null} ? '⚔ Бой · раунд ' + ${round} : '⚔ Бой'">⚔ Бой</a>
+         th:attr="data-fight-on=${round != null} ? 'true'" th:text="${round != null} ? '⚔ Бой · раунд ' + ${round} : '⚔ Бой'">⚔ Бой</a>
       <th:block th:if="${gm}">
         <!-- R-10: вкладки «Мастер» нет — его строки на обзоре; /campaign/{id}/gm перенаправляет туда -->
         <a th:href="@{'/campaign/' + ${c.id} + '/scenes'}" th:classappend="${active == 'scenes'} ? 'is-active'">Сцены</a>

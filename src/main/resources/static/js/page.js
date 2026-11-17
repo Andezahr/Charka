@@ -817,6 +817,7 @@ function initPage() {
   safely('editor', initEditor);
   safely('chat', initChat);
   safely('turn', initTurnWatch);
+  safely('wake', initWake);
   safely('requests', initRequests);
 }
 

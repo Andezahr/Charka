@@ -194,3 +194,97 @@ async function pollChat() {
   }
   chat.timer = setTimeout(pollChat, Date.now() - chat.quietSince > 60000 ? 10000 : 3000);
 }
+
+// PH-12: экран не гаснет, пока идёт бой и вкладка видна. Где есть Wake Lock API (localhost, HTTPS) — он; по http в домашней
+// сети его нет, тогда — приём NoSleep.js своими руками: беззвучное зацикленное видео в 1 пиксель, запущенное по касанию.
+// Видео не лежит файлом: секунду пустого холста записывает MediaRecorder. Выключатель «☀» — запоминается (по умолчанию включён)
+const WAKE_KEY = 'charka.wake';
+const wake = { lock: null, video: null, armed: false, denied: false };
+
+function wakeWanted() {
+  let on = true;
+  try { on = localStorage.getItem(WAKE_KEY) !== '0'; } catch (e) { /* без памяти — включено */ }
+  return on && !document.hidden && !!document.querySelector('.battle-screen, [data-fight-on]');
+}
+
+async function wakeVideo() {
+  if (wake.video) return wake.video;
+  const video = document.createElement('video');
+  Object.assign(video, { muted: true, loop: true, playsInline: true });
+  video.setAttribute('playsinline', '');
+  video.setAttribute('aria-hidden', 'true');
+  video.style.cssText = 'position:fixed;left:0;bottom:0;width:1px;height:1px;opacity:0.01;pointer-events:none;';
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 2;
+  const paint = canvas.getContext('2d');
+  const stream = canvas.captureStream ? canvas.captureStream(5) : null;
+  if (stream && window.MediaRecorder) {
+    const chunks = [];
+    const recorder = new MediaRecorder(stream);
+    recorder.ondataavailable = event => chunks.push(event.data);
+    const done = new Promise(resolve => { recorder.onstop = resolve; });
+    let tick = 0;
+    const draw = setInterval(() => { paint.fillStyle = tick++ % 2 ? '#000' : '#010101'; paint.fillRect(0, 0, 2, 2); }, 100);
+    recorder.start();
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    recorder.stop();
+    await done;
+    clearInterval(draw);
+    stream.getTracks().forEach(track => track.stop());
+    video.src = URL.createObjectURL(new Blob(chunks, { type: recorder.mimeType || 'video/webm' }));
+  } else if (stream) {
+    video.srcObject = stream;
+  }
+  // вне body: страница обновляется на месте заменой body, видео должно пережить это
+  document.documentElement.appendChild(video);
+  wake.video = video;
+  return video;
+}
+
+async function updateWake() {
+  const want = wakeWanted();
+  if (!want) {
+    if (wake.lock) wake.lock.release().catch(() => {});
+    wake.lock = null;
+    if (wake.video) wake.video.pause();
+    return;
+  }
+  if ('wakeLock' in navigator && !wake.denied) {
+    if (wake.lock) return;
+    try {
+      wake.lock = await navigator.wakeLock.request('screen');
+      wake.lock.addEventListener('release', () => { wake.lock = null; });
+      return;
+    } catch (e) {
+      // браузер отказал (нет разрешения, встроенное окно) — запасной способ
+      wake.denied = true;
+    }
+  }
+  // видео без касания браузер не запустит: ждём первого касания
+  if (!wake.armed) return;
+  try {
+    const video = await wakeVideo();
+    if (wakeWanted() && video.paused) await video.play();
+  } catch (e) { /* не вышло — экран гаснет как обычно */ }
+}
+
+function initWake() {
+  let on = true;
+  try { on = localStorage.getItem(WAKE_KEY) !== '0'; } catch (e) { /* включено */ }
+  document.querySelectorAll('[data-wake-toggle]').forEach(box => {
+    box.checked = on;
+    box.addEventListener('change', () => {
+      try { localStorage.setItem(WAKE_KEY, box.checked ? '1' : '0'); } catch (e) { /* только удобство */ }
+      document.querySelectorAll('[data-wake-toggle]').forEach(other => { other.checked = box.checked; });
+      updateWake();
+    });
+  });
+  updateWake();
+}
+
+document.addEventListener('visibilitychange', () => updateWake());
+document.addEventListener('pointerdown', () => {
+  if (wake.armed) return;
+  wake.armed = true;
+  updateWake();
+}, { capture: true });

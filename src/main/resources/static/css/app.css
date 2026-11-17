@@ -2076,3 +2076,4 @@ main button:disabled { opacity: .45; cursor: not-allowed; }
 .sheet-face.is-busy .avatar { opacity: .5; }
 .battle-token-portrait { pointer-events: none; }
 @media (pointer: coarse) { .sheet-face-pick .avatar-lg { width: 72px; height: 72px; } }
+.user-menu-wake { padding: 6px 10px; font-size: var(--fs-small); white-space: nowrap; }
