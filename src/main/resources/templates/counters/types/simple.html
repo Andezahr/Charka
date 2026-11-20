@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <!-- Карточка обычного числового счётчика. Ожидает в контексте counter и characterId -->
-<body>
+<body th:classappend="${charkaTheme}">
 <div th:fragment="card" class="counter">
   <div class="counter-head">
     <div>

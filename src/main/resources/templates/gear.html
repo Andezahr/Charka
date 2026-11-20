@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head('Снаряжение · ' + ${character.name})}"></head>
-<body>
+<body th:classappend="${charkaTheme}">
 <header th:replace="~{fragments/layout :: nav(null, ${character}, 'gear')}"></header>
 
 <!-- R-08: «Снаряжение» — все инвентари (носимые и нет), вживлённое целиком, журнал денег и регулярные траты -->

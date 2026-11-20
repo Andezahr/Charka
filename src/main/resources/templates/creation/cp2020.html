@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head('Новый персонаж · ' + ${campaign.name})}"></head>
-<body>
+<body th:classappend="${charkaTheme}">
 <header th:replace="~{fragments/layout :: nav(${campaign}, null, 'overview')}"></header>
 
 <!-- Мастер создания персонажа CP2020: одна страница, итоги считаются сразу (app.js, [data-creation]).

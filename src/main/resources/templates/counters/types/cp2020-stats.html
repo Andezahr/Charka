@@ -2,7 +2,7 @@
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <!-- Характеристики Cyberpunk 2020: поля формы создания (create-fields) и карточка (card).
      card ожидает в контексте counter (counter.view = Cp2020StatsView) и characterId -->
-<body>
+<body th:classappend="${charkaTheme}">
 
 <th:block th:fragment="create-fields">
   <div class="field-grid cp-field-grid-3">

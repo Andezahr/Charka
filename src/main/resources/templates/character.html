@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head('Персонаж ' + ${character.name})}"></head>
-<body>
+<body th:classappend="${charkaTheme}">
 <header th:replace="~{fragments/layout :: nav(null, ${character}, 'sheet')}"></header>
 
 <main class="page sheet-page"

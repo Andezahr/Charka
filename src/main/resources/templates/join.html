@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head('Приглашение')}"></head>
-<body>
+<body th:classappend="${charkaTheme}">
 <header th:replace="~{fragments/layout :: nav(null, null, 'home')}"></header>
 <!-- A-02: игрок пришёл по ссылке или QR-коду — забирает свободного персонажа одним нажатием или создаёт по правилам -->
 <main class="page page-narrow">

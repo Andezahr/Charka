@@ -10,6 +10,13 @@ import app.charka.system.SheetRules;
  */
 class KzSheetRules implements SheetRules {
 
+    /** PH-21: оформление кампании — «зона»: ржавчина, хаки, бетон */
+    @Override
+    public String theme() {
+        return "kosmozeki";
+    }
+
+
     @Override
     public List<ProfileField> getProfileFields() {
         return KzProfile.FIELDS;

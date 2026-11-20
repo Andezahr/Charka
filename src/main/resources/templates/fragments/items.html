@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
-<body>
+<body th:classappend="${charkaTheme}">
 <!-- Выбор типа предмета и поля каждого типа; видимость полей переключает app.js ([data-item-form]).
      Если у системы только обычный предмет, выбирать нечего и формы выглядят как раньше. -->
 <th:block th:fragment="type-fields(types, item)">

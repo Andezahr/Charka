@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head('Вход')}"></head>
-<body>
+<body th:classappend="${charkaTheme}">
 <header th:replace="~{fragments/layout :: nav(null, null, 'home')}"></header>
 <main class="page page-narrow">
   <section class="card">

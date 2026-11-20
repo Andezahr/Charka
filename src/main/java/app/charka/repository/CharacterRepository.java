@@ -12,4 +12,8 @@ public interface CharacterRepository extends JpaRepository<Character, Long> {
      List<Character> findByCampaign(Campaign campaign);
 
      boolean existsByCampaignIdAndPlayerId(Long campaignId, Long playerId);
+
+     /** PH-21: код системы кампании персонажа (тема страницы) */
+     @org.springframework.data.jpa.repository.Query("select ch.campaign.system from Character ch where ch.id = :id")
+     java.util.Optional<String> findSystemCode(@org.springframework.data.repository.query.Param("id") Long id);
 }

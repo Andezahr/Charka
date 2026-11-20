@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
-<body>
+<body th:classappend="${charkaTheme}">
 <!-- A-11: «📖 Правила» — кнопка и окно; содержимое (GET /campaign/{id}/reference) приходит при первом открытии -->
 <th:block th:fragment="open-button(campaignId)">
   <button type="button" class="btn btn-ghost" data-reference-open th:attr="data-reference-src=@{'/campaign/' + ${campaignId} + '/reference'}"

@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
-<body>
+<body th:classappend="${charkaTheme}">
 <!-- PH-20: лицо персонажа — портрет или первая буква имени. Картинка не загрузилась (NPC в тумане) — остаётся буква
      (app.js убирает img по ошибке). size — класс размера: avatar-sm, avatar-lg -->
 <span th:fragment="avatar(character, size)" class="avatar portrait" th:classappend="${size}"

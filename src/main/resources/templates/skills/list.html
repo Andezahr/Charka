@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head('Навыки ' + ${character.name})}"></head>
-<body>
+<body th:classappend="${charkaTheme}">
 <header th:replace="~{fragments/layout :: nav(null, ${character}, 'skills')}"></header>
 
 <!-- По умолчанию видны только изученные навыки; остальное включает app.js (см. блок «Страница навыков») -->

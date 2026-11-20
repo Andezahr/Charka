@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <!-- Броня Cyberpunk 2020 по зонам. card ожидает в контексте counter (counter.view = Cp2020ArmorView) и characterId -->
-<body>
+<body th:classappend="${charkaTheme}">
 
 <div th:fragment="card" class="counter cp-card" data-editable
      th:with="v=${counter.view},

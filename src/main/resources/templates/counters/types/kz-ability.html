@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <!-- Способности Космозэков (K-10): «Сложность вдвое» (KZ_HALVE) и «Предсказание» (KZ_PORTENT). Ожидает counter и characterId -->
-<body>
+<body th:classappend="${charkaTheme}">
 <div th:fragment="card" class="counter cp-card kz-ability"
      th:with="v=${counter.view},
               base=@{/character/{characterId}/counters/{counterId}(characterId=${characterId}, counterId=${counter.id})}">

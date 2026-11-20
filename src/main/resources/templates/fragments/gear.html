@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
-<body>
+<body th:classappend="${charkaTheme}">
 <!-- R-08: инвентарь — на листе (носимые) и на вкладке «Снаряжение» (все, с переключателем «на листе») -->
 <div th:fragment="inventory(inv, gear)" class="inventory" th:id="'inventory-' + ${inv.id}">
   <!-- На листе: одна строка — имя (без вкладок), что в руках, «＋ Предмет»; переименовать и удалить — в «Снаряжении» -->

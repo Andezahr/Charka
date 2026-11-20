@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head('Сцены: ' + ${campaign.name})}"></head>
-<body>
+<body th:classappend="${charkaTheme}">
 <header th:replace="~{fragments/layout :: nav(${campaign}, null, 'scenes')}"></header>
 
 <!-- A-06: заготовки боя. Карта сцены — карта кампании: где встают игроки и NPC, задают её зоны старта в редакторе -->

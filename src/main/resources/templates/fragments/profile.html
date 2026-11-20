@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <!-- K-11: поля листа, которые объявляет система (ProfileField): теги, приговор, качества. rows — ProfileService.Row -->
-<body>
+<body th:classappend="${charkaTheme}">
 
 <!-- Поля ввода: текст с подсказками (datalist), длинный текст, выбор нескольких галочками -->
 <th:block th:fragment="fields(rows)">

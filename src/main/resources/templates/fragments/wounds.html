@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
-<body>
+<body th:classappend="${charkaTheme}">
 <!-- R-09: журнал здоровья — новые записи сверху. R-23: журнал пишется сам (урон, медпомощь),
      ручная запись (сломанное ребро, яд) — раскрытием -->
 <div th:fragment="log" class="wound-log">

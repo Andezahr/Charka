@@ -36,6 +36,14 @@ public interface SheetRules {
         return "Знакомые";
     }
 
+    /**
+     * PH-21: оформление кампаний системы — код темы, страницы кампании получают класс {@code theme-<код>} на {@code body}
+     * (в {@code app.css} тема меняет только токены {@code :root}). Пусто — общая нейтральная тема ({@code theme-general}).
+     */
+    default String theme() {
+        return "";
+    }
+
     /** A-12: что печатать на бумажном листе сверх общего; пусто — только общее */
     default PrintSheet getPrintSheet(Character character) {
         return PrintSheet.EMPTY;

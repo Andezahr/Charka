@@ -2,7 +2,7 @@
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <!-- Здоровье Cyberpunk 2020: поля формы создания (create-fields) и карточка (card).
      card ожидает в контексте counter (counter.view = Cp2020HealthView) и characterId -->
-<body>
+<body th:classappend="${charkaTheme}">
 
 <th:block th:fragment="create-fields">
   <th:block th:replace="~{counters/types/cp2020-stats :: create-fields}"></th:block>

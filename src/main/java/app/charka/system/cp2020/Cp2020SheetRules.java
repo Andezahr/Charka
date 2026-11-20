@@ -8,6 +8,13 @@ import app.charka.system.SheetRules;
  */
 class Cp2020SheetRules implements SheetRules {
 
+    /** PH-21: оформление кампании — нынешний неон (токены app.css без изменений) */
+    @Override
+    public String theme() {
+        return "cp2020";
+    }
+
+
     private final Cp2020System system;
 
     Cp2020SheetRules(Cp2020System system) {

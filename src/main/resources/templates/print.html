@@ -33,7 +33,7 @@
     @media print { .print-bar { display: none; } .sheet { padding: 0; } }
   </style>
 </head>
-<body>
+<body th:classappend="${charkaTheme}">
 <div class="print-bar">
   <button type="button" onclick="window.print()">🖨 Печать или PDF</button>
   <span>Лист без приложения: урон отмечайте в клетках карандашом.</span>

@@ -18,6 +18,7 @@ public class WebConfig implements WebMvcConfigurer {
     private final app.charka.undo.CampaignLock campaignLock;
     private final app.charka.undo.ActionLog actionLog;
     private final app.charka.undo.UndoInterceptor undoInterceptor;
+    private final ThemeInterceptor themeInterceptor;
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
@@ -34,5 +35,7 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addInterceptor(undoInterceptor).addPathPatterns("/campaign/**", "/character/**");
         // R-08: действие с вкладки «Снаряжение» возвращает на неё, а не на лист
         registry.addInterceptor(new GearReturnInterceptor()).addPathPatterns("/character/**");
+        // PH-21: тема оформления по системе кампании — класс body
+        registry.addInterceptor(themeInterceptor).addPathPatterns("/campaign/**", "/character/**");
     }
 }

@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
-<body>
+<body th:classappend="${charkaTheme}">
 <!-- R-10: строка персонажа на обзоре кампании (бывший экран мастера): состояние и строки системы, статы, эффекты, деньги, удача.
      У мастера ⋯: открыть, отдать игроку, копия и удаление NPC -->
 <div th:fragment="row(row)" class="row gm-row" th:classappend="${row.card.out} ? 'is-out'" th:id="'character-' + ${row.character.id}">

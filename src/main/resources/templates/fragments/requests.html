@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
-<body>
+<body th:classappend="${charkaTheme}">
 <!-- A-07: открытые запросы бросков. Игрок — свои, одна кнопка; мастер — все: бросить за игрока или снять.
      Опрашивается app.js ([data-requests]) и подменяется целиком -->
 <th:block th:fragment="list">

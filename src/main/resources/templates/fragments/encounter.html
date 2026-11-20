@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
-<body>
+<body th:classappend="${charkaTheme}">
 <!-- UX-30: здоровье по частям одной полосой (Космозэки: цифры 0…9 цветом ХП зоны). Пусто у системы — ничего -->
 <div th:fragment="segments(card)" th:unless="${card == null or #lists.isEmpty(card.segments)}" class="hp-segments" role="img"
      th:attr="aria-label=${#strings.listJoin(card.segments.![title], '; ')}">

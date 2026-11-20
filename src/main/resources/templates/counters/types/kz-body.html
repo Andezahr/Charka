@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <!-- Тело Космозэков (K-02): зоны со своим ХП и бронёй. card и card-compact ожидают counter (counter.view = KzBodyView) и characterId -->
-<body>
+<body th:classappend="${charkaTheme}">
 
 <!-- Зоны плитками: нажатие выбирает зону урона (радио внутри формы урона) -->
 <th:block th:fragment="zones(h, pick)">
